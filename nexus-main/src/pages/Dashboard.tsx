@@ -7,19 +7,17 @@ import { type FC } from 'react';
 
 export const Dashboard: FC = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main className="px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex w-full flex-col gap-6 lg:flex-row lg:items-start">
-          <div className="min-w-0 flex-1">
-            <SocialFeed />
-          </div>
-          <RightSidebar>
-            <CalendarPage compact />
-            <TeamMood />
-          </RightSidebar>
-        </div>
-      </main>
+    <div className="flex min-h-svh flex-col overflow-x-hidden bg-background lg:flex-row">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Header />
+        <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">
+          <SocialFeed />
+        </main>
+      </div>
+      <RightSidebar dock>
+        <CalendarPage compact />
+        <TeamMood />
+      </RightSidebar>
     </div>
   );
 };
