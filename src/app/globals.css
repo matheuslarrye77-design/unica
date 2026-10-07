@@ -1,0 +1,173 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --unica: #6424b3;
+  --unica-hover: #531c96;
+  --unica-soft: #e8d9f6;
+  --unica-wash: #f4eefb;
+  --unica-mist: #f7f4fb;
+  --bg: #f1f4fd;
+  --app-wash:
+    radial-gradient(24vw 42vh at 100% -4%, #cbb2f4 0%, #e5d6ff 16%, rgba(229, 214, 255, 0) 58%),
+    radial-gradient(20vw 32vh at 104% 26%, #e2f0fb 0%, rgba(226, 240, 251, 0) 66%),
+    radial-gradient(30vw 40vh at 102% 64%, #ebe5ff 0%, #efecff 28%, rgba(235, 229, 255, 0) 66%),
+    radial-gradient(28vw 34vh at -8% 112%, #f1e8fd 0%, rgba(241, 232, 253, 0) 70%);
+  --ink: #1e1a24;
+  --muted: #5e5868;
+  --line: #e6e2ea;
+  --success: #1f6b56;
+  --warning: #8a5a12;
+  --danger: #9f3040;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background-color: var(--bg);
+  background-image: var(--app-wash);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+.app-bg {
+  background-color: var(--bg);
+  background-image: var(--app-wash);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+::selection {
+  background: var(--unica-soft);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--unica);
+  outline-offset: 2px;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.login-bee {
+  position: absolute;
+  z-index: 2;
+  width: 34px;
+  height: 26px;
+  border-radius: 55% 45% 48% 52%;
+  pointer-events: none;
+  background: linear-gradient(90deg, #4b2b5f 0 27%, #d7c2ee 27% 45%, #6424b3 45% 62%, #d7c2ee 62% 79%, #4b2b5f 79%);
+  box-shadow: 0 8px 18px rgba(100, 36, 179, 0.18);
+  animation: bee-flight 14s ease-in-out infinite;
+}
+
+.login-bee::before,
+.login-bee::after {
+  content: "";
+  position: absolute;
+  top: -8px;
+  width: 18px;
+  height: 11px;
+  border: 2px solid #fff;
+  border-radius: 70% 35%;
+  background: rgba(232, 217, 246, 0.75);
+}
+
+.login-bee::before {
+  left: -8px;
+  transform: rotate(-22deg);
+}
+
+.login-bee::after {
+  right: -6px;
+  transform: rotate(26deg);
+}
+
+@keyframes bee-flight {
+  0% { top: 18%; left: 12%; transform: rotate(-8deg); }
+  25% { top: 28%; left: 78%; transform: rotate(10deg); }
+  50% { top: 72%; left: 70%; transform: rotate(-6deg); }
+  75% { top: 64%; left: 16%; transform: rotate(8deg); }
+  100% { top: 18%; left: 12%; transform: rotate(-8deg); }
+}
+
+html.theme-dark body,
+html.theme-dark .app-bg {
+  --bg: #17131f;
+  --ink: #f6f1fb;
+  --muted: #c9bdd6;
+  --line: #3c3348;
+  --unica-wash: #2c2340;
+  --unica-mist: #241c33;
+  --app-wash:
+    radial-gradient(24vw 42vh at 100% -4%, #4a2d78 0%, rgba(74, 45, 120, 0) 58%),
+    radial-gradient(20vw 32vh at 104% 26%, #243044 0%, rgba(36, 48, 68, 0) 66%),
+    radial-gradient(30vw 40vh at 102% 64%, #342552 0%, rgba(52, 37, 82, 0) 66%),
+    radial-gradient(28vw 34vh at -8% 112%, #2a2140 0%, rgba(42, 33, 64, 0) 70%);
+  color: var(--ink);
+  background-color: var(--bg);
+  background-image: var(--app-wash);
+}
+
+html.theme-dark .bg-white {
+  background-color: #241c33;
+}
+
+.confetti {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  animation: confetti-fall 2.8s ease-in forwards;
+}
+
+@keyframes confetti-fall {
+  to { transform: translateY(100vh) rotate(180deg); opacity: 0; }
+}
+
+.calendar-pop {
+  animation: rise 180ms ease;
+}
+
+@media (max-width: 720px) {
+  .login-bee {
+    width: 26px;
+    height: 20px;
+    animation-duration: 18s;
+  }
+}
+
+.page-enter {
+  animation: rise 180ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
