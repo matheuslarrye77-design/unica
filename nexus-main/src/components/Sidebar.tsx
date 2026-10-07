@@ -10,13 +10,17 @@ import {
   FolderOpen,
   Home,
   Megaphone,
+  MessageSquare,
   Settings,
+  SlidersHorizontal,
   Users,
   X,
 } from 'lucide-react';
 import { type FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { isLeader, useInstitution } from '@/lib/institution';
+import { currentUser } from '@/data/mockData';
 
 const GROUPS = [
   {
@@ -129,6 +133,20 @@ export const AppFrame: FC<{ children: ReactNode }> = ({ children }) => {
 export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
   const location = useLocation();
   const { leftCollapsed, toggleLeft } = useShell();
+  const institution = useInstitution();
+  const leader = isLeader(currentUser);
+  const groups = GROUPS.map((group) => {
+    const items = group.items.filter((item) => item.path !== '/' || institution.muralAvailable);
+    if (group.id !== 'gestao' || !leader) return { ...group, items };
+    return {
+      ...group,
+      items: [
+        ...items,
+        { path: '/gestao/feedbacks', label: 'Feedbacks', icon: MessageSquare },
+        { path: '/gestao/configuracoes', label: 'Configurações', icon: SlidersHorizontal },
+      ],
+    };
+  });
 
   const nav = (collapsed: boolean) => (
     <>
@@ -146,47 +164,46 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
           <X className="h-4 w-4" />
         </button>
       </div>
-      <nav className="flex flex-col gap-1 px-3 py-3" aria-label="Principal">
-        {GROUPS.map((group) => (
-          <div key={group.id} className="flex flex-col gap-1">
-            {group.label && !collapsed ? (
-              <p className="flex items-center justify-between px-3 py-1 text-xs font-medium text-muted-foreground">
+      <nav className="flex min-h-0 flex-1 flex-col justify-between gap-1 overflow-y-auto px-3 py-3" aria-label="Principal">
+        {groups.flatMap((group) => {
+          const rows = [];
+          if (group.label && !collapsed) {
+            rows.push(
+              <p key={`${group.id}-label`} className="flex items-center justify-between px-3 py-1 text-xs font-medium text-muted-foreground">
                 {group.label}
                 <ChevronDown className="h-3 w-3 opacity-50" />
-              </p>
-            ) : null}
-            <div className="flex flex-col gap-1">
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(location.pathname, location.search, item.path);
-                const link = (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={onClose}
-                    className={cn(
-                      'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                      collapsed && 'justify-center px-2',
-                      active
-                        ? 'bg-primary/10 text-primary shadow-sm'
-                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {collapsed ? <span className="sr-only">{item.label}</span> : item.label}
-                  </Link>
-                );
-                if (!collapsed) return link;
-                return (
-                  <Tooltip key={item.path}>
-                    <TooltipTrigger asChild>{link}</TooltipTrigger>
-                    <TooltipContent side="right">{item.label}</TooltipContent>
-                  </Tooltip>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+              </p>,
+            );
+          }
+          for (const item of group.items) {
+            const Icon = item.icon;
+            const active = isActive(location.pathname, location.search, item.path);
+            const link = (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={onClose}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  collapsed && 'justify-center px-2',
+                  active
+                    ? 'bg-primary/10 text-primary shadow-sm'
+                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {collapsed ? <span className="sr-only">{item.label}</span> : item.label}
+              </Link>
+            );
+            rows.push(collapsed ? (
+              <Tooltip key={item.path}>
+                <TooltipTrigger asChild>{link}</TooltipTrigger>
+                <TooltipContent side="right">{item.label}</TooltipContent>
+              </Tooltip>
+            ) : link);
+          }
+          return rows;
+        })}
       </nav>
       <div className="border-t px-3 py-3">
         {collapsed ? (

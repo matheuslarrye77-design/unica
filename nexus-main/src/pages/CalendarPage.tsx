@@ -3,8 +3,9 @@ import { Input } from '@/components/ui/input';
 import { Header } from '@/components/Header';
 import { calendarEvents, type CalendarEvent } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { Calendar, Cake, ChevronLeft, ChevronRight, Search } from 'lucide-react';
-import { useEffect, useMemo, useState, type FC } from 'react';
+import { useInstitution, wallpaperUrl, type CalendarTheme } from '@/lib/institution';
+import { Calendar, Cake, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 type BirthdayDisplay = 'name' | 'photo' | 'both';
@@ -20,6 +21,16 @@ function loadDisplay(): BirthdayDisplay {
 
 function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function skinStyle(theme: CalendarTheme, hasWallpaper: boolean, version: number) {
+  if (!hasWallpaper) return undefined;
+  void theme;
+  return {
+    backgroundImage: `linear-gradient(var(--card), color-mix(in oklch, var(--card) 86%, transparent)), url("${wallpaperUrl(version)}")`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+  };
 }
 
 function eventTone(type: CalendarEvent['type']) {
@@ -45,6 +56,9 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   const [rightOpen, setRightOpen] = useState(true);
   const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
   const [active, setActive] = useState<{ event: CalendarEvent; top: number; left: number } | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const institution = useInstitution();
+  const theme = institution.settings.calendar.theme;
 
   useEffect(() => {
     if (birthdaysFocus) setLeftOpen(true);
@@ -53,6 +67,24 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   useEffect(() => {
     localStorage.setItem(DISPLAY_KEY, display);
   }, [display]);
+
+  useEffect(() => {
+    if (!active) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setActive(null);
+    }
+    function onClick(event: MouseEvent) {
+      const dialog = dialogRef.current;
+      if (dialog && event.target instanceof Node && dialog.contains(event.target)) return;
+      setActive(null);
+    }
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('click', onClick);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('click', onClick);
+    };
+  }, [active]);
 
   const categories = useMemo(
     () => ['all', ...Array.from(new Set(calendarEvents.map((event) => event.category).filter(Boolean))) as string[]],
@@ -101,7 +133,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   const selectedEvents = selectedDay ? eventsOn(selectedDay) : [];
 
   return (
-    <section id="calendario" className={cn(page || compact || embedded ? 'scroll-mt-20 shrink-0 overflow-hidden rounded-2xl border bg-card' : 'min-h-screen bg-background')} onClick={() => setActive(null)}>
+    <section id="calendario" className={cn(page || compact || embedded ? 'scroll-mt-20 shrink-0 overflow-hidden rounded-2xl border bg-card' : 'min-h-screen bg-background', theme !== 'padrao' && `calendar-skin-${theme}`)} style={skinStyle(theme, institution.hasWallpaper, institution.settings.calendar.wallpaperVersion)}>
       {embedded || compact || page ? null : <Header />}
       <div className={cn('flex', compact || page ? '' : embedded ? 'min-h-[640px]' : 'min-h-[calc(100vh-4rem)]')}>
         {compact || page ? null : <aside id="aniversarios" className={cn('hidden shrink-0 scroll-mt-20 flex-col overflow-hidden border-r bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-out lg:flex', leftOpen ? 'w-60' : 'w-10')}>
@@ -148,9 +180,9 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
               <Button variant="outline" size="sm" onClick={() => shiftMonth(1)} aria-label="Próximo mês"><ChevronRight className="h-4 w-4" /></Button>
             </div>
           </div>
-          <div className="grid grid-cols-7 border-l border-t bg-background">
+          <div className="grid grid-cols-7 overflow-hidden rounded-xl border bg-card/80">
             {weekdays.map((day) => (
-              <div key={day} className={cn('border-r border-b text-center font-medium text-muted-foreground', compact ? 'px-0 py-1 text-[10px]' : 'p-2 text-sm')}>{compact ? day.charAt(0) : day}</div>
+              <div key={day} className={cn('border-r border-b bg-muted/40 text-center font-medium text-muted-foreground last:border-r-0', compact ? 'px-0 py-1 text-[10px]' : 'p-2 text-sm')}>{compact ? day.charAt(0) : day}</div>
             ))}
             {Array.from({ length: firstWeekday }, (_, index) => (
               <div key={`empty-${index}`} className={cn('border-r border-b bg-muted/20', compact ? 'min-h-9' : 'p-2')} />
@@ -160,7 +192,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
               const dayEvents = eventsOn(day);
               const isCurrent = today.getFullYear() === currentDate.getFullYear() && today.getMonth() === currentDate.getMonth() && today.getDate() === day;
               return (
-                <div key={day} className={cn('border-r border-b bg-background transition-colors hover:bg-muted/30', compact ? 'min-h-11 p-0.5' : 'min-h-[120px] p-2')} onClick={(event) => { event.stopPropagation(); setSelectedDay(day); setActive(null); }}>
+                <div key={day} className={cn('border-r border-b bg-transparent transition-colors hover:bg-muted/30', compact ? 'min-h-11 p-0.5' : 'min-h-[120px] p-2')} onClick={(event) => { event.stopPropagation(); setSelectedDay(day); setActive(null); }}>
                   <div className={cn('flex items-center justify-center font-medium', compact ? 'mb-0.5 h-5 w-5 text-[11px]' : 'mb-1 h-6 w-6 text-sm', isCurrent && 'rounded-full bg-primary text-primary-foreground', selectedDay === day && !isCurrent && 'rounded-full bg-muted')}>
                     {day}
                   </div>
@@ -175,7 +207,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
                             ? firstName
                             : '';
                       return (
-                        <button key={event.id} type="button" aria-label={event.title} title={event.title} onClick={(click) => { click.stopPropagation(); setSelectedDay(day); openEvent(event, click.currentTarget); }} className={cn('flex items-center gap-1 truncate rounded text-left text-[11px]', compact ? 'justify-center' : 'w-full px-1 py-0.5', eventTone(event.type))}>
+                        <button key={event.id} type="button" aria-label={event.title} title={event.title} onClick={(click) => { click.stopPropagation(); setSelectedDay(day); openEvent(event, click.currentTarget); }} className={cn('flex items-center gap-1 truncate rounded-md text-left text-[11px] ring-1 ring-inset ring-current/10', compact ? 'justify-center' : 'w-full px-1 py-0.5', eventTone(event.type))}>
                           {event.type === 'birthday' && display !== 'name' ? <img src={event.avatar} alt="" className={cn('shrink-0 rounded-full bg-background', compact ? 'h-4 w-4' : 'h-5 w-5')} /> : <span className="text-[10px]">●</span>}
                           {compact || !label ? null : <span className="truncate">{label}</span>}
                         </button>
@@ -242,8 +274,11 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
       </div>
 
       {active ? (
-        <div role="dialog" aria-label={active.event.title} className="fixed z-50 w-72 rounded-xl border bg-card p-4 text-sm shadow-lg" style={{ top: active.top, left: active.left }} onClick={(event) => event.stopPropagation()}>
-          <p className="text-xs font-medium text-primary">{active.event.category ?? 'Evento'}</p>
+        <div ref={dialogRef} role="dialog" aria-label={active.event.title} className="fixed z-50 w-72 rounded-xl border bg-card p-4 text-sm shadow-lg" style={{ top: active.top, left: active.left }} onClick={(event) => event.stopPropagation()}>
+          <button type="button" aria-label="Fechar" className="absolute top-2 right-2 rounded-md p-1 text-muted-foreground hover:bg-muted/60 hover:text-foreground" onClick={() => setActive(null)}>
+            <X className="h-4 w-4" />
+          </button>
+          <p className="pr-6 text-xs font-medium text-primary">{active.event.category ?? 'Evento'}</p>
           <h2 className="mt-1 text-base font-semibold">{active.event.type === 'birthday' ? `Aniversário de ${active.event.personName}` : active.event.title}</h2>
           {active.event.type === 'birthday' && active.event.avatar ? <img src={active.event.avatar} alt="" className="mt-3 h-12 w-12 rounded-full bg-muted" /> : null}
           <dl className="mt-3 space-y-1 text-muted-foreground">

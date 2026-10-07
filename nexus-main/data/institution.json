@@ -1,0 +1,20 @@
+{
+  "settings": {
+    "muralEnabled": true,
+    "recognition": {
+      "mode": "everyone",
+      "userIds": []
+    },
+    "documents": {
+      "mode": "leadership",
+      "userIds": []
+    },
+    "calendar": {
+      "theme": "padrao",
+      "wallpaperVersion": 0
+    }
+  },
+  "feedback": [],
+  "moods": {},
+  "people": {}
+}

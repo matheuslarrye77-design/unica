@@ -5,7 +5,8 @@ import { Toaster } from 'sonner';
 import { ThemeProvider } from './components/ThemeProvider';
 import { FocusModeProvider } from './contexts/FocusModeContext';
 import { ScrollToTop } from './components/ScrollToTop';
-import { FloatingHelpButton } from './components/FloatingHelpButton';
+import { FeedbackButton } from './components/FeedbackButton';
+import { InstitutionProvider } from './components/InstitutionProvider';
 import { AppFrame } from './components/Sidebar';
 import { Dashboard } from './pages/Dashboard';
 import { CalendarScreen } from './pages/CalendarScreen';
@@ -19,6 +20,8 @@ import { AnalyticsPage } from './pages/AnalyticsPage';
 import { ResourcesPage } from './pages/ResourcesPage';
 import { HelpDeskPage } from './pages/HelpDeskPage';
 import { TimeOffPage } from './pages/TimeOffPage';
+import { FeedbacksPage } from './pages/FeedbacksPage';
+import { ManagementSettingsPage } from './pages/ManagementSettingsPage';
 
 const AppRoutes: FC = () => {
 
@@ -87,6 +90,8 @@ const AppRoutes: FC = () => {
           <SettingsPage />
         }
       />
+      <Route path="/gestao/feedbacks" element={<FeedbacksPage />} />
+      <Route path="/gestao/configuracoes" element={<ManagementSettingsPage />} />
     </Routes>
   );
 };
@@ -97,12 +102,14 @@ const App: FC = () => {
       <FocusModeProvider>
         <TooltipProvider>
             <BrowserRouter>
+              <InstitutionProvider>
               <AppFrame>
                 <ScrollToTop />
                 <AppRoutes />
-                <FloatingHelpButton />
+                <FeedbackButton />
                 <Toaster />
               </AppFrame>
+              </InstitutionProvider>
             </BrowserRouter>
         </TooltipProvider>
       </FocusModeProvider>

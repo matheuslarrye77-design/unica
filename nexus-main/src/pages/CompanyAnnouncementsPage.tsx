@@ -12,14 +12,6 @@ import { Heart, MessageCircle, Plus, Search } from 'lucide-react';
 import { useMemo, useState, type FC } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-const filters = [
-  { id: 'todos', label: 'Todos' },
-  { id: 'processos', label: 'Processos' },
-  { id: 'urgente', label: 'Urgente' },
-  { id: 'social', label: 'Social' },
-  { id: 'treinamentos', label: 'Treinamentos' },
-] as const;
-
 const tone: Record<JournalCategory, string> = {
   processos: 'bg-violet-100 text-violet-800',
   urgente: 'bg-rose-100 text-rose-800',
@@ -95,21 +87,6 @@ export const CompanyAnnouncementsPage: FC = () => {
             ) : null}
           </div>
 
-          <div className="mb-4 flex flex-wrap gap-2">
-            {filters.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => selectCategory(item.id)}
-                className={cn(
-                  'rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
-                  category === item.id ? 'border-primary bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
           <label className="relative mb-8 block">
             <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por título ou conteúdo..." className="pl-9" />

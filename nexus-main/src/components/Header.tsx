@@ -1,10 +1,8 @@
 import { Button } from '@/components/ui/button';
-import { useFocusMode } from '@/contexts/FocusModeContext';
 import { currentUser } from '@/data/mockData';
 import { getTimeBasedGreeting } from '@/lib/utils';
-import { Eye, Focus, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { type FC } from 'react';
-import { useLocation } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
 import { Profile } from './Profile';
 import { GlobalSearch } from './GlobalSearch';
@@ -13,8 +11,6 @@ import { useOpenMenu } from './Sidebar';
 
 export const Header: FC = () => {
   const onMenu = useOpenMenu();
-  const { isFocusMode, toggleFocusMode } = useFocusMode();
-  const location = useLocation();
   const greeting = getTimeBasedGreeting();
 
   return (
@@ -32,19 +28,6 @@ export const Header: FC = () => {
           <div className="hidden md:block">
             <GlobalSearch />
           </div>
-          {location.pathname === '/' && (
-            <Button
-              variant={isFocusMode ? 'default' : 'outline'}
-              size="sm"
-              onClick={toggleFocusMode}
-              className="h-10 gap-2"
-            >
-              {isFocusMode ? <Eye className="h-4 w-4" /> : <Focus className="h-4 w-4" />}
-              <span className="hidden sm:inline">
-                {isFocusMode ? 'Sair do foco' : 'Modo foco'}
-              </span>
-            </Button>
-          )}
           <NotificationDropdown />
           <ThemeToggle />
           <Profile />

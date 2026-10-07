@@ -11,10 +11,12 @@ import { RightSidebar } from '@/components/shell/RightSidebar';
 import { TeamMood } from '@/components/shell/TeamMood';
 import { CalendarPage } from '@/pages/CalendarPage';
 import { kudos as initialKudos, currentUser, type Kudo } from '@/data/mockData';
+import { assertPermission, useInstitution } from '@/lib/institution';
 import { formatRelativeTime, generateId } from '@/lib/utils';
 import { Heart, Plus, ArrowLeft, Search } from 'lucide-react';
 import { useState, type FC } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export const KudosFeedPage: FC = () => {
   const [kudosList, setKudosList] = useState<Kudo[]>(initialKudos);
@@ -23,9 +25,16 @@ export const KudosFeedPage: FC = () => {
   const [newKudoMessage, setNewKudoMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [scope, setScope] = useState<'all' | 'received' | 'sent'>('all');
+  const { canRecognize } = useInstitution();
 
-  const addKudo = () => {
+  const addKudo = async () => {
     if (!newKudoTo.trim() || !newKudoMessage.trim()) return;
+    try {
+      await assertPermission('recognition');
+    } catch {
+      toast.error('Você não tem permissão para reconhecer.');
+      return;
+    }
 
     const newKudo: Kudo = {
       id: generateId(),
@@ -106,7 +115,7 @@ export const KudosFeedPage: FC = () => {
               </div>
               
               {/* Give Kudos Button */}
-              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              {canRecognize ? <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="gap-2">
                     <Plus className="h-4 w-4" />
@@ -156,7 +165,7 @@ export const KudosFeedPage: FC = () => {
                     </Button>
                   </DialogFooter>
                 </DialogContent>
-              </Dialog>
+              </Dialog> : null}
             </div>
             <div className="mt-4">
               <Select value={scope} onValueChange={(value) => setScope(value as 'all' | 'received' | 'sent')}>
@@ -192,16 +201,12 @@ export const KudosFeedPage: FC = () => {
                         : 'Seja o primeiro a reconhecer um colaborador.'
                       }
                     </p>
-                    {!searchQuery && (
-                      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button className="mt-4 gap-2">
-                            <Plus className="h-4 w-4" />
-                            Reconhecer
-                          </Button>
-                      </DialogTrigger>
-                    </Dialog>
-                  )}
+                    {!searchQuery && canRecognize ? (
+                      <Button className="mt-4 gap-2" onClick={() => setIsAddDialogOpen(true)}>
+                        <Plus className="h-4 w-4" />
+                        Reconhecer
+                      </Button>
+                    ) : null}
                 </div>
               </CardContent>
             </Card>

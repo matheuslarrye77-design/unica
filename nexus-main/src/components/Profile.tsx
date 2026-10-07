@@ -12,7 +12,6 @@ import {
   User, 
   Settings, 
   Bell, 
-  HelpCircle, 
   LogOut, 
   Shield, 
   FileText,
@@ -53,8 +52,7 @@ export const Profile: FC = () => {
         // TODO: Implement navigation to docs
         break;
       case 'support':
-        console.log('Navigate to support');
-        // TODO: Implement navigation to support
+        window.dispatchEvent(new Event('unica-open-feedback'));
         break;
       case 'logout':
         console.log('Logout user');
@@ -127,13 +125,6 @@ export const Profile: FC = () => {
         <DropdownMenuSeparator />
         
         {/* Support Section */}
-        <DropdownMenuItem 
-          onClick={() => handleProfileAction('help')}
-          className="cursor-pointer"
-        >
-          <HelpCircle className="mr-2 h-4 w-4" />
-          <span>Help Center</span>
-        </DropdownMenuItem>
         <DropdownMenuItem 
           onClick={() => handleProfileAction('docs')}
           className="cursor-pointer"

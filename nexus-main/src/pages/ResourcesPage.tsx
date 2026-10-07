@@ -26,6 +26,7 @@ import {
   type DocumentSystem,
 } from '@/data/documents';
 import { currentUser } from '@/data/mockData';
+import { assertPermission, useInstitution } from '@/lib/institution';
 import { cn } from '@/lib/utils';
 import { Download, MoreHorizontal, Plus, Search, Star } from 'lucide-react';
 import { useEffect, useMemo, useState, type FC } from 'react';
@@ -67,6 +68,7 @@ export const ResourcesPage: FC = () => {
   const [previewText, setPreviewText] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<CompanyDocument | null>(null);
+  const { canUploadDocuments: canSend } = useInstitution();
   const canManage = canManageDocuments(currentUser);
 
   useEffect(() => {
@@ -88,7 +90,7 @@ export const ResourcesPage: FC = () => {
   const visible = useMemo(() => {
     const text = query.trim().toLowerCase();
     const list = documents.filter((document) => {
-      if (!document.published && !canManage) return false;
+      if (!document.published && !canManage && !canSend) return false;
       if (category !== 'todos' && document.category !== category) return false;
       if (system !== 'todos' && document.system !== system) return false;
       if (onlyFavorites && !document.favorites.includes(currentUser.id)) return false;
@@ -103,10 +105,10 @@ export const ResourcesPage: FC = () => {
       if (sort === 'accessed') return b.downloads - a.downloads;
       return b.updatedAt.localeCompare(a.updatedAt);
     });
-  }, [documents, category, system, query, sort, onlyFavorites, canManage]);
+  }, [documents, category, system, query, sort, onlyFavorites, canManage, canSend]);
 
   const featured = documents.filter((document) => document.featured && document.published && (category === 'todos' || document.category === category) && (system === 'todos' || document.system === system));
-  const favorites = documents.filter((document) => document.favorites.includes(currentUser.id) && (document.published || canManage));
+  const favorites = documents.filter((document) => document.favorites.includes(currentUser.id) && (document.published || canManage || canSend));
 
   function upsert(document: CompanyDocument) {
     setDocuments((current) => {
@@ -147,7 +149,7 @@ export const ResourcesPage: FC = () => {
               <p className="mt-1 text-sm text-muted-foreground">Encontre procedimentos, requerimentos, orientações e documentos internos.</p>
             </div>
             <div className="flex gap-2">
-              {canManage ? <Button className="gap-2" onClick={() => openEditor()}><Plus className="h-4 w-4" />Enviar documento</Button> : null}
+              {canSend ? <Button className="gap-2" onClick={() => openEditor()}><Plus className="h-4 w-4" />Enviar documento</Button> : null}
             </div>
           </div>
 
@@ -216,7 +218,7 @@ export const ResourcesPage: FC = () => {
                         <button type="button" aria-label="Baixar" onClick={() => void download(document)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted/60 hover:text-foreground">
                           <Download className="h-4 w-4" />
                         </button>
-                        {canManage ? (
+                        {canSend ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button type="button" aria-label="Mais ações" className="rounded-lg p-2 text-muted-foreground hover:bg-muted/60 hover:text-foreground"><MoreHorizontal className="h-4 w-4" /></button>
@@ -289,7 +291,7 @@ export const ResourcesPage: FC = () => {
         </DialogContent>
       </Dialog>
 
-      {canManage ? (
+      {canSend ? (
         <DocumentEditor
           open={editorOpen}
           document={editing}
@@ -333,6 +335,12 @@ const DocumentEditor: FC<{
   }, [open, document]);
 
   async function submit(published: boolean) {
+    try {
+      await assertPermission('documents');
+    } catch {
+      toast.error('Você não tem permissão para enviar documentos.');
+      return;
+    }
     if (!title.trim() || !subtitle.trim() || !description.trim() || !author.trim() || !date) {
       toast.error('Preencha título, subtítulo, descrição, categoria, sistema, data e autor.');
       return;

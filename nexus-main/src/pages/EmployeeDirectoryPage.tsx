@@ -3,16 +3,15 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Header } from '@/components/Header';
-import { OrganizationChart } from '@/components/OrganizationChart';
 import { PageWrapper, PageSection } from '@/components/PageWrapper';
 import { RightSidebar } from '@/components/shell/RightSidebar';
 import { TeamMood } from '@/components/shell/TeamMood';
 import { CalendarPage } from '@/pages/CalendarPage';
-import { employees } from '@/data/mockData';
-import { ArrowLeft, Search, Filter, Mail, Phone, MapPin, Users, Network } from 'lucide-react';
-import { useState, type FC } from 'react';
+import { currentUser, employees, type Employee } from '@/data/mockData';
+import { saveRamal, useInstitution } from '@/lib/institution';
+import { ArrowLeft, Search, Filter, Mail, Phone } from 'lucide-react';
+import { useEffect, useState, type FC } from 'react';
 import { Link } from 'react-router-dom';
 
 const getDepartmentBadgeColor = (department: string) => {
@@ -34,6 +33,48 @@ const getDepartmentBadgeColor = (department: string) => {
     default:
       return 'border-muted-foreground/20 bg-muted text-muted-foreground';
   }
+};
+
+function teamRole(employee: Employee) {
+  if (/chief|director|vp\b|head|manager|gerente|coordena|líder|lider|ceo/i.test(employee.role)) return 'Liderança';
+  const index = [...employee.id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 3;
+  return (['Ligação', 'E-mail', 'Chat'] as const)[index];
+}
+
+const RamalField: FC<{ employeeId: string }> = ({ employeeId }) => {
+  const { people, isLeader } = useInstitution();
+  const saved = people[employeeId]?.ramal ?? '';
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(saved);
+  const canEdit = isLeader || employeeId === currentUser.id;
+
+  useEffect(() => {
+    setValue(saved);
+  }, [saved]);
+
+  if (!canEdit && !saved) return null;
+  if (!editing) {
+    return (
+      <button type="button" className="text-xs text-muted-foreground" disabled={!canEdit} onClick={() => setEditing(true)}>
+        Ramal: {saved || '—'}
+      </button>
+    );
+  }
+
+  return (
+    <form
+      className="flex items-center gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const next = value.trim();
+        if (next && !/^\d{3}$/.test(next)) return;
+        void saveRamal(employeeId, next).then(() => setEditing(false));
+      }}
+    >
+      <Input value={value} inputMode="numeric" placeholder="000" className="h-8 w-16" onChange={(event) => setValue(event.target.value.replace(/\D/g, '').slice(0, 3))} />
+      <Button type="submit" size="sm" variant="outline">Salvar</Button>
+    </form>
+  );
 };
 
 export const EmployeeDirectoryPage: FC = () => {
@@ -76,28 +117,14 @@ export const EmployeeDirectoryPage: FC = () => {
             <div className="space-y-2">
               <h1 className="text-2xl font-bold tracking-tight">Pessoas</h1>
               <p className="text-muted-foreground">
-                Diretório e organograma da equipe
+                Diretório da equipe
               </p>
             </div>
           </div>
         </PageSection>
 
-        {/* Tabs for Directory and Org Chart */}
         <PageSection index={1}>
-          <Tabs defaultValue="directory" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 max-w-md">
-              <TabsTrigger value="directory" className="gap-2">
-                <Users className="h-4 w-4 hidden sm:inline" />
-                Directory
-              </TabsTrigger>
-              <TabsTrigger value="orgchart" className="gap-2">
-                <Network className="h-4 w-4 hidden sm:inline" />
-                Org Chart
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Employee Directory Tab */}
-            <TabsContent value="directory" className="space-y-6">
+          <div className="space-y-6">
               {/* Filters Section */}
               <Card>
               <CardHeader className="pb-4">
@@ -161,7 +188,7 @@ export const EmployeeDirectoryPage: FC = () => {
               </Card>
             </PageSection>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(17rem,1fr))] gap-4">
               {filteredEmployees.map((employee, index) => (
                 <PageSection key={employee.id} index={index + 2}>
                   <Card className="hover:shadow-md transition-shadow">
@@ -181,14 +208,16 @@ export const EmployeeDirectoryPage: FC = () => {
                             <p className="text-sm text-muted-foreground truncate">{employee.role}</p>
                           </div>
                           
-                          <div>
+                          <div className="flex flex-wrap gap-2">
                             <Badge 
                               variant="outline"
                               className={getDepartmentBadgeColor(employee.department)}
                             >
                               {employee.department}
                             </Badge>
+                            <Badge variant="outline">{teamRole(employee)}</Badge>
                           </div>
+                          <RamalField employeeId={employee.id} />
 
                           {/* Contact Information */}
                           <div className="space-y-2">
@@ -202,12 +231,6 @@ export const EmployeeDirectoryPage: FC = () => {
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <Phone className="h-3 w-3" />
                                 <span>{employee.phone}</span>
-                              </div>
-                            )}
-                            {employee.location && (
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <MapPin className="h-3 w-3" />
-                                <span>{employee.location}</span>
                               </div>
                             )}
                           </div>
@@ -289,13 +312,7 @@ export const EmployeeDirectoryPage: FC = () => {
             </p>
           </div>
         )}
-        </TabsContent>
-
-        {/* Organization Chart Tab */}
-        <TabsContent value="orgchart">
-          <OrganizationChart />
-        </TabsContent>
-        </Tabs>
+          </div>
         </PageSection>
       </PageWrapper>
       <RightSidebar>
