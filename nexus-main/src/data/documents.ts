@@ -37,6 +37,8 @@ export const DOCUMENT_SYSTEMS: { id: DocumentSystem; label: string }[] = [
   { id: 'financeiro', label: 'Financeiro' },
 ];
 
+export const ORIGIN_SYSTEMS = DOCUMENT_SYSTEMS.filter((item) => item.id === 'pincel' || item.id === 'prominas');
+
 export const DOCUMENT_THUMBNAILS = [
   { id: 'procedimento', label: 'Procedimento', src: '/jornal/processos.svg' },
   { id: 'formulario', label: 'Formulário', src: '/jornal/megafone.svg' },

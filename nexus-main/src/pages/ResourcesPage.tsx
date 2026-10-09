@@ -5,10 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { SystemMark } from '@/components/documents/SystemMark';
 import { PageFrame } from '@/components/shell/PageFrame';
 import {
   DOCUMENT_CATEGORIES,
-  DOCUMENT_SYSTEMS,
   canManageDocuments,
   categoryLabel,
   deleteDocument,
@@ -17,6 +17,7 @@ import {
   newDocumentId,
   registerDownload,
   saveDocument,
+  ORIGIN_SYSTEMS,
   systemLabel,
   toggleFavorite,
   type CompanyDocument,
@@ -179,7 +180,7 @@ export const ResourcesPage: FC = () => {
               <SelectTrigger className="sm:w-52"><SelectValue placeholder="Sistema/Área" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos os sistemas</SelectItem>
-                {DOCUMENT_SYSTEMS.map((item) => <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>)}
+                {ORIGIN_SYSTEMS.map((item) => <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={sort} onValueChange={(value) => setSort(value as SortMode)}>
@@ -197,7 +198,7 @@ export const ResourcesPage: FC = () => {
                 {featured.slice(0, 3).map((document) => (
                   <button key={document.id} type="button" onClick={() => setSelected(document)} className="overflow-hidden rounded-2xl border bg-card text-left shadow-[0_1px_2px_rgba(40,20,70,0.04)]">
                     <div className="space-y-1 p-4">
-                      <span className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground"><FileText className="h-4 w-4" />{document.fileType.split('/').pop()?.toUpperCase() || 'ARQUIVO'}</span>
+                      <span className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground"><SystemMark system={document.system} />{document.fileType.split('/').pop()?.toUpperCase() || 'ARQUIVO'}</span>
                       <p className="text-xs text-muted-foreground">{categoryLabel(document.category)} · {systemLabel(document.system)}</p>
                       <h3 className="font-semibold">{document.title}</h3>
                       <p className="text-sm text-muted-foreground">{document.subtitle}</p>
@@ -220,7 +221,7 @@ export const ResourcesPage: FC = () => {
                   return (
                     <article key={document.id} className="grid gap-4 rounded-2xl border bg-card p-3 shadow-[0_1px_2px_rgba(40,20,70,0.04)] sm:grid-cols-[auto_1fr_auto]">
                       <button type="button" onClick={() => setSelected(document)} className="text-left sm:contents">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground"><FileText className="h-4 w-4" /></span>
+                        <SystemMark system={document.system} />
                         <span className="block py-1">
                           <span className="block font-semibold">{document.title}</span>
                           <span className="mt-1 block text-xs text-muted-foreground">{categoryLabel(document.category)} · {systemLabel(document.system)}{document.published ? '' : ' · Rascunho'}</span>
@@ -313,7 +314,6 @@ const DocumentEditor: FC<{
   const [system, setSystem] = useState<DocumentSystem>('pincel');
   const [author, setAuthor] = useState(currentUser.name);
   const [date, setDate] = useState('');
-  const [thumbnail, setThumbnail] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [featured, setFeatured] = useState(false);
 
@@ -326,7 +326,6 @@ const DocumentEditor: FC<{
     setSystem(document?.system ?? 'pincel');
     setAuthor(document?.author ?? currentUser.name);
     setDate((document?.publishedAt ?? new Date().toISOString()).slice(0, 10));
-    setThumbnail(document?.thumbnail ?? '');
     setFile(null);
     setFeatured(document?.featured ?? false);
   }, [open, document]);
@@ -336,6 +335,10 @@ const DocumentEditor: FC<{
       await assertPermission('documents');
     } catch {
       toast.error('Você não tem permissão para enviar documentos.');
+      return;
+    }
+    if (system !== 'pincel' && system !== 'prominas') {
+      toast.error('Selecione Pincel ou ProMinas.');
       return;
     }
     if (!title.trim() || !subtitle.trim() || !description.trim() || !author.trim() || !date) {
@@ -362,7 +365,7 @@ const DocumentEditor: FC<{
       fileName: file?.name ?? document!.fileName,
       fileType: file?.type || document?.fileType || 'application/octet-stream',
       file: storedFile,
-      thumbnail,
+      thumbnail: system === 'prominas' ? '/marcas/prominas.svg' : '/marcas/pincel.svg',
       downloads: document?.downloads ?? 0,
       favorites: document?.favorites ?? [],
     };
@@ -391,11 +394,12 @@ const DocumentEditor: FC<{
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Sistema/Área</Label>
-              <Select value={system} onValueChange={(value) => setSystem(value as DocumentSystem)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{DOCUMENT_SYSTEMS.map((item) => <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>)}</SelectContent>
+              <Label>Sistema de origem</Label>
+              <Select value={system === 'pincel' || system === 'prominas' ? system : undefined} onValueChange={(value) => setSystem(value as DocumentSystem)}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{ORIGIN_SYSTEMS.map((item) => <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>)}</SelectContent>
               </Select>
+              {system === 'pincel' || system === 'prominas' ? <SystemMark system={system} size="md" /> : null}
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

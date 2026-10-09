@@ -4,13 +4,15 @@ import { toast } from 'sonner';
 import { getTimeBasedGreeting } from '@/lib/utils';
 import { cancelRepost, commentFeedPost, createFeedPost, deleteFeedComment, likeFeedPost, loadFeed, republishPost, shareFeedPost, type Repost } from '@/lib/feed';
 import { actor } from '@/lib/session';
-import { isLeader } from '@/lib/institution';
+import { isLeader, useInstitution } from '@/lib/institution';
 import { CreatePost, type NewPostDraft } from './CreatePost';
 import { PostCard } from './PostCard';
+import { RecognitionComposer } from './RecognitionComposer';
 import type { SocialPost } from './types';
 
 export const SocialFeed: FC<{ mode?: 'mural' | 'recognition' }> = ({ mode = 'mural' }) => {
   const user = actor();
+  const { canRecognize } = useInstitution();
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [reposts, setReposts] = useState<Repost[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -129,7 +131,11 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition' }> = ({ mode = 'mur
         </div>
       </section>}
 
-      {mode === 'recognition' ? null : <CreatePost onPublish={(draft) => void publish(draft)} />}
+      {mode === 'recognition' ? (canRecognize ? <RecognitionComposer onCreated={() => window.dispatchEvent(new Event('unica-feed-refresh'))} /> : null) : <CreatePost onPublish={(draft) => void publish(draft)} />}
+
+      {mode === 'recognition' && visiblePosts.length === 0 && visibleReposts.length === 0 ? (
+        <p className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground shadow-[0_1px_2px_rgba(40,20,70,0.05)]">Nenhum reconhecimento ainda.</p>
+      ) : null}
 
       {visibleReposts.map((repost) => {
         const original = posts.find((post) => post.id === repost.originalId);

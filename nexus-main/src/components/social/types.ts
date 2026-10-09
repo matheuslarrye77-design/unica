@@ -43,6 +43,7 @@ export type SocialPost = {
   commentsOpen: boolean;
   bannerTitle?: string;
   recognizedName?: string;
+  tag?: string;
   poll?: PollOption[];
   votedId?: string | null;
   eventWhen?: string;

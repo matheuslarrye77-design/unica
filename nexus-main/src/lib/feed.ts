@@ -21,7 +21,7 @@ export function loadFeed() {
   return request<{ posts: SocialPost[]; reposts: Repost[] }>('/api/feed');
 }
 
-export function createFeedPost(body: { body: string; image?: string; attachment?: SocialPost['attachment']; poll?: SocialPost['poll']; kind?: 'recognition' }) {
+export function createFeedPost(body: { body: string; image?: string; attachment?: SocialPost['attachment']; poll?: SocialPost['poll']; kind?: 'recognition'; recognizedName?: string; tag?: string }) {
   return request<{ post: SocialPost }>('/api/feed', { method: 'POST', body: JSON.stringify(body) });
 }
 

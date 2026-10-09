@@ -44,6 +44,7 @@ type FeedPost = {
   comments: Comment[];
   bannerTitle?: string;
   recognizedName?: string;
+  tag?: string;
   poll?: { id: string; label: string; votes: number }[];
   votes?: Record<string, string>;
   eventWhen?: string;
@@ -86,6 +87,7 @@ type AgendaEvent = {
   place: string;
   description: string;
   participantIds: string[];
+  everyone: boolean;
   personId: string;
   personName: string;
   avatar: string;
@@ -94,6 +96,18 @@ type AgendaEvent = {
 function isLeader(user: { role: string; department?: string }) {
   return /admin|líder|lider|coordena|diret|vp\b|chief|head|gerente/i.test(user.role)
     || /comunica/i.test(user.department ?? '');
+}
+
+function canRecognize(user: { id: string; role: string; department?: string }, dir: string) {
+  try {
+    const store = JSON.parse(fs.readFileSync(path.join(dir, 'institution.json'), 'utf8')) as { settings?: { recognition?: { mode?: string; userIds?: string[] } } };
+    const policy = store.settings?.recognition ?? { mode: 'everyone', userIds: [] };
+    if (policy.mode === 'everyone') return true;
+    if (policy.mode === 'selected') return (policy.userIds ?? []).includes(user.id);
+    return isLeader(user);
+  } catch {
+    return true;
+  }
 }
 
 const accounts: Account[] = [
@@ -208,7 +222,8 @@ export function extraApi(): Connect.NextHandleFunction {
       endTime: type === 'aniversario' ? '' : String(body.endTime ?? current?.endTime ?? '').slice(0, 5),
       place: String(body.place ?? current?.place ?? '').trim(),
       description: String(body.description ?? current?.description ?? '').trim(),
-      participantIds: Array.isArray(body.participantIds) ? body.participantIds.map(String) : current?.participantIds ?? [],
+      everyone: Boolean(body.everyone ?? current?.everyone),
+      participantIds: Boolean(body.everyone ?? current?.everyone) ? [] : (Array.isArray(body.participantIds) ? body.participantIds.map(String) : current?.participantIds ?? []),
       personId: String(body.personId ?? current?.personId ?? ''),
       personName,
       avatar: String(body.avatar ?? current?.avatar ?? ''),
@@ -334,10 +349,14 @@ export function extraApi(): Connect.NextHandleFunction {
         const body = JSON.parse((await readBody(req)).toString('utf8')) as Partial<FeedPost>;
         const text = String(body.body ?? '').trim();
         if (!text) return send(res, 400, { error: 'body' });
+        const recognition = body.kind === 'recognition';
+        if (recognition && !canRecognize(user, dir)) return send(res, 403, { error: 'forbidden' });
+        const recognizedName = String(body.recognizedName ?? '').trim();
+        if (recognition && !recognizedName) return send(res, 400, { error: 'person' });
         const feed = loadFeed();
         const post: FeedPost = {
           id: `post-${Date.now()}`,
-          kind: body.kind === 'recognition' ? 'recognition' : body.poll ? 'poll' : body.image ? 'image' : 'text',
+          kind: recognition ? 'recognition' : body.poll ? 'poll' : body.image ? 'image' : 'text',
           author: user.name,
           authorId: user.id,
           role: user.role,
@@ -353,6 +372,8 @@ export function extraApi(): Connect.NextHandleFunction {
           comments: [],
           poll: body.poll,
           votes: {},
+          recognizedName: recognition ? recognizedName : undefined,
+          tag: recognition ? String(body.tag ?? '').trim() : undefined,
           createdAt: new Date().toISOString(),
         };
         feed.posts.unshift(post);

@@ -205,7 +205,7 @@ export const EmployeeDirectoryPage: FC = () => {
             <div className="equipe-grid">
               {filteredEmployees.map((employee, index) => (
                 <PageSection key={employee.id} index={index + 2}>
-                  <Card className="hover:shadow-md transition-shadow">
+                  <Card className="shadow-[0_1px_2px_rgba(40,20,70,0.05)]">
                     <CardContent className="p-6">
                     <div className="flex items-start gap-4">
                       <div className="flex-shrink-0">

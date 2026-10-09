@@ -13,6 +13,7 @@ export type AgendaEvent = {
   place: string;
   description: string;
   participantIds: string[];
+  everyone: boolean;
   personId: string;
   personName: string;
   avatar: string;
