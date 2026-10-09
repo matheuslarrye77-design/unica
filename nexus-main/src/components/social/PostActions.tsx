@@ -1,13 +1,15 @@
-import { Heart, MessageCircle, Share2 } from 'lucide-react';
+import { Heart, MessageCircle, Repeat2, Share2 } from 'lucide-react';
 import { type FC } from 'react';
 import type { SocialPost } from './types';
 
 export const PostActions: FC<{
   post: SocialPost;
+  republished?: boolean;
   onLike: () => void;
   onComment: () => void;
   onShare: () => void;
-}> = ({ post, onLike, onComment, onShare }) => {
+  onRepublish: () => void;
+}> = ({ post, republished = false, onLike, onComment, onShare, onRepublish }) => {
   return (
     <div className="mt-4 flex items-center gap-1 border-t border-border pt-2">
       <button
@@ -31,9 +33,17 @@ export const PostActions: FC<{
       </button>
       <button
         type="button"
+        onClick={onRepublish}
+        aria-pressed={republished}
+        className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm ${republished ? 'font-medium text-primary' : 'text-muted-foreground hover:bg-muted'}`}
+      >
+        <Repeat2 className="h-4 w-4" />
+        {republished ? 'Republicado' : 'Republicar'}
+      </button>
+      <button
+        type="button"
         onClick={onShare}
-        aria-pressed={post.shared}
-        className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm ${post.shared ? 'font-medium text-primary' : 'text-muted-foreground hover:bg-muted'}`}
+        className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm text-muted-foreground hover:bg-muted"
       >
         <Share2 className="h-4 w-4" />
         Compartilhar

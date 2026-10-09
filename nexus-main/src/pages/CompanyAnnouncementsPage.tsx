@@ -105,6 +105,25 @@ export const CompanyAnnouncementsPage: FC = () => {
             </section>
           ) : null}
 
+          <div className="mb-6 flex flex-wrap justify-center gap-2">
+            {([
+              ['todos', 'Todos'],
+              ['processos', 'Processos'],
+              ['urgente', 'Urgente'],
+              ['social', 'Social'],
+              ['treinamentos', 'Treinamentos'],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => selectCategory(id)}
+                className={cn('rounded-full px-3 py-1.5 text-sm font-medium', category === id ? 'bg-primary/10 text-primary shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {featured.length > 0 ? (
             <section className="mb-8">
               <h2 className="mb-3 text-lg font-semibold">Em destaque</h2>
@@ -144,7 +163,7 @@ export const CompanyAnnouncementsPage: FC = () => {
           </section>
         </div>
         <RightSidebar>
-          <JournalRail category={category} recent={published.slice(0, 6)} onCategory={selectCategory} />
+          <JournalRail recent={published.slice(0, 6)} />
         </RightSidebar>
       </div>
       {canManage ? (

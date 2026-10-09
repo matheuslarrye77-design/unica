@@ -17,6 +17,8 @@ import { Heart, Plus, ArrowLeft, Search } from 'lucide-react';
 import { useState, type FC } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { SocialFeed } from '@/components/social/SocialFeed';
+import { createFeedPost } from '@/lib/feed';
 
 export const KudosFeedPage: FC = () => {
   const [kudosList, setKudosList] = useState<Kudo[]>(initialKudos);
@@ -45,6 +47,9 @@ export const KudosFeedPage: FC = () => {
     };
 
     setKudosList(prev => [newKudo, ...prev]);
+    void createFeedPost({ body: `${newKudo.to}: ${newKudo.message}`, kind: 'recognition' })
+      .then(() => window.dispatchEvent(new Event('unica-feed-refresh')))
+      .catch(() => toast.error('O reconhecimento foi registrado, mas não entrou no mural.'));
 
     // Reset form
     setNewKudoTo('');
@@ -183,6 +188,8 @@ export const KudosFeedPage: FC = () => {
           </CardContent>
         </Card>
         </PageSection>
+
+        <SocialFeed mode="recognition" />
 
         {/* Kudos Feed */}
         <div className="space-y-4">

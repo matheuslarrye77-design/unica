@@ -191,3 +191,31 @@
   mix-blend-mode: normal;
 }
 /* Theme Mode Ripple Reveal animations css ends */
+
+.mood-emoji {
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.equipe-wrap {
+  container-type: inline-size;
+}
+
+.equipe-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 40rem) {
+  .equipe-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@container (min-width: 56rem) {
+  .equipe-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@container (min-width: 72rem) {
+  .equipe-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

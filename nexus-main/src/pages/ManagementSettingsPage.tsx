@@ -29,7 +29,7 @@ const modes: { id: PolicyMode; label: string }[] = [
   { id: 'everyone', label: 'Todos os colaboradores' },
 ];
 
-export const ManagementSettingsPage: FC = () => {
+export const ManagementSettingsPage: FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const institution = useInstitution();
   const [saving, setSaving] = useState(false);
   const allowed = isLeader(currentUser);
@@ -83,11 +83,9 @@ export const ManagementSettingsPage: FC = () => {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <div className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6 sm:px-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
+  const content = (
+      <div className={embedded ? 'mx-auto flex max-w-3xl flex-col gap-4' : 'mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6 sm:px-6'}>
+        {embedded ? null : <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>}
         <Card>
           <CardHeader><CardTitle className="text-base">Mural</CardTitle></CardHeader>
           <CardContent className="flex items-center justify-between gap-3 text-sm">
@@ -128,6 +126,13 @@ export const ManagementSettingsPage: FC = () => {
           </CardContent>
         </Card>
       </div>
+  );
+
+  if (embedded) return content;
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      {content}
     </div>
   );
 };

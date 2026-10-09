@@ -8,7 +8,7 @@ import {
 import { forYouFeed, type FeedItem } from '@/data/mockData';
 import { formatRelativeTime } from '@/lib/utils';
 import { FileText, Bell, CheckSquare, Info, ArrowRight } from 'lucide-react';
-import { type FC } from 'react';
+import { type FC, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const getTypeIcon = (type: FeedItem['type']) => {
@@ -42,13 +42,18 @@ const getTypeColor = (type: FeedItem['type']) => {
 };
 
 export const NotificationDropdown: FC = () => {
-  // Show only first 5 items in dropdown
   const displayItems = forYouFeed.slice(0, 5);
-  // For demo purposes, assume first 3 items are unread
   const unreadCount = 3;
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const openMenu = () => setOpen(true);
+    window.addEventListener('unica-open-notifications', openMenu);
+    return () => window.removeEventListener('unica-open-notifications', openMenu);
+  }, []);
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="icon" className="relative h-10 w-10">
           <Bell className="h-[1.2rem] w-[1.2rem]" />
@@ -60,16 +65,16 @@ export const NotificationDropdown: FC = () => {
               {unreadCount > 9 ? '9+' : unreadCount}
             </Badge>
           )}
-          <span className="sr-only">View notifications</span>
+          <span className="sr-only">Ver notificações</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-96 p-0 shadow-lg border">
         <div className="p-4 border-b bg-muted/30">
           <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-base">Notifications</h4>
-            <Link to="/for-you">
+            <h4 className="font-semibold text-base">Notificações</h4>
+            <Link to="/">
               <Button variant="ghost" size="sm" className="h-7 px-3 text-xs hover:bg-background">
-                View All
+                Ver mural
               </Button>
             </Link>
           </div>
@@ -79,8 +84,8 @@ export const NotificationDropdown: FC = () => {
           {displayItems.length === 0 ? (
             <div className="text-center text-muted-foreground py-12">
               <Bell className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm font-medium">No notifications</p>
-              <p className="text-xs mt-1 opacity-75">You're all caught up!</p>
+              <p className="text-sm font-medium">Nenhuma notificação</p>
+              <p className="text-xs mt-1 opacity-75">Você está em dia.</p>
             </div>
           ) : (
             <div className="py-2">
@@ -125,7 +130,7 @@ export const NotificationDropdown: FC = () => {
           <div className="p-3 border-t bg-muted/20">
             <Link to="/for-you" className="block">
               <Button variant="outline" size="sm" className="w-full justify-center gap-2 h-9 text-sm font-medium">
-                <span>View All {forYouFeed.length} Notifications</span>
+                <span>Ver as {forYouFeed.length} notificações</span>
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>

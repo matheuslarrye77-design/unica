@@ -1,0 +1,334 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Post Component Snapshot Tests > should match snapshot for post with comments button > post-with-comments-button 1`] = `
+<div>
+  <article
+    class="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 p-6 max-w-2xl mx-auto mb-6 cursor-pointer group"
+  >
+    <div
+      class="mb-4"
+    >
+      <h2
+        class="text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors mb-2"
+      >
+        Snapshot Test Post Title
+      </h2>
+      <p
+        class="text-gray-700 leading-relaxed line-clamp-3"
+      >
+        This is a snapshot test post body content that should be displayed correctly
+      </p>
+    </div>
+    <div
+      class="flex flex-wrap gap-2 mb-4"
+    >
+      <button
+        class="px-3 py-1 cursor-pointer bg-blue-50 text-blue-700 rounded-full text-sm font-medium hover:bg-blue-100 transition-colors border border-blue-200"
+      >
+        #
+        snapshot
+      </button>
+      <button
+        class="px-3 py-1 cursor-pointer bg-blue-50 text-blue-700 rounded-full text-sm font-medium hover:bg-blue-100 transition-colors border border-blue-200"
+      >
+        #
+        test
+      </button>
+      <button
+        class="px-3 py-1 cursor-pointer bg-blue-50 text-blue-700 rounded-full text-sm font-medium hover:bg-blue-100 transition-colors border border-blue-200"
+      >
+        #
+        example
+      </button>
+    </div>
+    <div
+      class="flex items-center justify-between pt-4 border-t border-gray-100"
+    >
+      <div
+        class="flex items-center gap-4"
+      >
+        <div
+          class="flex items-center gap-1 text-gray-600"
+        >
+          <svg
+            class="text-red-500"
+            fill="none"
+            height="18"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="18"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+            />
+          </svg>
+          <span
+            class="font-medium text-gray-900"
+          >
+            10
+          </span>
+        </div>
+        <div
+          class="flex items-center gap-1 text-gray-600"
+        >
+          <svg
+            class="text-gray-400 rotate-180"
+            fill="none"
+            height="18"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="18"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+            />
+          </svg>
+          <span
+            class="font-medium text-gray-900"
+          >
+            2
+          </span>
+        </div>
+        <div
+          class="flex items-center gap-1 text-gray-600"
+        >
+          <svg
+            class="text-blue-500"
+            fill="none"
+            height="18"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="18"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r="3"
+            />
+          </svg>
+          <span
+            class="font-medium text-gray-900"
+          >
+            100
+          </span>
+        </div>
+      </div>
+      <div
+        class="flex items-center gap-2"
+      >
+        <button
+          class="cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent h-9 rounded-md px-3 text-gray-600 hover:text-blue-600"
+        >
+          <svg
+            class="mr-1"
+            fill="none"
+            height="18"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="18"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+            />
+          </svg>
+          Comments
+        </button>
+        <button
+          class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent h-10 w-10 text-gray-600 hover:text-red-500 cursor-pointer"
+        >
+          <svg
+            fill="none"
+            height="20"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="20"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </article>
+</div>
+`;
+
+exports[`Post Component Snapshot Tests > should match snapshot for post without comments button > post-without-comments-button 1`] = `
+<div>
+  <article
+    class="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 p-6 max-w-2xl mx-auto mb-6 cursor-pointer group"
+  >
+    <div
+      class="mb-4"
+    >
+      <h2
+        class="text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors mb-2"
+      >
+        Snapshot Test Post Title
+      </h2>
+      <p
+        class="text-gray-700 leading-relaxed line-clamp-3"
+      >
+        This is a snapshot test post body content that should be displayed correctly
+      </p>
+    </div>
+    <div
+      class="flex flex-wrap gap-2 mb-4"
+    >
+      <button
+        class="px-3 py-1 cursor-pointer bg-blue-50 text-blue-700 rounded-full text-sm font-medium hover:bg-blue-100 transition-colors border border-blue-200"
+      >
+        #
+        snapshot
+      </button>
+      <button
+        class="px-3 py-1 cursor-pointer bg-blue-50 text-blue-700 rounded-full text-sm font-medium hover:bg-blue-100 transition-colors border border-blue-200"
+      >
+        #
+        test
+      </button>
+      <button
+        class="px-3 py-1 cursor-pointer bg-blue-50 text-blue-700 rounded-full text-sm font-medium hover:bg-blue-100 transition-colors border border-blue-200"
+      >
+        #
+        example
+      </button>
+    </div>
+    <div
+      class="flex items-center justify-between pt-4 border-t border-gray-100"
+    >
+      <div
+        class="flex items-center gap-4"
+      >
+        <div
+          class="flex items-center gap-1 text-gray-600"
+        >
+          <svg
+            class="text-red-500"
+            fill="none"
+            height="18"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="18"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+            />
+          </svg>
+          <span
+            class="font-medium text-gray-900"
+          >
+            10
+          </span>
+        </div>
+        <div
+          class="flex items-center gap-1 text-gray-600"
+        >
+          <svg
+            class="text-gray-400 rotate-180"
+            fill="none"
+            height="18"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="18"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+            />
+          </svg>
+          <span
+            class="font-medium text-gray-900"
+          >
+            2
+          </span>
+        </div>
+        <div
+          class="flex items-center gap-1 text-gray-600"
+        >
+          <svg
+            class="text-blue-500"
+            fill="none"
+            height="18"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="18"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r="3"
+            />
+          </svg>
+          <span
+            class="font-medium text-gray-900"
+          >
+            100
+          </span>
+        </div>
+      </div>
+      <div
+        class="flex items-center gap-2"
+      >
+        <button
+          class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent h-10 w-10 text-gray-600 hover:text-red-500 cursor-pointer"
+        >
+          <svg
+            fill="none"
+            height="20"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="20"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </article>
+</div>
+`;

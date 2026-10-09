@@ -387,3 +387,7 @@ export function addJournalComment(id: string, author: string, text: string) {
   if (!comment.text) return;
   commit(articles.map((article) => (article.id === id ? { ...article, comments: [...article.comments, comment] } : article)));
 }
+
+export function deleteJournalComment(articleId: string, commentId: string) {
+  commit(articles.map((article) => (article.id === articleId ? { ...article, comments: article.comments.filter((comment) => comment.id !== commentId) } : article)));
+}

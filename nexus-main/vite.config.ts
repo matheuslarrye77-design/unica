@@ -12,6 +12,11 @@ export default defineConfig({
       plugins: [],
     },
   },
+  server: {
+    watch: {
+      ignored: ['**/data/**'],
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

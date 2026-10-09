@@ -1,4 +1,4 @@
-import { Heart } from 'lucide-react';
+import { Heart, Trash2 } from 'lucide-react';
 import { type FC, type FormEvent } from 'react';
 import type { SocialComment } from './types';
 
@@ -9,7 +9,9 @@ export const Comments: FC<{
   onDraft: (value: string) => void;
   onSubmit: () => void;
   onLike: (commentId: string) => void;
-}> = ({ inputId, comments, draft, onDraft, onSubmit, onLike }) => {
+  canDelete?: (commentId: string) => boolean;
+  onDelete?: (commentId: string) => void;
+}> = ({ inputId, comments, draft, onDraft, onSubmit, onLike, canDelete, onDelete }) => {
   function submit(event: FormEvent) {
     event.preventDefault();
     onSubmit();
@@ -32,6 +34,12 @@ export const Comments: FC<{
                   <Heart className="h-3.5 w-3.5" fill={comment.liked ? 'currentColor' : 'none'} />
                   {comment.likes}
                 </button>
+                {canDelete?.(comment.id) ? (
+                  <button type="button" onClick={() => onDelete?.(comment.id)} className="inline-flex items-center gap-1 hover:text-foreground">
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Excluir
+                  </button>
+                ) : null}
               </div>
             </div>
           </li>

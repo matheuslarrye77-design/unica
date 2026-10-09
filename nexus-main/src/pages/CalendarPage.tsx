@@ -180,19 +180,22 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
               <Button variant="outline" size="sm" onClick={() => shiftMonth(1)} aria-label="Próximo mês"><ChevronRight className="h-4 w-4" /></Button>
             </div>
           </div>
-          <div className="grid grid-cols-7 overflow-hidden rounded-xl border bg-card/80">
+          <div className="overflow-hidden rounded-xl border bg-card/80">
+            <div className="grid grid-cols-7">
             {weekdays.map((day) => (
               <div key={day} className={cn('border-r border-b bg-muted/40 text-center font-medium text-muted-foreground last:border-r-0', compact ? 'px-0 py-1 text-[10px]' : 'p-2 text-sm')}>{compact ? day.charAt(0) : day}</div>
             ))}
+            </div>
+            <div className="grid grid-cols-7" style={{ gridAutoRows: compact ? '2.75rem' : '7.25rem' }}>
             {Array.from({ length: firstWeekday }, (_, index) => (
-              <div key={`empty-${index}`} className={cn('border-r border-b bg-muted/20', compact ? 'min-h-9' : 'p-2')} />
+              <div key={`empty-${index}`} className="h-full border-r border-b bg-muted/20" />
             ))}
             {Array.from({ length: daysInMonth }, (_, index) => {
               const day = index + 1;
               const dayEvents = eventsOn(day);
               const isCurrent = today.getFullYear() === currentDate.getFullYear() && today.getMonth() === currentDate.getMonth() && today.getDate() === day;
               return (
-                <div key={day} className={cn('border-r border-b bg-transparent transition-colors hover:bg-muted/30', compact ? 'min-h-11 p-0.5' : 'min-h-[120px] p-2')} onClick={(event) => { event.stopPropagation(); setSelectedDay(day); setActive(null); }}>
+                <div key={day} className={cn('h-full overflow-hidden border-r border-b bg-transparent transition-colors hover:bg-muted/30', compact ? 'p-0.5' : 'p-2')} onClick={(event) => { event.stopPropagation(); setSelectedDay(day); setActive(null); }}>
                   <div className={cn('flex items-center justify-center font-medium', compact ? 'mb-0.5 h-5 w-5 text-[11px]' : 'mb-1 h-6 w-6 text-sm', isCurrent && 'rounded-full bg-primary text-primary-foreground', selectedDay === day && !isCurrent && 'rounded-full bg-muted')}>
                     {day}
                   </div>
@@ -218,6 +221,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
                 </div>
               );
             })}
+            </div>
           </div>
         </main>
 

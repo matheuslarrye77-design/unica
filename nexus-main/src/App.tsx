@@ -1,5 +1,5 @@
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { type FC } from 'react';
+import { useEffect, useState, type FC, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from './components/ThemeProvider';
@@ -21,7 +21,20 @@ import { ResourcesPage } from './pages/ResourcesPage';
 import { HelpDeskPage } from './pages/HelpDeskPage';
 import { TimeOffPage } from './pages/TimeOffPage';
 import { FeedbacksPage } from './pages/FeedbacksPage';
-import { ManagementSettingsPage } from './pages/ManagementSettingsPage';
+import { LoginPage } from './pages/LoginPage';
+import { PostPage } from './pages/PostPage';
+import { ProfilePage } from './pages/ProfilePage';
+import { restoreSession } from './lib/session';
+
+const RequireSession: FC<{ children: ReactNode }> = ({ children }) => {
+  const [state, setState] = useState<'loading' | 'in' | 'out'>('loading');
+  useEffect(() => {
+    void restoreSession().then((user) => setState(user ? 'in' : 'out'));
+  }, []);
+  if (state === 'loading') return null;
+  if (state === 'out') return <Navigate to="/login" replace />;
+  return children;
+};
 
 const AppRoutes: FC = () => {
 
@@ -91,7 +104,9 @@ const AppRoutes: FC = () => {
         }
       />
       <Route path="/gestao/feedbacks" element={<FeedbacksPage />} />
-      <Route path="/gestao/configuracoes" element={<ManagementSettingsPage />} />
+      <Route path="/gestao/configuracoes" element={<Navigate to="/configuracoes" replace />} />
+      <Route path="/perfil" element={<ProfilePage />} />
+      <Route path="/publicacao/:id" element={<PostPage />} />
     </Routes>
   );
 };
@@ -102,6 +117,10 @@ const App: FC = () => {
       <FocusModeProvider>
         <TooltipProvider>
             <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/*" element={
+              <RequireSession>
               <InstitutionProvider>
               <AppFrame>
                 <ScrollToTop />
@@ -110,6 +129,9 @@ const App: FC = () => {
                 <Toaster />
               </AppFrame>
               </InstitutionProvider>
+              </RequireSession>
+                } />
+              </Routes>
             </BrowserRouter>
         </TooltipProvider>
       </FocusModeProvider>

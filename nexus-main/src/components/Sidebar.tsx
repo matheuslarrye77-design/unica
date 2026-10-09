@@ -12,7 +12,6 @@ import {
   Megaphone,
   MessageSquare,
   Settings,
-  SlidersHorizontal,
   Users,
   X,
 } from 'lucide-react';
@@ -143,7 +142,6 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
       items: [
         ...items,
         { path: '/gestao/feedbacks', label: 'Feedbacks', icon: MessageSquare },
-        { path: '/gestao/configuracoes', label: 'Configurações', icon: SlidersHorizontal },
       ],
     };
   });

@@ -10,7 +10,6 @@ import { RightSidebar } from '@/components/shell/RightSidebar';
 import {
   DOCUMENT_CATEGORIES,
   DOCUMENT_SYSTEMS,
-  DOCUMENT_THUMBNAILS,
   canManageDocuments,
   categoryLabel,
   deleteDocument,
@@ -28,7 +27,8 @@ import {
 import { currentUser } from '@/data/mockData';
 import { assertPermission, useInstitution } from '@/lib/institution';
 import { cn } from '@/lib/utils';
-import { Download, MoreHorizontal, Plus, Search, Star } from 'lucide-react';
+import { Download, FileText, MoreHorizontal, Plus, Search, Star } from 'lucide-react';
+import { authHeaders } from '@/lib/session';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { toast } from 'sonner';
 
@@ -47,15 +47,6 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR');
 }
 
-function readFile(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
 export const ResourcesPage: FC = () => {
   const [documents, setDocuments] = useState<CompanyDocument[]>([]);
   const [category, setCategory] = useState<CategoryFilter>('todos');
@@ -63,6 +54,7 @@ export const ResourcesPage: FC = () => {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortMode>('az');
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [selected, setSelected] = useState<CompanyDocument | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewText, setPreviewText] = useState('');
@@ -73,6 +65,10 @@ export const ResourcesPage: FC = () => {
 
   useEffect(() => {
     loadDocuments().then(setDocuments).catch(() => toast.error('Não foi possível abrir a central de documentos.'));
+    void fetch('/api/document-favorites', { headers: authHeaders() })
+      .then((response) => response.json() as Promise<{ ids: string[] }>)
+      .then((data) => setFavoriteIds(data.ids ?? []))
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -108,7 +104,7 @@ export const ResourcesPage: FC = () => {
   }, [documents, category, system, query, sort, onlyFavorites, canManage, canSend]);
 
   const featured = documents.filter((document) => document.featured && document.published && (category === 'todos' || document.category === category) && (system === 'todos' || document.system === system));
-  const favorites = documents.filter((document) => document.favorites.includes(currentUser.id) && (document.published || canManage || canSend));
+  const favorites = documents.filter((document) => favoriteIds.includes(document.id) && (document.published || canManage || canSend));
 
   function upsert(document: CompanyDocument) {
     setDocuments((current) => {
@@ -119,7 +115,14 @@ export const ResourcesPage: FC = () => {
   }
 
   async function favorite(document: CompanyDocument) {
-    upsert(await toggleFavorite(document, currentUser.id));
+    const next = await toggleFavorite(document, currentUser.id);
+    upsert(next);
+    const ids = next.favorites.includes(currentUser.id)
+      ? [...new Set([...favoriteIds, next.id])]
+      : favoriteIds.filter((id) => id !== next.id);
+    setFavoriteIds(ids);
+    const response = await fetch('/api/document-favorites', { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ ids }) });
+    if (!response.ok) toast.error('Não foi possível salvar o favorito.');
   }
 
   async function download(document: CompanyDocument) {
@@ -158,6 +161,13 @@ export const ResourcesPage: FC = () => {
               <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Pesquisar documentos..." className="pl-9" />
             </label>
+            <Select value={category} onValueChange={(value) => { setCategory(value as CategoryFilter); setOnlyFavorites(false); }}>
+              <SelectTrigger className="sm:w-48"><SelectValue placeholder="Categoria" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todas as categorias</SelectItem>
+                {DOCUMENT_CATEGORIES.map((item) => <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Select value={system} onValueChange={(value) => setSystem(value as 'todos' | DocumentSystem)}>
               <SelectTrigger className="sm:w-52"><SelectValue placeholder="Sistema/Área" /></SelectTrigger>
               <SelectContent>
@@ -179,8 +189,8 @@ export const ResourcesPage: FC = () => {
               <div className="grid gap-4 md:grid-cols-3">
                 {featured.slice(0, 3).map((document) => (
                   <button key={document.id} type="button" onClick={() => setSelected(document)} className="overflow-hidden rounded-2xl border bg-card text-left shadow-[0_1px_2px_rgba(40,20,70,0.04)]">
-                    <img src={document.thumbnail} alt="" className="h-32 w-full object-cover" />
                     <div className="space-y-1 p-4">
+                      <span className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground"><FileText className="h-4 w-4" />{document.fileType.split('/').pop()?.toUpperCase() || 'ARQUIVO'}</span>
                       <p className="text-xs text-muted-foreground">{categoryLabel(document.category)} · {systemLabel(document.system)}</p>
                       <h3 className="font-semibold">{document.title}</h3>
                       <p className="text-sm text-muted-foreground">{document.subtitle}</p>
@@ -201,9 +211,9 @@ export const ResourcesPage: FC = () => {
                 {visible.map((document) => {
                   const favored = document.favorites.includes(currentUser.id);
                   return (
-                    <article key={document.id} className="grid gap-4 rounded-2xl border bg-card p-3 shadow-[0_1px_2px_rgba(40,20,70,0.04)] sm:grid-cols-[7rem_1fr_auto]">
+                    <article key={document.id} className="grid gap-4 rounded-2xl border bg-card p-3 shadow-[0_1px_2px_rgba(40,20,70,0.04)] sm:grid-cols-[auto_1fr_auto]">
                       <button type="button" onClick={() => setSelected(document)} className="text-left sm:contents">
-                        <img src={document.thumbnail} alt="" className="h-24 w-full rounded-xl object-cover sm:h-full" />
+                        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground"><FileText className="h-4 w-4" /></span>
                         <span className="block py-1">
                           <span className="block font-semibold">{document.title}</span>
                           <span className="mt-1 block text-xs text-muted-foreground">{categoryLabel(document.category)} · {systemLabel(document.system)}{document.published ? '' : ' · Rascunho'}</span>
@@ -241,20 +251,13 @@ export const ResourcesPage: FC = () => {
         </div>
 
         <RightSidebar>
-          <div className="rounded-2xl border bg-sidebar p-3 text-sidebar-foreground">
-            <p className="mb-1 px-1 text-xs font-medium text-muted-foreground">Categorias</p>
-            {([{ id: 'todos', label: 'Todos' }, ...DOCUMENT_CATEGORIES] as const).map((item) => (
-              <button key={item.id} type="button" onClick={() => { setCategory(item.id); setOnlyFavorites(false); }} className={cn('block w-full rounded-lg px-3 py-2 text-left text-sm font-medium', category === item.id && !onlyFavorites ? 'bg-primary/10 text-primary shadow-sm' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}>
-                {item.label}
+          <div className="rounded-2xl border bg-card p-3">
+            <p className="mb-1 px-1 text-xs font-medium text-muted-foreground">Meus favoritos</p>
+            {favorites.length === 0 ? <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum favorito ainda.</p> : favorites.map((document) => (
+              <button key={document.id} type="button" onClick={() => setSelected(document)} className="block w-full rounded-lg px-2 py-2 text-left hover:bg-muted/60">
+                <span className="block truncate text-sm font-medium">{document.title}</span>
+                <span className="block truncate text-xs text-muted-foreground">{categoryLabel(document.category)} · {systemLabel(document.system)}</span>
               </button>
-            ))}
-            <p className="mt-4 mb-1 px-1 text-xs font-medium text-muted-foreground">Filtros rápidos</p>
-            <button type="button" onClick={() => { setSort('recent'); setOnlyFavorites(false); }} className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground">Mais recentes</button>
-            <button type="button" onClick={() => { setSort('accessed'); setOnlyFavorites(false); }} className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground">Mais acessados</button>
-            <button type="button" onClick={() => setOnlyFavorites((value) => !value)} className={cn('block w-full rounded-lg px-3 py-2 text-left text-sm font-medium', onlyFavorites ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}>Favoritos</button>
-            <p className="mt-4 mb-1 px-1 text-xs font-medium text-muted-foreground">Meus favoritos</p>
-            {favorites.length === 0 ? <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum favorito ainda.</p> : favorites.slice(0, 6).map((document) => (
-              <button key={document.id} type="button" onClick={() => setSelected(document)} className="block w-full truncate rounded-lg px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground">{document.title}</button>
             ))}
           </div>
         </RightSidebar>
@@ -268,7 +271,7 @@ export const ResourcesPage: FC = () => {
                 <DialogTitle>{selected.title}</DialogTitle>
                 <DialogDescription>{selected.subtitle}</DialogDescription>
               </DialogHeader>
-              <img src={selected.thumbnail} alt="" className="h-40 w-full rounded-xl object-cover" />
+              <p className="inline-flex items-center gap-2 text-sm text-muted-foreground"><FileText className="h-4 w-4" />{selected.fileName}</p>
               <p className="text-sm leading-6">{selected.description}</p>
               <dl className="grid gap-1 text-sm text-muted-foreground">
                 <div>Categoria: <span className="text-foreground">{categoryLabel(selected.category)}</span></div>
@@ -316,7 +319,7 @@ const DocumentEditor: FC<{
   const [system, setSystem] = useState<DocumentSystem>('pincel');
   const [author, setAuthor] = useState(currentUser.name);
   const [date, setDate] = useState('');
-  const [thumbnail, setThumbnail] = useState<string>(DOCUMENT_THUMBNAILS[0].src);
+  const [thumbnail, setThumbnail] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [featured, setFeatured] = useState(false);
 
@@ -329,7 +332,7 @@ const DocumentEditor: FC<{
     setSystem(document?.system ?? 'pincel');
     setAuthor(document?.author ?? currentUser.name);
     setDate((document?.publishedAt ?? new Date().toISOString()).slice(0, 10));
-    setThumbnail(document?.thumbnail ?? DOCUMENT_THUMBNAILS[0].src);
+    setThumbnail(document?.thumbnail ?? '');
     setFile(null);
     setFeatured(document?.featured ?? false);
   }, [open, document]);
@@ -408,18 +411,6 @@ const DocumentEditor: FC<{
           <div className="grid gap-2">
             <Label htmlFor="doc-arquivo">Arquivo</Label>
             <Input id="doc-arquivo" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,image/*,.txt" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
-          </div>
-          <div className="grid gap-2">
-            <Label>Imagem</Label>
-            <div className="grid grid-cols-5 gap-2">
-              {DOCUMENT_THUMBNAILS.map((item) => (
-                <button key={item.id} type="button" title={item.label} onClick={() => setThumbnail(item.src)} className={cn('overflow-hidden rounded-lg border', thumbnail === item.src && 'ring-2 ring-primary')}>
-                  <img src={item.src} alt={item.label} className="aspect-[8/5] w-full object-cover" />
-                </button>
-              ))}
-            </div>
-            <Label htmlFor="doc-thumb" className="inline-flex h-9 w-fit cursor-pointer items-center rounded-lg border px-3 text-sm font-medium">Enviar imagem</Label>
-            <input id="doc-thumb" className="sr-only" type="file" accept="image/*" onChange={(event) => { const image = event.target.files?.[0]; if (image) void readFile(image).then(setThumbnail); }} />
           </div>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featured} onChange={(event) => setFeatured(event.target.checked)} />Definir como destaque</label>
         </div>

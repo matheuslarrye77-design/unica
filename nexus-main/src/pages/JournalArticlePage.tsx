@@ -7,6 +7,7 @@ import { Header } from '@/components/Header';
 import { Textarea } from '@/components/ui/textarea';
 import {
   addJournalComment,
+  deleteJournalComment,
   canManageJournal,
   categoryLabel,
   toggleJournalPin,
@@ -17,7 +18,7 @@ import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { ArrowLeft, Heart, MessageCircle, Pin } from 'lucide-react';
 import { useState, type FC } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const tone: Record<JournalCategory, string> = {
@@ -29,7 +30,6 @@ const tone: Record<JournalCategory, string> = {
 
 export const JournalArticlePage: FC = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const articles = useJournalArticles();
   const article = articles.find((item) => item.id === id);
   const [comment, setComment] = useState('');
@@ -137,7 +137,21 @@ export const JournalArticlePage: FC = () => {
             <div className="space-y-3">
               {article.comments.map((item) => (
                 <div key={item.id} className="rounded-xl border bg-card px-4 py-3">
-                  <p className="text-sm font-medium">{item.author}</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-medium">{item.author}</p>
+                    {item.author === currentUser.name || canManage ? (
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          if (!window.confirm('Excluir este comentário?')) return;
+                          deleteJournalComment(article.id, item.id);
+                        }}
+                      >
+                        Excluir
+                      </button>
+                    ) : null}
+                  </div>
                   <p className="mt-1 text-sm leading-6">{item.text}</p>
                 </div>
               ))}
@@ -149,11 +163,7 @@ export const JournalArticlePage: FC = () => {
           </section>
         </article>
         <RightSidebar>
-          <JournalRail
-            category={article.category}
-            recent={published.slice(0, 6)}
-            onCategory={(next) => navigate(next === 'todos' ? '/announcements' : `/announcements?categoria=${next}`)}
-          />
+          <JournalRail recent={published.slice(0, 6)} />
         </RightSidebar>
       </div>
       {canManage ? (

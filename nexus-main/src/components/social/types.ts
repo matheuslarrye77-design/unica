@@ -7,6 +7,7 @@ export type Attachment = {
 export type SocialComment = {
   id: string;
   author: string;
+  authorId?: string;
   avatar: string;
   body: string;
   time: string;
@@ -26,6 +27,7 @@ export type SocialPost = {
   id: string;
   kind: PostKind;
   author: string;
+  authorId?: string;
   role: string;
   department: string;
   avatar: string;

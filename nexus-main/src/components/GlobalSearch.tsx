@@ -12,12 +12,12 @@ import { SearchService, type SearchResult } from '@/lib/searchService';
 import { useNavigate } from 'react-router-dom';
 
 const typeLabels = {
-  employee: 'Employee',
-  announcement: 'Announcement',
-  kudo: 'Kudo',
-  event: 'Event',
-  feed: 'Feed Item',
-  'quick-link': 'Quick Link'
+  employee: 'Colaborador',
+  announcement: 'Publicação',
+  kudo: 'Reconhecimento',
+  event: 'Evento',
+  feed: 'Mural',
+  'quick-link': 'Atalho'
 };
 
 const typeIcons = {
@@ -184,52 +184,52 @@ export const GlobalSearch: FC = () => {
               {searchQuery.trim() === '' ? (
                 <div className="p-6 space-y-4">
                   <div>
-                    <h4 className="text-sm font-medium mb-3">Quick Actions</h4>
+                    <h4 className="text-sm font-medium mb-3">Atalhos</h4>
                     <div className="space-y-1">
                       <div 
                         className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent cursor-pointer"
                         onClick={() => handleQuickAction('employees')}
                       >
                         <span className="text-lg">👤</span>
-                        <span className="text-sm">Search employees</span>
+                        <span className="text-sm">Pesquisar colaboradores</span>
                       </div>
                       <div 
                         className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent cursor-pointer"
                         onClick={() => handleQuickAction('announcements')}
                       >
                         <span className="text-lg">📢</span>
-                        <span className="text-sm">Search announcements</span>
+                        <span className="text-sm">Pesquisar publicações</span>
                       </div>
                       <div 
                         className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent cursor-pointer"
                         onClick={() => handleQuickAction('events')}
                       >
                         <span className="text-lg">📅</span>
-                        <span className="text-sm">Search calendar events</span>
+                        <span className="text-sm">Pesquisar eventos</span>
                       </div>
                       <div 
                         className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent cursor-pointer"
                         onClick={() => handleQuickAction('kudos')}
                       >
                         <span className="text-lg">❤️</span>
-                        <span className="text-sm">Search kudos</span>
+                        <span className="text-sm">Pesquisar reconhecimentos</span>
                       </div>
                     </div>
                   </div>
                   
                   <div>
-                    <h4 className="text-sm font-medium mb-2">Recent Searches</h4>
+                    <h4 className="text-sm font-medium mb-2">Buscas recentes</h4>
                     <div className="text-sm text-muted-foreground">
-                      No recent searches
+                      Nenhuma busca recente
                     </div>
                   </div>
                 </div>
               ) : results.length === 0 ? (
                 <div className="p-6 text-center text-muted-foreground">
                   <Search className="h-8 w-8 mx-auto mb-3 opacity-50" />
-                  <p>No results found for "{searchQuery}"</p>
+                  <p>Nenhum resultado encontrado para "{searchQuery}"</p>
                   <p className="text-xs mt-1">
-                    Try searching for employees, announcements, events, or kudos
+                    Tente pesquisar colaboradores, publicações, eventos ou reconhecimentos
                   </p>
                 </div>
               ) : (
@@ -266,9 +266,9 @@ export const GlobalSearch: FC = () => {
             {(searchQuery.trim() || results.length > 0) && (
               <div className="border-t px-6 py-3 text-xs text-muted-foreground bg-muted/30 flex justify-between">
                 <span>
-                  {results.length > 0 ? 'Use ↑↓ to navigate • Enter to select' : 'Type to search'}
+                  {results.length > 0 ? 'Use ↑↓ para navegar • Enter para abrir' : 'Digite para pesquisar'}
                 </span>
-                <span>Esc to close</span>
+                <span>Esc para fechar</span>
               </div>
             )}
           </div>

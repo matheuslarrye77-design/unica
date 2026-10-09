@@ -2,7 +2,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Header } from '@/components/Header';
 import { PageWrapper, PageSection } from '@/components/PageWrapper';
 import { RightSidebar } from '@/components/shell/RightSidebar';
@@ -10,9 +9,14 @@ import { TeamMood } from '@/components/shell/TeamMood';
 import { CalendarPage } from '@/pages/CalendarPage';
 import { currentUser, employees, type Employee } from '@/data/mockData';
 import { saveRamal, useInstitution } from '@/lib/institution';
-import { ArrowLeft, Search, Filter, Mail, Phone } from 'lucide-react';
-import { useEffect, useState, type FC } from 'react';
+import { ArrowLeft, Search, Mail, Phone, Plus } from 'lucide-react';
+import { useEffect, useState, type FC, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { authHeaders, actor } from '@/lib/session';
+import { isLeader } from '@/lib/institution';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 const getDepartmentBadgeColor = (department: string) => {
   switch (department) {
@@ -77,24 +81,54 @@ const RamalField: FC<{ employeeId: string }> = ({ employeeId }) => {
   );
 };
 
+type Colleague = Employee & { funcao?: string };
+
 export const EmployeeDirectoryPage: FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterDepartment, setFilterDepartment] = useState<string>('all');
+  const [colleagues, setColleagues] = useState<Colleague[]>([]);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ name: '', email: '', role: '', funcao: 'Ligação', phone: '', ramal: '' });
+  const leader = isLeader(actor());
 
-  // Get unique departments for filter
-  const departments = Array.from(new Set(employees.map(emp => emp.department))).sort();
+  useEffect(() => {
+    void fetch('/api/colleagues', { headers: authHeaders() })
+      .then((response) => response.json() as Promise<{ colleagues: Colleague[] }>)
+      .then((data) => setColleagues(data.colleagues ?? []))
+      .catch(() => undefined);
+  }, []);
 
-  // Filter employees based on search and department
-  const filteredEmployees = employees.filter((employee) => {
-    const matchesSearch = employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         employee.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         employee.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (employee.email && employee.email.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    const matchesDepartment = filterDepartment === 'all' || employee.department === filterDepartment;
-    
-    return matchesSearch && matchesDepartment;
+  const roster: Colleague[] = [
+    ...colleagues.filter((colleague) => !employees.some((employee) => employee.email && employee.email === colleague.email)),
+    ...employees,
+  ];
+  const filteredEmployees = roster.filter((employee) => {
+    const text = searchQuery.toLowerCase();
+    return employee.name.toLowerCase().includes(text) ||
+      employee.role.toLowerCase().includes(text) ||
+      (employee.email?.toLowerCase().includes(text) ?? false);
   });
+
+  async function addColleague(event: FormEvent) {
+    event.preventDefault();
+    const response = await fetch('/api/colleagues', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(form),
+    });
+    if (response.status === 409) {
+      toast.error('Já existe um colaborador com este e-mail.');
+      return;
+    }
+    if (!response.ok) {
+      toast.error('Preencha nome, e-mail, função e cargo.');
+      return;
+    }
+    const data = await response.json() as { colleague: Colleague };
+    setColleagues((current) => [data.colleague, ...current]);
+    setOpen(false);
+    setForm({ name: '', email: '', role: '', funcao: 'Ligação', phone: '', ramal: '' });
+    toast.success('Colaborador adicionado.');
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -114,11 +148,12 @@ export const EmployeeDirectoryPage: FC = () => {
               </Link>
             </div>
             
-            <div className="space-y-2">
-              <h1 className="text-2xl font-bold tracking-tight">Pessoas</h1>
-              <p className="text-muted-foreground">
-                Diretório da equipe
-              </p>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div className="space-y-2">
+                <h1 className="text-2xl font-bold tracking-tight">Pessoas</h1>
+                <p className="text-muted-foreground">Diretório da equipe</p>
+              </div>
+              {leader ? <Button className="gap-2" onClick={() => setOpen(true)}><Plus className="h-4 w-4" />Adicionar colaborador</Button> : null}
             </div>
           </div>
         </PageSection>
@@ -128,7 +163,7 @@ export const EmployeeDirectoryPage: FC = () => {
               {/* Filters Section */}
               <Card>
               <CardHeader className="pb-4">
-                <CardTitle className="text-lg">Search & Filter</CardTitle>
+                <CardTitle className="text-lg">Pesquisar</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -137,34 +172,16 @@ export const EmployeeDirectoryPage: FC = () => {
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Search by name, role, department, or email..."
+                        placeholder="Pesquisar por nome, cargo ou e-mail..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-10"
                       />
                     </div>
                   </div>
-                  
-                  {/* Department Filter */}
-                  <div className="sm:w-48">
-                    <Select value={filterDepartment} onValueChange={setFilterDepartment}>
-                      <SelectTrigger className="gap-2">
-                        <Filter className="h-4 w-4" />
-                        <SelectValue placeholder="Filter by department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Departments</SelectItem>
-                        {departments.map((dept) => (
-                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
-                
-                {/* Results Count */}
                 <div className="mt-4 text-sm text-muted-foreground">
-                  Showing {filteredEmployees.length} of {employees.length} employees
+                  {filteredEmployees.length} de {roster.length} colaboradores
                 </div>
               </CardContent>
             </Card>
@@ -179,16 +196,17 @@ export const EmployeeDirectoryPage: FC = () => {
                     <div className="h-12 w-12 mx-auto bg-muted rounded-full flex items-center justify-center">
                       <Search className="h-6 w-6 text-muted-foreground" />
                     </div>
-                    <h3 className="font-medium">No employees found</h3>
+                    <h3 className="font-medium">Nenhum colaborador encontrado</h3>
                     <p className="text-sm text-muted-foreground">
-                      Try adjusting your search or filter criteria
+                      Ajuste a pesquisa.
                     </p>
                   </div>
                 </CardContent>
               </Card>
             </PageSection>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(17rem,1fr))] gap-4">
+            <div className="equipe-wrap">
+            <div className="equipe-grid">
               {filteredEmployees.map((employee, index) => (
                 <PageSection key={employee.id} index={index + 2}>
                   <Card className="hover:shadow-md transition-shadow">
@@ -215,7 +233,7 @@ export const EmployeeDirectoryPage: FC = () => {
                             >
                               {employee.department}
                             </Badge>
-                            <Badge variant="outline">{teamRole(employee)}</Badge>
+                            <Badge variant="outline">{employee.funcao || teamRole(employee)}</Badge>
                           </div>
                           <RamalField employeeId={employee.id} />
 
@@ -268,50 +286,9 @@ export const EmployeeDirectoryPage: FC = () => {
                 </PageSection>
               ))}
             </div>
+            </div>
           )}
         </div>
-
-        {/* Department Statistics */}
-        {filteredEmployees.length > 0 && (
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle className="text-lg">Department Breakdown</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-                {departments.map((dept) => {
-                  const count = filteredEmployees.filter(emp => emp.department === dept).length;
-                  const total = employees.filter(emp => emp.department === dept).length;
-                  return (
-                    <div key={dept} className="text-center space-y-1">
-                      <Badge 
-                        variant="outline"
-                        className={getDepartmentBadgeColor(dept)}
-                      >
-                        {dept}
-                      </Badge>
-                      <p className="text-xs text-muted-foreground">
-                        {count} / {total}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Load More Button (for future pagination) */}
-        {filteredEmployees.length > 0 && (
-          <div className="mt-8 text-center">
-            <Button variant="outline" disabled>
-              Load More Employees
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2">
-              All employees loaded
-            </p>
-          </div>
-        )}
           </div>
         </PageSection>
       </PageWrapper>
@@ -320,6 +297,29 @@ export const EmployeeDirectoryPage: FC = () => {
         <TeamMood />
       </RightSidebar>
       </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar colaborador</DialogTitle>
+          </DialogHeader>
+          <form id="novo-colaborador" className="grid gap-3" onSubmit={(event) => void addColleague(event)}>
+            <div className="grid gap-1"><Label htmlFor="col-nome">Nome</Label><Input id="col-nome" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required /></div>
+            <div className="grid gap-1"><Label htmlFor="col-email">E-mail</Label><Input id="col-email" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required /></div>
+            <div className="grid gap-1"><Label htmlFor="col-cargo">Cargo</Label><Input id="col-cargo" value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })} required /></div>
+            <div className="grid gap-1">
+              <Label htmlFor="col-funcao">Função</Label>
+              <select id="col-funcao" className="h-9 rounded-md border bg-background px-3 text-sm" value={form.funcao} onChange={(event) => setForm({ ...form, funcao: event.target.value })}>
+                {['Ligação', 'E-mail', 'Chat', 'Liderança'].map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </div>
+            <div className="grid gap-1"><Label htmlFor="col-telefone">Telefone</Label><Input id="col-telefone" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></div>
+            <div className="grid gap-1"><Label htmlFor="col-ramal">Ramal</Label><Input id="col-ramal" inputMode="numeric" value={form.ramal} onChange={(event) => setForm({ ...form, ramal: event.target.value.replace(/\D/g, '').slice(0, 3) })} placeholder="000" /></div>
+          </form>
+          <DialogFooter>
+            <Button type="submit" form="novo-colaborador">Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

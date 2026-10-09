@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import type { Connect, Plugin } from 'vite';
+import { extraApi } from './extraApi';
 import { currentUser, employees } from '../src/data/mockData';
 
 type Person = { id: string; name: string; role: string; department?: string };
@@ -310,9 +311,11 @@ export function institutionApi(): Plugin {
   return {
     name: 'unica-institution-api',
     configureServer(server) {
+      server.middlewares.use(extraApi());
       server.middlewares.use(attach);
     },
     configurePreviewServer(server) {
+      server.middlewares.use(extraApi());
       server.middlewares.use(attach);
     },
   };

@@ -1,5 +1,6 @@
 import { FileText } from 'lucide-react';
 import { type FC } from 'react';
+import { Link } from 'react-router-dom';
 import { AnnouncementPost } from './AnnouncementPost';
 import { Comments } from './Comments';
 import { EventPost } from './EventPost';
@@ -26,11 +27,23 @@ export const PostCard: FC<{
   onAddComment: () => void;
   onLikeComment: (commentId: string) => void;
   onVote: (optionId: string) => void;
-}> = ({ post, commentDraft, onCommentDraft, onLike, onShare, onToggleComments, onAddComment, onLikeComment, onVote }) => {
+  onRepublish: () => void;
+  republished?: boolean;
+  canDeleteComment?: (commentId: string) => boolean;
+  onDeleteComment?: (commentId: string) => void;
+  repost?: { name: string; avatar: string; note: string };
+}> = ({ post, commentDraft, onCommentDraft, onLike, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, republished, canDeleteComment, onDeleteComment, repost }) => {
   const plain = post.kind === 'text' || post.kind === 'image' || post.kind === 'leadership';
 
   return (
-    <article className="rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(40,20,70,0.05)]">
+    <article id={post.id} className="rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(40,20,70,0.05)]">
+      {repost ? (
+        <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <img src={repost.avatar} alt="" className="h-6 w-6 rounded-full bg-muted" />
+          <span><span className="font-medium text-foreground">{repost.name}</span> republicou</span>
+        </div>
+      ) : null}
+      {repost?.note ? <p className="mb-3 text-[15px] leading-7">{repost.note}</p> : null}
       <header className="flex items-center gap-3">
         <img src={post.avatar} alt="" className="h-11 w-11 rounded-full bg-muted" />
         <div className="min-w-0 flex-1">
@@ -60,8 +73,11 @@ export const PostCard: FC<{
       {post.kind === 'poll' ? <PollPost post={post} onVote={onVote} /> : null}
       {post.kind === 'event' ? <EventPost post={post} /> : null}
 
-      <PostActions post={post} onLike={onLike} onComment={onToggleComments} onShare={onShare} />
-      {post.commentsOpen ? (
+      {repost ? (
+        <Link to={`/publicacao/${post.id}`} className="mt-3 block text-sm font-medium text-primary">Ver publicação original</Link>
+      ) : null}
+      <PostActions post={post} republished={republished} onLike={onLike} onComment={onToggleComments} onShare={onShare} onRepublish={onRepublish} />
+      {post.commentsOpen && !repost ? (
         <Comments
           inputId={`comentario-${post.id}`}
           comments={post.comments}
@@ -69,6 +85,8 @@ export const PostCard: FC<{
           onDraft={onCommentDraft}
           onSubmit={onAddComment}
           onLike={onLikeComment}
+          canDelete={canDeleteComment}
+          onDelete={onDeleteComment}
         />
       ) : null}
     </article>
