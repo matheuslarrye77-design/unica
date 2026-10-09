@@ -1,6 +1,6 @@
 import { JournalEditor } from '@/components/journal/JournalEditor';
 import { JournalRail } from '@/components/journal/JournalRail';
-import { RightSidebar } from '@/components/shell/RightSidebar';
+import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles } from '@/components/journal/useJournal';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/Header';
@@ -64,9 +64,8 @@ export const JournalArticlePage: FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <div className="flex w-full flex-col gap-8 px-4 py-6 lg:flex-row lg:items-start sm:px-6">
+    <>
+    <PageFrame rail={<JournalRail recent={published.slice(0, 6)} />}>
         <article className="min-w-0 flex-1">
           <Link to="/announcements" className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
@@ -162,10 +161,7 @@ export const JournalArticlePage: FC = () => {
             </div>
           </section>
         </article>
-        <RightSidebar>
-          <JournalRail recent={published.slice(0, 6)} />
-        </RightSidebar>
-      </div>
+    </PageFrame>
       {canManage ? (
         <JournalEditor
           open={editing}
@@ -175,6 +171,6 @@ export const JournalArticlePage: FC = () => {
           onOpenChange={setEditing}
         />
       ) : null}
-    </div>
+    </>
   );
 };

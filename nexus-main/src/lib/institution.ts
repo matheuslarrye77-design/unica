@@ -31,7 +31,7 @@ type Snapshot = {
   settings: InstitutionSettings;
   hasWallpaper: boolean;
   moods: Record<string, string>;
-  people: Record<string, { ramal?: string }>;
+  people: Record<string, { ramal?: string; birthDate?: string }>;
 };
 
 const DEFAULTS: InstitutionSettings = {
@@ -153,6 +153,11 @@ export async function updateFeedbackStatus(id: string, status: FeedbackItem['sta
 export async function saveMood(emoji: string) {
   const saved = await request<{ moods: Record<string, string> }>('/api/moods', { method: 'PUT', body: JSON.stringify({ emoji }) });
   emit({ ...snapshot, moods: saved.moods });
+}
+
+export async function saveBirthDate(personId: string, birthDate: string) {
+  const saved = await request<{ people: Snapshot['people'] }>(`/api/people/${encodeURIComponent(personId)}`, { method: 'PUT', body: JSON.stringify({ birthDate }) });
+  emit({ ...snapshot, people: saved.people });
 }
 
 export async function saveRamal(personId: string, ramal: string) {

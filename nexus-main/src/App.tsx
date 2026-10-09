@@ -5,7 +5,7 @@ import { Toaster } from 'sonner';
 import { ThemeProvider } from './components/ThemeProvider';
 import { FocusModeProvider } from './contexts/FocusModeContext';
 import { ScrollToTop } from './components/ScrollToTop';
-import { FeedbackButton } from './components/FeedbackButton';
+import { FloatingHelpButton } from './components/FloatingHelpButton';
 import { InstitutionProvider } from './components/InstitutionProvider';
 import { AppFrame } from './components/Sidebar';
 import { Dashboard } from './pages/Dashboard';
@@ -125,7 +125,7 @@ const App: FC = () => {
               <AppFrame>
                 <ScrollToTop />
                 <AppRoutes />
-                <FeedbackButton />
+                <FloatingHelpButton />
                 <Toaster />
               </AppFrame>
               </InstitutionProvider>

@@ -5,8 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Header } from '@/components/Header';
-import { RightSidebar } from '@/components/shell/RightSidebar';
+import { PageFrame } from '@/components/shell/PageFrame';
 import {
   DOCUMENT_CATEGORIES,
   DOCUMENT_SYSTEMS,
@@ -142,10 +141,18 @@ export const ResourcesPage: FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <div className="flex w-full flex-col gap-8 px-4 py-6 lg:flex-row lg:items-start sm:px-6">
-        <div className="min-w-0 flex-1">
+    <>
+    <PageFrame rail={
+          <div className="rounded-2xl border bg-card p-3">
+            <p className="mb-1 px-1 text-xs font-medium text-muted-foreground">Meus favoritos</p>
+            {favorites.length === 0 ? <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum favorito ainda.</p> : favorites.map((document) => (
+              <button key={document.id} type="button" onClick={() => setSelected(document)} className="block w-full rounded-lg px-2 py-2 text-left hover:bg-muted/60">
+                <span className="block truncate text-sm font-medium">{document.title}</span>
+                <span className="block truncate text-xs text-muted-foreground">{categoryLabel(document.category)} · {systemLabel(document.system)}</span>
+              </button>
+            ))}
+          </div>
+    }>
           <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">Central de Documentos</h1>
@@ -248,20 +255,7 @@ export const ResourcesPage: FC = () => {
               </div>
             )}
           </section>
-        </div>
-
-        <RightSidebar>
-          <div className="rounded-2xl border bg-card p-3">
-            <p className="mb-1 px-1 text-xs font-medium text-muted-foreground">Meus favoritos</p>
-            {favorites.length === 0 ? <p className="px-3 py-2 text-sm text-muted-foreground">Nenhum favorito ainda.</p> : favorites.map((document) => (
-              <button key={document.id} type="button" onClick={() => setSelected(document)} className="block w-full rounded-lg px-2 py-2 text-left hover:bg-muted/60">
-                <span className="block truncate text-sm font-medium">{document.title}</span>
-                <span className="block truncate text-xs text-muted-foreground">{categoryLabel(document.category)} · {systemLabel(document.system)}</span>
-              </button>
-            ))}
-          </div>
-        </RightSidebar>
-      </div>
+    </PageFrame>
 
       <Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null); }}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
@@ -302,7 +296,7 @@ export const ResourcesPage: FC = () => {
           onSaved={(document) => { upsert(document); setEditorOpen(false); }}
         />
       ) : null}
-    </div>
+    </>
   );
 };
 

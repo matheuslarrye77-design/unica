@@ -4,7 +4,11 @@ import { Header } from '@/components/Header';
 import { calendarEvents, type CalendarEvent } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { useInstitution, wallpaperUrl, type CalendarTheme } from '@/lib/institution';
-import { Calendar, Cake, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { Calendar, Cake, ChevronLeft, ChevronRight, Plus, Search, X } from 'lucide-react';
+import { EventDialog } from '@/components/calendar/EventDialog';
+import { deleteEvent, notifyEvents, parseAgendaDate, useAgendaEvents, type AgendaEvent } from '@/lib/events';
+import { actor } from '@/lib/session';
+import { isLeader } from '@/lib/institution';
 import { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
@@ -59,6 +63,10 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   const dialogRef = useRef<HTMLDivElement>(null);
   const institution = useInstitution();
   const theme = institution.settings.calendar.theme;
+  const savedEvents = useAgendaEvents();
+  const leader = isLeader(actor());
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<AgendaEvent | null>(null);
 
   useEffect(() => {
     if (birthdaysFocus) setLeftOpen(true);
@@ -91,7 +99,65 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
     [],
   );
 
-  const visibleEvents = calendarEvents.filter((event) => {
+  const monthEvents = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const savedNames = new Set(savedEvents.filter((event) => event.type === 'aniversario').map((event) => event.personName));
+    const base = calendarEvents.filter((event) => {
+      if (event.type === 'birthday' && savedNames.has(event.personName ?? '')) return false;
+      return event.date.getFullYear() === year && event.date.getMonth() === month || event.type === 'birthday' && event.date.getMonth() === month;
+    });
+    const extra: CalendarEvent[] = [];
+    for (const event of savedEvents) {
+      const parsed = parseAgendaDate(event.date);
+      if (event.type === 'aniversario') {
+        if (parsed.getMonth() !== month) continue;
+        extra.push({
+          id: event.id,
+          title: `Aniversário de ${event.personName}`,
+          date: new Date(year, month, parsed.getDate()),
+          type: 'birthday',
+          personName: event.personName,
+          avatar: event.avatar,
+          description: event.description,
+          category: 'Aniversário',
+        });
+        continue;
+      }
+      if (parsed.getFullYear() !== year || parsed.getMonth() !== month) continue;
+      extra.push({
+        id: event.id,
+        title: event.title,
+        date: parsed,
+        type: 'event',
+        time: [event.startTime, event.endTime].filter(Boolean).join(' – '),
+        place: event.place,
+        description: event.description,
+        category: event.type === 'reuniao' ? 'Reunião' : event.type === 'outro' ? 'Outro' : 'Evento',
+      });
+    }
+    const knownBirthdays = new Set([...base, ...extra].filter((event) => event.type === 'birthday').map((event) => event.personName));
+    const fromProfiles: CalendarEvent[] = [];
+    for (const [id, person] of Object.entries(institution.people)) {
+      if (!person.birthDate) continue;
+      const parsed = parseAgendaDate(person.birthDate);
+      if (parsed.getMonth() !== month) continue;
+      const name = savedEvents.find((event) => event.personId === id)?.personName;
+      if (name && knownBirthdays.has(name)) continue;
+      if (base.some((event) => event.type === 'birthday' && event.date.getDate() === parsed.getDate())) continue;
+      fromProfiles.push({
+        id: `perfil-${id}`,
+        title: 'Aniversário',
+        date: new Date(year, month, parsed.getDate()),
+        type: 'birthday',
+        description: 'Data registrada no perfil.',
+        category: 'Aniversário',
+      });
+    }
+    return [...extra, ...fromProfiles, ...base];
+  }, [currentDate, savedEvents, institution.people]);
+
+  const visibleEvents = monthEvents.filter((event) => {
     const text = `${event.title} ${event.description ?? ''} ${event.personName ?? ''}`.toLowerCase();
     const matchesQuery = text.includes(query.trim().toLowerCase());
     const matchesCategory = category === 'all' || event.category === category;
@@ -175,6 +241,12 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           <div className={cn('flex items-center justify-between gap-2', compact ? 'mb-2' : 'mb-4')}>
             <h2 className={cn('font-semibold', compact ? 'text-sm' : 'text-xl')}>{(() => { const label = currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }); return label.charAt(0).toUpperCase() + label.slice(1); })()}</h2>
             <div className="flex items-center gap-2">
+              {compact || !leader ? null : (
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => { setEditingEvent(null); setEditorOpen(true); }}>
+                  <Plus className="h-4 w-4" />
+                  Novo evento
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={() => shiftMonth(-1)} aria-label="Mês anterior"><ChevronLeft className="h-4 w-4" /></Button>
               <Button variant="outline" size="sm" onClick={() => { setCurrentDate(new Date()); setSelectedDay(new Date().getDate()); }}>Hoje</Button>
               <Button variant="outline" size="sm" onClick={() => shiftMonth(1)} aria-label="Próximo mês"><ChevronRight className="h-4 w-4" /></Button>
@@ -293,8 +365,20 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
             {active.event.participants?.length ? <div><dt className="inline">Participantes: </dt><dd className="inline text-foreground">{active.event.participants.join(', ')}</dd></div> : null}
           </dl>
           {active.event.description ? <p className="mt-3 leading-5">{active.event.description}</p> : null}
+          {leader && savedEvents.some((event) => event.id === active.event.id) ? (
+            <div className="mt-3 flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => { setEditingEvent(savedEvents.find((event) => event.id === active.event.id) ?? null); setActive(null); setEditorOpen(true); }}>Editar</Button>
+              <Button size="sm" variant="outline" onClick={() => { if (!window.confirm('Excluir este evento?')) return; void deleteEvent(active.event.id).then(() => { notifyEvents(); setActive(null); }); }}>Excluir</Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
+      <EventDialog
+        open={editorOpen}
+        event={editingEvent}
+        birthDates={Object.fromEntries(Object.entries(institution.people).map(([id, person]) => [id, person.birthDate ?? savedEvents.find((event) => event.type === 'aniversario' && event.personId === id)?.date]))}
+        onOpenChange={setEditorOpen}
+      />
     </section>
   );
 };

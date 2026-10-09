@@ -1,9 +1,8 @@
 import { JournalEditor } from '@/components/journal/JournalEditor';
 import { JournalRail } from '@/components/journal/JournalRail';
-import { RightSidebar } from '@/components/shell/RightSidebar';
+import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles } from '@/components/journal/useJournal';
 import { Button } from '@/components/ui/button';
-import { Header } from '@/components/Header';
 import { Input } from '@/components/ui/input';
 import { articleSummary, canManageJournal, categoryLabel, type JournalArticle, type JournalCategory } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
@@ -73,10 +72,8 @@ export const CompanyAnnouncementsPage: FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <div className="flex w-full flex-col gap-8 px-4 py-6 lg:flex-row lg:items-start sm:px-6">
-        <div className="min-w-0 flex-1">
+    <>
+    <PageFrame rail={<JournalRail recent={published.slice(0, 6)} />}>
           <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">Jornal</h1>
@@ -161,11 +158,7 @@ export const CompanyAnnouncementsPage: FC = () => {
               </div>
             )}
           </section>
-        </div>
-        <RightSidebar>
-          <JournalRail recent={published.slice(0, 6)} />
-        </RightSidebar>
-      </div>
+    </PageFrame>
       {canManage ? (
         <JournalEditor
           open={editorOpen}
@@ -175,6 +168,6 @@ export const CompanyAnnouncementsPage: FC = () => {
           onOpenChange={setEditorOpen}
         />
       ) : null}
-    </div>
+    </>
   );
 };

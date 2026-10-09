@@ -32,7 +32,7 @@ type Store = {
   settings: Settings;
   feedback: Feedback[];
   moods: Record<string, string>;
-  people: Record<string, { ramal?: string }>;
+  people: Record<string, { ramal?: string; birthDate?: string }>;
 };
 
 const THEMES = ['padrao', 'halloween', 'natal', 'junina', 'anonovo'];
@@ -292,11 +292,22 @@ export function institutionApi(): Plugin {
         const targetId = decodeURIComponent(personMatch[1]);
         if (!user || !roster.has(targetId)) return send(res, 401, { error: 'unknown' });
         if (user.id !== targetId && !isLeader(user)) return send(res, 403, { error: 'forbidden' });
-        const body = JSON.parse((await readBody(req)).toString('utf8')) as { ramal?: string };
-        const ramal = String(body.ramal ?? '').trim();
-        if (ramal && !/^\d{3}$/.test(ramal)) return send(res, 400, { error: 'ramal' });
+        const body = JSON.parse((await readBody(req)).toString('utf8')) as { ramal?: string; birthDate?: string };
         const store = load();
-        store.people[targetId] = { ...store.people[targetId], ramal };
+        const next = { ...store.people[targetId] };
+        if (body.ramal !== undefined) {
+          const ramal = String(body.ramal).trim();
+          if (ramal && !/^\d{3}$/.test(ramal)) return send(res, 400, { error: 'ramal' });
+          next.ramal = ramal;
+        }
+        if (body.birthDate !== undefined) {
+          const birthDate = String(body.birthDate).trim();
+          if (birthDate && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) return send(res, 400, { error: 'birthDate' });
+          if (birthDate) next.birthDate = birthDate;
+          else delete next.birthDate;
+        }
+        if (!next.ramal && !next.birthDate) delete store.people[targetId];
+        else store.people[targetId] = next;
         save(store);
         send(res, 200, { people: store.people });
         return;

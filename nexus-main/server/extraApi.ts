@@ -74,6 +74,22 @@ type AuthStore = {
 type FeedStore = { posts: FeedPost[]; reposts: Repost[] };
 
 const FUNCOES = ['Ligação', 'E-mail', 'Chat', 'Liderança'];
+const EVENT_TYPES = ['reuniao', 'evento', 'aniversario', 'outro'] as const;
+
+type AgendaEvent = {
+  id: string;
+  title: string;
+  type: (typeof EVENT_TYPES)[number];
+  date: string;
+  startTime: string;
+  endTime: string;
+  place: string;
+  description: string;
+  participantIds: string[];
+  personId: string;
+  personName: string;
+  avatar: string;
+};
 
 function isLeader(user: { role: string; department?: string }) {
   return /admin|líder|lider|coordena|diret|vp\b|chief|head|gerente/i.test(user.role)
@@ -158,6 +174,46 @@ export function extraApi(): Connect.NextHandleFunction {
   const dir = path.resolve(process.cwd(), 'data');
   const authFile = path.join(dir, 'auth.json');
   const feedFile = path.join(dir, 'feed.json');
+  const eventsFile = path.join(dir, 'events.json');
+
+  function loadEvents(): AgendaEvent[] {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(eventsFile, 'utf8')) as { events?: AgendaEvent[] };
+      return Array.isArray(parsed.events) ? parsed.events : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveEvents(events: AgendaEvent[]) {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(eventsFile, JSON.stringify({ events }, null, 2));
+  }
+
+  function readEvent(body: Partial<AgendaEvent>, current?: AgendaEvent): AgendaEvent | null {
+    const type = String(body.type ?? current?.type ?? '');
+    if (!EVENT_TYPES.includes(type as AgendaEvent['type'])) return null;
+    const date = String(body.date ?? current?.date ?? '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+    const personName = String(body.personName ?? current?.personName ?? '').trim();
+    const title = String(body.title ?? current?.title ?? '').trim() || (type === 'aniversario' ? `Aniversário de ${personName}` : '');
+    if (!title) return null;
+    if (type === 'aniversario' && !personName) return null;
+    return {
+      id: current?.id ?? `evt-${Date.now()}`,
+      title,
+      type: type as AgendaEvent['type'],
+      date,
+      startTime: type === 'aniversario' ? '' : String(body.startTime ?? current?.startTime ?? '').slice(0, 5),
+      endTime: type === 'aniversario' ? '' : String(body.endTime ?? current?.endTime ?? '').slice(0, 5),
+      place: String(body.place ?? current?.place ?? '').trim(),
+      description: String(body.description ?? current?.description ?? '').trim(),
+      participantIds: Array.isArray(body.participantIds) ? body.participantIds.map(String) : current?.participantIds ?? [],
+      personId: String(body.personId ?? current?.personId ?? ''),
+      personName,
+      avatar: String(body.avatar ?? current?.avatar ?? ''),
+    };
+  }
 
   function loadAuth(): AuthStore {
     try {
@@ -226,7 +282,7 @@ export function extraApi(): Connect.NextHandleFunction {
 
   return async (req, res, next) => {
     const url = req.url?.split('?')[0] ?? '';
-    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && !url.startsWith('/api/feed') && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues')) {
+    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && !url.startsWith('/api/feed') && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
       return next();
     }
     try {
@@ -450,6 +506,51 @@ export function extraApi(): Connect.NextHandleFunction {
         auth.colleagues.unshift(colleague);
         saveAuth(auth);
         send(res, 201, { colleague });
+        return;
+      }
+
+      if (req.method === 'GET' && url === '/api/events') {
+        send(res, 200, { events: loadEvents() });
+        return;
+      }
+
+      if (req.method === 'POST' && url === '/api/events') {
+        if (!isLeader(user)) return send(res, 403, { error: 'forbidden' });
+        const body = JSON.parse((await readBody(req)).toString('utf8')) as Partial<AgendaEvent>;
+        const event = readEvent(body);
+        if (!event) return send(res, 400, { error: 'fields' });
+        const events = loadEvents();
+        if (event.type === 'aniversario' && event.personId) {
+          const existing = events.find((item) => item.type === 'aniversario' && item.personId === event.personId);
+          if (existing) {
+            const updated = { ...event, id: existing.id };
+            saveEvents(events.map((item) => item.id === existing.id ? updated : item));
+            send(res, 200, { event: updated });
+            return;
+          }
+        }
+        events.unshift(event);
+        saveEvents(events);
+        send(res, 201, { event });
+        return;
+      }
+
+      const eventMatch = /^\/api\/events\/([^/]+)$/.exec(url);
+      if (eventMatch && (req.method === 'PUT' || req.method === 'DELETE')) {
+        if (!isLeader(user)) return send(res, 403, { error: 'forbidden' });
+        const events = loadEvents();
+        const current = events.find((item) => item.id === eventMatch[1]);
+        if (!current) return send(res, 404, { error: 'missing' });
+        if (req.method === 'DELETE') {
+          saveEvents(events.filter((item) => item.id !== current.id));
+          send(res, 200, { ok: true });
+          return;
+        }
+        const body = JSON.parse((await readBody(req)).toString('utf8')) as Partial<AgendaEvent>;
+        const event = readEvent(body, current);
+        if (!event) return send(res, 400, { error: 'fields' });
+        saveEvents(events.map((item) => item.id === current.id ? event : item));
+        send(res, 200, { event });
         return;
       }
 

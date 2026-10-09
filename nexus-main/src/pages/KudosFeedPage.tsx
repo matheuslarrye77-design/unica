@@ -5,11 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Header } from '@/components/Header';
 import { PageWrapper, PageSection } from '@/components/PageWrapper';
-import { RightSidebar } from '@/components/shell/RightSidebar';
+import { PageFrame } from '@/components/shell/PageFrame';
 import { TeamMood } from '@/components/shell/TeamMood';
-import { CalendarPage } from '@/pages/CalendarPage';
 import { kudos as initialKudos, currentUser, type Kudo } from '@/data/mockData';
 import { assertPermission, useInstitution } from '@/lib/institution';
 import { formatRelativeTime, generateId } from '@/lib/utils';
@@ -69,10 +67,22 @@ export const KudosFeedPage: FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <div className="flex w-full flex-col gap-6 px-4 py-6 sm:px-6 lg:flex-row lg:items-start lg:px-8">
+    <PageFrame rail={
+      <>
+        <TeamMood />
+        <section className="shrink-0 rounded-2xl border bg-card p-3">
+          <h2 className="px-1 text-sm font-semibold">Recentes</h2>
+          <div className="mt-1">
+            {initialKudos.slice(0, 4).map((kudo) => (
+              <p key={kudo.id} className="px-1 py-2 text-sm">
+                <span className="font-medium">{kudo.from.split(' ')[0]}</span>
+                <span className="text-muted-foreground"> para {kudo.to.split(' ')[0]}</span>
+              </p>
+            ))}
+          </div>
+        </section>
+      </>
+    }>
       <PageWrapper className="min-w-0 flex-1">
         {/* Header Section */}
         <PageSection index={0}>
@@ -264,22 +274,6 @@ export const KudosFeedPage: FC = () => {
           </div>
         )}
       </PageWrapper>
-      <RightSidebar>
-        <CalendarPage compact />
-        <TeamMood />
-        <section className="shrink-0 rounded-2xl border bg-card p-3">
-          <h2 className="px-1 text-sm font-semibold">Recentes</h2>
-          <div className="mt-1">
-            {initialKudos.slice(0, 4).map((kudo) => (
-              <p key={kudo.id} className="px-1 py-2 text-sm">
-                <span className="font-medium">{kudo.from.split(' ')[0]}</span>
-                <span className="text-muted-foreground"> para {kudo.to.split(' ')[0]}</span>
-              </p>
-            ))}
-          </div>
-        </section>
-      </RightSidebar>
-      </div>
-    </div>
+    </PageFrame>
   );
 };

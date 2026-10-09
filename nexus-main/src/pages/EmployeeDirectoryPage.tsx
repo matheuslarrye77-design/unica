@@ -2,11 +2,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Header } from '@/components/Header';
 import { PageWrapper, PageSection } from '@/components/PageWrapper';
-import { RightSidebar } from '@/components/shell/RightSidebar';
+import { PageFrame } from '@/components/shell/PageFrame';
 import { TeamMood } from '@/components/shell/TeamMood';
-import { CalendarPage } from '@/pages/CalendarPage';
 import { currentUser, employees, type Employee } from '@/data/mockData';
 import { saveRamal, useInstitution } from '@/lib/institution';
 import { ArrowLeft, Search, Mail, Phone, Plus } from 'lucide-react';
@@ -131,10 +129,8 @@ export const EmployeeDirectoryPage: FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <div className="flex w-full flex-col gap-6 px-4 py-6 sm:px-6 lg:flex-row lg:items-start lg:px-8">
+    <>
+    <PageFrame rail={<TeamMood />}>
       <PageWrapper className="min-w-0 flex-1">
         {/* Header Section */}
         <PageSection index={0}>
@@ -292,11 +288,7 @@ export const EmployeeDirectoryPage: FC = () => {
           </div>
         </PageSection>
       </PageWrapper>
-      <RightSidebar>
-        <CalendarPage compact />
-        <TeamMood />
-      </RightSidebar>
-      </div>
+    </PageFrame>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
@@ -320,6 +312,6 @@ export const EmployeeDirectoryPage: FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
