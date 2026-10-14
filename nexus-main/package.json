@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:auth": "node --test server/auth/auth.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

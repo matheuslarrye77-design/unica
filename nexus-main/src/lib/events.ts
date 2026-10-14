@@ -22,7 +22,7 @@ export type AgendaEvent = {
 export type AgendaDraft = Partial<AgendaEvent> & { title: string; type: AgendaType; date: string };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, { ...init, headers: { ...authHeaders(), ...init?.headers } });
+  const response = await fetch(path, { ...init, credentials: 'include', headers: { ...authHeaders(), ...init?.headers } });
   if (!response.ok) throw new Error(String(response.status));
   return response.json() as Promise<T>;
 }

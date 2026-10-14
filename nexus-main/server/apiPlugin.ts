@@ -3,6 +3,9 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import type { Connect, Plugin } from 'vite';
 import { extraApi } from './extraApi';
+import { builtinAccounts } from './auth/accounts';
+import { localUserFromRequest } from './auth/localStore.mjs';
+import { isLeader } from './auth/permissions.mjs';
 import { currentUser, employees } from '../src/data/mockData';
 
 type Person = { id: string; name: string; role: string; department?: string };
@@ -36,11 +39,6 @@ type Store = {
 };
 
 const THEMES = ['padrao', 'halloween', 'natal', 'junina', 'anonovo'];
-
-function isLeader(user: { role: string; department?: string }) {
-  return /admin|líder|lider|coordena|diret|vp\b|chief|head|gerente/i.test(user.role)
-    || /comunica/i.test(user.department ?? '');
-}
 
 const roster = new Map<string, Person>();
 roster.set(currentUser.id, currentUser);
@@ -110,8 +108,9 @@ export function institutionApi(): Plugin {
   }
 
   function userFrom(req: IncomingMessage) {
-    const id = String(req.headers['x-user-id'] ?? '');
-    return roster.get(id) ?? null;
+    const account = localUserFromRequest(req, path.join(dir, 'auth.json'), builtinAccounts());
+    if (!account) return null;
+    return roster.get(account.id) ?? account;
   }
 
   function publicFeedback(item: Feedback) {

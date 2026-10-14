@@ -17,8 +17,10 @@ export const LoginPage: FC = () => {
     try {
       await login(email, password);
       navigate('/', { replace: true });
-    } catch {
-      setError('Usuário ou senha incorretos.');
+    } catch (error) {
+      setError(error instanceof Error && error.message === 'unavailable'
+        ? 'Não foi possível entrar agora. Tente de novo em instantes.'
+        : 'Usuário ou senha incorretos.');
     }
   }
 

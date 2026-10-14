@@ -89,7 +89,7 @@ export const EmployeeDirectoryPage: FC = () => {
   const leader = isLeader(actor());
 
   useEffect(() => {
-    void fetch('/api/colleagues', { headers: authHeaders() })
+    void fetch('/api/colleagues', { credentials: 'include', headers: authHeaders() })
       .then((response) => response.json() as Promise<{ colleagues: Colleague[] }>)
       .then((data) => setColleagues(data.colleagues ?? []))
       .catch(() => undefined);
@@ -110,6 +110,7 @@ export const EmployeeDirectoryPage: FC = () => {
     event.preventDefault();
     const response = await fetch('/api/colleagues', {
       method: 'POST',
+      credentials: 'include',
       headers: authHeaders(),
       body: JSON.stringify(form),
     });

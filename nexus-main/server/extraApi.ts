@@ -1,10 +1,15 @@
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import type { Connect } from 'vite';
 import { samplePosts } from '../src/components/social/samplePosts';
-import { currentUser, employees } from '../src/data/mockData';
+import { builtinAccounts } from './auth/accounts';
+import { hashPassword } from './auth/credentials.mjs';
+import { performLogin, performLogout, performSession } from './auth/flow.mjs';
+import { applyAuthResult } from './auth/http.mjs';
+import { createLocalStore, localUserFromRequest } from './auth/localStore.mjs';
+import { isLeader } from './auth/permissions.mjs';
 
 type Account = {
   id: string;
@@ -93,11 +98,6 @@ type AgendaEvent = {
   avatar: string;
 };
 
-function isLeader(user: { role: string; department?: string }) {
-  return /admin|líder|lider|coordena|diret|vp\b|chief|head|gerente/i.test(user.role)
-    || /comunica/i.test(user.department ?? '');
-}
-
 function canRecognize(user: { id: string; role: string; department?: string }, dir: string) {
   try {
     const store = JSON.parse(fs.readFileSync(path.join(dir, 'institution.json'), 'utf8')) as { settings?: { recognition?: { mode?: string; userIds?: string[] } } };
@@ -110,28 +110,7 @@ function canRecognize(user: { id: string; role: string; department?: string }, d
   }
 }
 
-const accounts: Account[] = [
-  { ...currentUser, email: 'matheus.larrie@unica.local' },
-  ...employees.filter((employee) => employee.id !== currentUser.id && employee.email).map((employee) => ({
-    id: employee.id,
-    name: employee.name,
-    role: employee.role,
-    department: employee.department,
-    avatar: employee.avatar,
-    email: employee.email!,
-  })),
-];
-
-function hashPassword(password: string, salt: string) {
-  return createHash('sha256').update(`${salt}:${password}`).digest('hex');
-}
-
-function safeEqual(a: string, b: string) {
-  const left = Buffer.from(a);
-  const right = Buffer.from(b);
-  if (left.length !== right.length) return false;
-  return timingSafeEqual(left, right);
-}
+const accounts: Account[] = builtinAccounts();
 
 function seedPosts(): FeedPost[] {
   return samplePosts.map((post) => ({
@@ -271,12 +250,7 @@ export function extraApi(): Connect.NextHandleFunction {
   }
 
   function accountFrom(req: IncomingMessage) {
-    const token = String(req.headers['x-session'] ?? '');
-    if (!token) return null;
-    const userId = loadAuth().sessions[token];
-    return accounts.find((account) => account.id === userId)
-      ?? loadAuth().colleagues.find((colleague) => colleague.id === userId)
-      ?? null;
+    return localUserFromRequest(req, authFile, accounts);
   }
 
   function publicPost(post: FeedPost, userId: string) {
@@ -302,35 +276,24 @@ export function extraApi(): Connect.NextHandleFunction {
     }
     try {
       if (req.method === 'POST' && url === '/api/login') {
-        const body = JSON.parse((await readBody(req)).toString('utf8')) as { email?: string; password?: string };
-        const auth = loadAuth();
-        const email = String(body.email ?? '').trim().toLowerCase();
-        const password = String(body.password ?? '');
-        const loginId = email === 'matheus' ? 'matheus.larrie@unica.local' : email;
-        const account = accounts.find((item) => item.email.toLowerCase() === loginId)
-          ?? auth.colleagues.find((item) => item.email.toLowerCase() === loginId);
-        const valid = safeEqual(hashPassword(password, auth.salt), auth.passwordHash);
-        if (!account || !valid) return send(res, 401, { error: 'invalid' });
-        const token = randomBytes(24).toString('hex');
-        auth.sessions[token] = account.id;
-        saveAuth(auth);
-        send(res, 200, { token, user: account });
+        let body: { email?: string; password?: string } = {};
+        try {
+          body = JSON.parse((await readBody(req)).toString('utf8') || '{}') as { email?: string; password?: string };
+        } catch {
+          applyAuthResult(res, { status: 400, body: { error: 'fields' } });
+          return;
+        }
+        applyAuthResult(res, await performLogin(createLocalStore(authFile, accounts), body));
         return;
       }
 
       if (req.method === 'GET' && url === '/api/session') {
-        const user = accountFrom(req);
-        if (!user) return send(res, 401, { error: 'unauthorized' });
-        send(res, 200, { user });
+        applyAuthResult(res, await performSession(createLocalStore(authFile, accounts), req.headers.cookie));
         return;
       }
 
       if (req.method === 'POST' && url === '/api/logout') {
-        const token = String(req.headers['x-session'] ?? '');
-        const auth = loadAuth();
-        delete auth.sessions[token];
-        saveAuth(auth);
-        send(res, 200, { ok: true });
+        applyAuthResult(res, await performLogout(createLocalStore(authFile, accounts), req.headers.cookie));
         return;
       }
 

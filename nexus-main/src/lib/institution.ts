@@ -1,5 +1,4 @@
 import { currentUser, employees, type Employee } from '@/data/mockData';
-import { actor, getToken } from '@/lib/session';
 import { useSyncExternalStore } from 'react';
 
 export type PolicyMode = 'leadership' | 'selected' | 'everyone';
@@ -73,11 +72,11 @@ export function allows(user: { id: string; role: string; department?: string }, 
 }
 
 function headers() {
-  return { 'Content-Type': 'application/json', 'x-user-id': actor().id, 'x-session': getToken() };
+  return { 'Content-Type': 'application/json' };
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, { ...init, headers: { ...headers(), ...init?.headers } });
+  const response = await fetch(path, { ...init, credentials: 'include', headers: { ...headers(), ...init?.headers } });
   if (!response.ok) throw new Error(String(response.status));
   return response.json() as Promise<T>;
 }

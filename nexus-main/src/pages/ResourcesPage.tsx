@@ -65,7 +65,7 @@ export const ResourcesPage: FC = () => {
 
   useEffect(() => {
     loadDocuments().then(setDocuments).catch(() => toast.error('Não foi possível abrir a central de documentos.'));
-    void fetch('/api/document-favorites', { headers: authHeaders() })
+    void fetch('/api/document-favorites', { credentials: 'include', headers: authHeaders() })
       .then((response) => response.json() as Promise<{ ids: string[] }>)
       .then((data) => setFavoriteIds(data.ids ?? []))
       .catch(() => undefined);
@@ -121,7 +121,7 @@ export const ResourcesPage: FC = () => {
       ? [...new Set([...favoriteIds, next.id])]
       : favoriteIds.filter((id) => id !== next.id);
     setFavoriteIds(ids);
-    const response = await fetch('/api/document-favorites', { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ ids }) });
+    const response = await fetch('/api/document-favorites', { method: 'PUT', credentials: 'include', headers: authHeaders(), body: JSON.stringify({ ids }) });
     if (!response.ok) toast.error('Não foi possível salvar o favorito.');
   }
 
@@ -365,7 +365,7 @@ const DocumentEditor: FC<{
       fileName: file?.name ?? document!.fileName,
       fileType: file?.type || document?.fileType || 'application/octet-stream',
       file: storedFile,
-      thumbnail: system === 'prominas' ? '/marcas/prominas.svg' : '/marcas/pincel.svg',
+      thumbnail: system === 'prominas' ? '/marcas/prominas.png' : '/marcas/pincel.png',
       downloads: document?.downloads ?? 0,
       favorites: document?.favorites ?? [],
     };
