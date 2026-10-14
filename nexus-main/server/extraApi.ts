@@ -237,7 +237,7 @@ export function extraApi(): Connect.NextHandleFunction {
       const salt = randomBytes(16).toString('hex');
       const store: AuthStore = {
         salt,
-        passwordHash: hashPassword('unica-demo', salt),
+        passwordHash: hashPassword('1234', salt),
         sessions: {},
         favorites: {},
         colleagues: [],
@@ -306,8 +306,9 @@ export function extraApi(): Connect.NextHandleFunction {
         const auth = loadAuth();
         const email = String(body.email ?? '').trim().toLowerCase();
         const password = String(body.password ?? '');
-        const account = accounts.find((item) => item.email.toLowerCase() === email)
-          ?? auth.colleagues.find((item) => item.email.toLowerCase() === email);
+        const loginId = email === 'matheus' ? 'matheus.larrie@unica.local' : email;
+        const account = accounts.find((item) => item.email.toLowerCase() === loginId)
+          ?? auth.colleagues.find((item) => item.email.toLowerCase() === loginId);
         const valid = safeEqual(hashPassword(password, auth.salt), auth.passwordHash);
         if (!account || !valid) return send(res, 401, { error: 'invalid' });
         const token = randomBytes(24).toString('hex');

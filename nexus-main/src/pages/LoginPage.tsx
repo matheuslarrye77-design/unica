@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 
 export const LoginPage: FC = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('matheus.larrie@unica.local');
+  const [email, setEmail] = useState('matheus');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
@@ -18,7 +18,7 @@ export const LoginPage: FC = () => {
       await login(email, password);
       navigate('/', { replace: true });
     } catch {
-      setError('E-mail ou senha incorretos.');
+      setError('Usuário ou senha incorretos.');
     }
   }
 
@@ -32,8 +32,8 @@ export const LoginPage: FC = () => {
         <h1 className="text-xl font-semibold">Entrar</h1>
         <div className="mt-4 space-y-3">
           <div className="space-y-1">
-            <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" />
+            <Label htmlFor="email">Usuário</Label>
+            <Input id="email" type="text" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" />
           </div>
           <div className="space-y-1">
             <Label htmlFor="senha">Senha</Label>
