@@ -216,20 +216,22 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
     while (cells.length % 7 !== 0) cells.push({ day: nextDay++, outside: true });
     return (
       <>
-        <section className="unica-surface px-4 py-4">
+        <section className="unica-surface shrink-0 px-2.5 py-2">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="flex min-w-0 items-center gap-2 text-[15px] font-semibold">
-              <Calendar className="h-4 w-4 shrink-0 text-primary" strokeWidth={1.75} />
+            <h2 className="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold">
+              <span className="unica-icon">
+                <Calendar className="h-3.5 w-3.5" strokeWidth={1.75} />
+              </span>
               <Link to="/calendar" className="truncate hover:text-primary">{monthLabel}</Link>
             </h2>
-            <div className="flex items-center gap-1">
-              <button type="button" onClick={() => shiftMonth(-1)} aria-label="Mês anterior" className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-muted hover:text-foreground"><ChevronLeft className="h-4 w-4" /></button>
-              <button type="button" onClick={() => { setCurrentDate(new Date()); setSelectedDay(new Date().getDate()); }} className="h-7 rounded-[8px] border border-border px-2 text-[12px] font-medium text-foreground hover:bg-muted">Hoje</button>
-              <button type="button" onClick={() => shiftMonth(1)} aria-label="Próximo mês" className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-muted hover:text-foreground"><ChevronRight className="h-4 w-4" /></button>
+            <div className="flex items-center gap-0.5">
+              <button type="button" onClick={() => shiftMonth(-1)} aria-label="Mês anterior" className="flex h-6 w-6 items-center justify-center rounded-[7px] text-muted-foreground hover:bg-[#F1EAFE] hover:text-foreground"><ChevronLeft className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => { setCurrentDate(new Date()); setSelectedDay(new Date().getDate()); }} className="h-6 rounded-[7px] border border-border bg-card px-1.5 text-[11px] font-medium text-foreground hover:bg-[#F1EAFE]">Hoje</button>
+              <button type="button" onClick={() => shiftMonth(1)} aria-label="Próximo mês" className="flex h-6 w-6 items-center justify-center rounded-[7px] text-muted-foreground hover:bg-[#F1EAFE] hover:text-foreground"><ChevronRight className="h-3.5 w-3.5" /></button>
             </div>
           </div>
-          <div className="mt-3 grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground">
-            {initials.map((day, index) => <div key={`${day}-${index}`} className="py-1">{day}</div>)}
+          <div className="mt-1.5 grid grid-cols-7 text-center text-[10px] font-medium text-muted-foreground">
+            {initials.map((day, index) => <div key={`${day}-${index}`}>{day}</div>)}
           </div>
           <div className="grid grid-cols-7">
             {cells.map((cell, index) => {
@@ -241,24 +243,25 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
                   key={`${cell.outside ? 'out' : 'in'}-${cell.day}-${index}`}
                   type="button"
                   disabled={cell.outside}
-                  onClick={() => { setSelectedDay(cell.day); setActive(null); setPile(null); }}
-                  className="flex h-10 flex-col items-center justify-start"
+                  onClick={(click) => {
+                    if (cell.outside) return;
+                    setSelectedDay(cell.day);
+                    setActive(null);
+                    setPile(null);
+                    if (dayEvents.length === 1) openEvent(dayEvents[0], click.currentTarget);
+                    else if (dayEvents.length > 1) {
+                      const rect = click.currentTarget.getBoundingClientRect();
+                      setPile({ events: dayEvents, top: Math.min(rect.bottom + 8, window.innerHeight - 220), left: Math.max(16, Math.min(rect.left, window.innerWidth - 300)) });
+                    }
+                  }}
+                  className="relative flex h-[22px] items-center justify-center"
                 >
-                  <span className={cn('flex h-7 w-7 items-center justify-center rounded-full text-[13px]', cell.outside && 'text-muted-foreground/45', isCurrent && 'bg-primary font-medium text-primary-foreground', picked && !isCurrent && 'bg-accent font-medium text-accent-foreground')}>{cell.day}</span>
-                  {dayEvents.length > 0 ? <span className="mt-0.5 h-1 w-1 rounded-full bg-primary" /> : <span className="mt-0.5 h-1 w-1" />}
+                  <span className={cn('flex h-[18px] w-[18px] items-center justify-center rounded-full text-[11px] leading-none', cell.outside && 'text-muted-foreground/45', isCurrent && 'bg-primary font-medium text-primary-foreground', picked && !isCurrent && 'bg-[#E6DAFF] font-medium text-[#55309D]')}>{cell.day}</span>
+                  {dayEvents.length > 0 ? <span className="absolute bottom-0 h-1 w-1 rounded-full bg-[#7542C8]" /> : null}
                 </button>
               );
             })}
           </div>
-          {selectedEvents.length > 0 ? (
-            <div className="mt-2 space-y-1 border-t border-border pt-2">
-              {selectedEvents.slice(0, 3).map((event) => (
-                <button key={event.id} type="button" className="block w-full truncate rounded-[8px] px-2 py-1 text-left text-[12px] text-muted-foreground hover:bg-muted hover:text-foreground" onClick={(click) => openEvent(event, click.currentTarget)}>
-                  {event.type === 'birthday' ? `Aniversário de ${event.personName?.split(' ')[0]}` : event.title}
-                </button>
-              ))}
-            </div>
-          ) : null}
         </section>
         {pile ? (
           <div ref={dialogRef} role="dialog" aria-label="Eventos do dia" className="fixed z-50 w-72 rounded-xl border bg-card p-4 text-sm shadow-lg" style={{ top: pile.top, left: pile.left }} onClick={(event) => event.stopPropagation()}>

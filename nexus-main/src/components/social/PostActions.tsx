@@ -18,7 +18,7 @@ export const PostActions: FC<{
 }> = ({ post, republished = false, onLike, onComment, onShare, onRepublish }) => {
   const comments = post.comments.length;
   return (
-    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5">
+    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-1.5">
       <button
         type="button"
         onClick={onLike}

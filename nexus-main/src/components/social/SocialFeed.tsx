@@ -6,11 +6,12 @@ import { cancelRepost, commentFeedPost, createFeedPost, deleteFeedComment, likeF
 import { actor } from '@/lib/session';
 import { isLeader, useInstitution } from '@/lib/institution';
 import { CreatePost, type NewPostDraft } from './CreatePost';
+import { FeedPreview } from './FeedPreview';
 import { PostCard } from './PostCard';
 import { RecognitionComposer } from './RecognitionComposer';
 import type { SocialPost } from './types';
 
-export const SocialFeed: FC<{ mode?: 'mural' | 'recognition' }> = ({ mode = 'mural' }) => {
+export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean }> = ({ mode = 'mural', preview = false }) => {
   const user = actor();
   const { canRecognize } = useInstitution();
   const [posts, setPosts] = useState<SocialPost[]>([]);
@@ -120,24 +121,28 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition' }> = ({ mode = 'mur
     : reposts;
 
   return (
-    <div className="flex w-full flex-col gap-4">
+    <div className="flex w-full flex-col gap-2">
       {mode === 'recognition' ? null : (
-        <section className="unica-surface relative flex h-[112px] items-center overflow-hidden px-5">
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-[46%] bg-[radial-gradient(circle_at_70%_40%,#EDE5FF_0%,transparent_58%),radial-gradient(circle_at_90%_80%,#F3EFFF_0%,transparent_46%)]" />
-          <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-accent text-primary">
-            <Sun className="h-5 w-5" strokeWidth={1.75} />
+        <section className="unica-surface relative flex h-[68px] items-center overflow-hidden px-3.5">
+          <span className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-[#E6DAFF]" />
+          <span className="pointer-events-none absolute right-16 -bottom-6 h-16 w-16 rounded-full bg-[#F1EAFE]" />
+          <span className="pointer-events-none absolute right-36 top-3 h-2 w-2 rounded-full bg-[#F5B4D0]" />
+          <span className="unica-icon relative">
+            <Sun className="h-3.5 w-3.5" strokeWidth={1.75} />
           </span>
-          <div className="relative min-w-0 pl-3.5">
-            <h1 className="truncate text-[24px] font-semibold leading-tight tracking-tight">{getTimeBasedGreeting()}, {firstName}!</h1>
-            <p className="mt-1 text-[13px] text-muted-foreground">Que hoje seja um dia incrível.</p>
+          <div className="relative min-w-0 pl-2.5">
+            <h1 className="truncate text-[18px] font-semibold leading-tight tracking-tight">{getTimeBasedGreeting()}, {firstName}!</h1>
+            <p className="text-[12px] text-muted-foreground">Que hoje seja um dia incrível.</p>
           </div>
-          <p className="unica-script pointer-events-none absolute right-8 top-7 hidden max-w-[180px] rotate-[-8deg] text-[18px] leading-6 text-primary/80 lg:block">
+          <p className="unica-script pointer-events-none absolute right-6 top-4 hidden max-w-[150px] rotate-[-8deg] text-[15px] leading-5 text-[#7542C8] lg:block">
             Juntos somos mais fortes!
           </p>
         </section>
       )}
 
       {mode === 'recognition' ? (canRecognize ? <RecognitionComposer onCreated={() => window.dispatchEvent(new Event('unica-feed-refresh'))} /> : null) : <CreatePost onPublish={(draft) => void publish(draft)} />}
+
+      {preview && mode === 'mural' ? <FeedPreview /> : null}
 
       {mode === 'recognition' && visiblePosts.length === 0 && visibleReposts.length === 0 ? (
         <p className="unica-surface px-5 py-8 text-center text-[13px] text-muted-foreground">Nenhum reconhecimento ainda.</p>

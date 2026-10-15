@@ -123,7 +123,7 @@ export const AppFrame: FC<{ children: ReactNode }> = ({ children }) => {
     <ShellContext.Provider value={{ leftCollapsed, rightCollapsed, toggleLeft, toggleRight }}>
       <MenuContext.Provider value={() => setOpen(true)}>
         <Sidebar open={open} onClose={() => setOpen(false)} />
-        <div className={cn('transition-[padding-left] duration-300 ease-out', leftCollapsed ? 'lg:pl-16' : 'lg:pl-[260px]')}>{children}</div>
+        <div className={cn('transition-[padding-left] duration-300 ease-out', leftCollapsed ? 'lg:pl-16' : 'lg:pl-[256px]')}>{children}</div>
       </MenuContext.Provider>
     </ShellContext.Provider>
   );
@@ -148,7 +148,7 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
   });
 
   const itemClass = (active: boolean, collapsed: boolean) => cn(
-    'flex h-[38px] items-center gap-2.5 rounded-[10px] px-3 text-[13.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+    'flex h-8 items-center gap-2.5 rounded-[10px] px-2.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
     collapsed && 'justify-center px-0',
     active
       ? 'bg-accent text-accent-foreground'
@@ -245,13 +245,13 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
 
   return (
     <>
-      <aside className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-out lg:flex', leftCollapsed ? 'w-16' : 'w-[260px]')}>
+      <aside className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[var(--unica-shadow)] transition-[width] duration-300 ease-out lg:flex', leftCollapsed ? 'w-16' : 'w-[240px]')}>
         {nav(leftCollapsed)}
       </aside>
       {open ? (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button type="button" className="absolute inset-0 bg-foreground/30" aria-label="Fechar menu" onClick={onClose} />
-          <aside className="absolute inset-y-0 left-0 flex w-[260px] flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-lg">
+          <aside className="absolute inset-y-0 left-0 flex w-[240px] flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-lg">
             {nav(false)}
           </aside>
         </div>

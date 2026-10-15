@@ -58,18 +58,20 @@ export const TeamMood: FC = () => {
   }
 
   return (
-    <section className="unica-surface px-4 py-4">
+    <section className="unica-surface shrink-0 px-2.5 py-2">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-[15px] font-semibold">
-          <Smile className="h-4 w-4 text-primary" strokeWidth={1.75} />
+        <h2 className="flex items-center gap-1.5 text-[13px] font-semibold">
+          <span className="unica-icon">
+            <Smile className="h-3.5 w-3.5" strokeWidth={1.75} />
+          </span>
           Humor da equipe
         </h2>
-        <div className="flex items-center gap-0.5">
-          <button type="button" aria-label="Anterior" className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-muted" onClick={() => scrollRail(scroller.current, -1)}>
-            <ChevronLeft className="h-4 w-4" />
+        <div className="flex items-center">
+          <button type="button" aria-label="Anterior" className="flex h-6 w-6 items-center justify-center rounded-[7px] text-muted-foreground hover:bg-[#F1EAFE]" onClick={() => scrollRail(scroller.current, -1)}>
+            <ChevronLeft className="h-3.5 w-3.5" />
           </button>
-          <button type="button" aria-label="Próximo" className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-muted" onClick={() => scrollRail(scroller.current, 1)}>
-            <ChevronRight className="h-4 w-4" />
+          <button type="button" aria-label="Próximo" className="flex h-6 w-6 items-center justify-center rounded-[7px] text-muted-foreground hover:bg-[#F1EAFE]" onClick={() => scrollRail(scroller.current, 1)}>
+            <ChevronRight className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
@@ -79,7 +81,7 @@ export const TeamMood: FC = () => {
         onPointerMove={onPointerMove}
         onPointerUp={() => { drag.current.active = false; }}
         onPointerCancel={() => { drag.current.active = false; }}
-        className="mt-3 flex cursor-grab gap-3 overflow-x-auto px-1 pb-1 active:cursor-grabbing"
+        className="mt-1.5 flex cursor-grab gap-2 overflow-x-auto pb-0.5 active:cursor-grabbing"
       >
         {team.map((person) => {
           const emoji = moods[person.id];
@@ -87,8 +89,8 @@ export const TeamMood: FC = () => {
           const first = person.name.split(' ')[0];
           const self = person.id === user.id;
           const portrait = (
-            <div className="relative mx-auto h-12 w-12">
-              <img src={person.avatar} alt="" className="h-12 w-12 rounded-full bg-muted object-cover" />
+            <div className="relative mx-auto h-9 w-9">
+              <img src={person.avatar} alt="" className="h-9 w-9 rounded-full bg-muted object-cover ring-2 ring-[#F1EAFE]" />
               {emoji ? (
                 <span className="mood-emoji absolute -right-1 -bottom-1 rounded-full bg-card px-0.5 text-[13px] leading-none ring-1 ring-border">{emoji}</span>
               ) : self ? (
@@ -98,12 +100,12 @@ export const TeamMood: FC = () => {
           );
           const caption = (
             <>
-              <span className="mt-1.5 block max-w-[72px] truncate text-[12px] leading-4">{first}</span>
-              {tone ? <span className={cn('mt-1 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-4', tone.className)}>{tone.label}</span> : <span className="mt-1 block h-4" />}
+              <span className="mt-1 block max-w-[64px] truncate text-[11px] leading-4">{first}</span>
+              {tone ? <span className={cn('mt-0.5 inline-flex rounded-full px-1.5 py-0 text-[10px] font-medium leading-4', tone.className)}>{tone.label}</span> : <span className="mt-0.5 block text-[10px] leading-4 text-muted-foreground">—</span>}
             </>
           );
           return (
-            <div key={person.id} className="w-[72px] shrink-0 text-center">
+            <div key={person.id} className="w-[64px] shrink-0 text-center">
               {self ? (
                 <button type="button" data-mood-self className="w-full" aria-label={mine ? 'Alterar humor' : 'Definir humor'} onClick={() => setOpen((value) => !value)}>
                   {portrait}

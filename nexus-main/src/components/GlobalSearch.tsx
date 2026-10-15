@@ -145,7 +145,7 @@ export const GlobalSearch: FC = () => {
       <Button
         variant="outline"
         onClick={() => setIsOpen(true)}
-        className="h-10 w-full justify-start gap-2 rounded-[12px] border-border bg-card px-3 text-[13px] font-normal text-muted-foreground shadow-none hover:bg-card hover:text-foreground"
+        className="h-9 w-full justify-start gap-2 rounded-[12px] border-border bg-card px-3 text-[13px] font-normal text-muted-foreground shadow-none hover:bg-card hover:text-foreground"
       >
         <Search className="h-4 w-4 shrink-0" />
         <span className="min-w-0 flex-1 truncate text-left">Buscar no mural, pessoas, documentos...</span>

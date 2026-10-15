@@ -7,33 +7,44 @@ export const MissionsRail: FC = () => {
   const [store] = useState(loadActivityStore);
   const active = store.activities.filter((activity) => activity.status === 'in_progress');
   const waiting = store.activities.filter((activity) => activity.status === 'todo');
+  const done = store.activities.filter((activity) => activity.status === 'done').length;
+  const total = store.activities.length;
+  const percent = total === 0 ? 0 : Math.round((done / total) * 100);
+
   const featured = active[0] ?? waiting[0];
 
   return (
-    <section className="unica-surface px-4 py-4">
+    <section className="unica-surface shrink-0 px-2.5 py-2">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-[15px] font-semibold">
-          <Target className="h-4 w-4 text-primary" strokeWidth={1.75} />
+        <h2 className="flex items-center gap-1.5 text-[13px] font-semibold">
+          <span className="unica-icon">
+            <Target className="h-3.5 w-3.5" strokeWidth={1.75} />
+          </span>
           Missões em andamento
         </h2>
-        <Link to="/projects" aria-label="Abrir missões" className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
-          <ChevronRight className="h-4 w-4" />
+        <Link to="/projects" aria-label="Abrir missões" className="rounded-full p-0.5 text-muted-foreground hover:bg-[#F1EAFE] hover:text-foreground">
+          <ChevronRight className="h-3.5 w-3.5" />
         </Link>
       </div>
       {featured ? (
-        <Link to="/projects" className="mt-3 flex items-center gap-3 rounded-[12px] px-1 py-1 hover:bg-accent/60">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-accent text-primary">
-            <Target className="h-4 w-4" strokeWidth={1.75} />
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-[13.5px] font-semibold leading-5">{featured.title}</span>
-            <span className="block text-[12px] text-muted-foreground">
-              {active.length} {STATUS_LABEL.in_progress.toLowerCase()} · {waiting.length} {STATUS_LABEL.todo.toLowerCase()}
+        <Link to="/projects" className="mt-1.5 block rounded-[10px] px-0.5 py-0.5 hover:bg-[#F1EAFE]">
+          <span className="flex items-center gap-2">
+            <span className="unica-icon">
+              <Target className="h-3.5 w-3.5" strokeWidth={1.75} />
             </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[12.5px] font-semibold leading-4">{featured.title}</span>
+              <span className="block text-[11px] text-muted-foreground">
+                {active.length} {STATUS_LABEL.in_progress.toLowerCase()} · {waiting.length} {STATUS_LABEL.todo.toLowerCase()}
+              </span>
+            </span>
+          </span>
+          <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-[#F1EAFE]">
+            <span className="block h-full rounded-full bg-[#7542C8]" style={{ width: `${percent}%` }} />
           </span>
         </Link>
       ) : (
-        <p className="mt-3 text-[13px] text-muted-foreground">Nenhuma missão em andamento.</p>
+        <p className="mt-1.5 text-[12px] text-muted-foreground">Nenhuma missão em andamento.</p>
       )}
     </section>
   );

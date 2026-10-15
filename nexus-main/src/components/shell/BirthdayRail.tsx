@@ -35,30 +35,27 @@ export const BirthdayRail: FC = () => {
   const people = [...fromSaved, ...fromCalendar].sort((a, b) => a.when - b.when).slice(0, 4);
 
   return (
-    <section className="unica-surface px-4 py-4">
+    <section className="unica-surface shrink-0 px-2.5 py-2">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-[15px] font-semibold">
-          <Cake className="h-4 w-4 text-primary" strokeWidth={1.75} />
+        <h2 className="flex items-center gap-1.5 text-[13px] font-semibold">
+          <span className="unica-icon">
+            <Cake className="h-3.5 w-3.5" strokeWidth={1.75} />
+          </span>
           Aniversariantes
         </h2>
-        <Link to="/calendar?tipo=aniversarios" aria-label="Abrir aniversariantes no calendário" className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
-          <ChevronRight className="h-4 w-4" />
+        <Link to="/calendar?tipo=aniversarios" aria-label="Abrir aniversariantes no calendário" className="rounded-full p-0.5 text-muted-foreground hover:bg-[#F1EAFE] hover:text-foreground">
+          <ChevronRight className="h-3.5 w-3.5" />
         </Link>
       </div>
       {people.length === 0 ? (
-        <p className="mt-3 text-[13px] text-muted-foreground">Nenhum aniversário por perto.</p>
+        <p className="mt-1.5 text-[12px] text-muted-foreground">Nenhum aniversário por perto.</p>
       ) : (
-        <ul className="mt-3 space-y-2.5">
+        <ul className="mt-1.5 space-y-1">
           {people.map((person) => (
-            <li key={person.id} className="flex items-center gap-2.5">
-              {person.avatar ? <img src={person.avatar} alt="" className="h-9 w-9 rounded-full bg-muted object-cover" /> : <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-[12px] font-semibold text-primary">{person.name.charAt(0)}</span>}
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-medium leading-4">{person.name}</span>
-                <span className="block text-[11px] text-muted-foreground">{new Date(person.when).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}</span>
-              </span>
-              <Link to="/calendar?tipo=aniversarios" className="shrink-0 text-[12px] font-medium text-primary hover:underline">
-                Feliz aniversário!
-              </Link>
+            <li key={person.id} className="flex items-center gap-2">
+              {person.avatar ? <img src={person.avatar} alt="" className="h-6 w-6 rounded-full bg-muted object-cover" /> : <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#F1EAFE] text-[10px] font-semibold text-primary">{person.name.charAt(0)}</span>}
+              <span className="min-w-0 flex-1 truncate text-[12px] font-medium leading-4">{person.name}</span>
+              <span className="shrink-0 text-[11px] text-muted-foreground">{new Date(person.when).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}</span>
             </li>
           ))}
         </ul>

@@ -32,11 +32,12 @@ export const PostCard: FC<{
   canDeleteComment?: (commentId: string) => boolean;
   onDeleteComment?: (commentId: string) => void;
   repost?: { name: string; avatar: string; note: string };
-}> = ({ post, commentDraft, onCommentDraft, onLike, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, republished, canDeleteComment, onDeleteComment, repost }) => {
+  preview?: boolean;
+}> = ({ post, commentDraft, onCommentDraft, onLike, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, republished, canDeleteComment, onDeleteComment, repost, preview = false }) => {
   const plain = post.kind === 'text' || post.kind === 'image' || post.kind === 'leadership';
 
   return (
-    <article id={post.id} className="unica-surface px-4 py-4 sm:px-5">
+    <article id={post.id} className="unica-surface px-3 py-2">
       {repost ? (
         <div className="mb-3 flex items-center gap-2 text-[12px] text-muted-foreground">
           <img src={repost.avatar} alt="" className="h-6 w-6 rounded-full bg-muted" />
@@ -45,16 +46,17 @@ export const PostCard: FC<{
       ) : null}
       {repost?.note ? <p className="mb-3 text-[13.5px] leading-6">{repost.note}</p> : null}
       <header className="flex items-center gap-3">
-        <img src={post.avatar} alt="" className="h-10 w-10 rounded-full bg-muted object-cover" />
+        <img src={post.avatar} alt="" className="h-8 w-8 rounded-full bg-muted object-cover" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13.5px] leading-5">
             <span className="font-semibold text-foreground">{post.author}</span>
             <span className="text-muted-foreground"> · {(post.department === 'Jornal' ? 'Jornal' : kindLabel[post.kind]) ?? post.department} · {post.time}</span>
+            {preview ? <span className="ml-1.5 rounded-full bg-[#F1EAFE] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#55309D]">Prévia</span> : null}
           </p>
         </div>
       </header>
 
-      {plain ? <p className="mt-3 text-[13.5px] leading-6 text-[#3C3952] dark:text-foreground/90">{post.body}</p> : null}
+      {plain ? <p className="mt-1.5 text-[12.5px] leading-5 text-[#3C3952] dark:text-foreground/90">{post.body}</p> : null}
       {post.kind === 'image' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
       {post.kind === 'leadership' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
       {post.attachment?.type === 'video' && post.attachment.url ? <video src={post.attachment.url} controls className="mt-3 max-h-[420px] w-full rounded-xl bg-black" /> : null}

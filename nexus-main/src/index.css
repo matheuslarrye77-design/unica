@@ -41,43 +41,43 @@
 
 :root {
   --radius: 0.75rem;
-  --background: #F8F8FC;
-  --foreground: #25233A;
+  --background: #F8F7FC;
+  --foreground: #26233A;
   --card: #FFFFFF;
-  --card-foreground: #25233A;
+  --card-foreground: #26233A;
   --popover: #FFFFFF;
-  --popover-foreground: #25233A;
-  --primary: #7040C8;
+  --popover-foreground: #26233A;
+  --primary: #7542C8;
   --primary-foreground: #FFFFFF;
-  --secondary: #F3EFFF;
-  --secondary-foreground: #5730A6;
-  --muted: #F6F5FA;
-  --muted-foreground: #77748D;
-  --accent: #F3EFFF;
-  --accent-foreground: #5730A6;
+  --secondary: #F1EAFE;
+  --secondary-foreground: #55309D;
+  --muted: #F6F4FB;
+  --muted-foreground: #77738A;
+  --accent: #E6DAFF;
+  --accent-foreground: #55309D;
   --destructive: #C2415B;
   --destructive-foreground: #FFFFFF;
-  --border: #E9E6F2;
-  --input: #E9E6F2;
-  --ring: #7040C8;
-  --chart-1: #7040C8;
+  --border: #E8E2F2;
+  --input: #E8E2F2;
+  --ring: #7542C8;
+  --chart-1: #7542C8;
   --chart-2: #3D9A6A;
   --chart-3: #C48A1A;
   --chart-4: #C45B8A;
   --chart-5: #5B6BC8;
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #25233A;
-  --sidebar-primary: #7040C8;
+  --sidebar-foreground: #26233A;
+  --sidebar-primary: #7542C8;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F3EFFF;
-  --sidebar-accent-foreground: #5730A6;
-  --sidebar-border: #E9E6F2;
-  --sidebar-ring: #7040C8;
-  --unica-hover: #EDE5FF;
+  --sidebar-accent: #E6DAFF;
+  --sidebar-accent-foreground: #55309D;
+  --sidebar-border: #E8E2F2;
+  --sidebar-ring: #7542C8;
+  --unica-hover: #F1EAFE;
   --unica-positive: #E7F7EC;
   --unica-neutral: #FFF4D9;
   --unica-alert: #FBEAF2;
-  --unica-shadow: 0 1px 2px rgba(70, 40, 120, 0.05);
+  --unica-shadow: 0 1px 2px rgba(85, 48, 157, 0.06), 0 10px 24px rgba(117, 66, 200, 0.06);
 }
 
 .dark {
@@ -129,6 +129,10 @@
   }
   body {
     background-color: var(--background);
+    background-image:
+      radial-gradient(820px 380px at -8% -12%, rgba(230, 218, 255, 0.95), transparent 62%),
+      radial-gradient(640px 320px at 108% -8%, rgba(241, 234, 254, 0.98), transparent 58%),
+      radial-gradient(520px 280px at 92% 108%, rgba(230, 218, 255, 0.55), transparent 60%);
     color: var(--foreground);
     font-family: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "cv11" 1;
@@ -220,10 +224,22 @@
 }
 
 .unica-surface {
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--card);
   box-shadow: var(--unica-shadow);
+}
+
+.unica-icon {
+  display: inline-flex;
+  height: 22px;
+  width: 22px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: var(--secondary);
+  color: var(--primary);
 }
 
 .unica-script {
