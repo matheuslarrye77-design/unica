@@ -1,7 +1,10 @@
 import { FileText, ImagePlus, ListChecks, Send, Video, X } from 'lucide-react';
 import { type ChangeEvent, type FC, type FormEvent, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { actor } from '@/lib/session';
 import type { Attachment, PollOption } from './types';
+
+const MAX_MEDIA = 8 * 1024 * 1024;
 
 export type NewPostDraft = {
   body: string;
@@ -20,27 +23,35 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void }> = ({ o
   const videoRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  function readData(file: File, onLoad: (url: string) => void) {
+    if (file.size > MAX_MEDIA) {
+      toast.error('O arquivo passa de 8 MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => onLoad(String(reader.result ?? ''));
+    reader.readAsDataURL(file);
+  }
+
   function readImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setImage(String(reader.result ?? ''));
-    reader.readAsDataURL(file);
     event.target.value = '';
+    if (!file) return;
+    readData(file, setImage);
   }
 
   function readVideo(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    if (!file) return;
-    setAttachment({ type: 'video', name: file.name, url: URL.createObjectURL(file) });
     event.target.value = '';
+    if (!file) return;
+    readData(file, (url) => setAttachment({ type: 'video', name: file.name, url }));
   }
 
   function readFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    if (!file) return;
-    setAttachment({ type: 'document', name: file.name });
     event.target.value = '';
+    if (!file) return;
+    readData(file, (url) => setAttachment({ type: 'document', name: file.name, url }));
   }
 
   function publish(event: FormEvent) {
@@ -49,7 +60,8 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void }> = ({ o
     const poll = pollOpen
       ? options.map((label) => label.trim()).filter(Boolean).map((label, index) => ({ id: `opt-${index}`, label, votes: 0 }))
       : undefined;
-    if (!text || (pollOpen && (poll?.length ?? 0) < 2)) return;
+    const hasMedia = Boolean(image || attachment);
+    if ((!text && !hasMedia) || (pollOpen && (poll?.length ?? 0) < 2)) return;
     onPublish({ body: text, image: image || undefined, attachment, poll });
     setBody('');
     setImage('');
@@ -58,7 +70,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void }> = ({ o
     setOptions(['', '']);
   }
 
-  const ready = body.trim().length > 0 && (!pollOpen || options.filter((item) => item.trim()).length >= 2);
+  const ready = (body.trim().length > 0 || Boolean(image) || Boolean(attachment)) && (!pollOpen || options.filter((item) => item.trim()).length >= 2);
   const user = actor();
 
   return (
@@ -133,7 +145,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void }> = ({ o
         <button
           type="submit"
           disabled={!ready}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-[#5C32B0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-45"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-[#7A2498] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-45"
         >
           <Send className="h-[18px] w-[18px]" />
           Publicar
@@ -148,7 +160,7 @@ const ComposerAction: FC<{ icon: FC<{ className?: string }>; label: string; pres
     type="button"
     aria-pressed={pressed}
     onClick={onClick}
-    className={`inline-flex h-9 items-center gap-1.5 rounded-[10px] border px-2.5 text-[13px] font-medium text-[#25233A] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${pressed ? 'border-primary/40 bg-accent' : 'border-border bg-card hover:bg-[#F0E9FF] dark:text-foreground'}`}
+    className={`inline-flex h-9 items-center gap-1.5 rounded-[10px] border px-2.5 text-[13px] font-medium text-[#25233A] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${pressed ? 'border-primary/40 bg-accent' : 'border-border bg-card hover:bg-[#F8EAFB] dark:text-foreground'}`}
   >
     <Icon className="h-[18px] w-[18px] text-primary" />
     {label}

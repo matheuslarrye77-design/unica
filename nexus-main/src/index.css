@@ -47,33 +47,33 @@
   --card-foreground: #25233A;
   --popover: #FFFFFF;
   --popover-foreground: #25233A;
-  --primary: #7040C8;
+  --primary: #8E35B8;
   --primary-foreground: #FFFFFF;
-  --secondary: #F0E9FF;
-  --secondary-foreground: #4F278F;
-  --muted: #F6F4FB;
+  --secondary: #F8EAFB;
+  --secondary-foreground: #6A228C;
+  --muted: #F7F3F8;
   --muted-foreground: #77748A;
-  --accent: #E8DDFB;
-  --accent-foreground: #4F278F;
+  --accent: #F0D9F6;
+  --accent-foreground: #6A228C;
   --destructive: #C2415B;
   --destructive-foreground: #FFFFFF;
   --border: #E8E3F0;
   --input: #E8E3F0;
-  --ring: #7040C8;
-  --chart-1: #7040C8;
+  --ring: #8E35B8;
+  --chart-1: #8E35B8;
   --chart-2: #3D9A6A;
   --chart-3: #C48A1A;
   --chart-4: #C45B8A;
   --chart-5: #5B6BC8;
   --sidebar: #FFFFFF;
   --sidebar-foreground: #25233A;
-  --sidebar-primary: #7040C8;
+  --sidebar-primary: #8E35B8;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #E8DDFB;
-  --sidebar-accent-foreground: #4F278F;
-  --sidebar-border: #E8E3F0;
-  --sidebar-ring: #7040C8;
-  --unica-hover: #F0E9FF;
+  --sidebar-accent: #F0D9F6;
+  --sidebar-accent-foreground: #6A228C;
+  --sidebar-border: #E8DCEC;
+  --sidebar-ring: #8E35B8;
+  --unica-hover: #F8EAFB;
   --unica-positive: #E7F7EC;
   --unica-neutral: #FFF4D9;
   --unica-alert: #FBEAF2;
@@ -130,8 +130,8 @@
   body {
     background-color: var(--background);
     background-image:
-      radial-gradient(720px 280px at -6% -10%, rgba(232, 221, 251, 0.45), transparent 68%),
-      radial-gradient(560px 240px at 104% -6%, rgba(240, 233, 255, 0.7), transparent 64%);
+      radial-gradient(720px 280px at -6% -10%, rgba(243, 214, 236, 0.55), transparent 68%),
+      radial-gradient(560px 240px at 104% -6%, rgba(248, 228, 242, 0.75), transparent 64%);
     color: var(--foreground);
     font-family: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "cv11" 1;
@@ -139,7 +139,7 @@
     text-rendering: optimizeLegibility;
   }
   ::selection {
-    background: #E8DDFB;
+    background: #F0D9F6;
     color: #25233A;
   }
   
@@ -237,8 +237,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #E8DDFB;
-  color: #7040C8;
+  background: #F3E4FA;
+  color: #8E35B8;
 }
 
 .unica-script {

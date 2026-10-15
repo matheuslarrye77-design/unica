@@ -2,7 +2,7 @@ import { Sun } from 'lucide-react';
 import { type FC, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { getTimeBasedGreeting } from '@/lib/utils';
-import { cancelRepost, commentFeedPost, createFeedPost, deleteFeedComment, likeFeedPost, loadFeed, republishPost, shareFeedPost, type Repost } from '@/lib/feed';
+import { cancelRepost, commentFeedPost, createFeedPost, deleteFeedComment, deleteFeedPost, likeFeedPost, loadFeed, republishPost, shareFeedPost, type Repost } from '@/lib/feed';
 import { actor } from '@/lib/session';
 import { isLeader, useInstitution } from '@/lib/institution';
 import { CreatePost, type NewPostDraft } from './CreatePost';
@@ -39,8 +39,25 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   }
 
   async function publish(draft: NewPostDraft) {
-    const result = await createFeedPost({ body: draft.body, image: draft.image, attachment: draft.attachment, poll: draft.poll });
-    setPosts((current) => [result.post, ...current]);
+    try {
+      const result = await createFeedPost({ body: draft.body, image: draft.image, attachment: draft.attachment, poll: draft.poll });
+      setPosts((current) => [result.post, ...current]);
+      toast.success('Publicação enviada.');
+    } catch {
+      toast.error('Não foi possível publicar.');
+    }
+  }
+
+  async function removePost(post: SocialPost) {
+    if (!window.confirm('Excluir esta publicação?')) return;
+    try {
+      await deleteFeedPost(post.id);
+      setPosts((current) => current.filter((item) => item.id !== post.id));
+      setReposts((current) => current.filter((item) => item.originalId !== post.id));
+      toast.success('Publicação excluída.');
+    } catch {
+      toast.error('Não foi possível excluir a publicação.');
+    }
   }
 
   async function writeLink(url: string) {
@@ -116,34 +133,104 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
 
   const mine = new Set(reposts.filter((item) => item.userId === user.id).map((item) => item.originalId));
   const visiblePosts = mode === 'recognition' ? posts.filter((post) => post.kind === 'recognition') : posts;
+  const freshPosts = visiblePosts.filter((post) => post.time === 'agora');
+  const olderPosts = visiblePosts.filter((post) => post.time !== 'agora');
+  function canRemove(post: SocialPost) {
+    return post.authorId === user.id || post.author === user.name || isLeader(user);
+  }
   const visibleReposts = mode === 'recognition'
     ? reposts.filter((repost) => posts.find((post) => post.id === repost.originalId)?.kind === 'recognition')
     : reposts;
 
+  function renderFeedPost(post: SocialPost) {
+    return (
+      <div key={post.id}>
+        <PostCard
+          post={post}
+          republished={mine.has(post.id)}
+          commentDraft={drafts[post.id] ?? ''}
+          onCommentDraft={(value) => setDrafts((current) => ({ ...current, [post.id]: value }))}
+          onLike={() => void likeFeedPost(post.id).then((result) => replace(result.post))}
+          onShare={() => setShareId(post.id)}
+          onToggleComments={() => setPosts((current) => current.map((item) => item.id === post.id ? { ...item, commentsOpen: !item.commentsOpen } : item))}
+          onAddComment={() => {
+            const text = (drafts[post.id] ?? '').trim();
+            if (!text) return;
+            void commentFeedPost(post.id, text).then((result) => {
+              replace({ ...result.post, commentsOpen: true });
+              setDrafts((current) => ({ ...current, [post.id]: '' }));
+            });
+          }}
+          onLikeComment={() => undefined}
+          onVote={() => undefined}
+          onRepublish={() => {
+            const existing = reposts.find((item) => item.userId === user.id && item.originalId === post.id);
+            if (existing) {
+              void cancelRepost(existing.id).then(() => setReposts((current) => current.filter((item) => item.id !== existing.id)));
+              return;
+            }
+            setRepostId(post.id);
+            setNote('');
+          }}
+          onDelete={canRemove(post) ? () => void removePost(post) : undefined}
+          canDeleteComment={(commentId) => canDelete(post, commentId)}
+          onDeleteComment={(commentId) => {
+            if (!window.confirm('Excluir este comentário?')) return;
+            void deleteFeedComment(post.id, commentId).then((result) => replace({ ...result.post, commentsOpen: true }));
+          }}
+        />
+        {shareId === post.id ? (
+          <div className="mt-2 flex gap-2 rounded-xl border bg-card p-3 text-sm">
+            <button type="button" className="rounded-lg border px-3 py-1.5" onClick={() => void copy(post)}>Copiar link</button>
+            <button type="button" className="rounded-lg border px-3 py-1.5" onClick={() => void share(post)}>Compartilhar</button>
+            <button type="button" className="rounded-lg px-3 py-1.5 text-muted-foreground" onClick={() => setShareId(null)}>Cancelar</button>
+          </div>
+        ) : null}
+        {repostId === post.id ? (
+          <form className="mt-2 rounded-xl border bg-card p-3" onSubmit={(event) => { event.preventDefault(); void sendRepost(post); }}>
+            <label className="text-sm font-medium" htmlFor={`nota-${post.id}`}>Comentário da republicação</label>
+            <textarea id={`nota-${post.id}`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Opcional" className="mt-2 w-full rounded-lg border bg-background px-3 py-2 text-sm" />
+            <div className="mt-2 flex gap-2">
+              <button type="submit" className="rounded-lg bg-primary px-3 py-1.5 text-sm text-primary-foreground">Republicar</button>
+              <button type="button" className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground" onClick={() => setRepostId(null)}>Cancelar</button>
+            </div>
+          </form>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="flex w-full flex-col gap-3">
       {mode === 'recognition' ? null : (
-        <section className="unica-surface relative flex min-h-[104px] items-center gap-3 overflow-hidden px-4 py-3">
-          <span className="pointer-events-none absolute right-0 top-0 h-full w-[42%] bg-[#F7F4FF]" />
-          <span className="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-[#E8DDFB]" />
-          <span className="pointer-events-none absolute right-28 -bottom-8 h-20 w-20 rounded-full bg-[#F0E9FF]" />
-          <span className="pointer-events-none absolute right-8 top-5 h-14 w-14 rounded-full bg-[#E8DDFB]/80" />
-          <span className="unica-icon relative h-10 w-10 rounded-[12px]">
-            <Sun className="h-5 w-5" strokeWidth={1.75} />
-          </span>
-          <div className="relative min-w-0 flex-1">
-            <h1 className="text-[24px] font-semibold leading-tight tracking-tight">{getTimeBasedGreeting()}, {firstName}!</h1>
-            <p className="mt-0.5 text-[13px] text-muted-foreground">Que hoje seja um dia incrível.</p>
+        <section className="relative isolate min-h-[118px] overflow-hidden rounded-[22px] border border-white/80 bg-white px-5 py-4 shadow-[0_18px_40px_rgba(142,53,184,0.10)]">
+          <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_140%_at_100%_0%,#F8D9F2_0%,rgba(248,217,242,0)_52%),radial-gradient(80%_120%_at_0%_100%,#F3E4FA_0%,rgba(243,228,250,0)_46%)]" />
+          <span className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-[#E7C4F2]/70 blur-2xl" />
+          <span className="pointer-events-none absolute right-16 bottom-0 h-16 w-40 rounded-full bg-[#F7D7EA]/80 blur-xl" />
+          <svg className="pointer-events-none absolute right-0 top-0 h-full w-[46%]" viewBox="0 0 280 120" fill="none" aria-hidden>
+            <path d="M40 98c40-48 78-18 118-46 28-20 62-34 122-28" stroke="#E7C4F2" strokeWidth="18" strokeLinecap="round" />
+            <path d="M70 112c36-34 84-10 122-30 24-12 48-16 88-8" stroke="#F6D5EA" strokeWidth="10" strokeLinecap="round" />
+          </svg>
+          <div className="relative flex items-center gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-white/80 text-primary shadow-[inset_0_0_0_1px_rgba(142,53,184,0.12),0_8px_18px_rgba(142,53,184,0.12)]">
+              <Sun className="h-6 w-6" strokeWidth={1.75} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-[26px] font-semibold leading-tight tracking-tight">{getTimeBasedGreeting()}, {firstName}!</h1>
+              <p className="mt-1 text-[13.5px] text-muted-foreground">Que hoje seja um dia incrível.</p>
+            </div>
+            <p className="unica-script relative hidden w-[158px] shrink-0 -rotate-6 text-right text-[22px] leading-[1.15] text-primary lg:block">
+              <span className="block whitespace-nowrap">Juntos</span>
+              <span className="block whitespace-nowrap">vamos mais</span>
+              <span className="block whitespace-nowrap">longe!</span>
+            </p>
           </div>
-          <p className="unica-script relative hidden w-[158px] shrink-0 -rotate-6 text-right text-[22px] leading-[1.15] text-primary lg:block">
-            <span className="block whitespace-nowrap">Juntos</span>
-            <span className="block whitespace-nowrap">vamos mais</span>
-            <span className="block whitespace-nowrap">longe!</span>
-          </p>
         </section>
       )}
 
       {mode === 'recognition' ? (canRecognize ? <RecognitionComposer onCreated={() => window.dispatchEvent(new Event('unica-feed-refresh'))} /> : null) : <CreatePost onPublish={(draft) => void publish(draft)} />}
+
+      {mode === 'mural' ? freshPosts.map(renderFeedPost) : null}
 
       {preview && mode === 'mural' ? <FeedPreview /> : null}
 
@@ -177,60 +264,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
         );
       })}
 
-      {visiblePosts.map((post) => (
-        <div key={post.id}>
-          <PostCard
-            post={post}
-            republished={mine.has(post.id)}
-            commentDraft={drafts[post.id] ?? ''}
-            onCommentDraft={(value) => setDrafts((current) => ({ ...current, [post.id]: value }))}
-            onLike={() => void likeFeedPost(post.id).then((result) => replace(result.post))}
-            onShare={() => setShareId(post.id)}
-            onToggleComments={() => setPosts((current) => current.map((item) => item.id === post.id ? { ...item, commentsOpen: !item.commentsOpen } : item))}
-            onAddComment={() => {
-              const text = (drafts[post.id] ?? '').trim();
-              if (!text) return;
-              void commentFeedPost(post.id, text).then((result) => {
-                replace({ ...result.post, commentsOpen: true });
-                setDrafts((current) => ({ ...current, [post.id]: '' }));
-              });
-            }}
-            onLikeComment={() => undefined}
-            onVote={() => undefined}
-            onRepublish={() => {
-              const existing = reposts.find((item) => item.userId === user.id && item.originalId === post.id);
-              if (existing) {
-                void cancelRepost(existing.id).then(() => setReposts((current) => current.filter((item) => item.id !== existing.id)));
-                return;
-              }
-              setRepostId(post.id);
-              setNote('');
-            }}
-            canDeleteComment={(commentId) => canDelete(post, commentId)}
-            onDeleteComment={(commentId) => {
-              if (!window.confirm('Excluir este comentário?')) return;
-              void deleteFeedComment(post.id, commentId).then((result) => replace({ ...result.post, commentsOpen: true }));
-            }}
-          />
-          {shareId === post.id ? (
-            <div className="mt-2 flex gap-2 rounded-xl border bg-card p-3 text-sm">
-              <button type="button" className="rounded-lg border px-3 py-1.5" onClick={() => void copy(post)}>Copiar link</button>
-              <button type="button" className="rounded-lg border px-3 py-1.5" onClick={() => void share(post)}>Compartilhar</button>
-              <button type="button" className="rounded-lg px-3 py-1.5 text-muted-foreground" onClick={() => setShareId(null)}>Cancelar</button>
-            </div>
-          ) : null}
-          {repostId === post.id ? (
-            <form className="mt-2 rounded-xl border bg-card p-3" onSubmit={(event) => { event.preventDefault(); void sendRepost(post); }}>
-              <label className="text-sm font-medium" htmlFor={`nota-${post.id}`}>Comentário da republicação</label>
-              <textarea id={`nota-${post.id}`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Opcional" className="mt-2 w-full rounded-lg border bg-background px-3 py-2 text-sm" />
-              <div className="mt-2 flex gap-2">
-                <button type="submit" className="rounded-lg bg-primary px-3 py-1.5 text-sm text-primary-foreground">Republicar</button>
-                <button type="button" className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground" onClick={() => setRepostId(null)}>Cancelar</button>
-              </div>
-            </form>
-          ) : null}
-        </div>
-      ))}
+      {(mode === 'mural' ? olderPosts : visiblePosts).map(renderFeedPost)}
     </div>
   );
 };

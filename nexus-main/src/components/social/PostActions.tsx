@@ -30,7 +30,7 @@ export const PostActions: FC<{
           <span className="z-10 flex h-5 w-5 items-center justify-center rounded-full bg-[#1877F2] text-white ring-2 ring-white">
             <ThumbsUp className="h-3 w-3" fill="currentColor" />
           </span>
-          <span className="-ml-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#F33E58] text-white ring-2 ring-white">
+          <span className="-ml-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#8E35B8] text-white ring-2 ring-white">
             <Heart className="h-3 w-3" fill="currentColor" />
           </span>
         </span>

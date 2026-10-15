@@ -6,7 +6,7 @@ import type { SocialPost } from './types';
 export const AnnouncementPost: FC<{ post: SocialPost }> = ({ post }) => {
   return (
     <div className="mt-3 flex gap-3">
-      {post.image ? <img src={post.image} alt="" className="h-[72px] w-[128px] shrink-0 rounded-[10px] border border-[#E8DDFB] object-cover" /> : <div className="flex h-[72px] w-[128px] shrink-0 items-center justify-center rounded-[10px] border border-dashed border-[#E8DDFB] bg-[#F0E9FF] text-[12px] text-accent-foreground">Capa do jornal</div>}
+      {post.image ? <img src={post.image} alt="" className="h-[72px] w-[128px] shrink-0 rounded-[10px] border border-[#F0D4EE] object-cover" /> : <div className="flex h-[72px] w-[128px] shrink-0 items-center justify-center rounded-[10px] border border-dashed border-[#F0D4EE] bg-[#F8E8F6] text-[12px] text-accent-foreground">Capa do jornal</div>}
       <div className="min-w-0">
         {post.bannerTitle ? <h3 className="text-[15px] font-semibold leading-5">{post.bannerTitle}</h3> : null}
         <p className="mt-0.5 line-clamp-2 text-[13px] leading-5 text-muted-foreground"><EmojiText text={post.body} /></p>

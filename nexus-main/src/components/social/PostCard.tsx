@@ -30,12 +30,13 @@ export const PostCard: FC<{
   onLikeComment: (commentId: string) => void;
   onVote: (optionId: string) => void;
   onRepublish: () => void;
+  onDelete?: () => void;
   republished?: boolean;
   canDeleteComment?: (commentId: string) => boolean;
   onDeleteComment?: (commentId: string) => void;
   repost?: { name: string; avatar: string; note: string };
   preview?: boolean;
-}> = ({ post, commentDraft, onCommentDraft, onLike, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, republished, canDeleteComment, onDeleteComment, repost }) => {
+}> = ({ post, commentDraft, onCommentDraft, onLike, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, republished, canDeleteComment, onDeleteComment, repost }) => {
   const plain = post.kind === 'text' || post.kind === 'image' || post.kind === 'leadership';
 
   return (
@@ -65,19 +66,27 @@ export const PostCard: FC<{
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onRepublish}>{republished ? 'Desfazer republicação' : 'Republicar'}</DropdownMenuItem>
             <DropdownMenuItem onClick={onShare}>Compartilhar</DropdownMenuItem>
+            {onDelete ? <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">Excluir</DropdownMenuItem> : null}
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
 
-      {plain ? <p className="mt-2 text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90"><EmojiText text={post.body} /></p> : null}
+      {plain && post.body ? <p className="mt-2 text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90"><EmojiText text={post.body} /></p> : null}
       {post.kind === 'image' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
       {post.kind === 'leadership' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
       {post.attachment?.type === 'video' && post.attachment.url ? <video src={post.attachment.url} controls className="mt-3 max-h-[420px] w-full rounded-xl bg-black" /> : null}
       {post.attachment?.type === 'document' ? (
-        <p className="mt-3 inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm">
-          <FileText className="h-4 w-4 text-primary" />
-          {post.attachment.name}
-        </p>
+        post.attachment.url ? (
+          <a href={post.attachment.url} download={post.attachment.name} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm text-foreground">
+            <FileText className="h-4 w-4 text-primary" />
+            {post.attachment.name}
+          </a>
+        ) : (
+          <p className="mt-3 inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm">
+            <FileText className="h-4 w-4 text-primary" />
+            {post.attachment.name}
+          </p>
+        )
       ) : null}
 
       {post.kind === 'announcement' ? <AnnouncementPost post={post} /> : null}

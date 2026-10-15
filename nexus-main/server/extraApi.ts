@@ -149,6 +149,24 @@ function seedPosts(): FeedPost[] {
   }));
 }
 
+function cleanImage(value: unknown) {
+  if (typeof value !== 'string' || !value || value.length > 12_000_000) return undefined;
+  if (value.startsWith('data:image/') || value.startsWith('https://') || value.startsWith('http://')) return value;
+  return undefined;
+}
+
+function cleanAttachment(value: unknown): FeedPost['attachment'] | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const item = value as { type?: string; name?: string; url?: string };
+  if (item.type !== 'video' && item.type !== 'document') return undefined;
+  const name = String(item.name ?? '').trim().slice(0, 180);
+  if (!name) return undefined;
+  const url = typeof item.url === 'string' && item.url.startsWith('data:') && item.url.length <= 12_000_000 ? item.url : undefined;
+  if (item.type === 'video' && !url?.startsWith('data:video/')) return undefined;
+  if (item.type === 'document' && !url) return undefined;
+  return { type: item.type, name, url };
+}
+
 function readBody(req: IncomingMessage) {
   return new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -313,7 +331,10 @@ export function extraApi(): Connect.NextHandleFunction {
       if (req.method === 'POST' && url === '/api/feed') {
         const body = JSON.parse((await readBody(req)).toString('utf8')) as Partial<FeedPost>;
         const text = String(body.body ?? '').trim();
-        if (!text) return send(res, 400, { error: 'body' });
+        const image = cleanImage(body.image);
+        const attachment = cleanAttachment(body.attachment);
+        const poll = Array.isArray(body.poll) ? body.poll : undefined;
+        if (!text && !image && !attachment && !(poll && poll.length >= 2)) return send(res, 400, { error: 'body' });
         const recognition = body.kind === 'recognition';
         if (recognition && !canRecognize(user, dir)) return send(res, 403, { error: 'forbidden' });
         const recognizedName = String(body.recognizedName ?? '').trim();
@@ -321,7 +342,7 @@ export function extraApi(): Connect.NextHandleFunction {
         const feed = loadFeed();
         const post: FeedPost = {
           id: `post-${Date.now()}`,
-          kind: recognition ? 'recognition' : body.poll ? 'poll' : body.image ? 'image' : 'text',
+          kind: recognition ? 'recognition' : poll ? 'poll' : image ? 'image' : 'text',
           author: user.name,
           authorId: user.id,
           role: user.role,
@@ -329,13 +350,13 @@ export function extraApi(): Connect.NextHandleFunction {
           avatar: user.avatar,
           time: 'agora',
           body: text,
-          image: body.image,
-          attachment: body.attachment,
+          image,
+          attachment,
           likes: 0,
           likedBy: [],
           shares: 0,
           comments: [],
-          poll: body.poll,
+          poll,
           votes: {},
           recognizedName: recognition ? recognizedName : undefined,
           tag: recognition ? String(body.tag ?? '').trim() : undefined,
@@ -406,6 +427,21 @@ export function extraApi(): Connect.NextHandleFunction {
         post.comments = post.comments.filter((item) => item.id !== comment.id);
         saveFeed(feed);
         send(res, 200, { post: publicPost(post, user.id) });
+        return;
+      }
+
+      const deletePost = /^\/api\/feed\/([^/]+)$/.exec(url);
+      if (req.method === 'DELETE' && deletePost) {
+        const feed = loadFeed();
+        const index = feed.posts.findIndex((item) => item.id === deletePost[1]);
+        if (index < 0) return send(res, 404, { error: 'missing' });
+        const post = feed.posts[index];
+        const allowed = post.authorId === user.id || post.author === user.name || isLeader(user);
+        if (!allowed) return send(res, 403, { error: 'forbidden' });
+        feed.posts.splice(index, 1);
+        feed.reposts = feed.reposts.filter((item) => item.originalId !== post.id);
+        saveFeed(feed);
+        send(res, 200, { ok: true });
         return;
       }
 

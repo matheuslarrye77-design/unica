@@ -15,15 +15,16 @@ export const MOODS = [
 ] as const;
 
 const faces = [
-  { id: 'matheus', name: 'Matheus', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Matheus', label: 'Motivado', className: 'bg-[#E7F7EC] text-[#1E7A46]' },
-  { id: 'ana', name: 'Ana', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AnaMood', label: 'Normal', className: 'bg-[#FFF4D9] text-[#8A6412]' },
-  { id: 'joao', name: 'João', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JoaoMood', label: 'Bem', className: 'bg-[#E7F7EC] text-[#1E7A46]' },
-  { id: 'caio', name: 'Caio', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=CaioMood', label: 'Cansado', className: 'bg-[#F3E8FF] text-[#6D28D9]' },
+  { id: 'matheus', name: 'Matheus', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Matheus', emoji: '🚀' },
+  { id: 'ana', name: 'Ana', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AnaMood', emoji: '😐' },
+  { id: 'joao', name: 'João', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JoaoMood', emoji: '🙂' },
+  { id: 'caio', name: 'Caio', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=CaioMood', emoji: '😴' },
 ];
 
 const moodTone: Record<string, { label: string; className: string }> = {
   '🚀': { label: 'Motivado', className: 'bg-[var(--unica-positive)] text-[#1E7A46]' },
   '😊': { label: 'Feliz', className: 'bg-[var(--unica-positive)] text-[#1E7A46]' },
+  '🙂': { label: 'Bem', className: 'bg-[var(--unica-positive)] text-[#1E7A46]' },
   '😐': { label: 'Normal', className: 'bg-[var(--unica-neutral)] text-[#8A6412]' },
   '😴': { label: 'Cansado', className: 'bg-[var(--unica-alert)] text-[#9A3D66]' },
   '😔': { label: 'Cabisbaixo', className: 'bg-[var(--unica-alert)] text-[#9A3D66]' },
@@ -81,18 +82,26 @@ export const TeamMood: FC = () => {
         onPointerMove={onPointerMove}
         onPointerUp={() => { drag.current.active = false; }}
         onPointerCancel={() => { drag.current.active = false; }}
-        className="mt-2 grid grid-cols-4 gap-1"
+        className="mt-11 grid grid-cols-4 gap-1"
       >
         {team.map((person) => {
-          const emoji = moods[person.id];
-          const saved = emoji ? moodTone[emoji] : undefined;
-          const first = person.name.split(' ')[0];
           const self = person.id === user.id;
-          const label = saved?.label ?? person.label;
-          const toneClass = saved?.className ?? person.className;
+          const emoji = moods[person.id] ?? person.emoji;
+          const tone = moodTone[emoji] ?? { label: 'Humor', className: 'bg-muted text-muted-foreground' };
+          const first = person.name.split(' ')[0];
+          const label = tone.label;
+          const toneClass = tone.className;
           const portrait = (
             <div className="relative mx-auto h-10 w-10">
+              {self ? (
+                <span className="absolute bottom-full left-1/2 z-10 mb-1.5 w-max max-w-[108px] -translate-x-1/2 rounded-2xl bg-white/65 px-2 py-1 text-center text-[10px] font-medium leading-[1.25] text-primary shadow-sm backdrop-blur-sm">
+                  defina seu humor de hoje
+                </span>
+              ) : null}
               <img src={person.avatar} alt="" className="h-10 w-10 rounded-full bg-muted object-cover ring-2 ring-white" />
+              {self ? (
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[12px] font-bold leading-none text-white ring-2 ring-white">+</span>
+              ) : null}
             </div>
           );
           const caption = (

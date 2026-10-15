@@ -41,6 +41,10 @@ export function deleteFeedComment(postId: string, commentId: string) {
   return request<{ post: SocialPost }>(`/api/feed/${postId}/comments/${commentId}`, { method: 'DELETE' });
 }
 
+export function deleteFeedPost(id: string) {
+  return request<{ ok: boolean }>(`/api/feed/${id}`, { method: 'DELETE' });
+}
+
 export function republishPost(id: string, note: string) {
   return request<{ repost: Repost }>(`/api/feed/${id}/repost`, { method: 'POST', body: JSON.stringify({ note }) });
 }
