@@ -6,10 +6,10 @@ import { useShell } from '@/components/Sidebar';
 export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: boolean }> = ({ children, locked = false }) => {
   const { rightCollapsed, toggleRight } = useShell();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const collapsed = locked ? false : rightCollapsed;
+  const collapsed = rightCollapsed;
 
   const body = (
-    <div className={cn('flex min-h-0 flex-1 flex-col gap-2', locked ? 'h-full overflow-hidden [&>*]:min-h-0 [&>*:first-child]:shrink-0 [&>*:not(:first-child)]:flex-1' : 'overflow-y-auto px-3 py-3 [scrollbar-width:thin]')}>
+    <div className={cn('flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto', locked ? '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden' : 'px-3 py-3 [scrollbar-width:thin]')}>
       {children}
     </div>
   );
@@ -45,18 +45,16 @@ export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: bo
           collapsed ? 'w-11' : 'w-[320px]',
         )}
       >
-        {locked ? null : (
-          <div className={cn('flex shrink-0 items-center px-1', collapsed ? 'justify-center' : 'justify-end')}>
-            <button
-              type="button"
-              onClick={toggleRight}
-              aria-label={collapsed ? 'Expandir painel' : 'Recolher painel'}
-              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-card hover:text-foreground"
-            >
-              {collapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </button>
-          </div>
-        )}
+        <div className={cn('flex shrink-0 items-center px-1', collapsed ? 'justify-center' : 'justify-end')}>
+          <button
+            type="button"
+            onClick={toggleRight}
+            aria-label={collapsed ? 'Expandir painel' : 'Recolher painel'}
+            className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-card hover:text-foreground"
+          >
+            {collapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+        </div>
         {collapsed ? null : body}
       </aside>
     </>

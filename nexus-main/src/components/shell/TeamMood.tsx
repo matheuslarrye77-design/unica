@@ -84,7 +84,7 @@ export const TeamMood: FC = () => {
   }
 
   return (
-    <section className="unica-surface flex min-h-0 flex-col px-3 py-2.5">
+    <section className="unica-surface shrink-0 overflow-visible px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-[13.5px] font-semibold">
           <span className="unica-icon">
@@ -101,13 +101,23 @@ export const TeamMood: FC = () => {
           </button>
         </div>
       </div>
+      <div className="relative mt-1 pt-[62px]">
+        {page === 0 ? (
+          <span className="pointer-events-none absolute top-0 left-0.5 z-20 w-[108px]">
+            <span className="block rounded-[18px_20px_16px_22px] border border-[#E7C8F2] bg-[#FBF6FC] px-2 py-1.5 text-center text-[10px] font-medium leading-[1.2] text-primary shadow-[0_4px_12px_rgba(142,53,184,0.08)]">
+              defina seu humor de hoje
+            </span>
+            <span className="absolute top-full left-7 mt-1 h-3 w-3 rounded-full border border-[#D7A8E8] bg-[#F6E9FA]" />
+            <span className="absolute top-[calc(100%+18px)] left-4 h-2 w-2 rounded-full border border-[#D7A8E8] bg-[#F6E9FA]" />
+          </span>
+        ) : null}
       <div
         ref={scroller}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={() => { drag.current.active = false; }}
         onPointerCancel={() => { drag.current.active = false; }}
-        className="flex snap-x snap-mandatory gap-1 overflow-x-auto scroll-smooth pt-11 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {team.map((person) => {
           const self = person.id === user.id;
@@ -118,11 +128,6 @@ export const TeamMood: FC = () => {
           const toneClass = tone.className;
           const portrait = (
             <div className="relative mx-auto h-10 w-10">
-              {self ? (
-                <span className="absolute bottom-full left-1/2 z-10 mb-1.5 w-max max-w-[108px] -translate-x-1/2 rounded-2xl bg-white/65 px-2 py-1 text-center text-[10px] font-medium leading-[1.25] text-primary shadow-sm backdrop-blur-sm">
-                  defina seu humor de hoje
-                </span>
-              ) : null}
               <img src={person.avatar} alt="" className="h-10 w-10 rounded-full bg-muted object-cover ring-2 ring-white" />
               {self ? (
                 <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[12px] font-bold leading-none text-white ring-2 ring-white">+</span>
@@ -136,7 +141,7 @@ export const TeamMood: FC = () => {
             </>
           );
           return (
-            <div key={person.id} className="w-[72px] shrink-0 snap-start text-center">
+            <div key={person.id} className="w-1/4 shrink-0 snap-start text-center">
               {self ? (
                 <button type="button" data-mood-self className="w-full" aria-label={mine ? 'Alterar humor' : 'Definir humor'} onClick={() => setOpen((value) => !value)}>
                   {portrait}
@@ -151,6 +156,7 @@ export const TeamMood: FC = () => {
             </div>
           );
         })}
+      </div>
       </div>
       <div className="mt-1.5 flex justify-center gap-1" aria-hidden>
         {Array.from({ length: pages }, (_, index) => (

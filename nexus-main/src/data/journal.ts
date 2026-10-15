@@ -80,6 +80,7 @@ const LEGACY_COVERS: Record<string, string> = {
 
 export const PIN_LIMIT = 3;
 const STORAGE_KEY = 'unica-journal';
+const JOURNAL_VERSION = 'foto-2026-10-15';
 
 export function canManageJournal(user: { role: string; department?: string }) {
   return /admin|líder|lider|coordena|diret|vp\b|chief|head|gerente/i.test(user.role)
@@ -102,26 +103,76 @@ export function mediaKind(file: File): JournalMediaKind {
   return 'document';
 }
 
-function daysAgo(days: number) {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  date.setHours(9, 0, 0, 0);
-  return date.toISOString();
+const THREAD_LINES = ['Combinado.', 'Vou avisar a equipe.', 'Ficou claro.', 'Pode seguir assim.'];
+const THREAD_VOICES = ['Ana Santos', 'Caio Mendes', 'João Ferreira', 'Lívia Ramos'];
+
+function thread(prefix: string, count: number): JournalComment[] {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `${prefix}-${index + 1}`,
+    author: THREAD_VOICES[index % THREAD_VOICES.length],
+    text: THREAD_LINES[index % THREAD_LINES.length],
+    date: '2026-10-14T15:00:00.000Z',
+  }));
 }
 
 const seed: JournalArticle[] = [
+  {
+    id: 'j-roteiro',
+    title: 'Roteiro da integração de novos colaboradores',
+    content: 'O roteiro de integração apresenta a Única, as áreas e o primeiro mês de quem chega.\n\nA visita começa na recepção, segue pela Comunicação e termina com o time de destino. O material de apoio fica nesta publicação.',
+    category: 'social',
+    cover: '/jornal/capas/integracao.jpg',
+    date: '2026-10-14T18:00:00.000Z',
+    author: 'Helena Duarte',
+    status: 'published',
+    pinned: true,
+    media: [],
+    comments: thread('roteiro', 24),
+    reactions: 1,
+    reactedBy: [],
+  },
+  {
+    id: 'j-atualizacao',
+    title: 'Atualização dos processos internos',
+    content: 'Os processos internos foram revisados para deixar cada etapa com um responsável e um prazo visível.\n\nA planilha de acompanhamento passa a ser a referência única. A orientação anterior deixa de valer.',
+    category: 'processos',
+    cover: '/jornal/capas/teclado.jpg',
+    date: '2026-10-13T18:00:00.000Z',
+    author: 'João Ferreira',
+    status: 'published',
+    pinned: true,
+    media: [],
+    comments: thread('atualizacao', 11),
+    reactions: 0,
+    reactedBy: [],
+  },
+  {
+    id: 'j-manutencao',
+    title: 'Manutenção no sistema de acesso',
+    content: 'O sistema de acesso entra em manutenção para atualizar as credenciais e o registro de entrada.\n\nDurante a janela, use a recepção para liberar visitantes. O retorno previsto é no mesmo dia.',
+    category: 'urgente',
+    cover: '/jornal/capas/monitores.jpg',
+    date: '2026-10-13T16:00:00.000Z',
+    author: 'Helena Duarte',
+    status: 'published',
+    pinned: true,
+    media: [],
+    comments: thread('manutencao', 18),
+    reactions: 1,
+    reactedBy: [],
+  },
   {
     id: 'j-endo',
     title: 'Campanha de Endomarketing — Juntos somos mais fortes',
     content: 'A campanha de endomarketing começa nesta semana. A ideia é celebrar o que a equipe já construiu e deixar visível o que vem pela frente.\n\nParticipe das ações no auditório, acompanhe os comunicados e compartilhe um registro do seu time. As peças oficiais ficam disponíveis para quem for publicar nos canais internos.\n\nQuem quiser sugerir uma história da própria área pode falar com a Comunicação.',
     category: 'social',
     cover: '/jornal/capas/evento.jpg',
-    date: daysAgo(0),
+    date: '2026-10-14T12:00:00.000Z',
     author: 'Helena Duarte',
     status: 'published',
-    pinned: true,
+    pinned: false,
     media: [],
-    comments: [{ id: 'c1', author: 'Ana Santos', text: 'A equipe de Design já separou os registros da semana.', date: daysAgo(0) }],
+    comments: [{ id: 'c1', author: 'Ana Santos', text: 'A equipe de Design já separou os registros da semana.', date: '2026-10-14T12:00:00.000Z' }],
     reactions: 24,
     reactedBy: [],
   },
@@ -131,10 +182,10 @@ const seed: JournalArticle[] = [
     content: 'O fluxo de matrícula muda a partir desta segunda. O registro da aluna ou do aluno passa a ser conferido em duas etapas antes da confirmação.\n\nA primeira etapa continua na secretaria. A segunda é a validação acadêmica, que precisa estar concluída no mesmo dia.\n\nO passo a passo completo está descrito abaixo e substitui a orientação anterior.',
     category: 'processos',
     cover: '/jornal/capas/processos.jpg',
-    date: daysAgo(1),
+    date: '2026-10-13T14:00:00.000Z',
     author: 'João Ferreira',
     status: 'published',
-    pinned: true,
+    pinned: false,
     media: [],
     comments: [],
     reactions: 11,
@@ -146,12 +197,12 @@ const seed: JournalArticle[] = [
     content: 'Na quinta-feira, das 22h às 23h30, o ambiente acadêmico ficará indisponível para manutenção.\n\nSalve os registros em andamento antes desse horário. Atendimentos presenciais seguem normalmente.\n\nSe algo continuar fora depois das 23h30, avise a coordenação imediatamente.',
     category: 'urgente',
     cover: '/jornal/capas/urgente.jpg',
-    date: daysAgo(1),
+    date: '2026-10-13T12:00:00.000Z',
     author: 'Helena Duarte',
     status: 'published',
-    pinned: true,
+    pinned: false,
     media: [],
-    comments: [{ id: 'c2', author: 'Caio Mendes', text: 'Vou avisar o atendimento da noite.', date: daysAgo(1) }],
+    comments: [{ id: 'c2', author: 'Caio Mendes', text: 'Vou avisar o atendimento da noite.', date: '2026-10-13T12:00:00.000Z' }],
     reactions: 18,
     reactedBy: [],
   },
@@ -161,7 +212,7 @@ const seed: JournalArticle[] = [
     content: 'Na sexta, às 14h, a reunião geral acontece no auditório principal. A pauta cobre a campanha interna, o calendário do semestre e um ponto trazido por cada área.\n\nLevem uma decisão que o time precisa tomar junto. A duração prevista é de uma hora.',
     category: 'social',
     cover: '/jornal/capas/reuniao.jpg',
-    date: daysAgo(2),
+    date: '2026-10-12T15:00:00.000Z',
     author: 'Helena Duarte',
     status: 'published',
     pinned: false,
@@ -176,7 +227,7 @@ const seed: JournalArticle[] = [
     content: 'O treinamento de produto acontece no dia 17 de outubro, das 14h às 16h, na Sala 2 do bloco acadêmico.\n\nÉ voltado para quem entrou neste semestre. As vagas são limitadas e a presença precisa ser confirmada no calendário.\n\nO material de apoio fica nesta publicação depois do encontro.',
     category: 'treinamentos',
     cover: '/jornal/capas/treinamento.jpg',
-    date: daysAgo(3),
+    date: '2026-10-11T15:00:00.000Z',
     author: 'Lívia Ramos',
     status: 'published',
     pinned: false,
@@ -189,9 +240,9 @@ const seed: JournalArticle[] = [
     id: 'j-palestra',
     title: 'Palestra de integração das áreas acadêmicas',
     content: 'Na próxima terça, a palestra de integração reúne secretaria, coordenação e comunicação. O tema é como uma informação sai da área e chega ao restante da empresa sem se perder.\n\nO encontro é aberto. Chegue alguns minutos antes para acomodar a equipe.',
-    category: 'social',
+    category: 'processos',
     cover: '/jornal/capas/palestra.jpg',
-    date: daysAgo(4),
+    date: '2026-10-10T15:00:00.000Z',
     author: 'Marina Costa',
     status: 'published',
     pinned: false,
@@ -206,7 +257,7 @@ const seed: JournalArticle[] = [
     content: 'O workshop cobre as conversas mais comuns do balcão: rematrícula, documentos pendentes e mudança de turma.\n\nHaverá exercícios curtos e um roteiro para levar de volta à equipe. Quem já participou da edição anterior pode ir só ao segundo horário.',
     category: 'treinamentos',
     cover: '/jornal/capas/treinamento.jpg',
-    date: daysAgo(5),
+    date: '2026-10-09T15:00:00.000Z',
     author: 'Lívia Ramos',
     status: 'published',
     pinned: false,
@@ -221,7 +272,7 @@ const seed: JournalArticle[] = [
     content: 'Antes do fechamento, cada área confere pendências abertas e registra o que ficou para o mês seguinte.\n\nO prazo interno é a última sexta útil. Documentos sem responsável não entram no fechamento e voltam para a área de origem.',
     category: 'processos',
     cover: '/jornal/capas/processos.jpg',
-    date: daysAgo(6),
+    date: '2026-10-08T15:00:00.000Z',
     author: 'João Ferreira',
     status: 'published',
     pinned: false,
@@ -236,7 +287,7 @@ const seed: JournalArticle[] = [
     content: 'A confraternização será na área comum, depois do expediente, no último dia útil do mês.\n\nA presença é livre. Quem tiver restrição alimentar pode avisar a Comunicação até a semana anterior.',
     category: 'social',
     cover: '/jornal/capas/equipe.jpg',
-    date: daysAgo(8),
+    date: '2026-10-07T15:00:00.000Z',
     author: 'Ana Santos',
     status: 'published',
     pinned: false,
@@ -251,7 +302,7 @@ const seed: JournalArticle[] = [
     content: 'O calendário do semestre foi atualizado com feriados, recessos e as datas de conselho. A versão anterior deixa de valer.\n\nUse esta publicação como referência quando for marcar reunião ou treinamento em cima de um dia letivo.',
     category: 'processos',
     cover: '/jornal/capas/calendario.jpg',
-    date: daysAgo(9),
+    date: '2026-10-06T15:00:00.000Z',
     author: 'Matheus Larrie',
     status: 'published',
     pinned: false,
@@ -266,7 +317,7 @@ const seed: JournalArticle[] = [
     content: 'Pedidos de acesso, equipamento e sistema passam a entrar por um único canal. Mensagens soltas no chat deixam de valer como abertura de chamado.\n\nDescreva o que parou, quem é afetado e desde quando. Isso encurta o retorno.',
     category: 'urgente',
     cover: '/jornal/capas/tecnologia.jpg',
-    date: daysAgo(10),
+    date: '2026-10-05T15:00:00.000Z',
     author: 'Caio Mendes',
     status: 'published',
     pinned: false,
@@ -281,7 +332,7 @@ const seed: JournalArticle[] = [
     content: 'Rascunho do roteiro de boas-vindas. Ainda falta a ordem das visitas e o material de apoio.',
     category: 'treinamentos',
     cover: '/jornal/capas/treinamento.jpg',
-    date: daysAgo(0),
+    date: '2026-10-14T09:00:00.000Z',
     author: 'Helena Duarte',
     status: 'draft',
     pinned: false,
@@ -297,6 +348,11 @@ const listeners = new Set<() => void>();
 
 function readStored(): JournalArticle[] {
   try {
+    if (localStorage.getItem('unica-journal-version') !== JOURNAL_VERSION) {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.setItem('unica-journal-version', JOURNAL_VERSION);
+      return seed;
+    }
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return seed;
     const parsed = JSON.parse(raw) as JournalArticle[];
