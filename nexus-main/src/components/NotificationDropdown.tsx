@@ -55,7 +55,7 @@ export const NotificationDropdown: FC = () => {
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" className="relative h-10 w-10">
+        <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-[10px] text-muted-foreground hover:text-foreground" aria-label="Notificações">
           <Bell className="h-[1.2rem] w-[1.2rem]" />
           {unreadCount > 0 && (
             <Badge 

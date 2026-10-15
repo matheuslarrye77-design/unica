@@ -1,7 +1,6 @@
-import { FileText, ImagePlus, ListChecks, Video, X } from 'lucide-react';
+import { FileText, ImagePlus, ListChecks, Send, Video, X } from 'lucide-react';
 import { type ChangeEvent, type FC, type FormEvent, useRef, useState } from 'react';
-import { currentUser } from '@/data/mockData';
-import { Button } from '@/components/ui/button';
+import { actor } from '@/lib/session';
 import type { Attachment, PollOption } from './types';
 
 export type NewPostDraft = {
@@ -60,19 +59,20 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void }> = ({ o
   }
 
   const ready = body.trim().length > 0 && (!pollOpen || options.filter((item) => item.trim()).length >= 2);
+  const user = actor();
 
   return (
-    <form onSubmit={publish} className="rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(40,20,70,0.05)]">
-      <div className="flex gap-3">
-        <img src={currentUser.avatar} alt="" className="h-10 w-10 rounded-full bg-muted" />
+    <form onSubmit={publish} className="unica-surface px-4 py-4 sm:px-5">
+      <div className="flex items-center gap-3">
+        <img src={user.avatar} alt="" className="h-9 w-9 rounded-full bg-muted object-cover" />
         <label className="sr-only" htmlFor="novo-post">Publicação</label>
         <textarea
           id="novo-post"
           value={body}
           onChange={(event) => setBody(event.target.value)}
-          rows={2}
+          rows={1}
           placeholder="Compartilhe algo com a equipe..."
-          className="min-h-16 w-full resize-none rounded-xl border border-border bg-muted/30 px-4 py-3 text-[15px] leading-6 outline-none placeholder:text-muted-foreground focus-visible:border-primary"
+          className="h-10 min-h-10 w-full resize-none rounded-[12px] border border-border bg-card px-3.5 py-2 text-[13.5px] leading-5 outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/20"
         />
       </div>
 
@@ -120,26 +120,37 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void }> = ({ o
         </div>
       ) : null}
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-        <div className="flex flex-wrap items-center gap-1">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={readImage} />
           <input ref={videoRef} type="file" accept="video/*" className="hidden" onChange={readVideo} />
           <input ref={fileRef} type="file" className="hidden" onChange={readFile} />
-          <Button type="button" variant="ghost" size="sm" onClick={() => photoRef.current?.click()}>
-            <ImagePlus /> Foto
-          </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={() => videoRef.current?.click()}>
-            <Video /> Vídeo
-          </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={() => fileRef.current?.click()}>
-            <FileText /> Documento
-          </Button>
-          <Button type="button" variant="ghost" size="sm" aria-pressed={pollOpen} onClick={() => setPollOpen((open) => !open)}>
-            <ListChecks /> Enquete
-          </Button>
+          <ComposerAction icon={ImagePlus} label="Foto" onClick={() => photoRef.current?.click()} />
+          <ComposerAction icon={Video} label="Vídeo" onClick={() => videoRef.current?.click()} />
+          <ComposerAction icon={FileText} label="Documento" onClick={() => fileRef.current?.click()} />
+          <ComposerAction icon={ListChecks} label="Enquete" pressed={pollOpen} onClick={() => setPollOpen((open) => !open)} />
         </div>
-        <Button type="submit" disabled={!ready}>Publicar</Button>
+        <button
+          type="submit"
+          disabled={!ready}
+          className="inline-flex h-9 items-center gap-1.5 rounded-[12px] bg-primary px-3.5 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-[#6234B8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          <Send className="h-3.5 w-3.5" />
+          Publicar
+        </button>
       </div>
     </form>
   );
 };
+
+const ComposerAction: FC<{ icon: FC<{ className?: string }>; label: string; pressed?: boolean; onClick: () => void }> = ({ icon: Icon, label, pressed, onClick }) => (
+  <button
+    type="button"
+    aria-pressed={pressed}
+    onClick={onClick}
+    className={`inline-flex h-8 items-center gap-1.5 rounded-[10px] border px-2.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${pressed ? 'border-primary/30 bg-accent text-accent-foreground' : 'border-border bg-card text-[#3F3C56] hover:bg-accent dark:text-foreground'}`}
+  >
+    <Icon className="h-3.5 w-3.5" />
+    {label}
+  </button>
+);

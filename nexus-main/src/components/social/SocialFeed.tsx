@@ -120,21 +120,27 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition' }> = ({ mode = 'mur
     : reposts;
 
   return (
-    <div className="flex w-full flex-col gap-6">
-      {mode === 'recognition' ? null : <section className="flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(40,20,70,0.05)]">
-        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-primary">
-          <Sun className="h-5 w-5" />
-        </span>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">{getTimeBasedGreeting()}, {firstName}!</h1>
-          <p className="text-sm text-muted-foreground">Que hoje seja um dia incrível.</p>
-        </div>
-      </section>}
+    <div className="flex w-full flex-col gap-4">
+      {mode === 'recognition' ? null : (
+        <section className="unica-surface relative flex h-[112px] items-center overflow-hidden px-5">
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-[46%] bg-[radial-gradient(circle_at_70%_40%,#EDE5FF_0%,transparent_58%),radial-gradient(circle_at_90%_80%,#F3EFFF_0%,transparent_46%)]" />
+          <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-accent text-primary">
+            <Sun className="h-5 w-5" strokeWidth={1.75} />
+          </span>
+          <div className="relative min-w-0 pl-3.5">
+            <h1 className="truncate text-[24px] font-semibold leading-tight tracking-tight">{getTimeBasedGreeting()}, {firstName}!</h1>
+            <p className="mt-1 text-[13px] text-muted-foreground">Que hoje seja um dia incrível.</p>
+          </div>
+          <p className="unica-script pointer-events-none absolute right-8 top-7 hidden max-w-[180px] rotate-[-8deg] text-[18px] leading-6 text-primary/80 lg:block">
+            Juntos somos mais fortes!
+          </p>
+        </section>
+      )}
 
       {mode === 'recognition' ? (canRecognize ? <RecognitionComposer onCreated={() => window.dispatchEvent(new Event('unica-feed-refresh'))} /> : null) : <CreatePost onPublish={(draft) => void publish(draft)} />}
 
       {mode === 'recognition' && visiblePosts.length === 0 && visibleReposts.length === 0 ? (
-        <p className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground shadow-[0_1px_2px_rgba(40,20,70,0.05)]">Nenhum reconhecimento ainda.</p>
+        <p className="unica-surface px-5 py-8 text-center text-[13px] text-muted-foreground">Nenhum reconhecimento ainda.</p>
       ) : null}
 
       {visibleReposts.map((repost) => {

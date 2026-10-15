@@ -1,6 +1,7 @@
 import { actor } from '@/lib/session';
 import { saveMood, useInstitution } from '@/lib/institution';
 import { cn } from '@/lib/utils';
+import { ChevronLeft, ChevronRight, Smile } from 'lucide-react';
 import { useRef, useState, type FC, type PointerEvent } from 'react';
 
 export const MOODS = [
@@ -19,6 +20,19 @@ const others = [
   { id: 'marina', name: 'Marina Costa', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marina' },
   { id: 'helena', name: 'Helena Duarte', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Helena' },
 ];
+
+const moodTone: Record<string, { label: string; className: string }> = {
+  '🚀': { label: 'Motivado', className: 'bg-[var(--unica-positive)] text-[#1E7A46]' },
+  '😊': { label: 'Feliz', className: 'bg-[var(--unica-positive)] text-[#1E7A46]' },
+  '😐': { label: 'Normal', className: 'bg-[var(--unica-neutral)] text-[#8A6412]' },
+  '😴': { label: 'Cansado', className: 'bg-[var(--unica-alert)] text-[#9A3D66]' },
+  '😔': { label: 'Cabisbaixo', className: 'bg-[var(--unica-alert)] text-[#9A3D66]' },
+  '😮‍💨': { label: 'Sobrecarregado', className: 'bg-[var(--unica-neutral)] text-[#8A6412]' },
+};
+
+function scrollRail(element: HTMLDivElement | null, direction: -1 | 1) {
+  element?.scrollBy({ left: direction * 140, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+}
 
 export const TeamMood: FC = () => {
   const user = actor();
@@ -44,8 +58,21 @@ export const TeamMood: FC = () => {
   }
 
   return (
-    <section className="shrink-0 rounded-2xl border bg-card p-3">
-      <h2 className="px-1 text-sm font-semibold">Humor da equipe</h2>
+    <section className="unica-surface px-4 py-4">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-[15px] font-semibold">
+          <Smile className="h-4 w-4 text-primary" strokeWidth={1.75} />
+          Humor da equipe
+        </h2>
+        <div className="flex items-center gap-0.5">
+          <button type="button" aria-label="Anterior" className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-muted" onClick={() => scrollRail(scroller.current, -1)}>
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button type="button" aria-label="Próximo" className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-muted" onClick={() => scrollRail(scroller.current, 1)}>
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
       <div
         ref={scroller}
         onPointerDown={onPointerDown}
@@ -56,30 +83,36 @@ export const TeamMood: FC = () => {
       >
         {team.map((person) => {
           const emoji = moods[person.id];
+          const tone = emoji ? moodTone[emoji] : undefined;
           const first = person.name.split(' ')[0];
           const self = person.id === user.id;
           const portrait = (
-            <div className="relative mx-auto h-14 w-14">
-              <img src={person.avatar} alt="" className="h-14 w-14 rounded-full bg-muted object-cover" />
+            <div className="relative mx-auto h-12 w-12">
+              <img src={person.avatar} alt="" className="h-12 w-12 rounded-full bg-muted object-cover" />
               {emoji ? (
-                <span className="mood-emoji absolute -right-1.5 -bottom-1 rounded-full bg-card px-0.5 text-sm leading-none ring-1 ring-border">{emoji}</span>
+                <span className="mood-emoji absolute -right-1 -bottom-1 rounded-full bg-card px-0.5 text-[13px] leading-none ring-1 ring-border">{emoji}</span>
               ) : self ? (
                 <span className="absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-card text-[10px] leading-none text-muted-foreground ring-1 ring-border">+</span>
               ) : null}
             </div>
           );
+          const caption = (
+            <>
+              <span className="mt-1.5 block max-w-[72px] truncate text-[12px] leading-4">{first}</span>
+              {tone ? <span className={cn('mt-1 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-4', tone.className)}>{tone.label}</span> : <span className="mt-1 block h-4" />}
+            </>
+          );
           return (
-            <div key={person.id} className="w-14 shrink-0 text-center">
+            <div key={person.id} className="w-[72px] shrink-0 text-center">
               {self ? (
                 <button type="button" data-mood-self className="w-full" aria-label={mine ? 'Alterar humor' : 'Definir humor'} onClick={() => setOpen((value) => !value)}>
                   {portrait}
-                  <span className="mt-1 block truncate text-xs">{first}</span>
-                  <span className="block text-[10px] font-medium text-primary">{mine ? 'Alterar' : 'Definir'}</span>
+                  {caption}
                 </button>
               ) : (
                 <>
                   {portrait}
-                  <p className="mt-1 truncate text-xs">{first}</p>
+                  {caption}
                 </>
               )}
             </div>
@@ -87,7 +120,7 @@ export const TeamMood: FC = () => {
         })}
       </div>
       {open ? (
-        <div className="mt-2 rounded-xl border bg-background p-1">
+        <div className="mt-2 rounded-[12px] border border-border bg-background p-1">
           {MOODS.map((mood) => (
             <button
               key={mood.id}
@@ -97,8 +130,8 @@ export const TeamMood: FC = () => {
                 setOpen(false);
               }}
               className={cn(
-                'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm',
-                mine === mood.emoji ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                'flex w-full items-center gap-2 rounded-[8px] px-2 py-1.5 text-left text-[13px]',
+                mine === mood.emoji ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
               )}
             >
               <span className="mood-emoji" aria-hidden>{mood.emoji}</span>

@@ -4,16 +4,13 @@ import type { SocialPost } from './types';
 
 export const AnnouncementPost: FC<{ post: SocialPost }> = ({ post }) => {
   return (
-    <div className="mt-3 overflow-hidden rounded-xl border border-primary/15 bg-accent sm:flex">
-      {post.image ? <img src={post.image} alt="" className="h-44 w-full object-cover sm:h-auto sm:w-56" /> : null}
-      <div className="flex flex-1 flex-col justify-center gap-2 px-4 py-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-primary">Comunicado da Única</p>
-        <h3 className="text-base font-semibold leading-snug">{post.bannerTitle}</h3>
-        <p className="text-sm leading-6 text-muted-foreground">{post.body}</p>
-        <Link to="/announcements" className="inline-flex h-9 w-fit items-center rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground">
-          Ver comunicado
-        </Link>
-      </div>
+    <div className="mt-3">
+      {post.image ? <img src={post.image} alt="" className="h-40 w-full rounded-[12px] object-cover sm:h-44" /> : null}
+      {post.bannerTitle ? <h3 className="mt-3 text-[15px] font-semibold leading-snug">{post.bannerTitle}</h3> : null}
+      <p className="mt-1 text-[13.5px] leading-6 text-muted-foreground">{post.body}</p>
+      <Link to="/announcements" className="mt-2 inline-flex text-[12.5px] font-medium text-primary hover:underline">
+        Ver no jornal
+      </Link>
     </div>
   );
 };

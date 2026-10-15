@@ -40,39 +40,44 @@
 
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(0.985 0.006 300);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.45 0.16 305);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0.01 305);
-  --secondary-foreground: oklch(0.28 0.06 305);
-  --muted: oklch(0.97 0.008 305);
-  --muted-foreground: oklch(0.5 0.02 305);
-  --accent: oklch(0.96 0.02 305);
-  --accent-foreground: oklch(0.35 0.12 305);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.01 305);
-  --input: oklch(0.92 0.01 305);
-  --ring: oklch(0.45 0.16 305);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.995 0.004 300);
-  --sidebar-foreground: oklch(0.22 0.03 305);
-  --sidebar-primary: oklch(0.45 0.16 305);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.96 0.02 305);
-  --sidebar-accent-foreground: oklch(0.35 0.12 305);
-  --sidebar-border: oklch(0.92 0.01 305);
-  --sidebar-ring: oklch(0.45 0.16 305);
+  --radius: 0.75rem;
+  --background: #F8F8FC;
+  --foreground: #25233A;
+  --card: #FFFFFF;
+  --card-foreground: #25233A;
+  --popover: #FFFFFF;
+  --popover-foreground: #25233A;
+  --primary: #7040C8;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F3EFFF;
+  --secondary-foreground: #5730A6;
+  --muted: #F6F5FA;
+  --muted-foreground: #77748D;
+  --accent: #F3EFFF;
+  --accent-foreground: #5730A6;
+  --destructive: #C2415B;
+  --destructive-foreground: #FFFFFF;
+  --border: #E9E6F2;
+  --input: #E9E6F2;
+  --ring: #7040C8;
+  --chart-1: #7040C8;
+  --chart-2: #3D9A6A;
+  --chart-3: #C48A1A;
+  --chart-4: #C45B8A;
+  --chart-5: #5B6BC8;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #25233A;
+  --sidebar-primary: #7040C8;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F3EFFF;
+  --sidebar-accent-foreground: #5730A6;
+  --sidebar-border: #E9E6F2;
+  --sidebar-ring: #7040C8;
+  --unica-hover: #EDE5FF;
+  --unica-positive: #E7F7EC;
+  --unica-neutral: #FFF4D9;
+  --unica-alert: #FBEAF2;
+  --unica-shadow: 0 1px 2px rgba(70, 40, 120, 0.05);
 }
 
 .dark {
@@ -108,15 +113,31 @@
   --sidebar-accent-foreground: oklch(0.96 0.012 305);
   --sidebar-border: oklch(0.4 0.05 305);
   --sidebar-ring: oklch(0.74 0.13 305);
+  --unica-hover: oklch(0.34 0.05 305);
+  --unica-positive: oklch(0.34 0.05 155);
+  --unica-neutral: oklch(0.36 0.05 85);
+  --unica-alert: oklch(0.34 0.05 350);
+  --unica-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 @layer base {
   * {
     border-color: var(--border);
   }
+  html {
+    font-size: 16px;
+  }
   body {
     background-color: var(--background);
     color: var(--foreground);
+    font-family: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: "cv11" 1;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: #EDE5FF;
+    color: #25233A;
   }
   
   /* YouTube-like dark mode improvements */
@@ -196,6 +217,26 @@
   font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
   font-style: normal;
   font-weight: 400;
+}
+
+.unica-surface {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--unica-shadow);
+}
+
+.unica-script {
+  font-family: "Segoe Script", "Segoe Print", cursive;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .equipe-wrap {

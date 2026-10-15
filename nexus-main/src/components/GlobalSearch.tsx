@@ -145,16 +145,14 @@ export const GlobalSearch: FC = () => {
       <Button
         variant="outline"
         onClick={() => setIsOpen(true)}
-        className="h-10 w-48 justify-between text-muted-foreground hover:text-foreground"
+        className="h-10 w-full justify-start gap-2 rounded-[12px] border-border bg-card px-3 text-[13px] font-normal text-muted-foreground shadow-none hover:bg-card hover:text-foreground"
       >
-        <div className="flex items-center gap-2">
-          <Search className="h-4 w-4" />
-          <span className="text-sm">Buscar</span>
-        </div>
-        <div className="flex items-center gap-1 text-xs bg-muted px-1.5 py-0.5 rounded">
+        <Search className="h-4 w-4 shrink-0" />
+        <span className="min-w-0 flex-1 truncate text-left">Buscar no mural, pessoas, documentos...</span>
+        <span className="hidden items-center gap-1 rounded-[6px] border border-border bg-muted px-1.5 py-0.5 text-[11px] font-medium sm:inline-flex">
           <Command className="h-3 w-3" />
-          <span>K</span>
-        </div>
+          K
+        </span>
       </Button>
 
       {/* Search Dialog */}

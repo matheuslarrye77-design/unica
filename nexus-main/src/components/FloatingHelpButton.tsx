@@ -16,7 +16,7 @@ export const FloatingHelpButton: FC = () => {
 
   return (
     <>
-      <div className="fixed bottom-26 right-6 z-40">
+      <div className="fixed bottom-4 right-4 z-40 xl:bottom-4 xl:right-4">
         <Tooltip open={tooltipOpen} onOpenChange={setTooltipOpen}>
           <TooltipTrigger asChild>
             <Button

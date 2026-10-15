@@ -36,30 +36,27 @@ export const PostCard: FC<{
   const plain = post.kind === 'text' || post.kind === 'image' || post.kind === 'leadership';
 
   return (
-    <article id={post.id} className="rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(40,20,70,0.05)]">
+    <article id={post.id} className="unica-surface px-4 py-4 sm:px-5">
       {repost ? (
-        <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="mb-3 flex items-center gap-2 text-[12px] text-muted-foreground">
           <img src={repost.avatar} alt="" className="h-6 w-6 rounded-full bg-muted" />
           <span><span className="font-medium text-foreground">{repost.name}</span> republicou</span>
         </div>
       ) : null}
-      {repost?.note ? <p className="mb-3 text-[15px] leading-7">{repost.note}</p> : null}
+      {repost?.note ? <p className="mb-3 text-[13.5px] leading-6">{repost.note}</p> : null}
       <header className="flex items-center gap-3">
-        <img src={post.avatar} alt="" className="h-11 w-11 rounded-full bg-muted" />
+        <img src={post.avatar} alt="" className="h-10 w-10 rounded-full bg-muted object-cover" />
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-sm font-semibold">{post.author}</p>
-            {kindLabel[post.kind] ? (
-              <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-primary">{kindLabel[post.kind]}</span>
-            ) : null}
-          </div>
-          <p className="truncate text-xs text-muted-foreground">{post.role} · {post.department} · {post.time}</p>
+          <p className="truncate text-[13.5px] leading-5">
+            <span className="font-semibold text-foreground">{post.author}</span>
+            <span className="text-muted-foreground"> · {(post.department === 'Jornal' ? 'Jornal' : kindLabel[post.kind]) ?? post.department} · {post.time}</span>
+          </p>
         </div>
       </header>
 
-      {plain ? <p className="mt-3 text-[15px] leading-7">{post.body}</p> : null}
-      {post.kind === 'image' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-[420px] w-full rounded-xl object-cover" /> : null}
-      {post.kind === 'leadership' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-[420px] w-full rounded-xl object-cover" /> : null}
+      {plain ? <p className="mt-3 text-[13.5px] leading-6 text-[#3C3952] dark:text-foreground/90">{post.body}</p> : null}
+      {post.kind === 'image' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
+      {post.kind === 'leadership' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
       {post.attachment?.type === 'video' && post.attachment.url ? <video src={post.attachment.url} controls className="mt-3 max-h-[420px] w-full rounded-xl bg-black" /> : null}
       {post.attachment?.type === 'document' ? (
         <p className="mt-3 inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm">

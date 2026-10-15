@@ -37,6 +37,7 @@ const GROUPS = [
     items: [
       { path: '/projects', label: 'Atividades', icon: FolderOpen },
       { path: '/resources', label: 'Documentos', icon: FileText },
+      { path: '/calendar', label: 'Calendários', icon: CalendarDays },
     ],
   },
   {
@@ -44,7 +45,6 @@ const GROUPS = [
     label: 'Gestão',
     items: [
       { path: '/employees', label: 'Equipe', icon: Users },
-      { path: '/calendar', label: 'Calendários', icon: CalendarDays },
     ],
   },
 ];
@@ -123,7 +123,7 @@ export const AppFrame: FC<{ children: ReactNode }> = ({ children }) => {
     <ShellContext.Provider value={{ leftCollapsed, rightCollapsed, toggleLeft, toggleRight }}>
       <MenuContext.Provider value={() => setOpen(true)}>
         <Sidebar open={open} onClose={() => setOpen(false)} />
-        <div className={cn('transition-[padding-left] duration-300 ease-out', leftCollapsed ? 'lg:pl-16' : 'lg:pl-60')}>{children}</div>
+        <div className={cn('transition-[padding-left] duration-300 ease-out', leftCollapsed ? 'lg:pl-16' : 'lg:pl-[260px]')}>{children}</div>
       </MenuContext.Provider>
     </ShellContext.Provider>
   );
@@ -134,6 +134,7 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
   const { leftCollapsed, toggleLeft } = useShell();
   const institution = useInstitution();
   const leader = isLeader(currentUser);
+  const [closedGroups, setClosedGroups] = useState<string[]>([]);
   const groups = GROUPS.map((group) => {
     const items = group.items.filter((item) => item.path !== '/' || institution.muralAvailable);
     if (group.id !== 'gestao' || !leader) return { ...group, items };
@@ -146,33 +147,49 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
     };
   });
 
+  const itemClass = (active: boolean, collapsed: boolean) => cn(
+    'flex h-[38px] items-center gap-2.5 rounded-[10px] px-3 text-[13.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+    collapsed && 'justify-center px-0',
+    active
+      ? 'bg-accent text-accent-foreground'
+      : 'text-[#5E5B73] hover:bg-[var(--unica-hover)] hover:text-foreground dark:text-muted-foreground',
+  );
+
   const nav = (collapsed: boolean) => (
     <>
-      <div className={cn('flex items-center px-4 pb-2 pt-5', collapsed ? 'flex-col gap-2 px-2' : 'justify-between')}>
-        <Link to="/" onClick={onClose} className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-            Ú
+      <div className={cn('flex items-center px-4 pb-1 pt-4', collapsed ? 'flex-col gap-2 px-2' : 'justify-between')}>
+        <Link to="/" onClick={onClose} className="flex items-center gap-2.5 rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
+          <div className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-primary text-[15px] font-semibold text-primary-foreground">
+            U
           </div>
-          {collapsed ? null : <span className="text-lg font-semibold text-primary">Única</span>}
+          {collapsed ? null : <span className="text-[16px] font-semibold tracking-tight text-foreground">Única</span>}
         </Link>
-        <button type="button" className="hidden rounded-lg p-2 text-muted-foreground hover:bg-muted/60 hover:text-foreground lg:inline-flex" aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'} onClick={toggleLeft}>
+        <button type="button" className="hidden h-8 w-8 items-center justify-center rounded-[10px] text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 lg:inline-flex" aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'} onClick={toggleLeft}>
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </button>
-        <button type="button" className="rounded-lg p-2 text-muted-foreground lg:hidden" aria-label="Fechar menu" onClick={onClose}>
+        <button type="button" className="rounded-[10px] p-2 text-muted-foreground lg:hidden" aria-label="Fechar menu" onClick={onClose}>
           <X className="h-4 w-4" />
         </button>
       </div>
-      <nav className="flex min-h-0 flex-1 flex-col justify-between gap-1 overflow-y-auto px-3 py-3" aria-label="Principal">
+      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 pb-3 pt-2" aria-label="Principal">
         {groups.flatMap((group) => {
           const rows = [];
+          const groupClosed = closedGroups.includes(group.id);
           if (group.label && !collapsed) {
             rows.push(
-              <p key={`${group.id}-label`} className="flex items-center justify-between px-3 py-1 text-xs font-medium text-muted-foreground">
+              <button
+                key={`${group.id}-label`}
+                type="button"
+                className="mt-3 flex w-full items-center justify-between rounded-[8px] px-3 py-1 text-[12px] font-medium text-muted-foreground first:mt-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                aria-expanded={!groupClosed}
+                onClick={() => setClosedGroups((current) => current.includes(group.id) ? current.filter((id) => id !== group.id) : [...current, group.id])}
+              >
                 {group.label}
-                <ChevronDown className="h-3 w-3 opacity-50" />
-              </p>,
+                <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', groupClosed && '-rotate-90')} />
+              </button>,
             );
           }
+          if (groupClosed && !collapsed) return rows;
           for (const item of group.items) {
             const Icon = item.icon;
             const active = isActive(location.pathname, location.search, item.path);
@@ -181,15 +198,9 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
                 key={item.path}
                 to={item.path}
                 onClick={onClose}
-                className={cn(
-                  'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  collapsed && 'justify-center px-2',
-                  active
-                    ? 'bg-primary/10 text-primary shadow-sm'
-                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                )}
+                className={itemClass(active, collapsed)}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
                 {collapsed ? <span className="sr-only">{item.label}</span> : item.label}
               </Link>
             );
@@ -203,21 +214,16 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
           return rows;
         })}
       </nav>
-      <div className="border-t px-3 py-3">
+      <div className="border-t border-sidebar-border px-3 py-3">
         {collapsed ? (
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
                 to="/configuracoes"
                 onClick={onClose}
-                className={cn(
-                  'flex items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium transition-colors',
-                  location.pathname === '/configuracoes'
-                    ? 'bg-primary/10 text-primary shadow-sm'
-                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                )}
+                className={itemClass(location.pathname === '/configuracoes', true)}
               >
-                <Settings className="h-4 w-4" />
+                <Settings className="h-[18px] w-[18px]" strokeWidth={1.75} />
                 <span className="sr-only">Configurações</span>
               </Link>
             </TooltipTrigger>
@@ -227,14 +233,9 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
           <Link
             to="/configuracoes"
             onClick={onClose}
-            className={cn(
-              'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-              location.pathname === '/configuracoes'
-                ? 'bg-primary/10 text-primary shadow-sm'
-                : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-            )}
+            className={itemClass(location.pathname === '/configuracoes', false)}
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="h-[18px] w-[18px]" strokeWidth={1.75} />
             Configurações
           </Link>
         )}
@@ -244,13 +245,13 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
 
   return (
     <>
-      <aside className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col overflow-y-auto border-r bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-out lg:flex', leftCollapsed ? 'w-16' : 'w-60')}>
+      <aside className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-out lg:flex', leftCollapsed ? 'w-16' : 'w-[260px]')}>
         {nav(leftCollapsed)}
       </aside>
       {open ? (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <button type="button" className="absolute inset-0 bg-foreground/40" aria-label="Fechar menu" onClick={onClose} />
-          <aside className="absolute inset-y-0 left-0 flex w-60 flex-col overflow-y-auto border-r bg-sidebar text-sidebar-foreground shadow-lg">
+          <button type="button" className="absolute inset-0 bg-foreground/30" aria-label="Fechar menu" onClick={onClose} />
+          <aside className="absolute inset-y-0 left-0 flex w-[260px] flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-lg">
             {nav(false)}
           </aside>
         </div>

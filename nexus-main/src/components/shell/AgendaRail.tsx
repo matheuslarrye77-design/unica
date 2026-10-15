@@ -42,7 +42,7 @@ export const AgendaRail: FC = () => {
     .slice(0, 6);
 
   return (
-    <section className="shrink-0 rounded-2xl border bg-card p-3">
+    <section className="unica-surface shrink-0 px-4 py-4">
       <h2 className="px-1 text-sm font-semibold">Próximos</h2>
       {items.length === 0 ? (
         <p className="px-1 py-2 text-sm text-muted-foreground">Nenhum evento próximo.</p>

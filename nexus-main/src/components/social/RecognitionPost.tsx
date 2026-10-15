@@ -1,27 +1,29 @@
 import { Award } from 'lucide-react';
 import { type FC } from 'react';
-import { directoryPeople } from '@/lib/institution';
 import type { SocialPost } from './types';
+import { TrophyArt } from './TrophyArt';
 
 export const RecognitionPost: FC<{ post: SocialPost }> = ({ post }) => {
-  const person = directoryPeople.find((item) => item.name === post.recognizedName || item.name.split(' ')[0] === post.recognizedName);
+  const name = post.recognizedName?.trim();
+  const first = name?.split(' ')[0];
   return (
-    <div className="mt-3 rounded-xl border border-primary/15 bg-accent px-4 py-4">
-      <div className="flex items-center gap-2">
-        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary">
-          <Award className="h-4 w-4" />
-          Reconhecimento
-        </p>
-        {post.tag ? <span className="rounded-full bg-card px-2 py-0.5 text-[11px] font-medium text-primary">{post.tag}</span> : null}
-      </div>
-      <div className="mt-3 flex items-center gap-3">
-        {person?.avatar ? <img src={person.avatar} alt="" className="h-10 w-10 rounded-full bg-card" /> : null}
-        <div>
-          <p className="text-xs text-muted-foreground">Pessoa reconhecida</p>
-          <h3 className="text-sm font-semibold">{post.recognizedName}</h3>
+    <div className="mt-3">
+      {first ? <h3 className="text-[15px] font-semibold leading-snug text-foreground">Reconhecimento especial para {first}!</h3> : null}
+      <p className={first ? 'mt-2 text-[13.5px] leading-6 text-[#3C3952] dark:text-foreground/90' : 'text-[13.5px] leading-6'}>{post.body}</p>
+      <div className="relative mt-3 overflow-hidden rounded-[14px] bg-accent px-4 py-4 sm:px-5">
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold text-primary">
+              <Award className="h-3.5 w-3.5" strokeWidth={1.75} />
+              {post.tag || 'Reconhecimento'}
+            </p>
+            <p className="mt-2 text-[15px] font-semibold leading-snug text-accent-foreground">Você faz a diferença!</p>
+            <p className="mt-1 max-w-[280px] text-[12px] leading-5 text-muted-foreground">Seu esforço e dedicação são exemplos para toda a equipe.</p>
+            <p className="mt-2 text-[12px] text-muted-foreground">— Equipe Única</p>
+          </div>
+          <TrophyArt className="h-[92px] w-[104px] shrink-0" />
         </div>
       </div>
-      <p className="mt-3 text-sm leading-6">{post.body}</p>
     </div>
   );
 };

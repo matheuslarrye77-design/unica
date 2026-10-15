@@ -9,7 +9,7 @@ import { EventDialog } from '@/components/calendar/EventDialog';
 import { deleteEvent, notifyEvents, parseAgendaDate, useAgendaEvents, type AgendaEvent } from '@/lib/events';
 import { actor } from '@/lib/session';
 import { useEffect, useMemo, useRef, useState, type FC } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 type BirthdayDisplay = 'name' | 'photo' | 'both';
 
@@ -48,7 +48,7 @@ function nextBirthday(date: Date, from = new Date()) {
   return same >= start ? same : new Date(from.getFullYear() + 1, date.getMonth(), date.getDate()).getTime();
 }
 
-export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: boolean }> = ({ embedded = false, compact = false, page = false }) => {
+export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: boolean; rail?: boolean }> = ({ embedded = false, compact = false, page = false, rail = false }) => {
   const [params] = useSearchParams();
   const birthdaysFocus = params.get('tipo') === 'aniversarios';
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -204,6 +204,84 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const firstWeekday = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
   const selectedEvents = selectedDay ? eventsOn(selectedDay) : [];
+  const monthLabel = (() => { const label = currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }); return label.charAt(0).toUpperCase() + label.slice(1); })();
+
+  if (rail) {
+    const initials = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+    const previousDays = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0).getDate();
+    const cells: { day: number; outside: boolean }[] = [];
+    for (let index = firstWeekday - 1; index >= 0; index -= 1) cells.push({ day: previousDays - index, outside: true });
+    for (let day = 1; day <= daysInMonth; day += 1) cells.push({ day, outside: false });
+    let nextDay = 1;
+    while (cells.length % 7 !== 0) cells.push({ day: nextDay++, outside: true });
+    return (
+      <>
+        <section className="unica-surface px-4 py-4">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="flex min-w-0 items-center gap-2 text-[15px] font-semibold">
+              <Calendar className="h-4 w-4 shrink-0 text-primary" strokeWidth={1.75} />
+              <Link to="/calendar" className="truncate hover:text-primary">{monthLabel}</Link>
+            </h2>
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={() => shiftMonth(-1)} aria-label="Mês anterior" className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-muted hover:text-foreground"><ChevronLeft className="h-4 w-4" /></button>
+              <button type="button" onClick={() => { setCurrentDate(new Date()); setSelectedDay(new Date().getDate()); }} className="h-7 rounded-[8px] border border-border px-2 text-[12px] font-medium text-foreground hover:bg-muted">Hoje</button>
+              <button type="button" onClick={() => shiftMonth(1)} aria-label="Próximo mês" className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-muted hover:text-foreground"><ChevronRight className="h-4 w-4" /></button>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground">
+            {initials.map((day, index) => <div key={`${day}-${index}`} className="py-1">{day}</div>)}
+          </div>
+          <div className="grid grid-cols-7">
+            {cells.map((cell, index) => {
+              const dayEvents = cell.outside ? [] : eventsOn(cell.day);
+              const isCurrent = !cell.outside && today.getFullYear() === currentDate.getFullYear() && today.getMonth() === currentDate.getMonth() && today.getDate() === cell.day;
+              const picked = !cell.outside && selectedDay === cell.day;
+              return (
+                <button
+                  key={`${cell.outside ? 'out' : 'in'}-${cell.day}-${index}`}
+                  type="button"
+                  disabled={cell.outside}
+                  onClick={() => { setSelectedDay(cell.day); setActive(null); setPile(null); }}
+                  className="flex h-10 flex-col items-center justify-start"
+                >
+                  <span className={cn('flex h-7 w-7 items-center justify-center rounded-full text-[13px]', cell.outside && 'text-muted-foreground/45', isCurrent && 'bg-primary font-medium text-primary-foreground', picked && !isCurrent && 'bg-accent font-medium text-accent-foreground')}>{cell.day}</span>
+                  {dayEvents.length > 0 ? <span className="mt-0.5 h-1 w-1 rounded-full bg-primary" /> : <span className="mt-0.5 h-1 w-1" />}
+                </button>
+              );
+            })}
+          </div>
+          {selectedEvents.length > 0 ? (
+            <div className="mt-2 space-y-1 border-t border-border pt-2">
+              {selectedEvents.slice(0, 3).map((event) => (
+                <button key={event.id} type="button" className="block w-full truncate rounded-[8px] px-2 py-1 text-left text-[12px] text-muted-foreground hover:bg-muted hover:text-foreground" onClick={(click) => openEvent(event, click.currentTarget)}>
+                  {event.type === 'birthday' ? `Aniversário de ${event.personName?.split(' ')[0]}` : event.title}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </section>
+        {pile ? (
+          <div ref={dialogRef} role="dialog" aria-label="Eventos do dia" className="fixed z-50 w-72 rounded-xl border bg-card p-4 text-sm shadow-lg" style={{ top: pile.top, left: pile.left }} onClick={(event) => event.stopPropagation()}>
+            <button type="button" aria-label="Fechar" className="absolute top-2 right-2 rounded-md p-1 text-muted-foreground hover:bg-muted" onClick={() => setPile(null)}><X className="h-4 w-4" /></button>
+            <p className="pr-6 text-xs font-medium text-primary">Neste dia</p>
+            <div className="mt-2 space-y-1">
+              {pile.events.map((event) => (
+                <button key={event.id} type="button" className="block w-full truncate rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={(click) => { setPile(null); openEvent(event, click.currentTarget); }}>{event.type === 'birthday' ? `Aniversário de ${event.personName?.split(' ')[0]}` : event.title}</button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {active ? (
+          <div ref={dialogRef} role="dialog" aria-label={active.event.title} className="fixed z-50 w-72 rounded-xl border bg-card p-4 text-sm shadow-lg" style={{ top: active.top, left: active.left }} onClick={(event) => event.stopPropagation()}>
+            <button type="button" aria-label="Fechar" className="absolute top-2 right-2 rounded-md p-1 text-muted-foreground hover:bg-muted" onClick={() => setActive(null)}><X className="h-4 w-4" /></button>
+            <p className="pr-6 text-xs font-medium text-primary">{active.event.category ?? 'Evento'}</p>
+            <h2 className="mt-1 text-base font-semibold">{active.event.type === 'birthday' ? `Aniversário de ${active.event.personName}` : active.event.title}</h2>
+            {active.event.description ? <p className="mt-3 leading-5 text-muted-foreground">{active.event.description}</p> : null}
+          </div>
+        ) : null}
+      </>
+    );
+  }
 
   return (
     <section id="calendario" className={cn(page || compact || embedded ? 'scroll-mt-20 shrink-0 overflow-hidden rounded-2xl border bg-card' : 'min-h-screen bg-background', theme !== 'padrao' && `calendar-skin-${theme}`)} style={skinStyle(theme, institution.hasWallpaper, institution.settings.calendar.wallpaperVersion)}>
@@ -246,7 +324,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
 
         <main className={cn('min-w-0 flex-1', compact ? 'px-3 py-3' : 'px-4 py-6 sm:px-6')}>
           <div className={cn('flex items-center justify-between gap-2', compact ? 'mb-2' : 'mb-4')}>
-            <h2 className={cn('font-semibold', compact ? 'text-sm' : 'text-xl')}>{(() => { const label = currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }); return label.charAt(0).toUpperCase() + label.slice(1); })()}</h2>
+            <h2 className={cn('font-semibold', compact ? 'text-sm' : 'text-xl')}>{monthLabel}</h2>
             <div className="flex items-center gap-2">
               {compact || !leader ? null : (
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => { setEditingEvent(null); setEditorOpen(true); }}>

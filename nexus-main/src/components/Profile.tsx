@@ -22,14 +22,18 @@ export const Profile: FC = () => {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="relative h-10 w-10 rounded-full p-0 hover:bg-accent"
+          className="h-10 gap-2 rounded-[12px] px-1.5 hover:bg-accent"
           aria-label="Menu do perfil"
         >
           <img
-            className="h-10 w-10 rounded-full border-2 border-border object-cover transition-colors hover:border-primary"
+            className="h-8 w-8 rounded-full bg-muted object-cover"
             src={user.avatar}
             alt=""
           />
+          <span className="hidden min-w-0 text-left sm:block">
+            <span className="block truncate text-[13px] font-semibold leading-4 text-foreground">{user.name.split(' ')[0]}</span>
+            <span className="block truncate text-[11px] font-normal leading-4 text-muted-foreground">{user.role}</span>
+          </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" collisionPadding={12}>

@@ -1,6 +1,4 @@
 import { Button } from '@/components/ui/button';
-import { currentUser } from '@/data/mockData';
-import { getTimeBasedGreeting } from '@/lib/utils';
 import { Menu } from 'lucide-react';
 import { type FC } from 'react';
 import { ThemeToggle } from './ThemeToggle';
@@ -11,23 +9,17 @@ import { useOpenMenu } from './Sidebar';
 
 export const Header: FC = () => {
   const onMenu = useOpenMenu();
-  const greeting = getTimeBasedGreeting();
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-      <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
-        <Button variant="outline" size="icon" className="h-10 w-10 lg:hidden" aria-label="Abrir menu" onClick={onMenu}>
+    <header className="sticky top-0 z-30 w-full border-b border-border bg-background/90 backdrop-blur">
+      <div className="flex h-14 items-center gap-3 px-4 sm:px-5">
+        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 rounded-[10px] lg:hidden" aria-label="Abrir menu" onClick={onMenu}>
           <Menu className="h-4 w-4" />
         </Button>
-        <div className="hidden min-w-0 sm:block">
-          <p className="truncate text-sm font-medium text-muted-foreground">
-            {greeting}, {currentUser.name}
-          </p>
+        <div className="min-w-0 flex-1">
+          <GlobalSearch />
         </div>
-        <div className="ml-auto flex items-center gap-3">
-          <div className="hidden md:block">
-            <GlobalSearch />
-          </div>
+        <div className="flex shrink-0 items-center gap-1.5 xl:w-[388px] xl:justify-end">
           <NotificationDropdown />
           <ThemeToggle />
           <Profile />
