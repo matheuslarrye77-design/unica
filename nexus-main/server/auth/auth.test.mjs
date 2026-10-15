@@ -10,6 +10,8 @@ import { applyAuthResult } from './http.mjs';
 import { createLocalStore, localUserFromRequest } from './localStore.mjs';
 import { guardLeader } from './permissions.mjs';
 import { createClient } from '@supabase/supabase-js';
+import { builtinAccounts } from './builtinAccounts.mjs';
+import { migrationIdentities } from './migrationRoster.mjs';
 import { supabaseConfigError } from './supabaseStore.mjs';
 
 const user = {
@@ -153,6 +155,43 @@ test('vercel.json não entrega index.html para /api', () => {
   assert.equal(fs.existsSync(new URL('../../api/login.ts', import.meta.url)), true);
   assert.equal(fs.existsSync(new URL('../../api/session.ts', import.meta.url)), true);
   assert.equal(fs.existsSync(new URL('../../api/logout.ts', import.meta.url)), true);
+});
+
+test('script de migração carrega as contas sem o frontend', () => {
+  const source = fs.readFileSync(new URL('../../scripts/migrate-auth-to-supabase.mjs', import.meta.url), 'utf8');
+  assert.equal(source.includes('accounts.ts'), false);
+  assert.equal(source.includes('mockData'), false);
+  const matheus = builtinAccounts.find((account) => account.id === '1');
+  assert.equal(matheus.email, 'matheus.larrie@unica.local');
+  assert.equal(builtinAccounts.some((account) => account.email === 'priya.sharma@company.com'), false);
+  const auth = {
+    salt: 'salt-de-teste',
+    passwordHash: 'hash-de-teste',
+    colleagues: [{ id: 'col-1', email: 'Ana@Unica.local', name: 'Ana', role: 'Colaborador', department: 'Atendimento', avatar: '' }],
+  };
+  const rows = migrationIdentities(builtinAccounts, auth);
+  const colleague = rows.find((account) => account.id === 'col-1');
+  assert.equal(colleague.email, 'ana@unica.local');
+  assert.equal(rows.every((account) => account.password_hash === auth.passwordHash && account.password_salt === auth.salt), true);
+  const authFile = new URL('../../data/auth.json', import.meta.url);
+  const before = fs.readFileSync(authFile);
+  const run = spawnSync(process.execPath, ['scripts/migrate-auth-to-supabase.mjs'], {
+    cwd: new URL('../..', import.meta.url),
+    env: {
+      ...process.env,
+      SUPABASE_URL: 'https://example.supabase.co',
+      SUPABASE_SECRET_KEY: 'sb_secret_example',
+      SUPABASE_SERVICE_ROLE_KEY: '',
+      MIGRATE_DRY_RUN: '1',
+    },
+    encoding: 'utf8',
+  });
+  assert.equal(run.status, 0);
+  assert.match(run.stdout, /Prontas \d+\. Nenhuma alteração enviada\./);
+  const stored = JSON.parse(before.toString('utf8'));
+  assert.equal(run.stdout.includes(stored.passwordHash), false);
+  assert.equal(run.stdout.includes(stored.salt), false);
+  assert.equal(fs.readFileSync(authFile).equals(before), true);
 });
 
 test('migração sem configuração não altera auth.json', () => {

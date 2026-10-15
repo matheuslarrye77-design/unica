@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
+import { builtinAccounts } from '../server/auth/builtinAccounts.mjs';
+import { migrationIdentities } from '../server/auth/migrationRoster.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const authFile = path.join(root, 'data', 'auth.json');
@@ -28,38 +30,17 @@ if (!auth.salt || !auth.passwordHash) {
   fail('data/auth.json não tem o material de credencial esperado. Nenhum dado foi alterado.');
 }
 
-const { builtinAccounts } = await import('../server/auth/accounts.ts');
-const identities = builtinAccounts().map((account) => ({
-  id: account.id,
-  email: account.email.toLowerCase(),
-  name: account.name,
-  role: account.role,
-  department: account.department ?? '',
-  avatar: account.avatar ?? '',
-}));
-
-for (const colleague of Array.isArray(auth.colleagues) ? auth.colleagues : []) {
-  const email = String(colleague.email ?? '').trim().toLowerCase();
-  if (!email || identities.some((item) => item.email === email || item.id === colleague.id)) continue;
-  identities.push({
-    id: String(colleague.id),
-    email,
-    name: String(colleague.name ?? ''),
-    role: String(colleague.role ?? ''),
-    department: String(colleague.department ?? ''),
-    avatar: String(colleague.avatar ?? ''),
-  });
+const rows = migrationIdentities(builtinAccounts, auth);
+if (process.env.MIGRATE_DRY_RUN === '1') {
+  console.log(`Prontas ${rows.length}. Nenhuma alteração enviada.`);
+  process.exit(0);
 }
 
-const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
 let inserted = 0;
 let kept = 0;
-for (const account of identities) {
-  const { error } = await db.from('unica_users').insert({
-    ...account,
-    password_hash: auth.passwordHash,
-    password_salt: auth.salt,
-  });
+for (const account of rows) {
+  const { error } = await db.from('unica_users').insert(account);
   if (!error) {
     inserted += 1;
     continue;
