@@ -13,12 +13,14 @@ export type NewPostDraft = {
   poll?: PollOption[];
 };
 
-export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void }> = ({ onPublish }) => {
+export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise<void> }> = ({ onPublish }) => {
   const [body, setBody] = useState('');
+  const [writing, setWriting] = useState(false);
   const [image, setImage] = useState('');
   const [attachment, setAttachment] = useState<Attachment | undefined>();
   const [pollOpen, setPollOpen] = useState(false);
   const [options, setOptions] = useState(['', '']);
+  const fieldRef = useRef<HTMLTextAreaElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -54,7 +56,13 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void }> = ({ o
     readData(file, (url) => setAttachment({ type: 'document', name: file.name, url }));
   }
 
-  function publish(event: FormEvent) {
+  function resize(element: HTMLTextAreaElement, expanded: boolean) {
+    element.style.height = '0px';
+    const next = expanded ? Math.min(Math.max(element.scrollHeight, 96), 180) : 40;
+    element.style.height = `${next}px`;
+  }
+
+  async function publish(event: FormEvent) {
     event.preventDefault();
     const text = body.trim();
     const poll = pollOpen
@@ -62,12 +70,18 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void }> = ({ o
       : undefined;
     const hasMedia = Boolean(image || attachment);
     if ((!text && !hasMedia) || (pollOpen && (poll?.length ?? 0) < 2)) return;
-    onPublish({ body: text, image: image || undefined, attachment, poll });
+    try {
+      await onPublish({ body: text, image: image || undefined, attachment, poll });
+    } catch {
+      return;
+    }
     setBody('');
+    setWriting(false);
     setImage('');
     setAttachment(undefined);
     setPollOpen(false);
     setOptions(['', '']);
+    if (fieldRef.current) resize(fieldRef.current, false);
   }
 
   const ready = (body.trim().length > 0 || Boolean(image) || Boolean(attachment)) && (!pollOpen || options.filter((item) => item.trim()).length >= 2);
@@ -75,16 +89,29 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void }> = ({ o
 
   return (
     <form onSubmit={publish} className="unica-surface px-4 py-3">
-      <div className="flex items-center gap-3">
+      <div className={writing || body ? 'flex items-start gap-3' : 'flex items-center gap-3'}>
         <img src={user.avatar} alt="" className="h-10 w-10 rounded-full bg-muted object-cover" />
         <label className="sr-only" htmlFor="novo-post">Publicação</label>
         <textarea
+          ref={fieldRef}
           id="novo-post"
           value={body}
-          onChange={(event) => setBody(event.target.value)}
           rows={1}
+          onFocus={(event) => {
+            setWriting(true);
+            resize(event.currentTarget, true);
+          }}
+          onBlur={(event) => {
+            if (event.currentTarget.value.trim()) return;
+            setWriting(false);
+            resize(event.currentTarget, false);
+          }}
+          onChange={(event) => {
+            setBody(event.target.value);
+            resize(event.currentTarget, true);
+          }}
           placeholder="Compartilhe algo com a equipe..."
-          className="h-10 min-h-10 w-full resize-none rounded-[10px] border border-border bg-[#F8F7FC] px-3 py-2 text-[13.5px] leading-5 outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/30"
+          className="h-10 w-full resize-none overflow-y-auto rounded-[10px] border border-border bg-[#F8F7FC] px-3 py-2 text-[13.5px] leading-5 outline-none transition-[height] duration-200 placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/30"
         />
       </div>
 

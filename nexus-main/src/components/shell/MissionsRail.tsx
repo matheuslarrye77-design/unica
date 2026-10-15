@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 export const MissionsRail: FC = () => {
   return (
-    <section className="unica-surface shrink-0 px-3 py-2.5">
+    <section className="unica-surface flex min-h-0 flex-col px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-[13.5px] font-semibold">
           <span className="unica-icon">

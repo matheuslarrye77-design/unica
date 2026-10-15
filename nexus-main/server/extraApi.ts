@@ -329,6 +329,7 @@ export function extraApi(): Connect.NextHandleFunction {
       }
 
       if (req.method === 'POST' && url === '/api/feed') {
+        try {
         const body = JSON.parse((await readBody(req)).toString('utf8')) as Partial<FeedPost>;
         const text = String(body.body ?? '').trim();
         const image = cleanImage(body.image);
@@ -365,6 +366,9 @@ export function extraApi(): Connect.NextHandleFunction {
         feed.posts.unshift(post);
         saveFeed(feed);
         send(res, 201, { post: publicPost(post, user.id) });
+        } catch {
+          if (!res.headersSent) send(res, 500, { error: 'publish' });
+        }
         return;
       }
 

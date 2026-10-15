@@ -3,7 +3,7 @@ import { actor } from '@/lib/session';
 import { saveMood, useInstitution } from '@/lib/institution';
 import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, Smile } from 'lucide-react';
-import { useRef, useState, type FC, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type FC, type PointerEvent } from 'react';
 
 export const MOODS = [
   { id: 'sobrecarregado', emoji: '😮‍💨', label: 'Sobrecarregado' },
@@ -19,6 +19,9 @@ const faces = [
   { id: 'ana', name: 'Ana', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AnaMood', emoji: '😐' },
   { id: 'joao', name: 'João', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JoaoMood', emoji: '🙂' },
   { id: 'caio', name: 'Caio', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=CaioMood', emoji: '😴' },
+  { id: 'helena', name: 'Helena', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=HelenaMood', emoji: '😊' },
+  { id: 'lucas', name: 'Lucas', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=LucasMood', emoji: '😔' },
+  { id: 'livia', name: 'Lívia', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=LiviaMood', emoji: '😮‍💨' },
 ];
 
 const moodTone: Record<string, { label: string; className: string }> = {
@@ -32,7 +35,9 @@ const moodTone: Record<string, { label: string; className: string }> = {
 };
 
 function scrollRail(element: HTMLDivElement | null, direction: -1 | 1) {
-  element?.scrollBy({ left: direction * 140, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  if (!element) return;
+  const distance = Math.max(element.clientWidth - 24, 96);
+  element.scrollBy({ left: direction * distance, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
 
 export const TeamMood: FC = () => {
@@ -41,8 +46,28 @@ export const TeamMood: FC = () => {
   const { moods } = useInstitution();
   const mine = moods[user.id];
   const [open, setOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [pages, setPages] = useState(1);
   const scroller = useRef<HTMLDivElement>(null);
   const drag = useRef({ active: false, x: 0, left: 0 });
+
+  useEffect(() => {
+    const element = scroller.current;
+    if (!element) return;
+    const sync = () => {
+      const count = Math.max(1, Math.ceil(element.scrollWidth / element.clientWidth));
+      const index = Math.round(element.scrollLeft / Math.max(element.clientWidth, 1));
+      setPages(count);
+      setPage(Math.min(index, count - 1));
+    };
+    sync();
+    element.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('resize', sync);
+    return () => {
+      element.removeEventListener('scroll', sync);
+      window.removeEventListener('resize', sync);
+    };
+  }, [team.length]);
 
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
     if ((event.target as HTMLElement).closest('[data-mood-self]')) return;
@@ -59,7 +84,7 @@ export const TeamMood: FC = () => {
   }
 
   return (
-    <section className="unica-surface shrink-0 px-3 py-2.5">
+    <section className="unica-surface flex min-h-0 flex-col px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-[13.5px] font-semibold">
           <span className="unica-icon">
@@ -82,7 +107,7 @@ export const TeamMood: FC = () => {
         onPointerMove={onPointerMove}
         onPointerUp={() => { drag.current.active = false; }}
         onPointerCancel={() => { drag.current.active = false; }}
-        className="mt-11 grid grid-cols-4 gap-1"
+        className="flex snap-x snap-mandatory gap-1 overflow-x-auto scroll-smooth pt-11 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {team.map((person) => {
           const self = person.id === user.id;
@@ -111,7 +136,7 @@ export const TeamMood: FC = () => {
             </>
           );
           return (
-            <div key={person.id} className="min-w-0 text-center">
+            <div key={person.id} className="w-[72px] shrink-0 snap-start text-center">
               {self ? (
                 <button type="button" data-mood-self className="w-full" aria-label={mine ? 'Alterar humor' : 'Definir humor'} onClick={() => setOpen((value) => !value)}>
                   {portrait}
@@ -128,10 +153,9 @@ export const TeamMood: FC = () => {
         })}
       </div>
       <div className="mt-1.5 flex justify-center gap-1" aria-hidden>
-        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-        <span className="h-1.5 w-1.5 rounded-full bg-[#D9D4E6]" />
-        <span className="h-1.5 w-1.5 rounded-full bg-[#D9D4E6]" />
-        <span className="h-1.5 w-1.5 rounded-full bg-[#D9D4E6]" />
+        {Array.from({ length: pages }, (_, index) => (
+          <span key={index} className={cn('h-1.5 w-1.5 rounded-full', index === page ? 'bg-primary' : 'bg-[#D9D4E6]')} />
+        ))}
       </div>
       {open ? (
         <div className="mt-2 rounded-[12px] border border-border bg-background p-1">

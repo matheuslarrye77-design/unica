@@ -45,6 +45,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
       toast.success('Publicação enviada.');
     } catch {
       toast.error('Não foi possível publicar.');
+      throw new Error('publish');
     }
   }
 
@@ -204,13 +205,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
     <div className="flex w-full flex-col gap-3">
       {mode === 'recognition' ? null : (
         <section className="relative isolate min-h-[118px] overflow-hidden rounded-[22px] border border-white/80 bg-white px-5 py-4 shadow-[0_18px_40px_rgba(142,53,184,0.10)]">
-          <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_140%_at_100%_0%,#F8D9F2_0%,rgba(248,217,242,0)_52%),radial-gradient(80%_120%_at_0%_100%,#F3E4FA_0%,rgba(243,228,250,0)_46%)]" />
-          <span className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-[#E7C4F2]/70 blur-2xl" />
-          <span className="pointer-events-none absolute right-16 bottom-0 h-16 w-40 rounded-full bg-[#F7D7EA]/80 blur-xl" />
-          <svg className="pointer-events-none absolute right-0 top-0 h-full w-[46%]" viewBox="0 0 280 120" fill="none" aria-hidden>
-            <path d="M40 98c40-48 78-18 118-46 28-20 62-34 122-28" stroke="#E7C4F2" strokeWidth="18" strokeLinecap="round" />
-            <path d="M70 112c36-34 84-10 122-30 24-12 48-16 88-8" stroke="#F6D5EA" strokeWidth="10" strokeLinecap="round" />
-          </svg>
+          <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_120%_at_100%_0%,#F8E4F4_0%,rgba(248,228,244,0)_58%)]" />
           <div className="relative flex items-center gap-4">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-white/80 text-primary shadow-[inset_0_0_0_1px_rgba(142,53,184,0.12),0_8px_18px_rgba(142,53,184,0.12)]">
               <Sun className="h-6 w-6" strokeWidth={1.75} />
@@ -228,7 +223,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
         </section>
       )}
 
-      {mode === 'recognition' ? (canRecognize ? <RecognitionComposer onCreated={() => window.dispatchEvent(new Event('unica-feed-refresh'))} /> : null) : <CreatePost onPublish={(draft) => void publish(draft)} />}
+      {mode === 'recognition' ? (canRecognize ? <RecognitionComposer onCreated={() => window.dispatchEvent(new Event('unica-feed-refresh'))} /> : null) : <CreatePost onPublish={publish} />}
 
       {mode === 'mural' ? freshPosts.map(renderFeedPost) : null}
 
