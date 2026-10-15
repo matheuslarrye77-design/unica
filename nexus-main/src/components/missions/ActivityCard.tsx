@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { MoreHorizontal } from 'lucide-react';
+import { CalendarDays, Check, Mail, MoreHorizontal, User, Users } from 'lucide-react';
 import { type FC } from 'react';
 import {
   DropdownMenu,
@@ -13,9 +13,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   ACTIVITY_STATUSES,
+  ORIGIN_LABEL,
   PRIORITY_LABEL,
   STATUS_LABEL,
-  firstName,
   formatDueDate,
   type Activity,
   type ActivityStatus,
@@ -23,10 +23,16 @@ import {
 import { cn } from '@/lib/utils';
 
 const priorityClass: Record<Activity['priority'], string> = {
-  high: 'border-red-200 bg-red-50 text-red-700',
-  medium: 'border-amber-200 bg-amber-50 text-amber-800',
-  low: 'border-border bg-muted text-muted-foreground',
+  high: 'bg-[#FDE7EE] text-[#E23B6A]',
+  medium: 'bg-[#FFF1DE] text-[#E08A2A]',
+  low: 'bg-[#E7F8EE] text-[#1F9D55]',
 };
+
+function SourceIcon({ source }: { source: string }) {
+  if (source === 'E-mail') return <Mail className="h-3.5 w-3.5" />;
+  if (source.startsWith('Equipe')) return <Users className="h-3.5 w-3.5" />;
+  return <User className="h-3.5 w-3.5" />;
+}
 
 export const ActivityCardView: FC<{
   activity: Activity;
@@ -35,19 +41,23 @@ export const ActivityCardView: FC<{
   onDelete?: () => void;
   onMove?: (status: ActivityStatus) => void;
 }> = ({ activity, dragging = false, onEdit, onDelete, onMove }) => {
-  const due = formatDueDate(activity.dueDate);
+  const done = activity.status === 'done';
+  const when = formatDueDate(done ? activity.completedOn ?? activity.dueDate : activity.dueDate);
+  const leadership = activity.origin === 'leadership';
 
   return (
-    <article className={cn('rounded-xl border border-border bg-card p-3 shadow-[0_1px_2px_rgba(40,20,70,0.05)]', dragging && 'opacity-40')}>
+    <article className={cn('rounded-2xl border border-[#F0E7F6] bg-white px-3.5 py-3 shadow-[0_8px_22px_rgba(80,40,120,0.05)]', dragging && 'opacity-40')}>
       <div className="flex items-start gap-2">
-        <h3 className="min-w-0 flex-1 text-sm font-semibold leading-5">{activity.title}</h3>
+        <span className={cn('rounded-md px-1.5 py-0.5 text-[11px] font-medium', leadership ? 'bg-[#FDE7EE] text-[#E23B6A]' : 'bg-[#F3E4FA] text-[#8E35B8]')}>
+          {ORIGIN_LABEL[activity.origin]}
+        </span>
         {onEdit && onDelete && onMove ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
                 aria-label={`Ações de ${activity.title}`}
-                className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+                className="ml-auto rounded-md p-1 text-[#B7A8C4] hover:bg-[#F8F2FB]"
                 onPointerDown={(event) => event.stopPropagation()}
               >
                 <MoreHorizontal className="h-4 w-4" />
@@ -68,19 +78,30 @@ export const ActivityCardView: FC<{
               <DropdownMenuItem variant="destructive" onSelect={onDelete}>Excluir</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        ) : null}
+        ) : <span className="ml-auto" />}
       </div>
-      {activity.description ? <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{activity.description}</p> : null}
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        <span className={cn('rounded-md border px-1.5 py-0.5 text-[11px] font-medium', priorityClass[activity.priority])}>
-          {PRIORITY_LABEL[activity.priority]}
-        </span>
-        <span className="rounded-md border border-border px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-          {activity.category}
-        </span>
+      <h3 className="mt-2 text-[14.5px] font-semibold leading-snug text-[#2C2433]">{activity.title}</h3>
+      <p className="mt-2 flex items-center gap-1.5 text-[12.5px] text-[#8A7C98]">
+        <SourceIcon source={activity.source} />
+        {activity.source}
+      </p>
+      <div className="mt-2.5 flex items-center gap-2">
+        {when ? (
+          <p className="flex min-w-0 items-center gap-1.5 text-[12px] text-[#8A7C98]">
+            <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{done ? `Concluída em: ${when}` : `Prazo: ${when}`}</span>
+          </p>
+        ) : <span />}
+        {done ? (
+          <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-[#E7F8EE] px-2 py-0.5 text-[11px] font-medium text-[#1F9D55]">
+            <Check className="h-3 w-3" /> Concluída
+          </span>
+        ) : (
+          <span className={cn('ml-auto shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', priorityClass[activity.priority])}>
+            {PRIORITY_LABEL[activity.priority]}
+          </span>
+        )}
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">Responsável: {firstName(activity.assignee)}</p>
-      {due ? <p className="mt-0.5 text-xs text-muted-foreground">Prazo: {due}</p> : null}
     </article>
   );
 };

@@ -3,6 +3,8 @@ import { generateId } from '@/lib/utils';
 export type ActivityStatus = 'todo' | 'in_progress' | 'done';
 export type ActivityPriority = 'high' | 'medium' | 'low';
 
+export type ActivityOrigin = 'mine' | 'leadership';
+
 export type Activity = {
   id: string;
   title: string;
@@ -10,8 +12,11 @@ export type Activity = {
   status: ActivityStatus;
   priority: ActivityPriority;
   category: string;
+  source: string;
+  origin: ActivityOrigin;
   assignee: string;
   dueDate: string | null;
+  completedOn: string | null;
   position: number;
   createdAt: string;
   updatedAt: string;
@@ -23,8 +28,11 @@ export type ActivityDraft = {
   status: ActivityStatus;
   priority: ActivityPriority;
   category: string;
+  source?: string;
+  origin?: ActivityOrigin;
   assignee: string;
   dueDate: string | null;
+  completedOn?: string | null;
 };
 
 export const ACTIVITY_STATUSES: ActivityStatus[] = ['todo', 'in_progress', 'done'];
@@ -52,15 +60,24 @@ export const ACTIVITY_ASSIGNEES = [
 ];
 
 export const DEFAULT_CATEGORIES = [
-  'Marketing',
-  'Institucional',
-  'Eventos',
-  'Comunicação',
-  'Acadêmico',
-  'Tecnologia',
+  'Atendimento',
+  'Documentação',
+  'Estudos',
+  'Relatórios',
+  'Reuniões',
+  'Qualidade',
 ];
 
+export const ACTIVITY_SOURCES = ['Pessoal', 'E-mail', 'Equipe do Chat', 'Equipe do Atendimento'];
+
+export const ORIGIN_LABEL: Record<ActivityOrigin, string> = {
+  mine: 'Minha atividade',
+  leadership: 'Missão da Liderança',
+};
+
 const STORAGE_KEY = 'unica-activities';
+const VERSION_KEY = 'unica-activities-version';
+const STORAGE_VERSION = 'foto-2026-10-15';
 
 const stamp = '2026-10-01T12:00:00.000Z';
 
@@ -72,80 +89,115 @@ function seedActivity(
 
 export const seedActivities: Activity[] = [
   seedActivity({
-    id: 'act-campanha',
-    title: 'Criar campanha de matrícula',
-    description: 'Planejar campanha de divulgação para o próximo período letivo.',
+    id: 'act-atendimento',
+    title: 'Reduzir o tempo de atendimento para 4 minutos',
+    description: 'Missão da liderança para encurtar o primeiro atendimento no chat.',
     status: 'todo',
     priority: 'high',
-    category: 'Marketing',
-    assignee: 'João Ferreira',
-    dueDate: '2026-10-15',
+    category: 'Atendimento',
+    source: 'Equipe do Chat',
+    origin: 'leadership',
+    assignee: 'Matheus Larrie',
+    dueDate: '2026-10-31',
+    completedOn: null,
     position: 0,
   }),
   seedActivity({
-    id: 'act-material',
-    title: 'Revisar material institucional',
-    description: 'Conferir textos e peças da identidade visual.',
+    id: 'act-documentacao',
+    title: 'Finalizar documentação do projeto',
+    description: 'Fechar a documentação pessoal do projeto em andamento.',
     status: 'todo',
     priority: 'medium',
-    category: 'Institucional',
-    assignee: 'Ana Santos',
-    dueDate: null,
+    category: 'Documentação',
+    source: 'Pessoal',
+    origin: 'mine',
+    assignee: 'Matheus Larrie',
+    dueDate: '2026-10-18',
+    completedOn: null,
     position: 1,
   }),
   seedActivity({
-    id: 'act-eventos',
-    title: 'Atualizar página de eventos',
-    description: 'Incluir a agenda do semestre no site.',
+    id: 'act-estudo',
+    title: 'Estudar novas funcionalidades',
+    description: 'Separar um horário para conhecer as funcionalidades novas.',
     status: 'todo',
     priority: 'low',
-    category: 'Eventos',
-    assignee: 'Lívia Ramos',
+    category: 'Estudos',
+    source: 'Pessoal',
+    origin: 'mine',
+    assignee: 'Matheus Larrie',
     dueDate: '2026-10-20',
+    completedOn: null,
     position: 2,
   }),
   seedActivity({
-    id: 'act-pagina',
-    title: 'Desenvolver nova página',
-    description: 'Montar a página de cursos da unidade.',
+    id: 'act-clientes',
+    title: 'Responder clientes pendentes',
+    description: 'Retomar os e-mails que ainda estão sem resposta.',
     status: 'in_progress',
-    priority: 'high',
-    category: 'Comunicação',
-    assignee: 'Marina Costa',
-    dueDate: null,
+    priority: 'medium',
+    category: 'Atendimento',
+    source: 'E-mail',
+    origin: 'mine',
+    assignee: 'Matheus Larrie',
+    dueDate: '2026-10-17',
+    completedOn: null,
     position: 0,
   }),
   seedActivity({
-    id: 'act-integracao',
-    title: 'Configurar integração',
-    description: 'Ligar o calendário acadêmico ao feed.',
+    id: 'act-resolucao',
+    title: 'Aumentar a taxa de resolução no primeiro contato para 95%',
+    description: 'Missão da liderança da equipe de atendimento.',
     status: 'in_progress',
-    priority: 'medium',
-    category: 'Tecnologia',
-    assignee: 'Caio Mendes',
-    dueDate: '2026-10-18',
+    priority: 'high',
+    category: 'Qualidade',
+    source: 'Equipe do Atendimento',
+    origin: 'leadership',
+    assignee: 'Matheus Larrie',
+    dueDate: '2026-10-20',
+    completedOn: null,
     position: 1,
   }),
   seedActivity({
-    id: 'act-comunicado',
-    title: 'Publicar comunicado',
-    description: 'Divulgar a campanha de endomarketing.',
+    id: 'act-relatorios',
+    title: 'Organizar relatórios semanais',
+    description: 'Montar os relatórios da semana.',
+    status: 'in_progress',
+    priority: 'low',
+    category: 'Relatórios',
+    source: 'Pessoal',
+    origin: 'mine',
+    assignee: 'Matheus Larrie',
+    dueDate: '2026-10-17',
+    completedOn: null,
+    position: 2,
+  }),
+  seedActivity({
+    id: 'act-alinhamento',
+    title: 'Participar da reunião de alinhamento',
+    description: 'Reunião de alinhamento concluída.',
     status: 'done',
     priority: 'medium',
-    category: 'Comunicação',
-    assignee: 'Helena Duarte',
-    dueDate: null,
+    category: 'Reuniões',
+    source: 'Pessoal',
+    origin: 'mine',
+    assignee: 'Matheus Larrie',
+    dueDate: '2026-10-14',
+    completedOn: '2026-10-14',
     position: 0,
   }),
   seedActivity({
-    id: 'act-calendario',
-    title: 'Revisar calendário acadêmico',
-    description: 'Validar feriados e recessos do semestre.',
+    id: 'act-qualidade',
+    title: 'Manter a qualidade de atendimento acima de 90%',
+    description: 'Missão da liderança concluída no chat.',
     status: 'done',
-    priority: 'low',
-    category: 'Acadêmico',
+    priority: 'high',
+    category: 'Qualidade',
+    source: 'Equipe do Chat',
+    origin: 'leadership',
     assignee: 'Matheus Larrie',
-    dueDate: null,
+    dueDate: '2026-10-13',
+    completedOn: '2026-10-13',
     position: 1,
   }),
 ];
@@ -168,12 +220,19 @@ function isActivity(value: unknown): value is Activity {
     && isActivityStatus(item.status)
     && (item.priority === 'high' || item.priority === 'medium' || item.priority === 'low')
     && typeof item.category === 'string'
+    && typeof item.source === 'string'
+    && (item.origin === 'mine' || item.origin === 'leadership')
     && typeof item.assignee === 'string'
     && typeof item.position === 'number';
 }
 
 export function loadActivityStore(): ActivityStore {
   try {
+    if (localStorage.getItem(VERSION_KEY) !== STORAGE_VERSION) {
+      localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
+      localStorage.removeItem(STORAGE_KEY);
+      return { activities: seedActivities, categories: DEFAULT_CATEGORIES };
+    }
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { activities: seedActivities, categories: DEFAULT_CATEGORIES };
     const parsed = JSON.parse(raw) as ActivityStore;
@@ -204,13 +263,11 @@ export function firstName(name: string) {
   return name.split(' ')[0] ?? name;
 }
 
-const MONTHS = ['jan.', 'fev.', 'mar.', 'abr.', 'mai.', 'jun.', 'jul.', 'ago.', 'set.', 'out.', 'nov.', 'dez.'];
-
 export function formatDueDate(value: string | null) {
   if (!value) return null;
   const date = new Date(`${value}T12:00:00`);
   if (Number.isNaN(date.getTime())) return null;
-  return `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+  return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function activityCountLabel(count: number) {
@@ -256,7 +313,11 @@ export function moveActivity(activities: Activity[], activeId: string, overId: s
 
   const source = activitiesInStatus(activities, active.status).filter((item) => item.id !== activeId);
   const destination = activitiesInStatus(activities, overStatus);
-  const moved: Activity = { ...active, status: overStatus };
+  const moved: Activity = {
+    ...active,
+    status: overStatus,
+    completedOn: overStatus === 'done' ? active.completedOn ?? new Date().toISOString().slice(0, 10) : active.completedOn,
+  };
   if (isActivityStatus(overId)) {
     destination.push(moved);
   } else {
@@ -280,8 +341,11 @@ export function createActivity(activities: Activity[], draft: ActivityDraft): Ac
     status: draft.status,
     priority: draft.priority,
     category: draft.category.trim(),
+    source: draft.source?.trim() || 'Pessoal',
+    origin: draft.origin ?? 'mine',
     assignee: draft.assignee,
     dueDate: draft.dueDate,
+    completedOn: draft.completedOn ?? null,
     position: column.length,
     createdAt: now,
     updatedAt: now,
@@ -301,8 +365,11 @@ export function updateActivity(activities: Activity[], id: string, draft: Activi
           description: draft.description.trim(),
           priority: draft.priority,
           category: draft.category.trim(),
+          source: draft.source?.trim() || item.source,
+          origin: draft.origin ?? item.origin,
           assignee: draft.assignee,
           dueDate: draft.dueDate,
+          completedOn: draft.completedOn ?? item.completedOn,
           updatedAt: new Date().toISOString(),
         }
       : item);
@@ -314,8 +381,11 @@ export function updateActivity(activities: Activity[], id: string, draft: Activi
         description: draft.description.trim(),
         priority: draft.priority,
         category: draft.category.trim(),
+        source: draft.source?.trim() || item.source,
+        origin: draft.origin ?? item.origin,
         assignee: draft.assignee,
         dueDate: draft.dueDate,
+        completedOn: draft.completedOn ?? item.completedOn,
         updatedAt: new Date().toISOString(),
       }
     : item);

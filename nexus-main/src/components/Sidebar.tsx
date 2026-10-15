@@ -7,7 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
-  FolderOpen,
+  ListChecks,
   Home,
   Megaphone,
   MessageSquare,
@@ -37,7 +37,7 @@ const GROUPS = [
     id: 'trabalho',
     label: 'Trabalho',
     items: [
-      { path: '/projects', label: 'Atividades', icon: FolderOpen },
+      { path: '/projects', label: 'Atividades', icon: ListChecks },
       { path: '/resources', label: 'Documentos', icon: FileText },
       { path: '/calendar', label: 'Calendários', icon: CalendarDays },
       { path: '/employees', label: 'Pessoas', icon: User },
