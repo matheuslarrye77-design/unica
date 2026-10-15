@@ -1,3 +1,4 @@
+import { Emoji } from '@/components/Emoji';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -119,7 +120,7 @@ export const WelcomeChecklist: FC<WelcomeChecklistProps> = ({ onDismiss }) => {
         {completedCount === totalCount && (
           <div className="mt-4 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
             <p className="text-sm text-green-800 dark:text-green-300 font-medium">
-              🎉 Congratulations! You've completed the welcome checklist.
+              <Emoji emoji="🎉" className="mr-1 h-4 w-4" /> Congratulations! You've completed the welcome checklist.
             </p>
             <Button 
               size="sm" 

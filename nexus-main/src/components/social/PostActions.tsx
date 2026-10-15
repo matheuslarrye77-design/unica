@@ -1,4 +1,4 @@
-import { Heart, MessageCircle, Repeat2, Share2 } from 'lucide-react';
+import { Heart, MessageCircle, Repeat2, Share2, ThumbsUp } from 'lucide-react';
 import { type FC } from 'react';
 import type { SocialPost } from './types';
 
@@ -18,14 +18,21 @@ export const PostActions: FC<{
 }> = ({ post, republished = false, onLike, onComment, onShare, onRepublish }) => {
   const comments = post.comments.length;
   return (
-    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-1.5">
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
       <button
         type="button"
         onClick={onLike}
         aria-pressed={post.liked}
-        className={`inline-flex h-8 items-center gap-1.5 rounded-[8px] px-1.5 text-[12.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${post.liked ? 'font-medium text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+        className={`inline-flex h-8 items-center gap-2 rounded-[8px] px-1 text-[12.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${post.liked ? 'font-medium text-primary' : 'text-muted-foreground hover:text-foreground'}`}
       >
-        <Heart className="h-4 w-4" fill={post.liked ? 'currentColor' : 'none'} />
+        <span className="flex items-center" aria-hidden>
+          <span className="z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#1877F2] text-white ring-2 ring-white">
+            <ThumbsUp className="h-2.5 w-2.5" fill="currentColor" />
+          </span>
+          <span className="-ml-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#F33E58] text-white ring-2 ring-white">
+            <Heart className="h-2.5 w-2.5" fill="currentColor" />
+          </span>
+        </span>
         {likeLabel(post.likes)}
       </button>
       <div className="flex items-center gap-0.5">

@@ -1,3 +1,4 @@
+import { Emoji } from '@/components/Emoji';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -94,7 +95,7 @@ export const Resources: FC = () => {
                   className={getItemClassName("flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors")}
                   style={getItemStyle(4 + index)}
                 >
-                  <span className="text-lg">{getFileIcon(resource.type)}</span>
+                  <Emoji emoji={getFileIcon(resource.type)} className="h-5 w-5" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{resource.title}</p>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
@@ -123,7 +124,7 @@ export const Resources: FC = () => {
                   className={getItemClassName("flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors")}
                   style={getItemStyle(6 + index)}
                 >
-                  <span className="text-lg">{getFileIcon(resource.type)}</span>
+                  <Emoji emoji={getFileIcon(resource.type)} className="h-5 w-5" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{resource.title}</p>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">

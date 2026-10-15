@@ -121,21 +121,24 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
     : reposts;
 
   return (
-    <div className="flex w-full flex-col gap-2">
+    <div className="flex w-full flex-col gap-3">
       {mode === 'recognition' ? null : (
-        <section className="unica-surface relative flex h-[68px] items-center overflow-hidden px-3.5">
-          <span className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-[#E6DAFF]" />
-          <span className="pointer-events-none absolute right-16 -bottom-6 h-16 w-16 rounded-full bg-[#F1EAFE]" />
-          <span className="pointer-events-none absolute right-36 top-3 h-2 w-2 rounded-full bg-[#F5B4D0]" />
-          <span className="unica-icon relative">
-            <Sun className="h-3.5 w-3.5" strokeWidth={1.75} />
+        <section className="unica-surface relative flex min-h-[104px] items-center gap-3 overflow-hidden px-4 py-3">
+          <span className="pointer-events-none absolute right-0 top-0 h-full w-[42%] bg-[#F7F4FF]" />
+          <span className="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-[#E8DDFB]" />
+          <span className="pointer-events-none absolute right-28 -bottom-8 h-20 w-20 rounded-full bg-[#F0E9FF]" />
+          <span className="pointer-events-none absolute right-8 top-5 h-14 w-14 rounded-full bg-[#E8DDFB]/80" />
+          <span className="unica-icon relative h-10 w-10 rounded-[12px]">
+            <Sun className="h-5 w-5" strokeWidth={1.75} />
           </span>
-          <div className="relative min-w-0 pl-2.5">
-            <h1 className="truncate text-[18px] font-semibold leading-tight tracking-tight">{getTimeBasedGreeting()}, {firstName}!</h1>
-            <p className="text-[12px] text-muted-foreground">Que hoje seja um dia incrível.</p>
+          <div className="relative min-w-0 flex-1">
+            <h1 className="text-[24px] font-semibold leading-tight tracking-tight">{getTimeBasedGreeting()}, {firstName}!</h1>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">Que hoje seja um dia incrível.</p>
           </div>
-          <p className="unica-script pointer-events-none absolute right-6 top-4 hidden max-w-[150px] rotate-[-8deg] text-[15px] leading-5 text-[#7542C8] lg:block">
-            Juntos somos mais fortes!
+          <p className="unica-script relative hidden w-[158px] shrink-0 text-right text-[22px] leading-[1.2] text-primary lg:block">
+            <span className="block whitespace-nowrap">Juntos</span>
+            <span className="block whitespace-nowrap">vamos mais</span>
+            <span className="block whitespace-nowrap">longe!</span>
           </p>
         </section>
       )}

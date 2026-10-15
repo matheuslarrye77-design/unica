@@ -40,44 +40,44 @@
 
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.875rem;
   --background: #F8F7FC;
-  --foreground: #26233A;
+  --foreground: #25233A;
   --card: #FFFFFF;
-  --card-foreground: #26233A;
+  --card-foreground: #25233A;
   --popover: #FFFFFF;
-  --popover-foreground: #26233A;
-  --primary: #7542C8;
+  --popover-foreground: #25233A;
+  --primary: #7040C8;
   --primary-foreground: #FFFFFF;
-  --secondary: #F1EAFE;
-  --secondary-foreground: #55309D;
+  --secondary: #F0E9FF;
+  --secondary-foreground: #4F278F;
   --muted: #F6F4FB;
-  --muted-foreground: #77738A;
-  --accent: #E6DAFF;
-  --accent-foreground: #55309D;
+  --muted-foreground: #77748A;
+  --accent: #E8DDFB;
+  --accent-foreground: #4F278F;
   --destructive: #C2415B;
   --destructive-foreground: #FFFFFF;
-  --border: #E8E2F2;
-  --input: #E8E2F2;
-  --ring: #7542C8;
-  --chart-1: #7542C8;
+  --border: #E8E3F0;
+  --input: #E8E3F0;
+  --ring: #7040C8;
+  --chart-1: #7040C8;
   --chart-2: #3D9A6A;
   --chart-3: #C48A1A;
   --chart-4: #C45B8A;
   --chart-5: #5B6BC8;
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #26233A;
-  --sidebar-primary: #7542C8;
+  --sidebar-foreground: #25233A;
+  --sidebar-primary: #7040C8;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #E6DAFF;
-  --sidebar-accent-foreground: #55309D;
-  --sidebar-border: #E8E2F2;
-  --sidebar-ring: #7542C8;
-  --unica-hover: #F1EAFE;
+  --sidebar-accent: #E8DDFB;
+  --sidebar-accent-foreground: #4F278F;
+  --sidebar-border: #E8E3F0;
+  --sidebar-ring: #7040C8;
+  --unica-hover: #F0E9FF;
   --unica-positive: #E7F7EC;
   --unica-neutral: #FFF4D9;
   --unica-alert: #FBEAF2;
-  --unica-shadow: 0 1px 2px rgba(85, 48, 157, 0.06), 0 10px 24px rgba(117, 66, 200, 0.06);
+  --unica-shadow: 0 1px 2px rgba(79, 39, 143, 0.04), 0 8px 18px rgba(112, 64, 200, 0.05);
 }
 
 .dark {
@@ -130,9 +130,8 @@
   body {
     background-color: var(--background);
     background-image:
-      radial-gradient(820px 380px at -8% -12%, rgba(230, 218, 255, 0.95), transparent 62%),
-      radial-gradient(640px 320px at 108% -8%, rgba(241, 234, 254, 0.98), transparent 58%),
-      radial-gradient(520px 280px at 92% 108%, rgba(230, 218, 255, 0.55), transparent 60%);
+      radial-gradient(720px 280px at -6% -10%, rgba(232, 221, 251, 0.45), transparent 68%),
+      radial-gradient(560px 240px at 104% -6%, rgba(240, 233, 255, 0.7), transparent 64%);
     color: var(--foreground);
     font-family: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "cv11" 1;
@@ -140,7 +139,7 @@
     text-rendering: optimizeLegibility;
   }
   ::selection {
-    background: #EDE5FF;
+    background: #E8DDFB;
     color: #25233A;
   }
   
@@ -224,7 +223,7 @@
 }
 
 .unica-surface {
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1px solid var(--border);
   background: var(--card);
   box-shadow: var(--unica-shadow);
@@ -232,14 +231,14 @@
 
 .unica-icon {
   display: inline-flex;
-  height: 22px;
-  width: 22px;
+  height: 26px;
+  width: 26px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 7px;
-  background: var(--secondary);
-  color: var(--primary);
+  border-radius: 8px;
+  background: #E8DDFB;
+  color: #7040C8;
 }
 
 .unica-script {

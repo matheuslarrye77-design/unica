@@ -80,7 +80,7 @@ export const FeedPreview: FC = () => {
 
   return (
     <section aria-label="Prévia visual do mural" className="flex flex-col gap-2">
-      <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-[#55309D]">Prévia visual · não salva no mural</p>
+      <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-accent-foreground">Prévia visual · não salva no mural</p>
       {posts.map((post) => (
         <PostCard
           key={post.id}

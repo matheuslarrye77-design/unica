@@ -1,3 +1,4 @@
+import { Emoji } from '@/components/Emoji';
 import { actor } from '@/lib/session';
 import { saveMood, useInstitution } from '@/lib/institution';
 import { cn } from '@/lib/utils';
@@ -58,19 +59,19 @@ export const TeamMood: FC = () => {
   }
 
   return (
-    <section className="unica-surface shrink-0 px-2.5 py-2">
+    <section className="unica-surface shrink-0 px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-1.5 text-[13px] font-semibold">
+        <h2 className="flex items-center gap-2 text-[13.5px] font-semibold">
           <span className="unica-icon">
             <Smile className="h-3.5 w-3.5" strokeWidth={1.75} />
           </span>
           Humor da equipe
         </h2>
         <div className="flex items-center">
-          <button type="button" aria-label="Anterior" className="flex h-6 w-6 items-center justify-center rounded-[7px] text-muted-foreground hover:bg-[#F1EAFE]" onClick={() => scrollRail(scroller.current, -1)}>
+          <button type="button" aria-label="Anterior" className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-accent" onClick={() => scrollRail(scroller.current, -1)}>
             <ChevronLeft className="h-3.5 w-3.5" />
           </button>
-          <button type="button" aria-label="Próximo" className="flex h-6 w-6 items-center justify-center rounded-[7px] text-muted-foreground hover:bg-[#F1EAFE]" onClick={() => scrollRail(scroller.current, 1)}>
+          <button type="button" aria-label="Próximo" className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-accent" onClick={() => scrollRail(scroller.current, 1)}>
             <ChevronRight className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -92,7 +93,9 @@ export const TeamMood: FC = () => {
             <div className="relative mx-auto h-9 w-9">
               <img src={person.avatar} alt="" className="h-9 w-9 rounded-full bg-muted object-cover ring-2 ring-[#F1EAFE]" />
               {emoji ? (
-                <span className="mood-emoji absolute -right-1 -bottom-1 rounded-full bg-card px-0.5 text-[13px] leading-none ring-1 ring-border">{emoji}</span>
+                <span className="absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full bg-card ring-1 ring-border">
+                  <Emoji emoji={emoji} className="h-3.5 w-3.5" />
+                </span>
               ) : self ? (
                 <span className="absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-card text-[10px] leading-none text-muted-foreground ring-1 ring-border">+</span>
               ) : null}
@@ -136,7 +139,7 @@ export const TeamMood: FC = () => {
                 mine === mood.emoji ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
               )}
             >
-              <span className="mood-emoji" aria-hidden>{mood.emoji}</span>
+              <Emoji emoji={mood.emoji} className="h-4 w-4" />
               {mood.label}
             </button>
           ))}

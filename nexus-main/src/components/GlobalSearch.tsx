@@ -1,3 +1,4 @@
+import { Emoji } from '@/components/Emoji';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -188,28 +189,28 @@ export const GlobalSearch: FC = () => {
                         className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent cursor-pointer"
                         onClick={() => handleQuickAction('employees')}
                       >
-                        <span className="text-lg">👤</span>
+                        <Emoji emoji="👤" className="h-5 w-5" />
                         <span className="text-sm">Pesquisar colaboradores</span>
                       </div>
                       <div 
                         className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent cursor-pointer"
                         onClick={() => handleQuickAction('announcements')}
                       >
-                        <span className="text-lg">📢</span>
+                        <Emoji emoji="📢" className="h-5 w-5" />
                         <span className="text-sm">Pesquisar publicações</span>
                       </div>
                       <div 
                         className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent cursor-pointer"
                         onClick={() => handleQuickAction('events')}
                       >
-                        <span className="text-lg">📅</span>
+                        <Emoji emoji="📅" className="h-5 w-5" />
                         <span className="text-sm">Pesquisar eventos</span>
                       </div>
                       <div 
                         className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent cursor-pointer"
                         onClick={() => handleQuickAction('kudos')}
                       >
-                        <span className="text-lg">❤️</span>
+                        <Emoji emoji="❤️" className="h-5 w-5" />
                         <span className="text-sm">Pesquisar reconhecimentos</span>
                       </div>
                     </div>
@@ -241,7 +242,7 @@ export const GlobalSearch: FC = () => {
                       onClick={() => handleResultClick(result)}
                     >
                       <div className="mr-3 mt-0.5 text-lg">
-                        {typeIcons[result.type]}
+                        <Emoji emoji={typeIcons[result.type]} className="h-5 w-5" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">

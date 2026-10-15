@@ -148,11 +148,11 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
   });
 
   const itemClass = (active: boolean, collapsed: boolean) => cn(
-    'flex h-8 items-center gap-2.5 rounded-[10px] px-2.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+    'flex h-9 items-center gap-2.5 rounded-[10px] px-2.5 text-[13.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
     collapsed && 'justify-center px-0',
     active
       ? 'bg-accent text-accent-foreground'
-      : 'text-[#5E5B73] hover:bg-[var(--unica-hover)] hover:text-foreground dark:text-muted-foreground',
+      : 'text-[#25233A] hover:bg-[var(--unica-hover)] [&_svg]:text-primary dark:text-foreground',
   );
 
   const nav = (collapsed: boolean) => (
@@ -171,7 +171,7 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
           <X className="h-4 w-4" />
         </button>
       </div>
-      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 pb-3 pt-2" aria-label="Principal">
+      <nav className="flex min-h-0 flex-col gap-0.5 overflow-y-auto px-3 pb-2 pt-1" aria-label="Principal">
         {groups.flatMap((group) => {
           const rows = [];
           const groupClosed = closedGroups.includes(group.id);
@@ -180,7 +180,7 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
               <button
                 key={`${group.id}-label`}
                 type="button"
-                className="mt-3 flex w-full items-center justify-between rounded-[8px] px-3 py-1 text-[12px] font-medium text-muted-foreground first:mt-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                className="mt-3 flex h-8 w-full items-center justify-between rounded-[8px] px-3 text-[12px] font-medium text-muted-foreground first:mt-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 aria-expanded={!groupClosed}
                 onClick={() => setClosedGroups((current) => current.includes(group.id) ? current.filter((id) => id !== group.id) : [...current, group.id])}
               >
@@ -214,7 +214,7 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
           return rows;
         })}
       </nav>
-      <div className="border-t border-sidebar-border px-3 py-3">
+      <div className="px-3 pb-4 pt-2">
         {collapsed ? (
           <Tooltip>
             <TooltipTrigger asChild>

@@ -62,9 +62,9 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void }> = ({ o
   const user = actor();
 
   return (
-    <form onSubmit={publish} className="unica-surface px-3.5 py-2.5">
-      <div className="flex items-center gap-2.5">
-        <img src={user.avatar} alt="" className="h-8 w-8 rounded-full bg-muted object-cover" />
+    <form onSubmit={publish} className="unica-surface px-4 py-3">
+      <div className="flex items-center gap-3">
+        <img src={user.avatar} alt="" className="h-10 w-10 rounded-full bg-muted object-cover" />
         <label className="sr-only" htmlFor="novo-post">Publicação</label>
         <textarea
           id="novo-post"
@@ -72,7 +72,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void }> = ({ o
           onChange={(event) => setBody(event.target.value)}
           rows={1}
           placeholder="Compartilhe algo com a equipe..."
-          className="h-8 min-h-8 w-full resize-none rounded-[10px] border border-border bg-[#F8F7FC] px-3 py-1.5 text-[12.5px] leading-5 outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/20"
+          className="h-10 min-h-10 w-full resize-none rounded-[10px] border border-border bg-[#F8F7FC] px-3 py-2 text-[13.5px] leading-5 outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/30"
         />
       </div>
 
@@ -120,7 +120,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void }> = ({ o
         </div>
       ) : null}
 
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={readImage} />
           <input ref={videoRef} type="file" accept="video/*" className="hidden" onChange={readVideo} />
@@ -133,9 +133,9 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void }> = ({ o
         <button
           type="submit"
           disabled={!ready}
-          className="inline-flex h-8 items-center gap-1.5 rounded-[10px] bg-primary px-3 text-[12.5px] font-medium text-primary-foreground transition-colors hover:bg-[#6236B4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-45"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-[#5C32B0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-45"
         >
-          <Send className="h-3.5 w-3.5" />
+          <Send className="h-[18px] w-[18px]" />
           Publicar
         </button>
       </div>
@@ -148,9 +148,9 @@ const ComposerAction: FC<{ icon: FC<{ className?: string }>; label: string; pres
     type="button"
     aria-pressed={pressed}
     onClick={onClick}
-    className={`inline-flex h-8 items-center gap-1.5 rounded-[10px] border px-2.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${pressed ? 'border-primary/30 bg-accent text-accent-foreground' : 'border-border bg-card text-[#3F3C56] hover:bg-accent dark:text-foreground'}`}
+    className={`inline-flex h-9 items-center gap-1.5 rounded-[10px] border px-2.5 text-[13px] font-medium text-[#25233A] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${pressed ? 'border-primary/40 bg-accent' : 'border-border bg-card hover:bg-[#F0E9FF] dark:text-foreground'}`}
   >
-    <Icon className="h-3.5 w-3.5" />
+    <Icon className="h-[18px] w-[18px] text-primary" />
     {label}
   </button>
 );

@@ -1,3 +1,4 @@
+import { EmojiText } from '@/components/Emoji';
 import { Heart, Trash2 } from 'lucide-react';
 import { type FC, type FormEvent } from 'react';
 import type { SocialComment } from './types';
@@ -26,7 +27,7 @@ export const Comments: FC<{
             <img src={comment.avatar} alt="" className="h-8 w-8 rounded-full bg-muted" />
             <div className="min-w-0 flex-1">
               <p className="text-sm leading-5">
-                <span className="font-semibold">{comment.author}</span> {comment.body}
+                <span className="font-semibold">{comment.author}</span> <EmojiText text={comment.body} />
               </p>
               <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
                 <span>{comment.time}</span>
