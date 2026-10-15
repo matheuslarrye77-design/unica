@@ -7,6 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { actor, logout } from '@/lib/session';
 import { Bell, LogOut, Settings, User } from 'lucide-react';
 import { type FC } from 'react';
@@ -55,7 +56,7 @@ export const Profile: FC = () => {
         <DropdownMenuItem
           className="cursor-pointer text-red-600 focus:text-red-600"
           onClick={() => {
-            void logout().finally(() => navigate('/login', { replace: true }));
+            void logout().finally(() => navigate(LOGIN_REQUIRED ? '/login' : '/', { replace: true }));
           }}
         >
           <LogOut className="mr-2 h-4 w-4" />

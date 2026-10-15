@@ -24,11 +24,13 @@ import { FeedbacksPage } from './pages/FeedbacksPage';
 import { LoginPage } from './pages/LoginPage';
 import { PostPage } from './pages/PostPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { LOGIN_REQUIRED } from './lib/loginGate';
 import { restoreSession } from './lib/session';
 
 const RequireSession: FC<{ children: ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<'loading' | 'in' | 'out'>('loading');
+  const [state, setState] = useState<'loading' | 'in' | 'out'>(LOGIN_REQUIRED ? 'loading' : 'in');
   useEffect(() => {
+    if (!LOGIN_REQUIRED) return;
     void restoreSession().then((user) => setState(user ? 'in' : 'out'));
   }, []);
   if (state === 'loading') return null;
@@ -118,7 +120,7 @@ const App: FC = () => {
         <TooltipProvider>
             <BrowserRouter>
               <Routes>
-                <Route path="/login" element={<LoginPage />} />
+                <Route path="/login" element={LOGIN_REQUIRED ? <LoginPage /> : <Navigate to="/" replace />} />
                 <Route path="/*" element={
               <RequireSession>
               <InstitutionProvider>

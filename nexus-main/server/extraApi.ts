@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import type { Connect } from 'vite';
 import { samplePosts } from '../src/components/social/samplePosts';
+import { LOGIN_REQUIRED } from '../src/lib/loginGate';
 import { builtinAccounts } from './auth/accounts';
 import { hashPassword } from './auth/credentials.mjs';
 import { performLogin, performLogout, performSession } from './auth/flow.mjs';
@@ -250,7 +251,7 @@ export function extraApi(): Connect.NextHandleFunction {
   }
 
   function accountFrom(req: IncomingMessage) {
-    return localUserFromRequest(req, authFile, accounts);
+    return localUserFromRequest(req, authFile, accounts) ?? (LOGIN_REQUIRED ? null : accounts[0]);
   }
 
   function publicPost(post: FeedPost, userId: string) {

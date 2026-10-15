@@ -7,6 +7,7 @@ import { builtinAccounts } from './auth/accounts';
 import { localUserFromRequest } from './auth/localStore.mjs';
 import { isLeader } from './auth/permissions.mjs';
 import { currentUser, employees } from '../src/data/mockData';
+import { LOGIN_REQUIRED } from '../src/lib/loginGate';
 
 type Person = { id: string; name: string; role: string; department?: string };
 
@@ -108,7 +109,7 @@ export function institutionApi(): Plugin {
   }
 
   function userFrom(req: IncomingMessage) {
-    const account = localUserFromRequest(req, path.join(dir, 'auth.json'), builtinAccounts());
+    const account = localUserFromRequest(req, path.join(dir, 'auth.json'), builtinAccounts()) ?? (LOGIN_REQUIRED ? null : builtinAccounts()[0]);
     if (!account) return null;
     return roster.get(account.id) ?? account;
   }

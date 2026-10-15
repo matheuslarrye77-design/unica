@@ -3,8 +3,8 @@ import { cn } from '@/lib/utils';
 import { useState, type FC } from 'react';
 
 const sources: Partial<Record<DocumentSystem, string>> = {
-  pincel: '/marcas/pincel.svg',
-  prominas: '/marcas/prominas.svg',
+  pincel: '/marcas/pincel.png',
+  prominas: '/marcas/prominas.png',
 };
 
 export const SystemMark: FC<{ system: DocumentSystem; size?: 'sm' | 'md' }> = ({ system, size = 'sm' }) => {
@@ -13,7 +13,7 @@ export const SystemMark: FC<{ system: DocumentSystem; size?: 'sm' | 'md' }> = ({
   return (
     <span className={cn('flex shrink-0 items-center justify-center overflow-hidden rounded-full border bg-card', size === 'md' ? 'h-12 w-12' : 'h-10 w-10')} title={systemLabel(system)}>
       {src && !failed ? (
-        <img src={src} alt="" className="h-[70%] w-[70%] object-contain" onError={() => setFailed(true)} />
+        <img src={src} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />
       ) : (
         <span className="px-1 text-center text-[10px] font-medium leading-3 text-muted-foreground">{systemLabel(system)}</span>
       )}
