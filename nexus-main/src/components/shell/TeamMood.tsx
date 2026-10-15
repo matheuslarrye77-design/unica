@@ -44,8 +44,10 @@ export const TeamMood: FC = () => {
   const user = actor();
   const team = faces.map((person) => person.id === 'matheus' ? { ...person, id: user.id, avatar: user.avatar || person.avatar } : person);
   const { moods } = useInstitution();
-  const mine = moods[user.id];
+  const [picked, setPicked] = useState<string | null>(null);
+  const mine = picked ?? moods[user.id];
   const [open, setOpen] = useState(false);
+  const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(null);
   const [page, setPage] = useState(0);
   const [pages, setPages] = useState(1);
   const scroller = useRef<HTMLDivElement>(null);
@@ -121,7 +123,7 @@ export const TeamMood: FC = () => {
       >
         {team.map((person) => {
           const self = person.id === user.id;
-          const emoji = moods[person.id] ?? person.emoji;
+          const emoji = (self ? mine : moods[person.id]) || person.emoji;
           const tone = moodTone[emoji] ?? { label: 'Humor', className: 'bg-muted text-muted-foreground' };
           const first = person.name.split(' ')[0];
           const label = tone.label;
@@ -129,6 +131,9 @@ export const TeamMood: FC = () => {
           const portrait = (
             <div className="relative mx-auto h-10 w-10">
               <img src={person.avatar} alt="" className="h-10 w-10 rounded-full bg-muted object-cover ring-2 ring-white" />
+              <span className="absolute -bottom-1 -left-1 flex h-5 w-5 items-center justify-center rounded-full bg-white ring-2 ring-white">
+                <Emoji emoji={emoji} className="h-3.5 w-3.5" />
+              </span>
               {self ? (
                 <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[12px] font-bold leading-none text-white ring-2 ring-white">+</span>
               ) : null}
@@ -143,7 +148,17 @@ export const TeamMood: FC = () => {
           return (
             <div key={person.id} className="w-1/4 shrink-0 snap-start text-center">
               {self ? (
-                <button type="button" data-mood-self className="w-full" aria-label={mine ? 'Alterar humor' : 'Definir humor'} onClick={() => setOpen((value) => !value)}>
+                <button
+                  type="button"
+                  data-mood-self
+                  className="w-full"
+                  aria-label={mine ? 'Alterar humor' : 'Definir humor'}
+                  onClick={(event) => {
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    setAnchor({ top: rect.bottom + 6, left: Math.max(8, Math.min(rect.left, window.innerWidth - 188)) });
+                    setOpen((value) => !value);
+                  }}
+                >
                   {portrait}
                   {caption}
                 </button>
@@ -163,15 +178,16 @@ export const TeamMood: FC = () => {
           <span key={index} className={cn('h-1.5 w-1.5 rounded-full', index === page ? 'bg-primary' : 'bg-[#D9D4E6]')} />
         ))}
       </div>
-      {open ? (
-        <div className="mt-2 rounded-[12px] border border-border bg-background p-1">
+      {open && anchor ? (
+        <div className="fixed z-50 w-44 rounded-[12px] border border-border bg-background p-1 shadow-lg" style={{ top: anchor.top, left: anchor.left }}>
           {MOODS.map((mood) => (
             <button
               key={mood.id}
               type="button"
               onClick={() => {
-                void saveMood(mood.emoji);
+                setPicked(mood.emoji);
                 setOpen(false);
+                void saveMood(mood.emoji).then(() => setPicked(null)).catch(() => undefined);
               }}
               className={cn(
                 'flex w-full items-center gap-2 rounded-[8px] px-2 py-1.5 text-left text-[13px]',

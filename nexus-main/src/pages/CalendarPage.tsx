@@ -60,6 +60,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
   const [active, setActive] = useState<{ event: CalendarEvent; top: number; left: number } | null>(null);
   const [pile, setPile] = useState<{ events: CalendarEvent[]; top: number; left: number } | null>(null);
+  const [hint, setHint] = useState<{ text: string; top: number; left: number } | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const institution = useInstitution();
   const theme = institution.settings.calendar.theme;
@@ -188,6 +189,10 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
     return visibleEvents.filter((event) => sameDay(event.date, target));
   }
 
+  function dayReason(events: CalendarEvent[]) {
+    return events.map((event) => event.type === 'birthday' ? `Aniversário de ${event.personName?.split(' ')[0] ?? 'colaborador'}` : event.title).join(' · ');
+  }
+
   function openEvent(event: CalendarEvent, anchor: HTMLElement) {
     const rect = anchor.getBoundingClientRect();
     const left = Math.min(rect.left, window.innerWidth - 320);
@@ -243,6 +248,13 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
                   key={`${cell.outside ? 'out' : 'in'}-${cell.day}-${index}`}
                   type="button"
                   disabled={cell.outside}
+                  title={dayEvents.length > 0 ? dayReason(dayEvents) : undefined}
+                  onMouseEnter={(hover) => {
+                    if (dayEvents.length === 0) return;
+                    const rect = hover.currentTarget.getBoundingClientRect();
+                    setHint({ text: dayReason(dayEvents), top: rect.top - 6, left: rect.left + rect.width / 2 });
+                  }}
+                  onMouseLeave={() => setHint(null)}
                   onClick={(click) => {
                     if (cell.outside) return;
                     setSelectedDay(cell.day);
@@ -263,6 +275,11 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
             })}
           </div>
         </section>
+        {hint ? (
+          <div role="tooltip" className="pointer-events-none fixed z-50 max-w-[220px] -translate-x-1/2 -translate-y-full rounded-lg bg-foreground px-2.5 py-1.5 text-center text-[11px] font-medium leading-4 text-background shadow-lg" style={{ top: hint.top, left: hint.left }}>
+            {hint.text}
+          </div>
+        ) : null}
         {pile ? (
           <div ref={dialogRef} role="dialog" aria-label="Eventos do dia" className="fixed z-50 w-72 rounded-xl border bg-card p-4 text-sm shadow-lg" style={{ top: pile.top, left: pile.left }} onClick={(event) => event.stopPropagation()}>
             <button type="button" aria-label="Fechar" className="absolute top-2 right-2 rounded-md p-1 text-muted-foreground hover:bg-muted" onClick={() => setPile(null)}><X className="h-4 w-4" /></button>

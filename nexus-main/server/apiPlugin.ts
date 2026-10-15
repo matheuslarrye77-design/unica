@@ -272,10 +272,12 @@ export function institutionApi(): Plugin {
         const user = userFrom(req);
         if (!user) return send(res, 401, { error: 'unknown' });
         const body = JSON.parse((await readBody(req)).toString('utf8')) as { emoji?: string };
-        const allowed = ['😮‍💨', '😔', '😴', '😐', '😊', '🚀'];
-        if (!body.emoji || !allowed.includes(body.emoji)) return send(res, 400, { error: 'emoji' });
+        const allowed = ['😮‍💨', '😔', '😴', '😐', '😊', '🚀', '🙂'];
+        const plain = (value: string) => value.replace(/\uFE0F/g, '');
+        const emoji = allowed.find((item) => item === body.emoji || plain(item) === plain(body.emoji ?? ''));
+        if (!emoji) return send(res, 400, { error: 'emoji' });
         const store = load();
-        store.moods[user.id] = body.emoji;
+        store.moods[user.id] = emoji;
         save(store);
         send(res, 200, { moods: store.moods });
         return;

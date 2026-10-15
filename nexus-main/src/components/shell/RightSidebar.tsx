@@ -8,8 +8,14 @@ export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: bo
   const [mobileOpen, setMobileOpen] = useState(false);
   const collapsed = rightCollapsed;
 
-  const body = (
-    <div className={cn('flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto [scrollbar-width:thin]', locked ? '' : 'px-3 py-3')}>
+  const body = locked ? (
+    <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="flex h-[111.111%] w-[111.111%] origin-top-left scale-90 flex-col gap-2">
+        {children}
+      </div>
+    </div>
+  ) : (
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
       {children}
     </div>
   );
