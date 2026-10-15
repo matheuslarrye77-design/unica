@@ -254,7 +254,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
                       setPile({ events: dayEvents, top: Math.min(rect.bottom + 8, window.innerHeight - 220), left: Math.max(16, Math.min(rect.left, window.innerWidth - 300)) });
                     }
                   }}
-                  className="relative flex h-7 items-center justify-center"
+                  className="relative flex h-6 items-center justify-center"
                 >
                   <span className={cn('flex h-6 w-6 items-center justify-center rounded-full text-[12px] leading-none', cell.outside && 'text-muted-foreground/45', isCurrent && 'bg-primary font-medium text-primary-foreground', picked && !isCurrent && 'bg-accent font-medium text-accent-foreground')}>{cell.day}</span>
                   {dayEvents.length > 0 ? <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-primary" /> : null}

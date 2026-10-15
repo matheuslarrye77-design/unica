@@ -101,7 +101,7 @@ export const TeamMood: FC = () => {
           </button>
         </div>
       </div>
-      <div className="relative mt-1 pt-[62px]">
+      <div className="relative mt-1 pt-[52px]">
         {page === 0 ? (
           <span className="pointer-events-none absolute top-0 left-0.5 z-20 w-[108px]">
             <span className="block rounded-[18px_20px_16px_22px] border border-[#E7C8F2] bg-[#FBF6FC] px-2 py-1.5 text-center text-[10px] font-medium leading-[1.2] text-primary shadow-[0_4px_12px_rgba(142,53,184,0.08)]">
