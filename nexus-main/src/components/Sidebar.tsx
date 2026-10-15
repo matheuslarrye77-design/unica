@@ -12,6 +12,8 @@ import {
   Megaphone,
   MessageSquare,
   Settings,
+  Target,
+  User,
   Users,
   X,
 } from 'lucide-react';
@@ -38,13 +40,15 @@ const GROUPS = [
       { path: '/projects', label: 'Atividades', icon: FolderOpen },
       { path: '/resources', label: 'Documentos', icon: FileText },
       { path: '/calendar', label: 'Calendários', icon: CalendarDays },
+      { path: '/employees', label: 'Pessoas', icon: User },
     ],
   },
   {
     id: 'gestao',
     label: 'Gestão',
     items: [
-      { path: '/employees', label: 'Equipe', icon: Users },
+      { path: '/employees?visao=equipe', label: 'Equipe', icon: Users },
+      { path: '/projects?painel=missoes', label: 'Missões', icon: Target },
     ],
   },
 ];
@@ -138,11 +142,14 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
   const groups = GROUPS.map((group) => {
     const items = group.items.filter((item) => item.path !== '/' || institution.muralAvailable);
     if (group.id !== 'gestao' || !leader) return { ...group, items };
+    const equipe = items[0];
+    const missoes = items[items.length - 1];
     return {
       ...group,
       items: [
-        ...items,
+        equipe,
         { path: '/gestao/feedbacks', label: 'Feedbacks', icon: MessageSquare },
+        missoes,
       ],
     };
   });
@@ -214,7 +221,7 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
           return rows;
         })}
       </nav>
-      <div className="px-3 pb-4 pt-2">
+      <div className="mt-auto px-3 pb-4 pt-3">
         {collapsed ? (
           <Tooltip>
             <TooltipTrigger asChild>

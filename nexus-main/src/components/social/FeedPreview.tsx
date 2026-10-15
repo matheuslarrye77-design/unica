@@ -9,59 +9,38 @@ const initialPreview: SocialPost[] = [
   {
     id: 'previa-reconhecimento',
     kind: 'recognition',
-    author: 'Helena Duarte',
+    author: 'Jéssica Almeida',
     role: 'Coordenadora',
     department: 'Reconhecimento',
-    avatar: avatar('Helena'),
+    avatar: avatar('JessicaAlmeida'),
     time: 'há 2 horas',
-    bannerTitle: 'Reconhecimento especial para um colaborador',
-    body: 'Obrigado pelo cuidado com os alunos e pela dedicação que faz diferença no dia a dia da equipe.',
+    bannerTitle: 'Reconhecimento especial para o Matheus!',
+    body: 'Quero parabenizar o Matheus pelo comprometimento e pela dedicação no atendimento aos nossos alunos. Seu trabalho faz toda a diferença no dia a dia da instituição.\nObrigado por ser essa pessoa incrível! 💜',
     tag: 'Reconhecimento',
     likes: 15,
     liked: false,
-    shares: 1,
+    shares: 0,
     shared: false,
     commentsOpen: false,
     comments: [
-      {
-        id: 'previa-c1',
-        author: 'Ana Santos',
-        avatar: avatar('Ana'),
-        body: 'Merecido. A equipe sente essa diferença.',
-        time: 'há 1 hora',
-        likes: 2,
-        liked: false,
-      },
+      { id: 'previa-c1', author: 'Ana Souza', avatar: avatar('AnaSouza'), body: 'Merecido.', time: 'há 1 hora', likes: 1, liked: false },
+      { id: 'previa-c2', author: 'João Pereira', avatar: avatar('JoaoPereira'), body: 'Concordo.', time: 'há 1 hora', likes: 0, liked: false },
+      { id: 'previa-c3', author: 'Caio Mendes', avatar: avatar('Caio'), body: 'Parabéns.', time: 'há 40 min', likes: 0, liked: false },
+      { id: 'previa-c4', author: 'Marina Costa', avatar: avatar('Marina'), body: 'Muito bom.', time: 'há 20 min', likes: 0, liked: false },
     ],
   },
   {
     id: 'previa-jornal',
     kind: 'announcement',
-    author: 'Ana Santos',
-    role: 'Designer',
+    author: 'Ana Souza',
+    role: 'Comunicação',
     department: 'Jornal',
-    avatar: avatar('Ana'),
+    avatar: avatar('AnaSouza'),
     time: 'há 4 horas',
     bannerTitle: 'Pesquisa de clima 2026',
     body: 'A pesquisa deste ano já está aberta. Reserve alguns minutos para contar como tem sido a rotina.',
     image: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1400&q=80',
     likes: 8,
-    liked: false,
-    shares: 0,
-    shared: false,
-    commentsOpen: false,
-    comments: [],
-  },
-  {
-    id: 'previa-social',
-    kind: 'text',
-    author: 'Matheus Larrie',
-    role: 'Colaborador',
-    department: 'Equipe',
-    avatar: avatar('Matheus'),
-    time: 'há 5 horas',
-    body: 'A equipe fechou a semana com a campanha de matrícula no ar. Foi bom ver cada área puxando um pedaço.',
-    likes: 6,
     liked: false,
     shares: 0,
     shared: false,
@@ -79,8 +58,7 @@ export const FeedPreview: FC = () => {
   }
 
   return (
-    <section aria-label="Prévia visual do mural" className="flex flex-col gap-2">
-      <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-accent-foreground">Prévia visual · não salva no mural</p>
+    <section aria-label="Prévia visual do mural" className="flex flex-col gap-3">
       {posts.map((post) => (
         <PostCard
           key={post.id}

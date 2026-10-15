@@ -3,8 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Headphones } from 'lucide-react';
 import { useEffect, useState, type FC } from 'react';
+import { useLocation } from 'react-router-dom';
 
 export const FloatingHelpButton: FC = () => {
+  const home = useLocation().pathname === '/';
   const [open, setOpen] = useState(false);
   const [tooltipOpen, setTooltipOpen] = useState(false);
 
@@ -16,7 +18,7 @@ export const FloatingHelpButton: FC = () => {
 
   return (
     <>
-      <div className="fixed bottom-4 right-4 z-40 xl:bottom-4 xl:right-4">
+      <div className={home ? 'fixed bottom-4 right-4 z-40 hidden' : 'fixed bottom-4 right-4 z-40'}>
         <Tooltip open={tooltipOpen} onOpenChange={setTooltipOpen}>
           <TooltipTrigger asChild>
             <Button

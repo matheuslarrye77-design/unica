@@ -1,5 +1,5 @@
-import { Heart, MessageCircle, Repeat2, Share2, ThumbsUp } from 'lucide-react';
-import { type FC } from 'react';
+import { Bookmark, Heart, MessageCircle, ThumbsUp } from 'lucide-react';
+import { useState, type FC } from 'react';
 import type { SocialPost } from './types';
 
 function likeLabel(count: number) {
@@ -15,51 +15,44 @@ export const PostActions: FC<{
   onComment: () => void;
   onShare: () => void;
   onRepublish: () => void;
-}> = ({ post, republished = false, onLike, onComment, onShare, onRepublish }) => {
+}> = ({ post, onLike, onComment }) => {
   const comments = post.comments.length;
+  const [saved, setSaved] = useState(false);
   return (
-    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
+    <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2.5">
       <button
         type="button"
         onClick={onLike}
         aria-pressed={post.liked}
-        className={`inline-flex h-8 items-center gap-2 rounded-[8px] px-1 text-[12.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${post.liked ? 'font-medium text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+        className={`inline-flex h-8 items-center gap-2 rounded-[8px] px-0.5 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${post.liked ? 'font-medium text-primary' : 'text-[#5C5870] hover:text-foreground'}`}
       >
         <span className="flex items-center" aria-hidden>
-          <span className="z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#1877F2] text-white ring-2 ring-white">
-            <ThumbsUp className="h-2.5 w-2.5" fill="currentColor" />
+          <span className="z-10 flex h-5 w-5 items-center justify-center rounded-full bg-[#1877F2] text-white ring-2 ring-white">
+            <ThumbsUp className="h-3 w-3" fill="currentColor" />
           </span>
-          <span className="-ml-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#F33E58] text-white ring-2 ring-white">
-            <Heart className="h-2.5 w-2.5" fill="currentColor" />
+          <span className="-ml-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#F33E58] text-white ring-2 ring-white">
+            <Heart className="h-3 w-3" fill="currentColor" />
           </span>
         </span>
         {likeLabel(post.likes)}
       </button>
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={onComment}
-          className="inline-flex h-8 items-center gap-1.5 rounded-[8px] px-2 text-[12.5px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          className="inline-flex h-8 items-center gap-1.5 rounded-[8px] px-2 text-[13px] text-[#5C5870] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         >
           <MessageCircle className="h-4 w-4" />
           {comments === 1 ? '1 comentário' : `${comments} comentários`}
         </button>
         <button
           type="button"
-          onClick={onRepublish}
-          aria-pressed={republished}
-          className={`inline-flex h-8 items-center gap-1.5 rounded-[8px] px-2 text-[12.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${republished ? 'font-medium text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+          onClick={() => setSaved((value) => !value)}
+          aria-pressed={saved}
+          aria-label={saved ? 'Remover dos favoritos' : 'Favoritar'}
+          className={`inline-flex h-8 w-8 items-center justify-center rounded-[8px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${saved ? 'text-primary' : 'text-[#5C5870] hover:text-foreground'}`}
         >
-          <Repeat2 className="h-4 w-4" />
-          {republished ? 'Republicado' : 'Republicar'}
-        </button>
-        <button
-          type="button"
-          onClick={onShare}
-          className="inline-flex h-8 items-center gap-1.5 rounded-[8px] px-2 text-[12.5px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-        >
-          <Share2 className="h-4 w-4" />
-          Compartilhar
+          <Bookmark className="h-4 w-4" fill={saved ? 'currentColor' : 'none'} />
         </button>
       </div>
     </div>

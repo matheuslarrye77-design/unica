@@ -1,5 +1,6 @@
 import { EmojiText } from '@/components/Emoji';
-import { FileText } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { FileText, MoreHorizontal } from 'lucide-react';
 import { type FC } from 'react';
 import { Link } from 'react-router-dom';
 import { AnnouncementPost } from './AnnouncementPost';
@@ -34,7 +35,7 @@ export const PostCard: FC<{
   onDeleteComment?: (commentId: string) => void;
   repost?: { name: string; avatar: string; note: string };
   preview?: boolean;
-}> = ({ post, commentDraft, onCommentDraft, onLike, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, republished, canDeleteComment, onDeleteComment, repost, preview = false }) => {
+}> = ({ post, commentDraft, onCommentDraft, onLike, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, republished, canDeleteComment, onDeleteComment, repost }) => {
   const plain = post.kind === 'text' || post.kind === 'image' || post.kind === 'leadership';
 
   return (
@@ -46,15 +47,26 @@ export const PostCard: FC<{
         </div>
       ) : null}
       {repost?.note ? <p className="mb-3 text-[13.5px] leading-6">{repost.note}</p> : null}
-      <header className="flex items-center gap-3">
-        <img src={post.avatar} alt="" className="h-9 w-9 rounded-full bg-muted object-cover" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13.5px] leading-5">
+      <header className="flex items-start gap-3">
+        <img src={post.avatar} alt="" className="h-10 w-10 rounded-full bg-muted object-cover" />
+        <div className="min-w-0 flex-1 pt-0.5">
+          <p className="truncate text-[14px] leading-5">
             <span className="font-semibold text-foreground">{post.author}</span>
-            <span className="text-muted-foreground"> · {(post.department === 'Jornal' ? 'Jornal' : kindLabel[post.kind]) ?? post.department} · {post.time}</span>
-            {preview ? <span className="ml-1.5 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">Prévia</span> : null}
+            <span className="font-normal text-muted-foreground"> · {(post.department === 'Jornal' ? 'Jornal' : kindLabel[post.kind]) ?? post.department}</span>
           </p>
+          <p className="text-[12px] leading-4 text-muted-foreground">{post.time}</p>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" aria-label="Mais ações" className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onRepublish}>{republished ? 'Desfazer republicação' : 'Republicar'}</DropdownMenuItem>
+            <DropdownMenuItem onClick={onShare}>Compartilhar</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
       {plain ? <p className="mt-2 text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90"><EmojiText text={post.body} /></p> : null}

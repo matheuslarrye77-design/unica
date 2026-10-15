@@ -14,12 +14,11 @@ export const MOODS = [
   { id: 'motivado', emoji: '🚀', label: 'Motivado' },
 ] as const;
 
-const others = [
-  { id: 'ana', name: 'Ana Santos', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ana' },
-  { id: 'joao', name: 'João Ferreira', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Joao' },
-  { id: 'caio', name: 'Caio Mendes', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Caio' },
-  { id: 'marina', name: 'Marina Costa', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marina' },
-  { id: 'helena', name: 'Helena Duarte', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Helena' },
+const faces = [
+  { id: 'matheus', name: 'Matheus', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Matheus', label: 'Motivado', className: 'bg-[#E7F7EC] text-[#1E7A46]' },
+  { id: 'ana', name: 'Ana', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AnaMood', label: 'Normal', className: 'bg-[#FFF4D9] text-[#8A6412]' },
+  { id: 'joao', name: 'João', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JoaoMood', label: 'Bem', className: 'bg-[#E7F7EC] text-[#1E7A46]' },
+  { id: 'caio', name: 'Caio', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=CaioMood', label: 'Cansado', className: 'bg-[#F3E8FF] text-[#6D28D9]' },
 ];
 
 const moodTone: Record<string, { label: string; className: string }> = {
@@ -37,7 +36,7 @@ function scrollRail(element: HTMLDivElement | null, direction: -1 | 1) {
 
 export const TeamMood: FC = () => {
   const user = actor();
-  const team = [{ id: user.id, name: user.name, avatar: user.avatar }, ...others.filter((person) => person.id !== user.id)];
+  const team = faces.map((person) => person.id === 'matheus' ? { ...person, id: user.id, avatar: user.avatar || person.avatar } : person);
   const { moods } = useInstitution();
   const mine = moods[user.id];
   const [open, setOpen] = useState(false);
@@ -82,33 +81,28 @@ export const TeamMood: FC = () => {
         onPointerMove={onPointerMove}
         onPointerUp={() => { drag.current.active = false; }}
         onPointerCancel={() => { drag.current.active = false; }}
-        className="mt-1.5 flex cursor-grab gap-2 overflow-x-auto pb-0.5 active:cursor-grabbing"
+        className="mt-2 grid grid-cols-4 gap-1"
       >
         {team.map((person) => {
           const emoji = moods[person.id];
-          const tone = emoji ? moodTone[emoji] : undefined;
+          const saved = emoji ? moodTone[emoji] : undefined;
           const first = person.name.split(' ')[0];
           const self = person.id === user.id;
+          const label = saved?.label ?? person.label;
+          const toneClass = saved?.className ?? person.className;
           const portrait = (
-            <div className="relative mx-auto h-9 w-9">
-              <img src={person.avatar} alt="" className="h-9 w-9 rounded-full bg-muted object-cover ring-2 ring-[#F1EAFE]" />
-              {emoji ? (
-                <span className="absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full bg-card ring-1 ring-border">
-                  <Emoji emoji={emoji} className="h-3.5 w-3.5" />
-                </span>
-              ) : self ? (
-                <span className="absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-card text-[10px] leading-none text-muted-foreground ring-1 ring-border">+</span>
-              ) : null}
+            <div className="relative mx-auto h-10 w-10">
+              <img src={person.avatar} alt="" className="h-10 w-10 rounded-full bg-muted object-cover ring-2 ring-white" />
             </div>
           );
           const caption = (
             <>
-              <span className="mt-1 block max-w-[64px] truncate text-[11px] leading-4">{first}</span>
-              {tone ? <span className={cn('mt-0.5 inline-flex rounded-full px-1.5 py-0 text-[10px] font-medium leading-4', tone.className)}>{tone.label}</span> : <span className="mt-0.5 block text-[10px] leading-4 text-muted-foreground">—</span>}
+              <span className="mt-1 block max-w-[72px] truncate text-[12px] leading-4">{first}</span>
+              <span className={cn('mt-0.5 inline-flex max-w-full truncate rounded-full px-1.5 py-0 text-[10px] font-medium leading-4', toneClass)}>{label}</span>
             </>
           );
           return (
-            <div key={person.id} className="w-[64px] shrink-0 text-center">
+            <div key={person.id} className="min-w-0 text-center">
               {self ? (
                 <button type="button" data-mood-self className="w-full" aria-label={mine ? 'Alterar humor' : 'Definir humor'} onClick={() => setOpen((value) => !value)}>
                   {portrait}
@@ -123,6 +117,12 @@ export const TeamMood: FC = () => {
             </div>
           );
         })}
+      </div>
+      <div className="mt-1.5 flex justify-center gap-1" aria-hidden>
+        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+        <span className="h-1.5 w-1.5 rounded-full bg-[#D9D4E6]" />
+        <span className="h-1.5 w-1.5 rounded-full bg-[#D9D4E6]" />
+        <span className="h-1.5 w-1.5 rounded-full bg-[#D9D4E6]" />
       </div>
       {open ? (
         <div className="mt-2 rounded-[12px] border border-border bg-background p-1">

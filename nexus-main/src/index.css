@@ -245,6 +245,10 @@
   font-family: "Segoe Script", "Segoe Print", cursive;
 }
 
+#bmc-wbtn {
+  display: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

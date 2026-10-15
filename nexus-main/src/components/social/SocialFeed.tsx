@@ -135,7 +135,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
             <h1 className="text-[24px] font-semibold leading-tight tracking-tight">{getTimeBasedGreeting()}, {firstName}!</h1>
             <p className="mt-0.5 text-[13px] text-muted-foreground">Que hoje seja um dia incrível.</p>
           </div>
-          <p className="unica-script relative hidden w-[158px] shrink-0 text-right text-[22px] leading-[1.2] text-primary lg:block">
+          <p className="unica-script relative hidden w-[158px] shrink-0 -rotate-6 text-right text-[22px] leading-[1.15] text-primary lg:block">
             <span className="block whitespace-nowrap">Juntos</span>
             <span className="block whitespace-nowrap">vamos mais</span>
             <span className="block whitespace-nowrap">longe!</span>
