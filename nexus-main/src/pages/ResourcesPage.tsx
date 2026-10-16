@@ -28,7 +28,7 @@ import { currentUser } from '@/data/mockData';
 import { assertPermission, useInstitution } from '@/lib/institution';
 import { cn } from '@/lib/utils';
 import { CalendarDays, ChevronRight, Download, FileText, Filter, MoreHorizontal, Plus, Search, Star } from 'lucide-react';
-import { actor, authHeaders } from '@/lib/session';
+import { authHeaders } from '@/lib/session';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { toast } from 'sonner';
 
@@ -101,7 +101,7 @@ export const ResourcesPage: FC = () => {
     });
   }, [documents, category, system, query, sort, canManage, canSend]);
 
-  const featured = documents.filter((document) => document.featured && document.published && (category === 'todos' || document.category === category) && (system === 'todos' || document.system === system)).slice(0, 4);
+  const featured = documents.filter((document) => document.featured && document.published && (category === 'todos' || document.category === category) && (system === 'todos' || document.system === system)).slice(0, 3);
   const favoriteOrder = ['doc-pontividade', 'doc-boletim', 'doc-financeiro', 'doc-prominas'];
   const favorites = documents
     .filter((document) => (favoriteIds.includes(document.id) || document.favorites.includes(currentUser.id)) && (document.published || canManage || canSend))
@@ -110,7 +110,6 @@ export const ResourcesPage: FC = () => {
       const right = favoriteOrder.indexOf(b.id);
       return (left === -1 ? 99 : left) - (right === -1 ? 99 : right);
     });
-  const firstName = actor().name.split(' ')[0];
 
   function upsert(document: CompanyDocument) {
     setDocuments((current) => {
@@ -175,48 +174,42 @@ export const ResourcesPage: FC = () => {
             )}
           </section>
     }>
-          <section className="overflow-hidden rounded-[24px] border border-[#F0E7F6] bg-white shadow-[0_8px_24px_rgba(80,40,120,0.05)]">
-            <div className="grid lg:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)]">
-              <div className="px-6 py-6">
-                <p className="text-[13px] text-[#8A7C98]">Olá, {firstName}!</p>
-                <h1 className="mt-1 text-[32px] font-semibold leading-tight tracking-tight text-[#241B33]">Central de Documentos</h1>
-                <p className="mt-1 max-w-xl text-[14px] text-[#8A7C98]">Encontre procedimentos, requerimentos, orientações e documentos internos.</p>
-                <div className="mt-6 flex flex-wrap items-center gap-3">
-                  <label className="relative block min-w-[220px] flex-1">
-                    <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[#B7A8C4]" />
-                    <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Pesquisar documentos..." className="h-11 rounded-xl border-[#E7DFF0] bg-white pl-10 shadow-none" />
-                  </label>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button type="button" variant="outline" className="h-11 rounded-xl border-[#E7DFF0] bg-white px-4 text-[#5C5168] shadow-none">
-                        <Filter className="h-4 w-4" /> Filtrar
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuItem onClick={() => { setCategory('todos'); setSystem('todos'); setSort('az'); }}>Limpar filtros</DropdownMenuItem>
-                      {DOCUMENT_CATEGORIES.map((item) => (
-                        <DropdownMenuItem key={item.id} onClick={() => setCategory(item.id)}>{item.label}</DropdownMenuItem>
-                      ))}
-                      {ORIGIN_SYSTEMS.map((item) => (
-                        <DropdownMenuItem key={item.id} onClick={() => setSystem(item.id)}>{item.label}</DropdownMenuItem>
-                      ))}
-                      {sorts.map((item) => (
-                        <DropdownMenuItem key={item.id} onClick={() => setSort(item.id)}>{item.label}</DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-              <img src="/documentos/capa.jpg" alt="" className="h-full min-h-[210px] w-full object-cover" />
+          <section>
+            <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#241B33]">Central de Documentos</h1>
+            <p className="mt-1 text-[13.5px] text-[#8A7C98]">Encontre procedimentos, requerimentos, orientações e documentos internos.</p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <label className="relative block min-w-[220px] max-w-xl flex-1">
+                <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[#B7A8C4]" />
+                <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Pesquisar documentos..." className="h-11 rounded-xl border-[#E7DFF0] bg-white pl-10 shadow-none" />
+              </label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="outline" className="h-11 rounded-xl border-[#E7DFF0] bg-white px-4 text-[#5C5168] shadow-none">
+                    <Filter className="h-4 w-4" /> Filtrar
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => { setCategory('todos'); setSystem('todos'); setSort('az'); }}>Limpar filtros</DropdownMenuItem>
+                  {DOCUMENT_CATEGORIES.map((item) => (
+                    <DropdownMenuItem key={item.id} onClick={() => setCategory(item.id)}>{item.label}</DropdownMenuItem>
+                  ))}
+                  {ORIGIN_SYSTEMS.map((item) => (
+                    <DropdownMenuItem key={item.id} onClick={() => setSystem(item.id)}>{item.label}</DropdownMenuItem>
+                  ))}
+                  {sorts.map((item) => (
+                    <DropdownMenuItem key={item.id} onClick={() => setSort(item.id)}>{item.label}</DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </section>
 
           {featured.length > 0 && !query ? (
             <section className="mt-6">
               <h2 className="mb-3 flex items-center gap-2 text-[16px] font-semibold text-[#2C2433]">
-                <Star className="h-4 w-4 fill-[#8E35B8] text-[#8E35B8]" /> Destaques
+                <Star className="h-4 w-4 fill-[#8E35B8] text-[#8E35B8]" /> Fixados
               </h2>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-3 md:grid-cols-3">
                 {featured.map((document) => (
                   <button key={document.id} type="button" onClick={() => setSelected(document)} className="flex items-start gap-3 rounded-2xl border border-[#F0E7F6] bg-white p-3.5 text-left shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
                     <SystemMark system={document.system} />
@@ -270,7 +263,7 @@ export const ResourcesPage: FC = () => {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => openEditor(document)}>Editar</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => void saveDocument({ ...document, published: !document.published, updatedAt: new Date().toISOString() }).then(() => upsert({ ...document, published: !document.published, updatedAt: new Date().toISOString() }))}>{document.published ? 'Despublicar' : 'Publicar'}</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => void saveDocument({ ...document, featured: !document.featured }).then(() => upsert({ ...document, featured: !document.featured }))}>{document.featured ? 'Remover destaque' : 'Definir destaque'}</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => void saveDocument({ ...document, featured: !document.featured }).then(() => upsert({ ...document, featured: !document.featured }))}>{document.featured ? 'Desafixar' : 'Fixar'}</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => void remove(document)}>Excluir</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -391,7 +384,7 @@ const DocumentEditor: FC<{
       fileName: file?.name ?? document!.fileName,
       fileType: file?.type || document?.fileType || 'application/octet-stream',
       file: storedFile,
-      thumbnail: system === 'prominas' ? '/marcas/prominas.svg' : '/marcas/pincel.svg',
+      thumbnail: system === 'prominas' ? '/marcas/prominas.png' : '/marcas/pincel.png',
       downloads: document?.downloads ?? 0,
       favorites: document?.favorites ?? [],
     };
@@ -436,7 +429,7 @@ const DocumentEditor: FC<{
             <Label htmlFor="doc-arquivo">Arquivo</Label>
             <Input id="doc-arquivo" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,image/*,.txt" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
           </div>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featured} onChange={(event) => setFeatured(event.target.checked)} />Definir como destaque</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featured} onChange={(event) => setFeatured(event.target.checked)} />Fixar na central</label>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => void submit(false)}>Salvar sem publicar</Button>
