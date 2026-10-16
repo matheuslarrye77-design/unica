@@ -373,135 +373,28 @@ export const announcements: Announcement[] = [
 
 const avatar = (seed: string) => `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
 
-function dayFromNow(offset: number) {
-  const date = new Date();
-  date.setDate(date.getDate() + offset);
-  date.setHours(12, 0, 0, 0);
-  return date;
+function onDay(day: number) {
+  return new Date(2026, 9, day, 12, 0, 0, 0);
 }
 
 // Mock calendar events
 export const calendarEvents: CalendarEvent[] = [
-  {
-    id: '1',
-    title: 'Reunião de equipe',
-    date: dayFromNow(1),
-    type: 'event',
-    time: '10:00 – 11:00',
-    place: 'Auditório principal',
-    owner: 'Helena Duarte',
-    participants: ['Helena Duarte', 'Marina Costa', 'João Ferreira'],
-    category: 'Reunião',
-    description: 'Pauta da semana e alinhamento das equipes.'
-  },
-  {
-    id: '4',
-    title: 'Treinamento de produto',
-    date: dayFromNow(5),
-    type: 'event',
-    time: '14:00 – 16:00',
-    place: 'Sala 2 · Bloco acadêmico',
-    owner: 'Lívia Ramos',
-    participants: ['Lívia Ramos', 'Caio Mendes'],
-    category: 'Treinamento',
-    description: 'Treinamento para quem entrou neste semestre.'
-  },
-  {
-    id: '5',
-    title: 'Reunião administrativa',
-    date: dayFromNow(2),
-    type: 'event',
-    time: '09:00 – 10:00',
-    place: 'Sala da coordenação',
-    owner: 'Helena Duarte',
-    participants: ['Helena Duarte', 'João Ferreira'],
-    category: 'Reunião',
-    description: 'Pendências administrativas do mês.'
-  },
-  {
-    id: '3',
-    title: 'Aniversário da Única',
-    date: dayFromNow(7),
-    type: 'anniversary',
-    time: '16:00',
-    place: 'Área comum',
-    owner: 'Comunicação',
-    participants: ['Equipe Única'],
-    category: 'Celebração',
-    description: 'Celebração da equipe.'
-  },
-  {
-    id: 'b-ana',
-    title: 'Aniversário de Ana',
-    date: dayFromNow(0),
-    type: 'birthday',
-    personName: 'Ana Santos',
-    avatar: avatar('Ana'),
-    mood: 'triste',
-    owner: 'Ana Santos',
-    category: 'Aniversário',
-    description: 'Aniversário de Ana Santos, Comunicação.'
-  },
-  {
-    id: 'b-caio',
-    title: 'Aniversário de Caio',
-    date: dayFromNow(3),
-    type: 'birthday',
-    personName: 'Caio Mendes',
-    avatar: avatar('Caio'),
-    mood: 'triste',
-    owner: 'Caio Mendes',
-    category: 'Aniversário',
-    description: 'Aniversário de Caio Mendes.'
-  },
-  {
-    id: 'b-marina',
-    title: 'Aniversário de Marina',
-    date: dayFromNow(4),
-    type: 'birthday',
-    personName: 'Marina Costa',
-    avatar: avatar('Marina'),
-    mood: 'neutro',
-    owner: 'Marina Costa',
-    category: 'Aniversário',
-    description: 'Aniversário de Marina Costa.'
-  },
-  {
-    id: 'b-matheus',
-    title: 'Aniversário de Matheus',
-    date: dayFromNow(6),
-    type: 'birthday',
-    personName: 'Matheus Larrie',
-    avatar: avatar('Matheus'),
-    mood: 'feliz',
-    owner: 'Matheus Larrie',
-    category: 'Aniversário',
-    description: 'Aniversário de Matheus Larrie.'
-  },
-  {
-    id: 'b-helena',
-    title: 'Aniversário de Helena',
-    date: dayFromNow(8),
-    type: 'birthday',
-    personName: 'Helena Duarte',
-    avatar: avatar('Helena'),
-    mood: 'feliz',
-    owner: 'Helena Duarte',
-    category: 'Aniversário',
-    description: 'Aniversário de Helena Duarte.'
-  },
-  {
-    id: 'b-joao',
-    title: 'Aniversário de João',
-    date: dayFromNow(9),
-    type: 'birthday',
-    personName: 'João Ferreira',
-    avatar: avatar('Joao'),
-    mood: 'neutro',
-    owner: 'João Ferreira',
-    category: 'Aniversário',
-    description: 'Aniversário de João Ferreira.'
-  }
+  { id: '1', title: 'Reunião geral', date: onDay(1), type: 'event', time: '08:00', place: 'Sala de reuniões', category: 'Reunião', owner: 'Helena Duarte' },
+  { id: '2', title: 'Treinamento', date: onDay(2), type: 'event', time: '14:00', place: 'Auditório', category: 'Treinamento', owner: 'Lívia Ramos' },
+  { id: '13', title: 'Alinhamento', date: onDay(13), type: 'event', time: '09:00', place: 'Sala 3', category: 'Reunião', owner: 'João Ferreira' },
+  { id: 'b-ana', title: 'Aniversário de Ana', date: onDay(15), type: 'birthday', personName: 'Ana Souza', avatar: avatar('AnaSouza'), category: 'Aniversário', owner: 'Ana Souza' },
+  { id: '16', title: 'Reunião de equipe', date: onDay(16), type: 'event', time: '10:00', place: 'Sala 2', category: 'Reunião', owner: 'Helena Duarte' },
+  { id: '17', title: 'Financeiro', date: onDay(17), type: 'event', time: '13:30', place: 'Sala 1', category: 'Financeiro', owner: 'Helena Duarte' },
+  { id: 'b-caio', title: 'Aniversário de Caio', date: onDay(18), type: 'birthday', personName: 'Caio Mendes', avatar: avatar('Caio'), category: 'Aniversário', owner: 'Caio Mendes' },
+  { id: '19', title: 'Treinamento', date: onDay(19), type: 'event', time: '09:00', place: 'Auditório', category: 'Treinamento', owner: 'Lívia Ramos' },
+  { id: 'b-marina', title: 'Aniversário de Marina', date: onDay(19), type: 'birthday', personName: 'Marina Costa', avatar: avatar('Marina'), category: 'Aniversário', owner: 'Marina Costa' },
+  { id: '20', title: 'Marketing', date: onDay(20), type: 'event', time: '14:00', place: 'Sala 4', category: 'Reunião', owner: 'Ana Souza' },
+  { id: 'b-matheus', title: 'Aniversário de Matheus', date: onDay(21), type: 'birthday', personName: 'Matheus Larrie', avatar: avatar('Matheus'), category: 'Aniversário', owner: 'Matheus Larrie' },
+  { id: '22', title: 'Reunião de diretoria', date: onDay(22), type: 'event', time: '16:00', place: 'Sala 1', category: 'Reunião', owner: 'Helena Duarte' },
+  { id: 'b-helena', title: 'Aniversário de Helena', date: onDay(23), type: 'birthday', personName: 'Helena Duarte', avatar: avatar('Helena'), category: 'Aniversário', owner: 'Helena Duarte' },
+  { id: '26', title: 'Planejamento', date: onDay(26), type: 'event', time: '10:00', place: 'Sala 3', category: 'Planejamento', owner: 'João Ferreira' },
+  { id: '28', title: 'RH', date: onDay(28), type: 'event', time: '15:00', place: 'Sala 2', category: 'RH', owner: 'Marina Costa' },
+  { id: '31', title: 'Produto', date: onDay(31), type: 'event', time: '08:30', place: 'Sala 5', category: 'Treinamento', owner: 'Lívia Ramos' },
 ];
 
 // Mock kudos

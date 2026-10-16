@@ -175,8 +175,15 @@ export const ResourcesPage: FC = () => {
           </section>
     }>
           <section>
+            <div className="flex items-start gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]">
+                <FileText className="h-5 w-5" strokeWidth={2.2} />
+              </span>
+              <div>
             <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#241B33]">Central de Documentos</h1>
             <p className="mt-1 text-[13.5px] text-[#8A7C98]">Encontre procedimentos, requerimentos, orientações e documentos internos.</p>
+              </div>
+            </div>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <label className="relative block min-w-[220px] max-w-xl flex-1">
                 <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[#B7A8C4]" />

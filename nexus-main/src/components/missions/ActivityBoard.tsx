@@ -148,8 +148,8 @@ export const ActivityBoard: FC = () => {
     <div>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#8E35B8] text-white shadow-[0_8px_18px_rgba(142,53,184,0.28)]">
-            <Check className="h-5 w-5" strokeWidth={2.8} />
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]">
+            <Check className="h-5 w-5" strokeWidth={2.4} />
           </span>
           <div>
             <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#2C2433]">Atividades</h1>

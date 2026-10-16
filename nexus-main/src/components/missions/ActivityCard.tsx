@@ -23,9 +23,9 @@ import {
 import { cn } from '@/lib/utils';
 
 const priorityClass: Record<Activity['priority'], string> = {
-  high: 'bg-[#F6F1F3] text-[#8E5C6C]',
-  medium: 'bg-[#F7F3EA] text-[#8A7040]',
-  low: 'bg-[#F1F6F3] text-[#4E7A64]',
+  high: 'bg-[#FDE7EE] text-[#E23B6A]',
+  medium: 'bg-[#FFF1DE] text-[#E08A2A]',
+  low: 'bg-[#E7F8EE] text-[#1F9D55]',
 };
 
 function SourceIcon({ source }: { source: string }) {
@@ -48,10 +48,10 @@ export const ActivityCardView: FC<{
   const leadership = activity.origin === 'leadership';
 
   return (
-    <article className={cn('relative overflow-hidden rounded-2xl border bg-white px-3.5 py-3 shadow-[0_8px_22px_rgba(80,40,120,0.05)]', leadership ? 'border-[#E2E6EC]' : 'border-[#F0E7F6]', dragging && 'opacity-40')}>
-      {leadership ? <span className="pointer-events-none absolute inset-0 bg-[#F4F6F8]" /> : null}
+    <article className={cn('relative overflow-hidden rounded-2xl border bg-white px-3.5 py-3 shadow-[0_8px_22px_rgba(80,40,120,0.05)]', leadership ? 'border-[#E7C4F2] bg-[#F8EAFB]' : 'border-[#F0E7F6]', dragging && 'opacity-40')}>
       <div className="relative flex items-start gap-2">
-        <span className={cn('rounded-md px-1.5 py-0.5 text-[11px] font-medium', leadership ? 'bg-white text-[#3E4C5E]' : 'bg-[#F3E4FA] text-[#8E35B8]')}>
+        {leadership ? <img src="/atividades/alfinete.png" alt="" className="mt-0.5 h-8 w-8 shrink-0 object-contain" /> : null}
+        <span className={cn('rounded-md px-1.5 py-0.5 text-[11px] font-medium', leadership ? 'bg-white text-[#6A228C]' : 'bg-[#F3E4FA] text-[#8E35B8]')}>
           {ORIGIN_LABEL[activity.origin]}
         </span>
         {onToggle ? (
@@ -109,7 +109,7 @@ export const ActivityCardView: FC<{
           </p>
         ) : <span />}
         {done ? (
-          <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-[#F1F6F3] px-2 py-0.5 text-[11px] font-medium text-[#4E7A64]">
+          <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-[#E7F8EE] px-2 py-0.5 text-[11px] font-medium text-[#1F9D55]">
             <Check className="h-3 w-3" /> Concluída
           </span>
         ) : (

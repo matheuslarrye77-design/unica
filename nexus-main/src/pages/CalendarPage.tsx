@@ -4,7 +4,7 @@ import { Header } from '@/components/Header';
 import { calendarEvents, type CalendarEvent } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { directoryPeople, isLeader, useInstitution, wallpaperUrl, type CalendarTheme } from '@/lib/institution';
-import { Calendar, Cake, ChevronLeft, ChevronRight, Plus, Search, X } from 'lucide-react';
+import { Calendar, Cake, ChevronLeft, ChevronRight, MapPin, Plus, Search, X } from 'lucide-react';
 import { EventDialog } from '@/components/calendar/EventDialog';
 import { deleteEvent, notifyEvents, parseAgendaDate, useAgendaEvents, type AgendaEvent } from '@/lib/events';
 import { actor } from '@/lib/session';
@@ -37,10 +37,11 @@ function skinStyle(theme: CalendarTheme, hasWallpaper: boolean, version: number)
   };
 }
 
-function eventTone(type: CalendarEvent['type']) {
-  if (type === 'birthday') return 'bg-rose-500/10 text-rose-700';
-  if (type === 'anniversary') return 'bg-violet-500/10 text-violet-700';
-  return 'bg-primary/10 text-primary';
+function eventTone(event: CalendarEvent) {
+  if (event.type === 'birthday') return 'bg-[#F8E8F0] text-[#8A4A66]';
+  if (event.category === 'Treinamento') return 'bg-[#E7F6EE] text-[#2E6B48]';
+  if (event.category === 'Reunião') return 'bg-[#F3E8FA] text-[#6A3A86]';
+  return 'bg-[#F8F3E4] text-[#7A6230]';
 }
 
 function nextBirthday(date: Date, from = new Date()) {
@@ -69,6 +70,8 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   const leader = isLeader(actor());
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<AgendaEvent | null>(null);
+  const [boardView, setBoardView] = useState<'month' | 'week' | 'agenda'>('month');
+  const [createType, setCreateType] = useState<'reuniao' | 'aniversario'>('reuniao');
 
   useEffect(() => {
     if (birthdaysFocus) setLeftOpen(true);
@@ -207,6 +210,15 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
     setActive(null);
   }
 
+  function shiftWeek(direction: -1 | 1) {
+    setCurrentDate((current) => {
+      const next = new Date(current);
+      next.setDate(current.getDate() + direction * 7);
+      return next;
+    });
+    setActive(null);
+  }
+
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const firstWeekday = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
   const selectedEvents = selectedDay ? eventsOn(selectedDay) : [];
@@ -214,38 +226,35 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
 
   if (rail) {
     const initials = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-    const previousDays = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0).getDate();
-    const cells: { day: number; outside: boolean }[] = [];
-    for (let index = firstWeekday - 1; index >= 0; index -= 1) cells.push({ day: previousDays - index, outside: true });
-    for (let day = 1; day <= daysInMonth; day += 1) cells.push({ day, outside: false });
-    let nextDay = 1;
-    while (cells.length % 7 !== 0) cells.push({ day: nextDay++, outside: true });
+    const weekStart = new Date(currentDate);
+    weekStart.setDate(currentDate.getDate() - currentDate.getDay());
+    const week = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(weekStart);
+      date.setDate(weekStart.getDate() + index);
+      return date;
+    });
+    const rangeLabel = `${week[0].getDate()}–${week[6].getDate()} ${week[6].toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}`;
     return (
       <>
-        <section className="unica-surface flex aspect-square w-full shrink-0 flex-col px-2 py-2">
-          <div className="flex items-center justify-between gap-1 pr-6">
-            <h2 className="min-w-0 flex-1 text-[12.5px] font-semibold">
-              <Link to="/calendar" className="block truncate hover:text-primary">{monthLabel}</Link>
+        <section className="unica-surface shrink-0 px-3 py-2.5">
+          <div className="flex items-center justify-between gap-1">
+            <h2 className="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold">
+              <Calendar className="h-3.5 w-3.5 shrink-0 text-primary" />
+              <Link to="/calendar" className="truncate hover:text-primary">{rangeLabel}</Link>
             </h2>
             <div className="flex shrink-0 items-center">
-              <button type="button" onClick={() => shiftMonth(-1)} aria-label="Mês anterior" className="flex h-6 w-6 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-accent hover:text-foreground"><ChevronLeft className="h-3.5 w-3.5" /></button>
-              <button type="button" onClick={() => { setCurrentDate(new Date()); setSelectedDay(new Date().getDate()); }} className="h-6 rounded-[8px] border border-border bg-card px-1.5 text-[10px] font-medium text-foreground hover:bg-accent">Hoje</button>
-              <button type="button" onClick={() => shiftMonth(1)} aria-label="Próximo mês" className="flex h-6 w-6 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-accent hover:text-foreground"><ChevronRight className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => shiftWeek(-1)} aria-label="Semana anterior" className="flex h-6 w-6 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-accent hover:text-foreground"><ChevronLeft className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => shiftWeek(1)} aria-label="Próxima semana" className="flex h-6 w-6 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-accent hover:text-foreground"><ChevronRight className="h-3.5 w-3.5" /></button>
             </div>
           </div>
-          <div className="mt-2 grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground">
-            {initials.map((day, index) => <div key={`${day}-${index}`} className="pb-1">{day}</div>)}
-          </div>
-          <div className="grid min-h-0 flex-1 grid-cols-7" style={{ gridTemplateRows: `repeat(${cells.length / 7}, minmax(0, 1fr))` }}>
-            {cells.map((cell, index) => {
-              const dayEvents = cell.outside ? [] : eventsOn(cell.day);
-              const isCurrent = !cell.outside && today.getFullYear() === currentDate.getFullYear() && today.getMonth() === currentDate.getMonth() && today.getDate() === cell.day;
-              const picked = !cell.outside && selectedDay === cell.day;
+          <div className="mt-2 grid grid-cols-7 text-center">
+            {week.map((date, index) => {
+              const dayEvents = calendarEvents.filter((event) => event.date.getFullYear() === date.getFullYear() && event.date.getMonth() === date.getMonth() && event.date.getDate() === date.getDate());
+              const isCurrent = sameDay(date, today);
               return (
                 <button
-                  key={`${cell.outside ? 'out' : 'in'}-${cell.day}-${index}`}
+                  key={date.toISOString()}
                   type="button"
-                  disabled={cell.outside}
                   title={dayEvents.length > 0 ? dayReason(dayEvents) : undefined}
                   onMouseEnter={(hover) => {
                     if (dayEvents.length === 0) return;
@@ -254,20 +263,17 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
                   }}
                   onMouseLeave={() => setHint(null)}
                   onClick={(click) => {
-                    if (cell.outside) return;
-                    setSelectedDay(cell.day);
-                    setActive(null);
-                    setPile(null);
                     if (dayEvents.length === 1) openEvent(dayEvents[0], click.currentTarget);
                     else if (dayEvents.length > 1) {
                       const rect = click.currentTarget.getBoundingClientRect();
                       setPile({ events: dayEvents, top: Math.min(rect.bottom + 8, window.innerHeight - 220), left: Math.max(16, Math.min(rect.left, window.innerWidth - 300)) });
                     }
                   }}
-                  className="relative flex items-center justify-center"
+                  className="flex flex-col items-center gap-1 py-1"
                 >
-                  <span className={cn('flex h-6 w-6 items-center justify-center rounded-full text-[12px] leading-none', cell.outside && 'text-muted-foreground/45', isCurrent && 'bg-primary font-medium text-primary-foreground', picked && !isCurrent && 'bg-accent font-medium text-accent-foreground')}>{cell.day}</span>
-                  {dayEvents.length > 0 ? <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-primary" /> : null}
+                  <span className="text-[10px] font-medium text-muted-foreground">{initials[index]}</span>
+                  <span className={cn('flex h-7 w-7 items-center justify-center rounded-full text-[12px]', isCurrent && 'bg-primary font-medium text-primary-foreground')}>{date.getDate()}</span>
+                  <span className={cn('h-1 w-1 rounded-full', dayEvents.length > 0 ? 'bg-primary' : 'bg-transparent')} />
                 </button>
               );
             })}
@@ -299,6 +305,146 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           </div>
         ) : null}
       </>
+    );
+  }
+
+  if (page) {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const previousCount = new Date(year, month, 0).getDate();
+    const cells: { day: number; outside: boolean }[] = [];
+    for (let index = firstWeekday - 1; index >= 0; index -= 1) cells.push({ day: previousCount - index, outside: true });
+    for (let day = 1; day <= daysInMonth; day += 1) cells.push({ day, outside: false });
+    let nextDay = 1;
+    while (cells.length % 7 !== 0) cells.push({ day: nextDay++, outside: true });
+    const weekStart = new Date(currentDate);
+    weekStart.setDate(currentDate.getDate() - currentDate.getDay());
+    const weekDays = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(weekStart);
+      date.setDate(weekStart.getDate() + index);
+      return date;
+    });
+    const agenda = [...visibleEvents].sort((a, b) => a.date.getTime() - b.date.getTime() || a.title.localeCompare(b.title, 'pt-BR'));
+    return (
+      <div id="calendario" className="min-w-0">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]">
+              <Calendar className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#241B33]">Calendário</h1>
+              <p className="mt-0.5 truncate text-[13.5px] text-[#8A7C98]">Acompanhe seus compromissos, eventos e aniversários da equipe.</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Button className="h-10 rounded-full bg-[#8E35B8] px-4 hover:bg-[#7A2CA0]" onClick={() => { setEditingEvent(null); setCreateType('reuniao'); setEditorOpen(true); }}>
+              <Plus className="h-4 w-4" /> Adicionar evento
+            </Button>
+            <Button variant="outline" className="h-10 rounded-full border-[#E7DFF0] bg-white px-4" onClick={() => { setEditingEvent(null); setCreateType('aniversario'); setEditorOpen(true); }}>
+              <Cake className="h-4 w-4" /> Adicionar aniversário
+            </Button>
+          </div>
+        </div>
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <button type="button" aria-label="Mês anterior" onClick={() => boardView === 'week' ? shiftWeek(-1) : shiftMonth(-1)} className="grid h-8 w-8 place-items-center rounded-full text-[#5C5168] hover:bg-white"><ChevronLeft className="h-4 w-4" /></button>
+            <p className="min-w-[140px] text-center text-[15px] font-semibold text-[#2C2433]">{monthLabel}</p>
+            <button type="button" aria-label="Próximo mês" onClick={() => boardView === 'week' ? shiftWeek(1) : shiftMonth(1)} className="grid h-8 w-8 place-items-center rounded-full text-[#5C5168] hover:bg-white"><ChevronRight className="h-4 w-4" /></button>
+          </div>
+          <div className="flex rounded-full bg-white p-1 shadow-[0_4px_14px_rgba(80,40,120,0.05)]">
+            {([['month', 'Mês'], ['week', 'Semana'], ['agenda', 'Agenda']] as const).map(([id, label]) => (
+              <button key={id} type="button" onClick={() => setBoardView(id)} className={cn('rounded-full px-4 py-1.5 text-[13px] font-medium', boardView === id ? 'bg-[#8E35B8] text-white' : 'text-[#8A7C98]')}>{label}</button>
+            ))}
+          </div>
+        </div>
+        {boardView === 'agenda' ? (
+          <div className="mt-4 overflow-hidden rounded-[22px] border border-[#F0E7F6] bg-white">
+            {agenda.length === 0 ? <p className="px-4 py-8 text-sm text-[#8A7C98]">Nenhum compromisso neste mês.</p> : agenda.map((event) => (
+              <button key={event.id} type="button" onClick={(click) => openEvent(event, click.currentTarget)} className="flex w-full items-center gap-3 border-b border-[#F6F1F8] px-4 py-3 text-left last:border-b-0 hover:bg-[#FBF7FC]">
+                <span className="w-14 shrink-0 text-[12px] font-semibold text-[#6A228C]">{event.date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
+                <span className={cn('min-w-0 flex-1 truncate rounded-lg px-2 py-1 text-[13px]', eventTone(event))}>{event.type === 'birthday' ? `Aniversário de ${event.personName?.split(' ')[0]}` : event.title}</span>
+                <span className="shrink-0 text-[12px] text-[#8A7C98]">{event.time ?? event.place ?? ''}</span>
+              </button>
+            ))}
+          </div>
+        ) : boardView === 'week' ? (
+          <div className="mt-4 grid grid-cols-7 overflow-hidden rounded-[22px] border border-[#F0E7F6] bg-white">
+            {weekDays.map((date) => {
+              const dayEvents = calendarEvents.filter((event) => sameDay(event.date, date));
+              const isCurrent = sameDay(date, today);
+              return (
+                <div key={date.toISOString()} className="min-h-[280px] border-r border-[#F3EDF6] p-2 last:border-r-0">
+                  <p className="text-center text-[11px] text-[#8A7C98]">{weekdays[date.getDay()]}</p>
+                  <p className={cn('mx-auto mt-1 grid h-7 w-7 place-items-center rounded-full text-[13px] font-semibold', isCurrent ? 'bg-[#8E35B8] text-white' : 'text-[#2C2433]')}>{date.getDate()}</p>
+                  <div className="mt-2 grid gap-1">
+                    {dayEvents.map((event) => (
+                      <button key={event.id} type="button" onClick={(click) => openEvent(event, click.currentTarget)} className={cn('truncate rounded-md px-1.5 py-1 text-left text-[11px]', eventTone(event))}>
+                        {event.time ? `${event.time.split(' ')[0]} ` : ''}{event.type === 'birthday' ? event.personName?.split(' ')[0] : event.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="mt-4 min-w-0 overflow-hidden rounded-[22px] border border-[#F0E7F6] bg-white">
+            <div className="grid grid-cols-7 border-b border-[#F3EDF6]">
+              {weekdays.map((day) => <div key={day} className="px-2 py-2 text-center text-[12px] font-medium text-[#8A7C98]">{day}</div>)}
+            </div>
+            <div className="grid min-w-0 grid-cols-7">
+              {cells.map((cell, index) => {
+                const dayEvents = cell.outside ? [] : eventsOn(cell.day);
+                const isCurrent = !cell.outside && sameDay(new Date(year, month, cell.day), today);
+                return (
+                  <div key={`${cell.outside}-${cell.day}-${index}`} className="min-h-[112px] min-w-0 border-r border-b border-[#F6F1F8] p-1.5">
+                    <p className={cn('mb-1 grid h-6 w-6 place-items-center rounded-full text-[12px]', cell.outside && 'text-[#C4B6D4]', isCurrent && 'bg-[#8E35B8] font-semibold text-white')}>{cell.day}</p>
+                    <div className="grid gap-1">
+                      {dayEvents.slice(0, 2).map((event) => {
+                        const first = event.personName?.split(' ')[0];
+                        return (
+                          <button key={event.id} type="button" onClick={(click) => openEvent(event, click.currentTarget)} className={cn('min-w-0 rounded-lg px-1.5 py-1 text-left', eventTone(event))}>
+                            {event.type === 'birthday' ? (
+                              <span className="flex min-w-0 items-center gap-1">
+                                {event.avatar ? <img src={event.avatar} alt="" className="h-5 w-5 shrink-0 rounded-full" /> : null}
+                                <span className="min-w-0">
+                                  <span className="block truncate text-[11px] font-semibold">{first}</span>
+                                  <span className="block truncate text-[10px] opacity-80">Aniversário</span>
+                                </span>
+                              </span>
+                            ) : (
+                              <>
+                                <span className="block truncate text-[11px] font-medium">{event.time ? `${event.time} · ` : ''}{event.title}</span>
+                                {event.place ? <span className="mt-0.5 flex items-center gap-0.5 truncate text-[10px] opacity-75"><MapPin className="h-2.5 w-2.5 shrink-0" />{event.place}</span> : null}
+                              </>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {active ? (
+          <div ref={dialogRef} role="dialog" aria-label={active.event.title} className="fixed z-50 w-72 rounded-xl border bg-card p-4 text-sm shadow-lg" style={{ top: active.top, left: active.left }} onClick={(event) => event.stopPropagation()}>
+            <button type="button" aria-label="Fechar" className="absolute top-2 right-2 rounded-md p-1 text-muted-foreground hover:bg-muted" onClick={() => setActive(null)}><X className="h-4 w-4" /></button>
+            <p className="pr-6 text-xs font-medium text-primary">{active.event.category ?? 'Evento'}</p>
+            <h2 className="mt-1 text-base font-semibold">{active.event.type === 'birthday' ? `Aniversário de ${active.event.personName}` : active.event.title}</h2>
+            {active.event.time ? <p className="mt-2 text-muted-foreground">{active.event.time}{active.event.place ? ` · ${active.event.place}` : ''}</p> : null}
+          </div>
+        ) : null}
+        <EventDialog
+          open={editorOpen}
+          event={editingEvent}
+          initialType={createType}
+          birthDates={Object.fromEntries(Object.entries(institution.people).map(([id, person]) => [id, person.birthDate ?? savedEvents.find((event) => event.type === 'aniversario' && event.personId === id)?.date]))}
+          onOpenChange={setEditorOpen}
+        />
+      </div>
     );
   }
 
@@ -388,7 +534,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
                             ? firstName
                             : '';
                       return (
-                        <button key={event.id} type="button" aria-label={event.title} title={event.title} onClick={(click) => { click.stopPropagation(); setSelectedDay(day); setPile(null); openEvent(event, click.currentTarget); }} className={cn('flex items-center gap-1 truncate rounded-md text-left text-[11px] ring-1 ring-inset ring-current/10', compact ? 'justify-center' : 'w-full px-1 py-0.5', eventTone(event.type))}>
+                        <button key={event.id} type="button" aria-label={event.title} title={event.title} onClick={(click) => { click.stopPropagation(); setSelectedDay(day); setPile(null); openEvent(event, click.currentTarget); }} className={cn('flex items-center gap-1 truncate rounded-md text-left text-[11px] ring-1 ring-inset ring-current/10', compact ? 'justify-center' : 'w-full px-1 py-0.5', eventTone(event))}>
                           {event.type === 'birthday' && display !== 'name' ? <img src={event.avatar} alt="" className={cn('shrink-0 rounded-full bg-background', compact ? 'h-4 w-4' : 'h-5 w-5')} /> : <span className="text-[10px]">●</span>}
                           {compact || !label ? null : <span className="truncate">{label}</span>}
                         </button>

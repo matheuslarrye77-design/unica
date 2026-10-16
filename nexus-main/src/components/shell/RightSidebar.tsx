@@ -13,7 +13,7 @@ export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: bo
       {children}
     </div>
   ) : (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
       {children}
     </div>
   );
@@ -46,7 +46,7 @@ export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: bo
         className={cn(
           'relative hidden shrink-0 flex-col bg-transparent text-sidebar-foreground xl:flex',
           locked ? 'h-full min-h-0 self-stretch' : 'sticky top-12 h-[calc(100dvh-3rem)]',
-          collapsed ? 'w-11' : locked ? 'w-[236px]' : 'w-[320px]',
+          collapsed ? 'w-11' : 'w-[320px]',
         )}
       >
         <div className={cn('z-10 flex items-center', locked && !collapsed ? 'absolute top-0 right-0' : 'shrink-0 px-1', collapsed ? 'justify-center' : 'justify-end')}>
