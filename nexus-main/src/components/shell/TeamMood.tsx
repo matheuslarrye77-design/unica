@@ -104,23 +104,13 @@ export const TeamMood: FC = () => {
           </button>
         </div>
       </div>
-      <div className="relative mt-2">
-        {page === 0 ? (
-          <span className="pointer-events-none absolute -top-1 left-0 z-20 w-[72px]">
-            <span className="block rounded-[16px_18px_14px_18px] border border-[#E7C8F2]/70 bg-white/55 px-1.5 py-1 text-center text-[9px] font-medium leading-[1.15] text-primary/90 shadow-sm backdrop-blur-[2px]">
-              defina seu humor de hoje
-            </span>
-            <span className="absolute top-full left-1/2 mt-0.5 h-2 w-2 -translate-x-1/2 rounded-full border border-[#D7A8E8]/70 bg-white/55" />
-            <span className="absolute top-[calc(100%+10px)] left-[38%] h-1.5 w-1.5 rounded-full border border-[#D7A8E8]/70 bg-white/50" />
-          </span>
-        ) : null}
       <div
         ref={scroller}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={() => { drag.current.active = false; }}
         onPointerCancel={() => { drag.current.active = false; }}
-        className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="mt-2 flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {team.map((person) => {
           const self = person.id === user.id;
@@ -173,7 +163,6 @@ export const TeamMood: FC = () => {
             </div>
           );
         })}
-      </div>
       </div>
       <div className="mt-1.5 flex justify-center gap-1" aria-hidden>
         {Array.from({ length: pages }, (_, index) => (
