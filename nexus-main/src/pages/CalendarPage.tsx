@@ -62,7 +62,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
   const [active, setActive] = useState<{ event: CalendarEvent; top: number; left: number } | null>(null);
   const [pile, setPile] = useState<{ events: CalendarEvent[]; top: number; left: number } | null>(null);
-  const [hint, setHint] = useState<{ text: string; top: number; left: number } | null>(null);
+  const [hint, setHint] = useState<{ text: string; top: number; left: number; below: boolean } | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const institution = useInstitution();
   const theme = institution.settings.calendar.theme;
@@ -194,7 +194,11 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   }
 
   function dayReason(events: CalendarEvent[]) {
-    return events.map((event) => event.type === 'birthday' ? `Aniversário de ${event.personName?.split(' ')[0] ?? 'colaborador'}` : event.title).join(' · ');
+    return events.map((event) => {
+      if (event.type === 'birthday') return `Aniversário de ${event.personName ?? 'colaborador'}`;
+      const when = [event.time, event.place].filter(Boolean).join(' · ');
+      return [event.title, when, event.description].filter(Boolean).join('\n');
+    }).join('\n\n');
   }
 
   function openEvent(event: CalendarEvent, anchor: HTMLElement) {
@@ -259,7 +263,8 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
                   onMouseEnter={(hover) => {
                     if (dayEvents.length === 0) return;
                     const rect = hover.currentTarget.getBoundingClientRect();
-                    setHint({ text: dayReason(dayEvents), top: rect.top - 6, left: rect.left + rect.width / 2 });
+                    const below = rect.top < 110;
+                    setHint({ text: dayReason(dayEvents), top: below ? rect.bottom + 8 : rect.top - 6, left: rect.left + rect.width / 2, below });
                   }}
                   onMouseLeave={() => setHint(null)}
                   onClick={(click) => {
@@ -280,7 +285,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           </div>
         </section>
         {hint ? createPortal(
-          <div role="tooltip" className="pointer-events-none fixed z-[80] max-w-[220px] -translate-x-1/2 -translate-y-full rounded-lg bg-foreground px-2.5 py-1.5 text-center text-[11px] font-medium leading-4 text-background shadow-lg" style={{ top: hint.top, left: hint.left }}>
+          <div role="tooltip" className={cn('pointer-events-none fixed z-[80] max-w-[240px] -translate-x-1/2 whitespace-pre-line rounded-lg bg-foreground px-2.5 py-1.5 text-left text-[11px] font-medium leading-4 text-background shadow-lg', hint.below ? 'translate-y-0' : '-translate-y-full')} style={{ top: hint.top, left: hint.left }}>
             {hint.text}
           </div>,
           document.body,

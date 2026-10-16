@@ -160,7 +160,7 @@ export const GlobalSearch: FC = () => {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-2xl p-0 overflow-hidden">
           <DialogHeader className="px-6 pt-6 pb-0">
-            <DialogTitle>Buscar na Única</DialogTitle>
+            <DialogTitle>Buscar na Única Conecta</DialogTitle>
           </DialogHeader>
           
           <div className="flex flex-col">

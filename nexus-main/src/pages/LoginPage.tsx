@@ -28,8 +28,8 @@ export const LoginPage: FC = () => {
     <div className="flex min-h-svh items-center justify-center bg-background px-4">
       <form onSubmit={(event) => void submit(event)} className="w-full max-w-sm rounded-2xl border bg-card p-6 shadow-[0_1px_2px_rgba(40,20,70,0.05)]">
         <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">Ú</div>
-          <span className="text-lg font-semibold text-primary">Única</span>
+          <img src="/marca-unica.png" alt="" className="h-8 w-8 rounded-full object-cover" />
+          <span className="text-lg font-semibold text-primary">Única Conecta</span>
         </div>
         <h1 className="text-xl font-semibold">Entrar</h1>
         <div className="mt-4 space-y-3">

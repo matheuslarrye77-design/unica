@@ -2,13 +2,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { TEAM_FUNCOES, UNIQUE_FUNCOES, teamRoster, type TeamFuncao, type TeamMember } from '@/data/team';
 import { cn } from '@/lib/utils';
 import { isLeader } from '@/lib/institution';
 import { actor, authHeaders } from '@/lib/session';
-import { ChevronRight, LayoutGrid, List, Mail, MessageCircle, MoreHorizontal, Phone, Plus, Search, User, UserRound, Users } from 'lucide-react';
+import { ChevronRight, Filter, LayoutGrid, List, Mail, MessageCircle, MoreHorizontal, Phone, Plus, Search, User, UserRound, Users } from 'lucide-react';
 import { useEffect, useMemo, useState, type FC, type FormEvent } from 'react';
 import { toast } from 'sonner';
 
@@ -126,21 +126,21 @@ export const EmployeeDirectoryPage: FC = () => {
               className="h-10 rounded-full border-[#E7DFF0] bg-white pl-9"
             />
           </div>
-          <div className="flex flex-wrap gap-2">
-            {TEAM_FUNCOES.map((funcao) => {
-              const active = roles.includes(funcao);
-              return (
-                <button
-                  key={funcao}
-                  type="button"
-                  onClick={() => toggleRole(funcao)}
-                  className={cn('h-9 rounded-full px-3.5 text-[13px] font-medium', active ? 'bg-[#8E35B8] text-white' : 'border border-[#E7DFF0] bg-white text-[#5C5168]')}
-                >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" className="h-11 rounded-xl border-[#E7DFF0] bg-white px-4 text-[#5C5168] shadow-none">
+                <Filter className="h-4 w-4" /> Filtrar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onClick={() => setRoles([...TEAM_FUNCOES])}>Todas as funções</DropdownMenuItem>
+              {TEAM_FUNCOES.map((funcao) => (
+                <DropdownMenuCheckboxItem key={funcao} checked={roles.includes(funcao)} onSelect={(event) => event.preventDefault()} onCheckedChange={() => toggleRole(funcao)}>
                   {funcao}
-                </button>
-              );
-            })}
-          </div>
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <p className="ml-auto text-[13px] text-[#8A7C98]">Total: {roster.length} colaboradores</p>
           <div className="flex rounded-xl bg-white p-1 shadow-[0_4px_14px_rgba(80,40,120,0.05)]">
             <button type="button" aria-label="Grade" onClick={() => setLayout('grid')} className={cn('grid h-8 w-8 place-items-center rounded-lg', layout === 'grid' ? 'bg-[#F3E4FA] text-[#8E35B8]' : 'text-[#8A7C98]')}>
@@ -185,11 +185,13 @@ export const EmployeeDirectoryPage: FC = () => {
                         </DropdownMenu>
                       </div>
                     </div>
-                    <p className="mt-3 flex items-center gap-1.5 text-[12.5px] text-[#5C5168]">
-                      <Phone className="h-3.5 w-3.5 text-[#8E35B8]" /> Ramal: {person.ramal || '—'}
-                    </p>
-                    <a href={`mailto:${person.email}`} className="mt-1 block break-all text-[12px] leading-snug text-[#8E35B8]">{person.email}</a>
                   </div>
+                </div>
+                <div className="mt-3 px-6 text-center">
+                  <p className="flex items-center justify-center gap-1.5 text-[12.5px] text-[#5C5168]">
+                    <Phone className="h-3.5 w-3.5 text-[#8E35B8]" /> Ramal: {person.ramal || '—'}
+                  </p>
+                  <a href={`mailto:${person.email}`} className="mt-1 block text-center text-[11px] leading-tight text-[#8E35B8]">{person.email}</a>
                 </div>
                 <a href={`mailto:${person.email}`} aria-label={`Contato de ${person.name}`} className="absolute right-3 bottom-3 grid h-7 w-7 place-items-center rounded-full text-[#C4B6D4] hover:bg-[#F8EAFB] hover:text-[#8E35B8]">
                   <ChevronRight className="h-4 w-4" />

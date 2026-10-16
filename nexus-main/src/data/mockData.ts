@@ -383,7 +383,7 @@ export const calendarEvents: CalendarEvent[] = [
   { id: '2', title: 'Treinamento', date: onDay(2), type: 'event', time: '14:00', place: 'Auditório', category: 'Treinamento', owner: 'Lívia Ramos' },
   { id: '13', title: 'Alinhamento', date: onDay(13), type: 'event', time: '09:00', place: 'Sala 3', category: 'Reunião', owner: 'João Ferreira' },
   { id: 'b-ana', title: 'Aniversário de Ana', date: onDay(15), type: 'birthday', personName: 'Ana Souza', avatar: avatar('AnaSouza'), category: 'Aniversário', owner: 'Ana Souza' },
-  { id: '16', title: 'Reunião de equipe', date: onDay(16), type: 'event', time: '10:00', place: 'Sala 2', category: 'Reunião', owner: 'Helena Duarte' },
+  { id: '16', title: 'Reunião de equipe', date: onDay(16), type: 'event', time: '10:00', place: 'Sala 2', category: 'Reunião', owner: 'Helena Duarte', description: 'Levar uma caneta.' },
   { id: '17', title: 'Financeiro', date: onDay(17), type: 'event', time: '13:30', place: 'Sala 1', category: 'Financeiro', owner: 'Helena Duarte' },
   { id: 'b-caio', title: 'Aniversário de Caio', date: onDay(18), type: 'birthday', personName: 'Caio Mendes', avatar: avatar('Caio'), category: 'Aniversário', owner: 'Caio Mendes' },
   { id: '19', title: 'Treinamento', date: onDay(19), type: 'event', time: '09:00', place: 'Auditório', category: 'Treinamento', owner: 'Lívia Ramos' },

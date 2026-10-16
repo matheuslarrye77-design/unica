@@ -18,7 +18,7 @@ export const MOODS = [
 const faces = [
   { id: 'matheus', name: 'Matheus', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Matheus', emoji: '🚀' },
   { id: 'ana', name: 'Ana', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AnaMood', emoji: '😐' },
-  { id: 'joao', name: 'João', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JoaoMood', emoji: '🙂' },
+  { id: 'joao', name: 'João', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JoaoMood', emoji: '😊' },
   { id: 'caio', name: 'Caio', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=CaioMood', emoji: '😴' },
   { id: 'helena', name: 'Helena', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=HelenaMood', emoji: '😊' },
   { id: 'lucas', name: 'Lucas', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=LucasMood', emoji: '😔' },
@@ -104,14 +104,14 @@ export const TeamMood: FC = () => {
           </button>
         </div>
       </div>
-      <div className="relative mt-0.5 pt-9">
+      <div className="relative mt-0.5 pt-[4.75rem]">
         {page === 0 ? (
-          <span className="pointer-events-none absolute top-0 left-0.5 z-20 w-[108px]">
-            <span className="block rounded-[18px_20px_16px_22px] border border-[#E7C8F2] bg-[#FBF6FC] px-2 py-1.5 text-center text-[10px] font-medium leading-[1.2] text-primary shadow-[0_4px_12px_rgba(142,53,184,0.08)]">
+          <span className="pointer-events-none absolute top-0 left-0 z-20 w-1/4 px-0.5">
+            <span className="block rounded-[16px_18px_14px_18px] border border-[#E7C8F2] bg-[#FBF6FC] px-1.5 py-1 text-center text-[9px] font-medium leading-[1.15] text-primary shadow-[0_4px_12px_rgba(142,53,184,0.08)]">
               defina seu humor de hoje
             </span>
-            <span className="absolute top-full left-7 mt-1 h-3 w-3 rounded-full border border-[#D7A8E8] bg-[#F6E9FA]" />
-            <span className="absolute top-[calc(100%+18px)] left-4 h-2 w-2 rounded-full border border-[#D7A8E8] bg-[#F6E9FA]" />
+            <span className="absolute top-full left-1/2 mt-0.5 h-2.5 w-2.5 -translate-x-1/2 rounded-full border border-[#D7A8E8] bg-[#F6E9FA]" />
+            <span className="absolute top-[calc(100%+14px)] left-[38%] h-1.5 w-1.5 rounded-full border border-[#D7A8E8] bg-[#F6E9FA]" />
           </span>
         ) : null}
       <div
