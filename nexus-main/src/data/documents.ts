@@ -1,7 +1,7 @@
 import { generateId } from '@/lib/utils';
 
 export type DocumentCategory = 'procedimentos' | 'requerimentos' | 'navegacao';
-export type DocumentSystem = 'pincel' | 'prominas' | 'portal' | 'secretaria' | 'financeiro';
+export type DocumentSystem = 'pincel' | 'prominas';
 
 export type CompanyDocument = {
   id: string;
@@ -30,11 +30,8 @@ export const DOCUMENT_CATEGORIES: { id: DocumentCategory; label: string }[] = [
 ];
 
 export const DOCUMENT_SYSTEMS: { id: DocumentSystem; label: string }[] = [
-  { id: 'pincel', label: 'Pincel' },
-  { id: 'prominas', label: 'ProMinas' },
-  { id: 'portal', label: 'Portal do Aluno' },
-  { id: 'secretaria', label: 'Secretaria' },
-  { id: 'financeiro', label: 'Financeiro' },
+  { id: 'pincel', label: 'Pincel Atômico' },
+  { id: 'prominas', label: 'Prominas' },
 ];
 
 export const ORIGIN_SYSTEMS = DOCUMENT_SYSTEMS.filter((item) => item.id === 'pincel' || item.id === 'prominas');
@@ -54,6 +51,8 @@ export const DOCUMENT_THUMBNAILS = [
 
 const DB_NAME = 'unica-documentos';
 const STORE = 'documents';
+const VERSION_KEY = 'unica-documentos-version';
+const STORAGE_VERSION = 'foto-2026-10-15';
 
 export function canManageDocuments(user: { role: string; department?: string }) {
   return /admin|líder|lider|coordena|diret|vp\b|chief|head|gerente/i.test(user.role)
@@ -74,10 +73,9 @@ function textFile(title: string, body: string) {
 
 function seed(): CompanyDocument[] {
   const item = (
-    partial: Omit<CompanyDocument, 'file' | 'fileType' | 'downloads' | 'favorites' | 'published' | 'publishedAt' | 'updatedAt'> & { body: string; days: number },
+    partial: Omit<CompanyDocument, 'file' | 'fileType' | 'downloads' | 'favorites' | 'published' | 'publishedAt' | 'updatedAt'> & { body: string; date: string; favorite?: boolean },
   ): CompanyDocument => {
-    const date = new Date();
-    date.setDate(date.getDate() - partial.days);
+    const stamp = `${partial.date}T15:00:00.000Z`;
     return {
       id: partial.id,
       title: partial.title,
@@ -86,16 +84,16 @@ function seed(): CompanyDocument[] {
       category: partial.category,
       system: partial.system,
       author: partial.author,
-      publishedAt: date.toISOString(),
-      updatedAt: date.toISOString(),
+      publishedAt: stamp,
+      updatedAt: stamp,
       published: true,
       featured: partial.featured,
       fileName: partial.fileName,
       fileType: 'text/plain',
       file: textFile(partial.title, partial.body),
-      thumbnail: partial.thumbnail,
-      downloads: partial.days,
-      favorites: [],
+      thumbnail: partial.system === 'prominas' ? '/marcas/prominas.svg' : '/marcas/pincel.svg',
+      downloads: 0,
+      favorites: partial.favorite ? ['1'] : [],
     };
   };
   return [
@@ -108,10 +106,11 @@ function seed(): CompanyDocument[] {
       system: 'pincel',
       author: 'Helena Duarte',
       featured: true,
+      favorite: true,
       fileName: 'concessao-de-pontividade.txt',
-      thumbnail: '/jornal/processos.svg',
-      days: 2,
-      body: 'Abra o Pincel, localize o aluno e registre a pontividade conforme a autorização da coordenação. Confira o período letivo antes de salvar.',
+      thumbnail: '/marcas/pincel.svg',
+      date: '2026-10-13',
+      body: 'Abra o Pincel Atômico, localize o aluno e registre a pontividade conforme a autorização da coordenação. Confira o período letivo antes de salvar.',
     }),
     item({
       id: 'doc-certificados',
@@ -123,23 +122,9 @@ function seed(): CompanyDocument[] {
       author: 'João Ferreira',
       featured: true,
       fileName: 'onde-encontrar-certificados.txt',
-      thumbnail: '/jornal/tecnologia.svg',
-      days: 4,
-      body: 'No Pincel, entre em Acadêmico, depois Documentos e Certificados. A busca por nome do aluno abre a emissão.',
-    }),
-    item({
-      id: 'doc-boletim',
-      title: 'Como acessar o boletim',
-      subtitle: 'Portal do Aluno',
-      description: 'Orientação para o aluno e para a secretaria consultarem o boletim.',
-      category: 'navegacao',
-      system: 'portal',
-      author: 'Marina Costa',
-      featured: false,
-      fileName: 'como-acessar-boletim.txt',
-      thumbnail: '/jornal/palestra.svg',
-      days: 6,
-      body: 'No Portal do Aluno, o boletim fica em Vida acadêmica. A secretaria consulta a mesma informação pelo perfil institucional.',
+      thumbnail: '/marcas/pincel.svg',
+      date: '2026-10-11',
+      body: 'No Pincel Atômico, entre em Acadêmico, depois Documentos e Certificados. A busca por nome do aluno abre a emissão.',
     }),
     item({
       id: 'doc-declaracao',
@@ -147,69 +132,86 @@ function seed(): CompanyDocument[] {
       subtitle: 'Formulário da secretaria',
       description: 'Modelo para solicitar declaração de matrícula ou frequência.',
       category: 'requerimentos',
-      system: 'secretaria',
+      system: 'prominas',
       author: 'Ana Santos',
       featured: true,
       fileName: 'requerimento-de-declaracao.txt',
-      thumbnail: '/jornal/megafone.svg',
-      days: 8,
-      body: 'Preencha nome, curso e o tipo de declaração. A secretaria devolve o documento no prazo informado no próprio requerimento.',
+      thumbnail: '/marcas/prominas.svg',
+      date: '2026-10-07',
+      body: 'Preencha nome, curso e o tipo de declaração no Prominas. A devolução segue o prazo informado no próprio requerimento.',
+    }),
+    item({
+      id: 'doc-prominas',
+      title: 'Acesso ao Prominas',
+      subtitle: 'Primeiro acesso e recuperação',
+      description: 'Como entrar no Prominas e o que fazer quando o acesso não abre.',
+      category: 'navegacao',
+      system: 'prominas',
+      author: 'Caio Mendes',
+      featured: true,
+      favorite: true,
+      fileName: 'acesso-prominas.txt',
+      thumbnail: '/marcas/prominas.svg',
+      date: '2026-10-05',
+      body: 'Use o usuário institucional. Se a senha falhar, a recuperação fica na tela inicial do Prominas, antes de abrir um chamado.',
+    }),
+    item({
+      id: 'doc-boletim',
+      title: 'Como acessar o boletim',
+      subtitle: 'Consulta no Prominas',
+      description: 'Orientação para consultar o boletim.',
+      category: 'navegacao',
+      system: 'prominas',
+      author: 'Marina Costa',
+      featured: false,
+      favorite: true,
+      fileName: 'como-acessar-boletim.txt',
+      thumbnail: '/marcas/prominas.svg',
+      date: '2026-10-09',
+      body: 'No Prominas, o boletim fica em Vida acadêmica. A consulta usa o mesmo perfil institucional.',
     }),
     item({
       id: 'doc-financeiro',
       title: 'Fechamento financeiro do mês',
-      subtitle: 'Procedimento interno',
+      subtitle: 'Procedimento no Prominas',
       description: 'O que conferir antes de encerrar o movimento financeiro.',
       category: 'procedimentos',
-      system: 'financeiro',
+      system: 'prominas',
       author: 'Helena Duarte',
       featured: false,
+      favorite: true,
       fileName: 'fechamento-financeiro.txt',
-      thumbnail: '/jornal/calendario.svg',
-      days: 10,
-      body: 'Confira boletos em aberto, acordos e o relatório do dia. O fechamento só segue com a conferência registrada.',
-    }),
-    item({
-      id: 'doc-prominas',
-      title: 'Acesso ao ProMinas',
-      subtitle: 'Primeiro acesso e recuperação',
-      description: 'Como entrar no ProMinas e o que fazer quando o acesso não abre.',
-      category: 'navegacao',
-      system: 'prominas',
-      author: 'Caio Mendes',
-      featured: false,
-      fileName: 'acesso-prominas.txt',
-      thumbnail: '/jornal/treinamento.svg',
-      days: 12,
-      body: 'Use o usuário institucional. Se a senha falhar, a recuperação fica na tela inicial, antes de abrir um chamado.',
+      thumbnail: '/marcas/prominas.svg',
+      date: '2026-10-04',
+      body: 'Confira boletos em aberto, acordos e o relatório do dia no Prominas. O fechamento só segue com a conferência registrada.',
     }),
     item({
       id: 'doc-rematricula',
       title: 'Formulário de rematrícula',
-      subtitle: 'Requerimento do ProMinas',
+      subtitle: 'Requerimento do Prominas',
       description: 'Documento usado na rematrícula do período seguinte.',
       category: 'requerimentos',
       system: 'prominas',
       author: 'Lívia Ramos',
       featured: false,
       fileName: 'formulario-rematricula.txt',
-      thumbnail: '/jornal/megafone.svg',
-      days: 15,
+      thumbnail: '/marcas/prominas.svg',
+      date: '2026-10-02',
       body: 'O formulário reúne dados cadastrais, curso e a confirmação de continuidade. Anexe o comprovante quando houver pendência.',
     }),
     item({
       id: 'doc-atendimento',
       title: 'Orientação de atendimento',
-      subtitle: 'Balcão da secretaria',
+      subtitle: 'Registro no Pincel Atômico',
       description: 'Como conduzir os pedidos mais comuns no atendimento.',
       category: 'procedimentos',
-      system: 'secretaria',
+      system: 'pincel',
       author: 'João Ferreira',
       featured: false,
       fileName: 'orientacao-de-atendimento.txt',
-      thumbnail: '/jornal/equipe.svg',
-      days: 18,
-      body: 'Identifique o pedido, confira o cadastro e registre o protocolo antes de encaminhar para outra área.',
+      thumbnail: '/marcas/pincel.svg',
+      date: '2026-10-01',
+      body: 'Identifique o pedido no Pincel Atômico, confira o cadastro e registre o protocolo antes de encaminhar para outra área.',
     }),
   ];
 }
@@ -236,6 +238,22 @@ function txDone(tx: IDBTransaction) {
 
 export async function loadDocuments(): Promise<CompanyDocument[]> {
   const db = await openDb();
+  let refresh = false;
+  try {
+    refresh = localStorage.getItem(VERSION_KEY) !== STORAGE_VERSION;
+  } catch {
+    refresh = false;
+  }
+  if (refresh) {
+    const clear = db.transaction(STORE, 'readwrite');
+    clear.objectStore(STORE).clear();
+    await txDone(clear);
+    try {
+      localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
+    } catch {
+      /* the next visit tries the photo seed again */
+    }
+  }
   const tx = db.transaction(STORE, 'readonly');
   const rows = await new Promise<CompanyDocument[]>((resolve, reject) => {
     const request = tx.objectStore(STORE).getAll();
