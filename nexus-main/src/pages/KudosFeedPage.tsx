@@ -10,8 +10,10 @@ import { teamRoster } from '@/data/team';
 import { useInstitution } from '@/lib/institution';
 import { actor } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import { Calendar, ChevronDown, Crown, Heart, Trophy } from 'lucide-react';
-import { useState, type FC } from 'react';
+import { createFeedPost } from '@/lib/feed';
+import { Calendar, ChevronDown, Crown, Heart, Megaphone, Trophy } from 'lucide-react';
+import { useEffect, useState, type FC } from 'react';
+import { toast } from 'sonner';
 
 type Area = 'Gestão' | 'Suporte';
 
@@ -47,6 +49,26 @@ function monthLabel() {
   return label.charAt(0).toUpperCase() + label.slice(1).replace(' de ', ' ');
 }
 
+const STEP = {
+  1: { front: 'bg-gradient-to-b from-[#F8E7B0] to-[#D7A441]', side: '#A97828', top: '#FFF6D4', ink: '#6A4A10', box: 'h-14' },
+  2: { front: 'bg-gradient-to-b from-[#F7F4FB] to-[#C9C3D6]', side: '#9E98AE', top: '#FFFFFF', ink: '#514860', box: 'h-10' },
+  3: { front: 'bg-gradient-to-b from-[#F6D8C2] to-[#C88862]', side: '#9A6846', top: '#FBE8DA', ink: '#633C26', box: 'h-8' },
+} as const;
+
+const PodiumBlock: FC<{ place: 1 | 2 | 3; count: number }> = ({ place, count }) => {
+  const tone = STEP[place];
+  return (
+    <div className={cn('relative w-full', tone.box)}>
+      <span className="absolute top-1.5 -right-2 bottom-0 w-2.5 rounded-r-[6px]" style={{ background: tone.side, transform: 'skewY(-24deg)', transformOrigin: 'left center' }} />
+      <span className="absolute -top-2.5 right-1 left-2 h-3.5 rounded-[6px]" style={{ background: tone.top, transform: 'skewX(-16deg)' }} />
+      <span className={cn('relative flex h-full flex-col items-center justify-center rounded-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_10px_16px_rgba(80,40,90,0.12)]', tone.front)}>
+        <span className="text-[16px] font-semibold leading-none" style={{ color: tone.ink }}>{place}</span>
+        <span className="mt-0.5 text-[10px] font-medium" style={{ color: tone.ink }}>{count}</span>
+      </span>
+    </div>
+  );
+};
+
 export const KudosFeedPage: FC = () => {
   const { canRecognize } = useInstitution();
   const me = actor();
@@ -54,7 +76,25 @@ export const KudosFeedPage: FC = () => {
   const [filter, setFilter] = useState<'Todos' | Area>('Todos');
   const [extra, setExtra] = useState<Recognition[]>([]);
   const [menu, setMenu] = useState(false);
+  const [posted, setPosted] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(sessionStorage.getItem('unica-recognition-mural') ?? '{}') as Record<string, boolean>; } catch { return {}; }
+  });
+  useEffect(() => { sessionStorage.setItem('unica-recognition-mural', JSON.stringify(posted)); }, [posted]);
+  const [sending, setSending] = useState<string | null>(null);
   const items = [...extra, ...RECENT].filter((item) => filter === 'Todos' || item.area === filter);
+
+  async function postOnMural(item: Recognition) {
+    setSending(item.id);
+    try {
+      await createFeedPost({ body: item.quote, kind: 'recognition', recognizedName: item.to, tag: item.area });
+      setPosted((current) => ({ ...current, [item.id]: true }));
+      toast.success('Reconhecimento publicado no mural.');
+    } catch (error) {
+      toast.error(error instanceof Error && error.message === '403' ? 'Você não tem permissão para publicar no mural.' : 'Não foi possível publicar no mural.');
+    } finally {
+      setSending(null);
+    }
+  }
 
   return (
     <PageFrame fitViewport rail={<HomeRail />}>
@@ -100,21 +140,23 @@ export const KudosFeedPage: FC = () => {
                   <Calendar className="h-3.5 w-3.5 text-[#8E35B8]" /> {monthLabel()}
                 </p>
               </div>
-              <div className="mt-5 grid grid-cols-3 items-end gap-3">
-                {PODIUM.map((person) => (
-                  <div key={person.name} className="flex min-w-0 flex-col items-center text-center">
-                    <div className="relative">
-                      <img src={face(person.name)} alt="" className={cn('rounded-full bg-[#F3E4FA]', person.place === 1 ? 'h-[72px] w-[72px] ring-4 ring-[#F3DDF8]' : 'h-14 w-14')} />
-                      {person.place === 1 ? <Crown className="absolute -top-3 left-1/2 h-5 w-5 -translate-x-1/2 text-[#E2B100]" /> : null}
+              <div className="mx-auto mt-4 max-w-lg [perspective:700px]">
+                <div className="grid grid-cols-3 items-end gap-4">
+                  {PODIUM.map((person) => (
+                    <div key={person.name} className="flex min-w-0 flex-col items-center text-center">
+                      <div className="relative">
+                        <img src={face(person.name)} alt="" className={cn('rounded-full bg-[#F3E4FA] shadow-sm', person.place === 1 ? 'h-14 w-14 ring-4 ring-[#F8E7B0]' : 'h-11 w-11 ring-2 ring-white')} />
+                        {person.place === 1 ? <Crown className="absolute -top-3 left-1/2 h-5 w-5 -translate-x-1/2 text-[#E2B100]" /> : null}
+                      </div>
+                      <p className="mt-1.5 max-w-full truncate text-[13px] font-semibold text-[#241B33]">{person.name}</p>
+                      <p className="max-w-full truncate text-[11px] text-[#8A7C98]">{person.role}</p>
+                      <div className="mt-2 w-full">
+                        <PodiumBlock place={person.place} count={person.count} />
+                      </div>
                     </div>
-                    <p className="mt-2 truncate text-[14px] font-semibold text-[#241B33]">{person.name}</p>
-                    <p className="truncate text-[12px] text-[#8A7C98]">{person.role}</p>
-                    <div className={cn('mt-3 flex w-full flex-col items-center justify-start rounded-t-2xl px-2 pt-3', person.place === 1 ? 'h-28 bg-gradient-to-b from-[#E7C4F2] to-[#C9A0E4]' : person.place === 2 ? 'h-[72px] bg-[#F6F0FA]' : 'h-16 bg-[#F8F4FB]')}>
-                      <span className={cn('grid h-6 w-6 place-items-center rounded-full text-[12px] font-semibold', person.place === 1 ? 'bg-white text-[#6A228C]' : 'bg-white text-[#8E35B8]')}>{person.place}</span>
-                      <p className={cn('mt-1.5 text-[12px] font-medium', person.place === 1 ? 'text-[#5A2078]' : 'text-[#6A228C]')}>{person.count} reconhecimentos</p>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <div className="mx-6 mt-2 h-2 rounded-[100%] bg-[#E7D4F2]/80 blur-[1px]" />
               </div>
             </section>
 
@@ -138,22 +180,36 @@ export const KudosFeedPage: FC = () => {
                   ) : null}
                 </div>
               </div>
-              <ul className="mt-3 divide-y divide-[#F3EAF6]">
+              <ul className="mt-3 grid gap-3">
                 {items.map((item) => (
-                  <li key={item.id} className="flex items-start gap-3 py-3">
-                    <img src={face(item.from)} alt="" className="h-10 w-10 shrink-0 rounded-full bg-[#F3E4FA]" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-[13.5px] text-[#2C2433]">
-                          <span className="font-semibold">{item.from}</span> reconheceu o trabalho de <span className="font-semibold">{item.to}</span>
-                        </p>
-                        <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', item.area === 'Gestão' ? 'bg-[#F3E4FA] text-[#6A228C]' : 'bg-[#F8E8F0] text-[#8A4A66]')}>{item.area}</span>
+                  <li key={item.id} className="rounded-2xl border border-[#E7DFF0] bg-gradient-to-r from-white to-[#FBF6FC] p-4">
+                    <div className="flex items-start gap-4">
+                      <div className="relative shrink-0">
+                        <img src={face(item.to)} alt="" className="h-16 w-16 rounded-full bg-[#F3E4FA] ring-4 ring-[#F3E4FA]" />
+                        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#8E35B8] px-2 py-0.5 text-[10px] font-semibold text-white">Reconhecido</span>
                       </div>
-                      <p className="mt-1 text-[13px] leading-snug text-[#6A5C78]">“{item.quote}”</p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-[11.5px] text-[#8A7C98]">{item.when}</p>
-                      <p className="mt-1 inline-flex items-center gap-1 text-[12px] text-[#8A7C98]"><Heart className="h-3.5 w-3.5" /> {item.likes}</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-[16px] font-semibold text-[#241B33]">{item.to}</p>
+                            <p className="mt-0.5 text-[12.5px] text-[#8A7C98]">
+                              <span className="font-medium text-[#5C5168]">{item.from}</span> reconheceu · {item.when}
+                            </p>
+                          </div>
+                          <span className="inline-flex shrink-0 items-center gap-1 text-[12.5px] text-[#8A7C98]"><Heart className="h-3.5 w-3.5 text-[#8E35B8]" /> {item.likes}</span>
+                        </div>
+                        <span className={cn('mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium', item.area === 'Gestão' ? 'bg-[#F3E4FA] text-[#6A228C]' : 'bg-[#F8E8F0] text-[#8A4A66]')}>{item.area}</span>
+                        <p className="mt-2 text-[14.5px] leading-6 text-[#3C3148]">“{item.quote}”</p>
+                        <button
+                          type="button"
+                          disabled={posted[item.id] || sending === item.id}
+                          onClick={() => void postOnMural(item)}
+                          className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#8E35B8] px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-[#7A2CA0] disabled:bg-[#C9A6DC]"
+                        >
+                          <Megaphone className="h-3.5 w-3.5" />
+                          {posted[item.id] ? 'Publicado no mural' : 'Postar no mural'}
+                        </button>
+                      </div>
                     </div>
                   </li>
                 ))}
