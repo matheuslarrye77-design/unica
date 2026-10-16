@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 const tags = ['Colaboração', 'Atendimento', 'Entrega', 'Cultura'];
 
-export const RecognitionComposer: FC<{ onCreated: () => void }> = ({ onCreated }) => {
+export const RecognitionComposer: FC<{ onCreated: (created?: { name: string; message: string; tag: string }) => void }> = ({ onCreated }) => {
   const user = actor();
   const [personId, setPersonId] = useState('');
   const [tag, setTag] = useState(tags[0]);
@@ -25,7 +25,7 @@ export const RecognitionComposer: FC<{ onCreated: () => void }> = ({ onCreated }
       await createFeedPost({ body: text, kind: 'recognition', recognizedName: person.name, tag });
       setMessage('');
       setPersonId('');
-      onCreated();
+      onCreated({ name: person.name, message: text, tag });
       toast.success('Reconhecimento publicado.');
     } catch (error) {
       toast.error(error instanceof Error && error.message === '403' ? 'Você não tem permissão para reconhecer.' : 'Não foi possível publicar o reconhecimento.');

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { isLeader, type FeedbackItem } from '@/lib/institution';
 import { actor } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import { Calendar, Check, ChevronDown, ChevronRight, Clock, Eye, Heart, Lightbulb, Lock, Mail, MessageSquare, Plus, Search, Send, Trash2, UserRound } from 'lucide-react';
+import { Calendar, Check, ChevronDown, ChevronRight, Clock, Eye, Lock, Mail, MessageSquare, Plus, Search, Send, Trash2, UserRound } from 'lucide-react';
 import { useEffect, useMemo, useState, type FC } from 'react';
 
 type Destination = 'gestao' | 'suporte';
@@ -125,35 +125,6 @@ function fromApi(item: FeedbackItem, user: { id: string; name: string; avatar: s
   };
 }
 
-const HowItWorks: FC = () => (
-  <div className="grid min-w-0 gap-3">
-    <section className="rounded-[22px] border border-[#F0E7F6] bg-white p-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
-      <h2 className="flex items-center gap-2 text-[15px] font-semibold text-[#2C2433]">
-        <Lightbulb className="h-4 w-4 text-[#8E35B8]" /> Como funciona
-      </h2>
-      <ol className="mt-4 grid gap-3">
-        <li className="flex gap-3 text-[13px] leading-snug text-[#5C5168]">
-          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[12px] font-semibold text-[#8E35B8]">1</span>
-          Escolha Gestão ou Suporte da plataforma.
-        </li>
-        <li className="flex gap-3 text-[13px] leading-snug text-[#5C5168]">
-          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[12px] font-semibold text-[#8E35B8]">2</span>
-          Você pode enviar anônimo ou mostrar seu nome.
-        </li>
-      </ol>
-    </section>
-    <section className="rounded-[22px] bg-gradient-to-r from-[#F8EAFB] to-[#F3DDF8] p-4">
-      <div className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/80 text-[#8E35B8]"><Heart className="h-4 w-4" /></span>
-        <div>
-          <p className="text-[14px] font-semibold text-[#6A228C]">Seu feedback faz a diferença!</p>
-          <p className="mt-1 text-[12.5px] leading-snug text-[#8A5AA0]">Juntos construímos uma experiência melhor.</p>
-        </div>
-      </div>
-    </section>
-  </div>
-);
-
 export const FeedbacksPage: FC = () => {
   const me = actor();
   const leader = isLeader(me);
@@ -202,7 +173,7 @@ export const FeedbacksPage: FC = () => {
     ];
 
   return (
-    <PageFrame rail={<HowItWorks />}>
+    <PageFrame>
       <div>
         {collaborator && leader ? (
           <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#F3E4FA] px-3 py-1 text-[12px] font-medium text-[#6A228C]">

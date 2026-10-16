@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { canManageJournal, categoryLabel, type JournalArticle, type JournalCategory } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { ChevronRight, ClipboardList, Heart, MessageCircle, Plus, Search } from 'lucide-react';
+import { ChevronRight, ClipboardList, Heart, MessageCircle, Newspaper, Plus, Search } from 'lucide-react';
 import { useMemo, useState, type FC } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -89,10 +89,15 @@ export const CompanyAnnouncementsPage: FC = () => {
   return (
     <>
     <PageFrame rail={<JournalRail recent={railRecent} />}>
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h1 className="text-[28px] font-semibold tracking-tight">Jornal</h1>
-              <p className="mt-0.5 text-[13px] text-muted-foreground">Notícias e comunicados internos da Única</p>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]">
+                <Newspaper className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#241B33]">Jornal</h1>
+                <p className="mt-0.5 text-[13.5px] text-[#8A7C98]">Notícias e comunicados internos da Única</p>
+              </div>
             </div>
             {canManage ? (
               <button type="button" onClick={openCreate} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">

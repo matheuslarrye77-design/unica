@@ -23,9 +23,9 @@ import {
 import { cn } from '@/lib/utils';
 
 const priorityClass: Record<Activity['priority'], string> = {
-  high: 'bg-[#FFD0E6] text-[#E2186A]',
-  medium: 'bg-[#FFE56A] text-[#C45A00]',
-  low: 'bg-[#7AF0CC] text-[#0B8A68]',
+  high: 'bg-[#F8E1E8] text-[#9B2F55]',
+  medium: 'bg-[#F8EDD4] text-[#8A5610]',
+  low: 'bg-[#E1F3EA] text-[#1A7450]',
 };
 
 function SourceIcon({ source }: { source: string }) {
@@ -109,7 +109,7 @@ export const ActivityCardView: FC<{
           </p>
         ) : <span />}
         {done ? (
-          <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-[#7AF0CC] px-2 py-0.5 text-[11px] font-medium text-[#0B8A68]">
+          <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-[#E1F3EA] px-2 py-0.5 text-[11px] font-medium text-[#1A7450]">
             <Check className="h-3 w-3" /> Concluída
           </span>
         ) : (
