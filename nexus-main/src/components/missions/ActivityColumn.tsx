@@ -6,10 +6,10 @@ import { STATUS_LABEL, type Activity, type ActivityStatus } from '@/data/activit
 import { cn } from '@/lib/utils';
 import { SortableActivityCard } from './ActivityCard';
 
-const tone: Record<ActivityStatus, { column: string; icon: string; count: string; Icon: typeof Circle }> = {
-  todo: { column: 'border border-[#E4B4C4] bg-[#F8E1E8]', icon: 'bg-white text-[#9B2F55]', count: 'bg-white text-[#9B2F55]', Icon: Circle },
-  in_progress: { column: 'border border-[#E4C98A] bg-[#F8EDD4]', icon: 'bg-white text-[#8A5610]', count: 'bg-white text-[#8A5610]', Icon: Clock },
-  done: { column: 'border border-[#A9D6C2] bg-[#E1F3EA]', icon: 'bg-white text-[#1A7450]', count: 'bg-white text-[#1A7450]', Icon: Check },
+const tone: Record<ActivityStatus, { column: string; icon: string; count: string; group: string; action: string; Icon: typeof Circle }> = {
+  todo: { column: 'border border-[#F9A8D4] bg-[#FBCFE8]', icon: 'bg-[#DB2777] text-white', count: 'bg-white text-[#DB2777]', group: 'bg-[#FCE7F3] text-[#DB2777]', action: 'text-[#DB2777]', Icon: Circle },
+  in_progress: { column: 'border border-[#C4B5FD] bg-[#DDD6FE]', icon: 'bg-[#7C3AED] text-white', count: 'bg-white text-[#7C3AED]', group: 'bg-[#EDE9FE] text-[#7C3AED]', action: 'text-[#7C3AED]', Icon: Clock },
+  done: { column: 'border border-[#A5B4FC] bg-[#C7D2FE]', icon: 'bg-[#818CF8] text-white', count: 'bg-white text-[#818CF8]', group: 'bg-[#E0E7FF] text-[#818CF8]', action: 'text-[#818CF8]', Icon: Check },
 };
 
 export const ActivityColumn: FC<{
@@ -49,7 +49,7 @@ export const ActivityColumn: FC<{
           <button
             type="button"
             onClick={() => setLeadershipOpen((open) => !open)}
-            className="flex items-center gap-2 rounded-xl bg-[#F8EAFB] px-2.5 py-1.5 text-left text-[12.5px] font-semibold text-[#6A228C]"
+            className={cn('flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-[12.5px] font-semibold', paint.group)}
           >
             {leadershipOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             <img src="/atividades/alfinete.png" alt="" className="h-4 w-4 object-contain" />
@@ -73,16 +73,16 @@ export const ActivityColumn: FC<{
       </div>
       {status === 'done' ? (
         <div className="relative mt-3 overflow-hidden rounded-2xl px-4 py-7 text-center">
-          <div className="pointer-events-none absolute -left-6 bottom-0 h-24 w-24 rounded-full bg-[#F3E4FA]" />
-          <div className="pointer-events-none absolute -right-4 -bottom-6 h-20 w-20 rounded-full bg-[#EBD4F6]/80" />
-          <div className="relative mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#8E35B8] text-white shadow-[0_8px_18px_rgba(142,53,184,0.28)]">
+          <div className="pointer-events-none absolute -left-6 bottom-0 h-24 w-24 rounded-full bg-[#E0E7FF]" />
+          <div className="pointer-events-none absolute -right-4 -bottom-6 h-20 w-20 rounded-full bg-[#C7D2FE]/80" />
+          <div className="relative mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#818CF8] text-white shadow-[0_8px_18px_rgba(129,140,248,0.35)]">
             <Check className="h-5 w-5" strokeWidth={2.6} />
           </div>
-          <p className="relative mt-3 text-[15px] font-semibold text-[#6A228C]">Parabéns!</p>
-          <p className="relative text-[13px] text-[#8A6A9C]">Você está indo muito bem!</p>
+          <p className="relative mt-3 text-[15px] font-semibold text-[#6366F1]">Parabéns!</p>
+          <p className="relative text-[13px] text-[#818CF8]">Você está indo muito bem!</p>
         </div>
       ) : (
-        <button type="button" onClick={onCreate} className="mt-2 py-2 text-center text-[13.5px] font-medium text-[#8E35B8] hover:text-[#6A228C]">
+        <button type="button" onClick={onCreate} className={cn('mt-2 py-2 text-center text-[13.5px] font-medium hover:opacity-80', paint.action)}>
           + Adicionar atividade
         </button>
       )}

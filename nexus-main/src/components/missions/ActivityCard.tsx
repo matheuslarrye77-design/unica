@@ -22,10 +22,10 @@ import {
 } from '@/data/activities';
 import { cn } from '@/lib/utils';
 
-const priorityClass: Record<Activity['priority'], string> = {
-  high: 'bg-[#F8E1E8] text-[#9B2F55]',
-  medium: 'bg-[#F8EDD4] text-[#8A5610]',
-  low: 'bg-[#E1F3EA] text-[#1A7450]',
+const statusPill: Record<ActivityStatus, string> = {
+  todo: 'bg-[#FCE7F3] text-[#DB2777]',
+  in_progress: 'bg-[#EDE9FE] text-[#7C3AED]',
+  done: 'bg-[#E0E7FF] text-[#818CF8]',
 };
 
 function SourceIcon({ source }: { source: string }) {
@@ -109,11 +109,11 @@ export const ActivityCardView: FC<{
           </p>
         ) : <span />}
         {done ? (
-          <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-[#E1F3EA] px-2 py-0.5 text-[11px] font-medium text-[#1A7450]">
+          <span className={cn('ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium', statusPill.done)}>
             <Check className="h-3 w-3" /> Concluída
           </span>
         ) : (
-          <span className={cn('ml-auto shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', priorityClass[activity.priority])}>
+          <span className={cn('ml-auto shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', statusPill[activity.status])}>
             {PRIORITY_LABEL[activity.priority]}
           </span>
         )}
