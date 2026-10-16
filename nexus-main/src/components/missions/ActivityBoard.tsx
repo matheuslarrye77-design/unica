@@ -220,9 +220,9 @@ export const ActivityBoard: FC = () => {
               </div>
               <ul className="grid gap-1.5 text-[12.5px] text-[#5C5168]">
                 <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#8E35B8]" /> <strong className="font-semibold text-[#2C2433]">12</strong> Total de atividades</li>
-                <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#1F9D55]" /> <strong className="font-semibold text-[#2C2433]">10</strong> Concluídas</li>
-                <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#E0A21A]" /> <strong className="font-semibold text-[#2C2433]">2</strong> Em andamento</li>
-                <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#E23B6A]" /> <strong className="font-semibold text-[#2C2433]">0</strong> Atrasadas</li>
+                <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#0B8A68]" /> <strong className="font-semibold text-[#2C2433]">10</strong> Concluídas</li>
+                <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#E08A00]" /> <strong className="font-semibold text-[#2C2433]">2</strong> Em andamento</li>
+                <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#E2186A]" /> <strong className="font-semibold text-[#2C2433]">0</strong> Atrasadas</li>
               </ul>
             </div>
             <p className="mt-2 text-center text-[12px] text-[#8A7C98]">Taxa de conclusão</p>

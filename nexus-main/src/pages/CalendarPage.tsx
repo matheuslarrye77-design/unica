@@ -359,30 +359,45 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           </div>
         </div>
         {boardView === 'agenda' ? (
-          <div className="mt-4 overflow-hidden rounded-[22px] border border-[#F0E7F6] bg-white">
-            {agenda.length === 0 ? <p className="px-4 py-8 text-sm text-[#8A7C98]">Nenhum compromisso neste mês.</p> : agenda.map((event) => (
-              <button key={event.id} type="button" onClick={(click) => openEvent(event, click.currentTarget)} className="flex w-full items-center gap-3 border-b border-[#F6F1F8] px-4 py-3 text-left last:border-b-0 hover:bg-[#FBF7FC]">
-                <span className="w-14 shrink-0 text-[12px] font-semibold text-[#6A228C]">{event.date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
-                <span className={cn('min-w-0 flex-1 truncate rounded-lg px-2 py-1 text-[13px]', eventTone(event))}>{event.type === 'birthday' ? `Aniversário de ${event.personName?.split(' ')[0]}` : event.title}</span>
-                <span className="shrink-0 text-[12px] text-[#8A7C98]">{event.time ?? event.place ?? ''}</span>
-              </button>
+          <div className="mt-4 grid gap-3">
+            {agenda.length === 0 ? <p className="rounded-[22px] border border-[#F0E7F6] bg-white px-4 py-8 text-sm text-[#8A7C98]">Nenhum compromisso neste mês.</p> : agenda.reduce<{ date: Date; events: typeof agenda }[]>((groups, event) => {
+              const last = groups[groups.length - 1];
+              if (last && sameDay(last.date, event.date)) last.events.push(event);
+              else groups.push({ date: event.date, events: [event] });
+              return groups;
+            }, []).map((group) => (
+              <article key={group.date.toISOString()} className="flex gap-3 rounded-[22px] border border-[#F0E7F6] bg-white p-3 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
+                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-[#F8EAFB] text-center leading-tight text-[#6A228C]">
+                  <span className="text-[18px] font-semibold">{group.date.toLocaleDateString('pt-BR', { day: '2-digit' })}</span>
+                  <span className="text-[11px] capitalize">{group.date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
+                </div>
+                <div className="grid min-w-0 flex-1 gap-2">
+                  {group.events.map((event) => (
+                    <button key={event.id} type="button" onClick={(click) => openEvent(event, click.currentTarget)} className="flex items-center gap-3 rounded-xl px-1 py-1 text-left hover:bg-[#FBF7FC]">
+                      <span className={cn('min-w-0 flex-1 truncate rounded-lg px-2 py-1.5 text-[13px] font-medium', eventTone(event))}>{event.type === 'birthday' ? `Aniversário de ${event.personName?.split(' ')[0]}` : event.title}</span>
+                      <span className="shrink-0 text-[12px] text-[#8A7C98]">{[event.time, event.place].filter(Boolean).join(' · ')}</span>
+                    </button>
+                  ))}
+                </div>
+              </article>
             ))}
           </div>
         ) : boardView === 'week' ? (
-          <div className="mt-4 grid grid-cols-7 overflow-hidden rounded-[22px] border border-[#F0E7F6] bg-white">
+          <div className="mt-4 grid grid-cols-7 gap-2">
             {weekDays.map((date) => {
               const dayEvents = calendarEvents.filter((event) => sameDay(event.date, date));
               const isCurrent = sameDay(date, today);
               return (
-                <div key={date.toISOString()} className="min-h-[280px] border-r border-[#F3EDF6] p-2 last:border-r-0">
+                <div key={date.toISOString()} className="flex aspect-square flex-col overflow-hidden rounded-2xl border border-[#F0E7F6] bg-white p-2">
                   <p className="text-center text-[11px] text-[#8A7C98]">{weekdays[date.getDay()]}</p>
                   <p className={cn('mx-auto mt-1 grid h-7 w-7 place-items-center rounded-full text-[13px] font-semibold', isCurrent ? 'bg-[#8E35B8] text-white' : 'text-[#2C2433]')}>{date.getDate()}</p>
-                  <div className="mt-2 grid gap-1">
-                    {dayEvents.map((event) => (
-                      <button key={event.id} type="button" onClick={(click) => openEvent(event, click.currentTarget)} className={cn('truncate rounded-md px-1.5 py-1 text-left text-[11px]', eventTone(event))}>
-                        {event.time ? `${event.time.split(' ')[0]} ` : ''}{event.type === 'birthday' ? event.personName?.split(' ')[0] : event.title}
+                  <div className="mt-1 grid min-h-0 gap-1 overflow-hidden">
+                    {dayEvents.slice(0, 2).map((event) => (
+                      <button key={event.id} type="button" onClick={(click) => openEvent(event, click.currentTarget)} className={cn('truncate rounded-md px-1.5 py-0.5 text-left text-[10px]', eventTone(event))}>
+                        {event.type === 'birthday' ? event.personName?.split(' ')[0] : event.title}
                       </button>
                     ))}
+                    {dayEvents.length > 2 ? <p className="text-center text-[10px] text-[#8A7C98]">+{dayEvents.length - 2}</p> : null}
                   </div>
                 </div>
               );

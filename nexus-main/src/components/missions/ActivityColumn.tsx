@@ -7,9 +7,9 @@ import { cn } from '@/lib/utils';
 import { SortableActivityCard } from './ActivityCard';
 
 const tone: Record<ActivityStatus, { column: string; icon: string; count: string; Icon: typeof Circle }> = {
-  todo: { column: 'border border-[#F6C9D4] bg-[#FDE7EE]', icon: 'bg-white text-[#E23B6A]', count: 'bg-white text-[#E23B6A]', Icon: Circle },
-  in_progress: { column: 'border border-[#F3E0B0] bg-[#FFF4D6]', icon: 'bg-white text-[#D08912]', count: 'bg-white text-[#C47B12]', Icon: Clock },
-  done: { column: 'border border-[#C9EBD6] bg-[#E7F8EE]', icon: 'bg-white text-[#1F9D55]', count: 'bg-white text-[#1F9D55]', Icon: Check },
+  todo: { column: 'border border-[#FF9EC9] bg-[#FFD0E6]', icon: 'bg-white text-[#E2186A]', count: 'bg-white text-[#E2186A]', Icon: Circle },
+  in_progress: { column: 'border border-[#FFD24A] bg-[#FFE56A]', icon: 'bg-white text-[#C45A00]', count: 'bg-white text-[#C45A00]', Icon: Clock },
+  done: { column: 'border border-[#3EE0B0] bg-[#7AF0CC]', icon: 'bg-white text-[#0B8A68]', count: 'bg-white text-[#0B8A68]', Icon: Check },
 };
 
 export const ActivityColumn: FC<{

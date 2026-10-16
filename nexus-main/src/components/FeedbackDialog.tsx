@@ -9,8 +9,8 @@ import { useState, type FC } from 'react';
 import { toast } from 'sonner';
 
 const destinations: { id: FeedbackItem['destination']; label: string }[] = [
-  { id: 'lideranca', label: 'Liderança' },
-  { id: 'plataforma', label: 'Plataforma' },
+  { id: 'lideranca', label: 'Gestão' },
+  { id: 'plataforma', label: 'Suporte da plataforma' },
 ];
 
 const types: { id: FeedbackItem['type']; label: string }[] = [
@@ -37,7 +37,8 @@ export const FeedbackDialog: FC<{ open: boolean; onOpenChange: (open: boolean) =
   async function send() {
     setSending(true);
     try {
-      await submitFeedback({ destination, type, message: message.trim(), anonymous });
+      const saved = await submitFeedback({ destination, type, message: message.trim(), anonymous });
+      window.dispatchEvent(new CustomEvent('unica-feedback-created', { detail: saved.feedback }));
       toast.success('Feedback enviado.');
       setMessage('');
       setAnonymous(false);
