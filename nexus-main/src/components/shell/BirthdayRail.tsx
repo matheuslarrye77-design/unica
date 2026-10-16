@@ -41,7 +41,7 @@ export const BirthdayRail: FC = () => {
   void upcoming;
 
   return (
-    <section className="unica-surface shrink-0 px-3 py-2.5">
+    <section className="unica-surface shrink-0 px-2.5 py-2">
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-[13.5px] font-semibold">
           <span className="unica-icon">
@@ -56,17 +56,17 @@ export const BirthdayRail: FC = () => {
       {people.length === 0 ? (
         <p className="mt-2 text-[12.5px] text-muted-foreground">Nenhum aniversário por perto.</p>
       ) : (
-        <ul className="mt-2 space-y-2">
+        <ul className="mt-1.5 space-y-1.5">
           {people.map((person) => (
-            <li key={person.id} className="flex items-center gap-2.5">
-              {person.avatar ? <img src={person.avatar} alt="" className="h-8 w-8 rounded-full bg-muted object-cover" /> : <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-primary">{person.name.charAt(0)}</span>}
+            <li key={person.id} className="flex items-center gap-2">
+              {person.avatar ? <img src={person.avatar} alt="" className="h-7 w-7 rounded-full bg-muted object-cover" /> : <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-primary">{person.name.charAt(0)}</span>}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-medium leading-4">{person.name}</span>
-                <span className="block text-[11.5px] text-muted-foreground">{person.whenLabel}</span>
+                <span className="block truncate text-[12.5px] font-medium leading-4">{person.name}</span>
+                <span className="block truncate text-[11px] text-muted-foreground">{person.whenLabel}</span>
               </span>
-              <Link to="/calendar?tipo=aniversarios" className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[12px] font-medium text-primary hover:underline">
+              <Link to="/calendar?tipo=aniversarios" className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-medium text-primary hover:underline">
                 <Emoji emoji="🎉" className="h-3.5 w-3.5" />
-                Feliz aniversário!
+                Parabéns
               </Link>
             </li>
           ))}

@@ -11,7 +11,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { BarChart3, Check, Mail, Plus, Search, Star, Target, Trophy, User, Users } from 'lucide-react';
+import { BarChart3, Check, Mail, Plus, Search, Star, Trophy, User, Users } from 'lucide-react';
 import { type FC, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -26,7 +26,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { LilacWash } from '@/components/social/LilacWash';
 import {
   ACTIVITY_STATUSES,
   PRIORITY_LABEL,
@@ -157,13 +156,6 @@ export const ActivityBoard: FC = () => {
             <p className="mt-0.5 text-[13.5px] text-[#8A7C98]">Organize suas atividades pessoais e acompanhe as missões da liderança.</p>
           </div>
         </div>
-        <LilacWash
-          className="hidden h-[92px] w-[360px] items-center py-0 lg:flex"
-          icon={<Target className="h-5 w-5" />}
-          title={<p className="text-[14px]">Missões em destaque</p>}
-        >
-          <p className="mt-0.5 max-w-[210px] text-[12.5px] font-normal leading-snug text-[#8A5AA0]">Conquiste grandes resultados junto com seu time!</p>
-        </LilacWash>
       </div>
 
       <div className="mt-4 flex gap-6 border-b border-[#EDE6F3]">
@@ -239,21 +231,21 @@ export const ActivityBoard: FC = () => {
           <section className="rounded-[22px] border border-[#F0E7F6] bg-white p-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
             <div className="flex items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-[14px] font-semibold text-[#2C2433]">
-                <Star className="h-4 w-4 text-[#E23B6A]" /> Missões ativas para você
+                <Star className="h-4 w-4 text-[#5C6B7A]" /> Missões ativas para você
               </h2>
               <button type="button" onClick={() => showTab('leadership')} className="text-[12.5px] font-medium text-[#8E35B8]">Ver todas</button>
             </div>
             <ul className="mt-3 grid gap-3">
               {activeMissions.map((mission) => (
                 <li key={mission.id} className="flex items-start gap-2.5">
-                  <Star className="mt-0.5 h-4 w-4 shrink-0 text-[#E23B6A]" />
+                  <Star className="mt-0.5 h-4 w-4 shrink-0 text-[#5C6B7A]" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-medium leading-snug text-[#2C2433]">{mission.title}</p>
                     <p className="mt-1 flex items-center gap-1.5 text-[12px] text-[#8A7C98]">
                       <SourceMark source={mission.source} /> {mission.source}
                     </p>
                   </div>
-                  <span className="shrink-0 rounded-full bg-[#FDE7EE] px-2 py-0.5 text-[11px] font-medium text-[#E23B6A]">{PRIORITY_LABEL[mission.priority]}</span>
+                  <span className="shrink-0 rounded-full bg-[#F4F6F8] px-2 py-0.5 text-[11px] font-medium text-[#3E4C5E]">{PRIORITY_LABEL[mission.priority]}</span>
                 </li>
               ))}
             </ul>

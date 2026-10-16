@@ -7,9 +7,9 @@ import { cn } from '@/lib/utils';
 import { SortableActivityCard } from './ActivityCard';
 
 const tone: Record<ActivityStatus, { column: string; icon: string; count: string; Icon: typeof Circle }> = {
-  todo: { column: 'border border-[#F6C9D4] bg-[#FDE7EE]', icon: 'bg-white text-[#E23B6A]', count: 'bg-white text-[#E23B6A]', Icon: Circle },
-  in_progress: { column: 'border border-[#F3E0B0] bg-[#FFF4D6]', icon: 'bg-white text-[#D08912]', count: 'bg-white text-[#C47B12]', Icon: Clock },
-  done: { column: 'border border-[#C9EBD6] bg-[#E7F8EE]', icon: 'bg-white text-[#1F9D55]', count: 'bg-white text-[#1F9D55]', Icon: Check },
+  todo: { column: 'border border-[#F0E4E8] bg-[#FBF7F8]', icon: 'bg-white text-[#B76B80]', count: 'bg-white text-[#B76B80]', Icon: Circle },
+  in_progress: { column: 'border border-[#EFE6D6] bg-[#FBF8F2]', icon: 'bg-white text-[#A4843E]', count: 'bg-white text-[#A4843E]', Icon: Clock },
+  done: { column: 'border border-[#DCE8E2] bg-[#F4F8F6]', icon: 'bg-white text-[#4E8A6A]', count: 'bg-white text-[#4E8A6A]', Icon: Check },
 };
 
 export const ActivityColumn: FC<{
@@ -49,7 +49,7 @@ export const ActivityColumn: FC<{
           <button
             type="button"
             onClick={() => setLeadershipOpen((open) => !open)}
-            className="flex items-center gap-2 rounded-xl bg-white/70 px-2.5 py-1.5 text-left text-[12.5px] font-semibold text-[#E23B6A]"
+            className="flex items-center gap-2 rounded-xl bg-white/80 px-2.5 py-1.5 text-left text-[12.5px] font-semibold text-[#3E4C5E]"
           >
             {leadershipOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             Missões da liderança

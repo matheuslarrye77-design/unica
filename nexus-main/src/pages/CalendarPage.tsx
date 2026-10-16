@@ -222,18 +222,15 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
     while (cells.length % 7 !== 0) cells.push({ day: nextDay++, outside: true });
     return (
       <>
-        <section className="unica-surface flex aspect-square w-full shrink-0 flex-col px-3 py-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="flex min-w-0 items-center gap-2 text-[13.5px] font-semibold">
-              <span className="unica-icon">
-                <Calendar className="h-3.5 w-3.5" strokeWidth={1.75} />
-              </span>
-              <Link to="/calendar" className="truncate hover:text-primary">{monthLabel}</Link>
+        <section className="unica-surface flex aspect-square w-full shrink-0 flex-col px-2 py-2">
+          <div className="flex items-center justify-between gap-1 pr-6">
+            <h2 className="min-w-0 flex-1 text-[12.5px] font-semibold">
+              <Link to="/calendar" className="block truncate hover:text-primary">{monthLabel}</Link>
             </h2>
-            <div className="flex items-center gap-0.5">
-              <button type="button" onClick={() => shiftMonth(-1)} aria-label="Mês anterior" className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-accent hover:text-foreground"><ChevronLeft className="h-3.5 w-3.5" /></button>
-              <button type="button" onClick={() => { setCurrentDate(new Date()); setSelectedDay(new Date().getDate()); }} className="h-7 rounded-[8px] border border-border bg-card px-2 text-[11px] font-medium text-foreground hover:bg-accent">Hoje</button>
-              <button type="button" onClick={() => shiftMonth(1)} aria-label="Próximo mês" className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-accent hover:text-foreground"><ChevronRight className="h-3.5 w-3.5" /></button>
+            <div className="flex shrink-0 items-center">
+              <button type="button" onClick={() => shiftMonth(-1)} aria-label="Mês anterior" className="flex h-6 w-6 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-accent hover:text-foreground"><ChevronLeft className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => { setCurrentDate(new Date()); setSelectedDay(new Date().getDate()); }} className="h-6 rounded-[8px] border border-border bg-card px-1.5 text-[10px] font-medium text-foreground hover:bg-accent">Hoje</button>
+              <button type="button" onClick={() => shiftMonth(1)} aria-label="Próximo mês" className="flex h-6 w-6 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-accent hover:text-foreground"><ChevronRight className="h-3.5 w-3.5" /></button>
             </div>
           </div>
           <div className="mt-2 grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground">

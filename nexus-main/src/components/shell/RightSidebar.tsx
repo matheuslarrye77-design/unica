@@ -9,10 +9,8 @@ export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: bo
   const collapsed = rightCollapsed;
 
   const body = locked ? (
-    <div className="min-h-0 flex-1 overflow-hidden">
-      <div className="flex h-[111.111%] w-[111.111%] origin-top-left scale-90 flex-col justify-between px-3 pt-1 pb-6">
-        {children}
-      </div>
+    <div className="flex h-full min-h-0 flex-col justify-between overflow-hidden py-2">
+      {children}
     </div>
   ) : (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
@@ -46,12 +44,12 @@ export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: bo
       ) : null}
       <aside
         className={cn(
-          'sticky top-12 hidden h-[calc(100dvh-3rem)] shrink-0 flex-col bg-transparent text-sidebar-foreground xl:flex',
-          locked && 'static top-auto h-auto max-h-full min-h-0 self-stretch',
-          collapsed ? 'w-11' : 'w-[320px]',
+          'relative hidden shrink-0 flex-col bg-transparent text-sidebar-foreground xl:flex',
+          locked ? 'h-full min-h-0 self-stretch' : 'sticky top-12 h-[calc(100dvh-3rem)]',
+          collapsed ? 'w-11' : locked ? 'w-[236px]' : 'w-[320px]',
         )}
       >
-        <div className={cn('flex shrink-0 items-center px-1', collapsed ? 'justify-center' : 'justify-end')}>
+        <div className={cn('z-10 flex items-center', locked && !collapsed ? 'absolute top-0 right-0' : 'shrink-0 px-1', collapsed ? 'justify-center' : 'justify-end')}>
           <button
             type="button"
             onClick={toggleRight}
