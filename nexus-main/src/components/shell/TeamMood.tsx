@@ -104,14 +104,14 @@ export const TeamMood: FC = () => {
           </button>
         </div>
       </div>
-      <div className="relative mt-0.5 pt-[4.75rem]">
+      <div className="relative mt-2">
         {page === 0 ? (
-          <span className="pointer-events-none absolute top-0 left-0 z-20 w-1/4 px-0.5">
-            <span className="block rounded-[16px_18px_14px_18px] border border-[#E7C8F2] bg-[#FBF6FC] px-1.5 py-1 text-center text-[9px] font-medium leading-[1.15] text-primary shadow-[0_4px_12px_rgba(142,53,184,0.08)]">
+          <span className="pointer-events-none absolute -top-1 left-0 z-20 w-[72px]">
+            <span className="block rounded-[16px_18px_14px_18px] border border-[#E7C8F2]/70 bg-white/55 px-1.5 py-1 text-center text-[9px] font-medium leading-[1.15] text-primary/90 shadow-sm backdrop-blur-[2px]">
               defina seu humor de hoje
             </span>
-            <span className="absolute top-full left-1/2 mt-0.5 h-2.5 w-2.5 -translate-x-1/2 rounded-full border border-[#D7A8E8] bg-[#F6E9FA]" />
-            <span className="absolute top-[calc(100%+14px)] left-[38%] h-1.5 w-1.5 rounded-full border border-[#D7A8E8] bg-[#F6E9FA]" />
+            <span className="absolute top-full left-1/2 mt-0.5 h-2 w-2 -translate-x-1/2 rounded-full border border-[#D7A8E8]/70 bg-white/55" />
+            <span className="absolute top-[calc(100%+10px)] left-[38%] h-1.5 w-1.5 rounded-full border border-[#D7A8E8]/70 bg-white/50" />
           </span>
         ) : null}
       <div
