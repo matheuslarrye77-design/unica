@@ -13,7 +13,6 @@ import {
   MessageSquare,
   Settings,
   Target,
-  User,
   Users,
   X,
 } from 'lucide-react';
@@ -40,14 +39,13 @@ const GROUPS = [
       { path: '/projects', label: 'Atividades', icon: ListChecks },
       { path: '/resources', label: 'Documentos', icon: FileText },
       { path: '/calendar', label: 'Calendários', icon: CalendarDays },
-      { path: '/employees', label: 'Pessoas', icon: User },
     ],
   },
   {
     id: 'gestao',
     label: 'Gestão',
     items: [
-      { path: '/employees?visao=equipe', label: 'Equipe', icon: Users },
+      { path: '/employees', label: 'Equipe', icon: Users },
       { path: '/projects?painel=missoes', label: 'Missões', icon: Target },
     ],
   },

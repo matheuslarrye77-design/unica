@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import type { Connect } from 'vite';
 import { samplePosts } from '../src/components/social/samplePosts';
+import { teamRoster } from '../src/data/team';
 import { LOGIN_REQUIRED } from '../src/lib/loginGate';
 import { builtinAccounts } from './auth/accounts';
 import { hashPassword } from './auth/credentials.mjs';
@@ -80,7 +81,8 @@ type AuthStore = {
 
 type FeedStore = { posts: FeedPost[]; reposts: Repost[] };
 
-const FUNCOES = ['Ligação', 'E-mail', 'Chat', 'Liderança'];
+const FUNCOES = ['Líder', 'Supervisor', 'Chat', 'E-mail', 'Ligação'];
+const UNIQUE_FUNCOES = ['Líder', 'Supervisor'];
 const EVENT_TYPES = ['reuniao', 'evento', 'aniversario', 'outro'] as const;
 
 type AgendaEvent = {
@@ -513,11 +515,15 @@ export function extraApi(): Connect.NextHandleFunction {
         const funcao = String(body.funcao ?? '');
         const ramal = String(body.ramal ?? '').trim();
         if (!name || !email || !role || !FUNCOES.includes(funcao)) return send(res, 400, { error: 'fields' });
-        if (ramal && !/^\d{3}$/.test(ramal)) return send(res, 400, { error: 'ramal' });
+        if (ramal && !/^\d{3,4}$/.test(ramal)) return send(res, 400, { error: 'ramal' });
         const auth = loadAuth();
         if (accounts.some((item) => item.email === email) || auth.colleagues.some((item) => item.email === email)) {
           return send(res, 409, { error: 'email' });
         }
+        const roleTaken = UNIQUE_FUNCOES.includes(funcao) && (
+          teamRoster.some((item) => item.funcao === funcao) || auth.colleagues.some((item) => item.funcao === funcao)
+        );
+        if (roleTaken) return send(res, 409, { error: 'unique-role' });
         const colleague: Colleague = {
           id: `col-${Date.now()}`,
           name,

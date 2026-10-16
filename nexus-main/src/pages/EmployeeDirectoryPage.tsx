@@ -1,113 +1,72 @@
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { PageWrapper, PageSection } from '@/components/PageWrapper';
 import { PageFrame } from '@/components/shell/PageFrame';
-import { TeamMood } from '@/components/shell/TeamMood';
-import { currentUser, employees, type Employee } from '@/data/mockData';
-import { saveRamal, useInstitution } from '@/lib/institution';
-import { ArrowLeft, Search, Mail, Phone, Plus } from 'lucide-react';
-import { useEffect, useState, type FC, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { authHeaders, actor } from '@/lib/session';
-import { isLeader } from '@/lib/institution';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
+import { TEAM_FUNCOES, UNIQUE_FUNCOES, teamRoster, type TeamFuncao, type TeamMember } from '@/data/team';
+import { cn } from '@/lib/utils';
+import { isLeader } from '@/lib/institution';
+import { actor, authHeaders } from '@/lib/session';
+import { ChevronRight, LayoutGrid, List, Mail, MessageCircle, MoreHorizontal, Phone, Plus, Search, User, UserRound, Users } from 'lucide-react';
+import { useEffect, useMemo, useState, type FC, type FormEvent } from 'react';
 import { toast } from 'sonner';
 
-const getDepartmentBadgeColor = (department: string) => {
-  switch (department) {
-    case 'Executive':
-      return 'border-yellow-600 bg-yellow-50 text-yellow-700 dark:border-yellow-300 dark:bg-yellow-100 dark:text-yellow-800';
-    case 'Engineering':
-      return 'border-blue-600 bg-blue-50 text-blue-700 dark:border-blue-300 dark:bg-blue-100 dark:text-blue-800';
-    case 'Design':
-      return 'border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-300 dark:bg-purple-100 dark:text-purple-800';
-    case 'Product':
-      return 'border-green-600 bg-green-50 text-green-700 dark:border-green-300 dark:bg-green-100 dark:text-green-800';
-    case 'Marketing':
-      return 'border-orange-600 bg-orange-50 text-orange-700 dark:border-orange-300 dark:bg-orange-100 dark:text-orange-800';
-    case 'Sales':
-      return 'border-pink-600 bg-pink-50 text-pink-700 dark:border-pink-300 dark:bg-pink-100 dark:text-pink-800';
-    case 'HR':
-      return 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-300 dark:bg-indigo-100 dark:text-indigo-800';
-    default:
-      return 'border-muted-foreground/20 bg-muted text-muted-foreground';
-  }
+const ROLE_ICON: Record<TeamFuncao, FC<{ className?: string }>> = {
+  'Líder': UserRound,
+  Supervisor: User,
+  Chat: MessageCircle,
+  'E-mail': Mail,
+  'Ligação': Phone,
 };
 
-function teamRole(employee: Employee) {
-  if (/chief|director|vp\b|head|manager|gerente|coordena|líder|lider|ceo/i.test(employee.role)) return 'Liderança';
-  const index = [...employee.id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 3;
-  return (['Ligação', 'E-mail', 'Chat'] as const)[index];
+function RoleBadge({ funcao }: { funcao: TeamFuncao }) {
+  const Icon = ROLE_ICON[funcao];
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-[#F3E4FA] px-2 py-0.5 text-[11px] font-medium text-[#6A228C]">
+      <Icon className="h-3 w-3" />
+      {funcao}
+    </span>
+  );
 }
 
-const RamalField: FC<{ employeeId: string }> = ({ employeeId }) => {
-  const { people, isLeader } = useInstitution();
-  const saved = people[employeeId]?.ramal ?? '';
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(saved);
-  const canEdit = isLeader || employeeId === currentUser.id;
-
-  useEffect(() => {
-    setValue(saved);
-  }, [saved]);
-
-  if (!canEdit && !saved) return null;
-  if (!editing) {
-    return (
-      <button type="button" className="text-xs text-muted-foreground" disabled={!canEdit} onClick={() => setEditing(true)}>
-        Ramal: {saved || '—'}
-      </button>
-    );
-  }
-
-  return (
-    <form
-      className="flex items-center gap-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const next = value.trim();
-        if (next && !/^\d{3}$/.test(next)) return;
-        void saveRamal(employeeId, next).then(() => setEditing(false));
-      }}
-    >
-      <Input value={value} inputMode="numeric" placeholder="000" className="h-8 w-16" onChange={(event) => setValue(event.target.value.replace(/\D/g, '').slice(0, 3))} />
-      <Button type="submit" size="sm" variant="outline">Salvar</Button>
-    </form>
-  );
-};
-
-type Colleague = Employee & { funcao?: string };
+const emptyForm = { name: '', email: '', role: '', funcao: 'Chat' as TeamFuncao, phone: '', ramal: '' };
 
 export const EmployeeDirectoryPage: FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [colleagues, setColleagues] = useState<Colleague[]>([]);
+  const [roles, setRoles] = useState<TeamFuncao[]>([...TEAM_FUNCOES]);
+  const [layout, setLayout] = useState<'grid' | 'list'>('grid');
+  const [colleagues, setColleagues] = useState<TeamMember[]>([]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', role: '', funcao: 'Ligação', phone: '', ramal: '' });
+  const [form, setForm] = useState(emptyForm);
   const leader = isLeader(actor());
 
   useEffect(() => {
     void fetch('/api/colleagues', { credentials: 'include', headers: authHeaders() })
-      .then((response) => response.json() as Promise<{ colleagues: Colleague[] }>)
-      .then((data) => setColleagues(data.colleagues ?? []))
+      .then((response) => response.json() as Promise<{ colleagues: TeamMember[] }>)
+      .then((data) => setColleagues((data.colleagues ?? []).filter((person) => !teamRoster.some((item) => item.email === person.email))))
       .catch(() => undefined);
   }, []);
 
-  const roster: Colleague[] = [
-    ...colleagues.filter((colleague) => !employees.some((employee) => employee.email && employee.email === colleague.email)),
-    ...employees,
-  ];
-  const filteredEmployees = roster.filter((employee) => {
-    const text = searchQuery.toLowerCase();
-    return employee.name.toLowerCase().includes(text) ||
-      employee.role.toLowerCase().includes(text) ||
-      (employee.email?.toLowerCase().includes(text) ?? false);
+  const roster = useMemo(() => [...colleagues, ...teamRoster], [colleagues]);
+  const taken = useMemo(() => new Set(roster.map((person) => person.funcao).filter((funcao) => UNIQUE_FUNCOES.includes(funcao))), [roster]);
+  const filtered = roster.filter((person) => {
+    if (!roles.includes(person.funcao)) return false;
+    const text = searchQuery.trim().toLowerCase();
+    if (!text) return true;
+    return [person.name, person.email, person.ramal, person.role, person.funcao].some((value) => value.toLowerCase().includes(text));
   });
+
+  function toggleRole(funcao: TeamFuncao) {
+    setRoles((current) => current.includes(funcao) ? current.filter((item) => item !== funcao) : [...current, funcao]);
+  }
 
   async function addColleague(event: FormEvent) {
     event.preventDefault();
+    if (UNIQUE_FUNCOES.includes(form.funcao) && taken.has(form.funcao)) {
+      toast.error(form.funcao === 'Líder' ? 'A equipe já tem um líder.' : 'A equipe já tem um supervisor.');
+      return;
+    }
     const response = await fetch('/api/colleagues', {
       method: 'POST',
       credentials: 'include',
@@ -115,181 +74,132 @@ export const EmployeeDirectoryPage: FC = () => {
       body: JSON.stringify(form),
     });
     if (response.status === 409) {
-      toast.error('Já existe um colaborador com este e-mail.');
+      const data = await response.json().catch(() => ({ error: 'email' })) as { error?: string };
+      toast.error(data.error === 'unique-role'
+        ? (form.funcao === 'Líder' ? 'A equipe já tem um líder.' : 'A equipe já tem um supervisor.')
+        : 'Já existe um colaborador com este e-mail.');
       return;
     }
     if (!response.ok) {
       toast.error('Preencha nome, e-mail, função e cargo.');
       return;
     }
-    const data = await response.json() as { colleague: Colleague };
+    const data = await response.json() as { colleague: TeamMember };
     setColleagues((current) => [data.colleague, ...current]);
     setOpen(false);
-    setForm({ name: '', email: '', role: '', funcao: 'Ligação', phone: '', ramal: '' });
+    setForm(emptyForm);
     toast.success('Colaborador adicionado.');
   }
 
   return (
-    <>
-    <PageFrame rail={<TeamMood />}>
-      <PageWrapper className="min-w-0 flex-1">
-        {/* Header Section */}
-        <PageSection index={0}>
-          <div className="mb-6">
-            <div className="flex items-center gap-4 mb-4">
-              <Link to="/">
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <ArrowLeft className="h-4 w-4" />
-                  Voltar ao início
-                </Button>
-              </Link>
-            </div>
-            
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div className="space-y-2">
-                <h1 className="text-2xl font-bold tracking-tight">Pessoas</h1>
-                <p className="text-muted-foreground">Diretório da equipe</p>
-              </div>
-              {leader ? <Button className="gap-2" onClick={() => setOpen(true)}><Plus className="h-4 w-4" />Adicionar colaborador</Button> : null}
+    <PageFrame>
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]">
+              <Users className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#241B33]">Equipe</h1>
+              <p className="mt-0.5 text-[13.5px] text-[#8A7C98]">Conheça nossos colaboradores e suas informações de contato.</p>
             </div>
           </div>
-        </PageSection>
-
-        <PageSection index={1}>
-          <div className="space-y-6">
-              {/* Filters Section */}
-              <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg">Pesquisar</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  {/* Search Input */}
-                  <div className="flex-1">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Pesquisar por nome, cargo ou e-mail..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 text-sm text-muted-foreground">
-                  {filteredEmployees.length} de {roster.length} colaboradores
-                </div>
-              </CardContent>
-            </Card>
-
-        {/* Employee Cards */}
-        <div className="space-y-4">
-          {filteredEmployees.length === 0 ? (
-            <PageSection index={2}>
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <div className="text-center space-y-2">
-                    <div className="h-12 w-12 mx-auto bg-muted rounded-full flex items-center justify-center">
-                      <Search className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <h3 className="font-medium">Nenhum colaborador encontrado</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Ajuste a pesquisa.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </PageSection>
-          ) : (
-            <div className="equipe-wrap">
-            <div className="equipe-grid">
-              {filteredEmployees.map((employee, index) => (
-                <PageSection key={employee.id} index={index + 2}>
-                  <Card className="shadow-[0_1px_2px_rgba(40,20,70,0.05)]">
-                    <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0">
-                        <img
-                          src={employee.avatar}
-                          alt={employee.name}
-                          className="w-12 h-12 rounded-full bg-muted"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="space-y-3">
-                          <div>
-                            <h3 className="font-medium truncate">{employee.name}</h3>
-                            <p className="text-sm text-muted-foreground truncate">{employee.role}</p>
-                          </div>
-                          
-                          <div className="flex flex-wrap gap-2">
-                            <Badge 
-                              variant="outline"
-                              className={getDepartmentBadgeColor(employee.department)}
-                            >
-                              {employee.department}
-                            </Badge>
-                            <Badge variant="outline">{employee.funcao || teamRole(employee)}</Badge>
-                          </div>
-                          <RamalField employeeId={employee.id} />
-
-                          {/* Contact Information */}
-                          <div className="space-y-2">
-                            {employee.email && (
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Mail className="h-3 w-3" />
-                                <span className="truncate">{employee.email}</span>
-                              </div>
-                            )}
-                            {employee.phone && (
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Phone className="h-3 w-3" />
-                                <span>{employee.phone}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="flex gap-2 pt-2">
-                            {employee.email && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="flex-1 gap-2 text-xs"
-                                onClick={() => window.open(`mailto:${employee.email}`, '_blank')}
-                              >
-                                <Mail className="h-3 w-3" />
-                                Email
-                              </Button>
-                            )}
-                            {employee.phone && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="flex-1 gap-2 text-xs"
-                                onClick={() => window.open(`tel:${employee.phone}`, '_blank')}
-                              >
-                                <Phone className="h-3 w-3" />
-                                Call
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                </PageSection>
-              ))}
-            </div>
-            </div>
-          )}
+          <div className="flex shrink-0 gap-2">
+            <Button className="h-10 rounded-full bg-[#8E35B8] px-4 hover:bg-[#7A2CA0]" onClick={() => { setSearchQuery(''); setRoles([...TEAM_FUNCOES]); }}>
+              <Users className="h-4 w-4" /> Ver equipe
+            </Button>
+            {leader ? (
+              <Button variant="outline" className="h-10 rounded-full border-[#E7DFF0] bg-white px-4" onClick={() => setOpen(true)}>
+                <Plus className="h-4 w-4" /> Adicionar colaborador
+              </Button>
+            ) : null}
+          </div>
         </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[220px] flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#B7A8C4]" />
+            <Input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Buscar por nome, ramal ou e-mail..."
+              className="h-10 rounded-full border-[#E7DFF0] bg-white pl-9"
+            />
           </div>
-        </PageSection>
-      </PageWrapper>
-    </PageFrame>
+          <div className="flex flex-wrap gap-2">
+            {TEAM_FUNCOES.map((funcao) => {
+              const active = roles.includes(funcao);
+              return (
+                <button
+                  key={funcao}
+                  type="button"
+                  onClick={() => toggleRole(funcao)}
+                  className={cn('h-9 rounded-full px-3.5 text-[13px] font-medium', active ? 'bg-[#8E35B8] text-white' : 'border border-[#E7DFF0] bg-white text-[#5C5168]')}
+                >
+                  {funcao}
+                </button>
+              );
+            })}
+          </div>
+          <p className="ml-auto text-[13px] text-[#8A7C98]">Total: {roster.length} colaboradores</p>
+          <div className="flex rounded-xl bg-white p-1 shadow-[0_4px_14px_rgba(80,40,120,0.05)]">
+            <button type="button" aria-label="Grade" onClick={() => setLayout('grid')} className={cn('grid h-8 w-8 place-items-center rounded-lg', layout === 'grid' ? 'bg-[#F3E4FA] text-[#8E35B8]' : 'text-[#8A7C98]')}>
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button type="button" aria-label="Lista" onClick={() => setLayout('list')} className={cn('grid h-8 w-8 place-items-center rounded-lg', layout === 'list' ? 'bg-[#F3E4FA] text-[#8E35B8]' : 'text-[#8A7C98]')}>
+              <List className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="mt-6 rounded-[22px] border border-[#F0E7F6] bg-white px-6 py-14 text-center">
+            <p className="font-medium text-[#2C2433]">Nenhum colaborador encontrado</p>
+            <p className="mt-1 text-sm text-[#8A7C98]">Ajuste a pesquisa ou os filtros.</p>
+          </div>
+        ) : (
+          <div className={cn('mt-5', layout === 'grid' ? 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4' : 'grid gap-3')}>
+            {filtered.map((person) => (
+              <article key={person.id} className="relative rounded-[22px] border border-[#F0E7F6] bg-white p-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
+                <div className="flex items-start gap-3">
+                  <img src={person.avatar} alt="" className="h-12 w-12 shrink-0 rounded-full bg-[#F3E4FA]" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h2 className="text-[15px] font-semibold leading-tight text-[#2C2433]">{person.name}</h2>
+                        <div className="mt-1"><RoleBadge funcao={person.funcao} /></div>
+                      </div>
+                      <div className="flex shrink-0 items-center">
+                        <a href={`mailto:${person.email}`} aria-label={`Enviar e-mail para ${person.name}`} className="grid h-8 w-8 place-items-center rounded-lg text-[#8E35B8] hover:bg-[#F8EAFB]">
+                          <Mail className="h-4 w-4" />
+                        </a>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button type="button" aria-label={`Ações de ${person.name}`} className="grid h-8 w-8 place-items-center rounded-lg text-[#8A7C98] hover:bg-[#F8EAFB]">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => window.open(`mailto:${person.email}`)}>Enviar e-mail</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                    <p className="mt-3 flex items-center gap-1.5 text-[12.5px] text-[#5C5168]">
+                      <Phone className="h-3.5 w-3.5 text-[#8E35B8]" /> Ramal: {person.ramal || '—'}
+                    </p>
+                    <a href={`mailto:${person.email}`} className="mt-1 block break-all text-[12px] leading-snug text-[#8E35B8]">{person.email}</a>
+                  </div>
+                </div>
+                <a href={`mailto:${person.email}`} aria-label={`Contato de ${person.name}`} className="absolute right-3 bottom-3 grid h-7 w-7 place-items-center rounded-full text-[#C4B6D4] hover:bg-[#F8EAFB] hover:text-[#8E35B8]">
+                  <ChevronRight className="h-4 w-4" />
+                </a>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
@@ -301,18 +211,22 @@ export const EmployeeDirectoryPage: FC = () => {
             <div className="grid gap-1"><Label htmlFor="col-cargo">Cargo</Label><Input id="col-cargo" value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })} required /></div>
             <div className="grid gap-1">
               <Label htmlFor="col-funcao">Função</Label>
-              <select id="col-funcao" className="h-9 rounded-md border bg-background px-3 text-sm" value={form.funcao} onChange={(event) => setForm({ ...form, funcao: event.target.value })}>
-                {['Ligação', 'E-mail', 'Chat', 'Liderança'].map((item) => <option key={item} value={item}>{item}</option>)}
+              <select id="col-funcao" className="h-9 rounded-md border bg-background px-3 text-sm" value={form.funcao} onChange={(event) => setForm({ ...form, funcao: event.target.value as TeamFuncao })}>
+                {TEAM_FUNCOES.map((item) => (
+                  <option key={item} value={item} disabled={UNIQUE_FUNCOES.includes(item) && taken.has(item)}>
+                    {item}{UNIQUE_FUNCOES.includes(item) && taken.has(item) ? ' (já ocupada)' : ''}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="grid gap-1"><Label htmlFor="col-telefone">Telefone</Label><Input id="col-telefone" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></div>
-            <div className="grid gap-1"><Label htmlFor="col-ramal">Ramal</Label><Input id="col-ramal" inputMode="numeric" value={form.ramal} onChange={(event) => setForm({ ...form, ramal: event.target.value.replace(/\D/g, '').slice(0, 3) })} placeholder="000" /></div>
+            <div className="grid gap-1"><Label htmlFor="col-ramal">Ramal</Label><Input id="col-ramal" inputMode="numeric" value={form.ramal} onChange={(event) => setForm({ ...form, ramal: event.target.value.replace(/\D/g, '').slice(0, 4) })} placeholder="1001" /></div>
           </form>
           <DialogFooter>
             <Button type="submit" form="novo-colaborador">Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </PageFrame>
   );
 };

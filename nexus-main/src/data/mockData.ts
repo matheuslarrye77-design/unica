@@ -432,7 +432,7 @@ export const kudos: Kudo[] = [
 // Default quick links
 export const defaultQuickLinks: QuickLink[] = [
   { id: '1', name: 'Calendário', url: '/calendar' },
-  { id: '2', name: 'Pessoas', url: '/employees' },
+  { id: '2', name: 'Equipe', url: '/employees' },
   { id: '3', name: 'Documentos', url: '/resources' }
 ];
 
