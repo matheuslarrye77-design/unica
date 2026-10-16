@@ -9,6 +9,7 @@ import { EventDialog } from '@/components/calendar/EventDialog';
 import { deleteEvent, notifyEvents, parseAgendaDate, useAgendaEvents, type AgendaEvent } from '@/lib/events';
 import { actor } from '@/lib/session';
 import { useEffect, useMemo, useRef, useState, type FC } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useSearchParams } from 'react-router-dom';
 
 type BirthdayDisplay = 'name' | 'photo' | 'both';
@@ -221,7 +222,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
     while (cells.length % 7 !== 0) cells.push({ day: nextDay++, outside: true });
     return (
       <>
-        <section className="unica-surface shrink-0 px-3 py-2.5">
+        <section className="unica-surface flex aspect-square w-full shrink-0 flex-col px-3 py-2.5">
           <div className="flex items-center justify-between gap-2">
             <h2 className="flex min-w-0 items-center gap-2 text-[13.5px] font-semibold">
               <span className="unica-icon">
@@ -238,7 +239,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           <div className="mt-2 grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground">
             {initials.map((day, index) => <div key={`${day}-${index}`} className="pb-1">{day}</div>)}
           </div>
-          <div className="grid grid-cols-7 gap-y-0.5">
+          <div className="grid min-h-0 flex-1 grid-cols-7" style={{ gridTemplateRows: `repeat(${cells.length / 7}, minmax(0, 1fr))` }}>
             {cells.map((cell, index) => {
               const dayEvents = cell.outside ? [] : eventsOn(cell.day);
               const isCurrent = !cell.outside && today.getFullYear() === currentDate.getFullYear() && today.getMonth() === currentDate.getMonth() && today.getDate() === cell.day;
@@ -266,7 +267,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
                       setPile({ events: dayEvents, top: Math.min(rect.bottom + 8, window.innerHeight - 220), left: Math.max(16, Math.min(rect.left, window.innerWidth - 300)) });
                     }
                   }}
-                  className="relative flex h-6 items-center justify-center"
+                  className="relative flex items-center justify-center"
                 >
                   <span className={cn('flex h-6 w-6 items-center justify-center rounded-full text-[12px] leading-none', cell.outside && 'text-muted-foreground/45', isCurrent && 'bg-primary font-medium text-primary-foreground', picked && !isCurrent && 'bg-accent font-medium text-accent-foreground')}>{cell.day}</span>
                   {dayEvents.length > 0 ? <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-primary" /> : null}
@@ -275,10 +276,11 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
             })}
           </div>
         </section>
-        {hint ? (
-          <div role="tooltip" className="pointer-events-none fixed z-50 max-w-[220px] -translate-x-1/2 -translate-y-full rounded-lg bg-foreground px-2.5 py-1.5 text-center text-[11px] font-medium leading-4 text-background shadow-lg" style={{ top: hint.top, left: hint.left }}>
+        {hint ? createPortal(
+          <div role="tooltip" className="pointer-events-none fixed z-[80] max-w-[220px] -translate-x-1/2 -translate-y-full rounded-lg bg-foreground px-2.5 py-1.5 text-center text-[11px] font-medium leading-4 text-background shadow-lg" style={{ top: hint.top, left: hint.left }}>
             {hint.text}
-          </div>
+          </div>,
+          document.body,
         ) : null}
         {pile ? (
           <div ref={dialogRef} role="dialog" aria-label="Eventos do dia" className="fixed z-50 w-72 rounded-xl border bg-card p-4 text-sm shadow-lg" style={{ top: pile.top, left: pile.left }} onClick={(event) => event.stopPropagation()}>

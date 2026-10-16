@@ -1,15 +1,15 @@
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Check, Circle, Clock } from 'lucide-react';
-import { type FC } from 'react';
+import { Check, ChevronDown, ChevronUp, Circle, Clock } from 'lucide-react';
+import { useState, type FC } from 'react';
 import { STATUS_LABEL, type Activity, type ActivityStatus } from '@/data/activities';
 import { cn } from '@/lib/utils';
 import { SortableActivityCard } from './ActivityCard';
 
-const tone: Record<ActivityStatus, { icon: string; count: string; Icon: typeof Circle }> = {
-  todo: { icon: 'bg-[#FDE7EE] text-[#E23B6A]', count: 'bg-[#FDE7EE] text-[#E23B6A]', Icon: Circle },
-  in_progress: { icon: 'bg-[#FFF4D6] text-[#D08912]', count: 'bg-[#FFF4D6] text-[#C47B12]', Icon: Clock },
-  done: { icon: 'bg-[#E7F8EE] text-[#1F9D55]', count: 'bg-[#E7F8EE] text-[#1F9D55]', Icon: Check },
+const tone: Record<ActivityStatus, { column: string; icon: string; count: string; Icon: typeof Circle }> = {
+  todo: { column: 'border border-[#F6C9D4] bg-[#FDE7EE]', icon: 'bg-white text-[#E23B6A]', count: 'bg-white text-[#E23B6A]', Icon: Circle },
+  in_progress: { column: 'border border-[#F3E0B0] bg-[#FFF4D6]', icon: 'bg-white text-[#D08912]', count: 'bg-white text-[#C47B12]', Icon: Clock },
+  done: { column: 'border border-[#C9EBD6] bg-[#E7F8EE]', icon: 'bg-white text-[#1F9D55]', count: 'bg-white text-[#1F9D55]', Icon: Check },
 };
 
 export const ActivityColumn: FC<{
@@ -23,10 +23,19 @@ export const ActivityColumn: FC<{
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const paint = tone[status];
   const Icon = paint.Icon;
+  const [leadershipOpen, setLeadershipOpen] = useState(true);
+  const [folded, setFolded] = useState<Record<string, boolean>>({});
+  const leadership = activities.filter((activity) => activity.origin === 'leadership');
+  const mine = activities.filter((activity) => activity.origin !== 'leadership');
+  const visible = [...(leadershipOpen ? leadership : []), ...mine];
+
+  function toggle(id: string) {
+    setFolded((current) => ({ ...current, [id]: !current[id] }));
+  }
 
   return (
-    <section className={cn('flex flex-col rounded-[22px] p-1', isOver && 'bg-white/50 ring-2 ring-[#8E35B8]/20')}>
-      <header className="flex items-center gap-2 px-1.5 pb-2.5">
+    <section className={cn('flex flex-col rounded-[22px] p-2.5', paint.column, isOver && 'ring-2 ring-[#8E35B8]/25')}>
+      <header className="flex items-center gap-2 px-1 pb-2.5">
         <span className={cn('grid h-7 w-7 place-items-center rounded-full', paint.icon)}>
           <Icon className="h-3.5 w-3.5" strokeWidth={2.4} />
         </span>
@@ -36,11 +45,24 @@ export const ActivityColumn: FC<{
         </span>
       </header>
       <div ref={setNodeRef} className="flex min-h-16 flex-col gap-2.5">
-        <SortableContext items={activities.map((activity) => activity.id)} strategy={verticalListSortingStrategy}>
-          {activities.map((activity) => (
+        {leadership.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setLeadershipOpen((open) => !open)}
+            className="flex items-center gap-2 rounded-xl bg-white/70 px-2.5 py-1.5 text-left text-[12.5px] font-semibold text-[#E23B6A]"
+          >
+            {leadershipOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            Missões da liderança
+            <span className="ml-auto text-[11px] font-medium">{leadership.length}</span>
+          </button>
+        ) : null}
+        <SortableContext items={visible.map((activity) => activity.id)} strategy={verticalListSortingStrategy}>
+          {visible.map((activity) => (
             <SortableActivityCard
               key={activity.id}
               activity={activity}
+              collapsed={folded[activity.id] === true}
+              onToggle={() => toggle(activity.id)}
               onEdit={() => onEdit(activity)}
               onDelete={() => onDelete(activity)}
               onMove={(next) => onMove(activity, next)}
@@ -54,9 +76,6 @@ export const ActivityColumn: FC<{
           <div className="pointer-events-none absolute -right-4 -bottom-6 h-20 w-20 rounded-full bg-[#EBD4F6]/80" />
           <div className="relative mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#8E35B8] text-white shadow-[0_8px_18px_rgba(142,53,184,0.28)]">
             <Check className="h-5 w-5" strokeWidth={2.6} />
-            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#C084E0]" />
-            <span className="absolute -bottom-0.5 -left-2 h-1.5 w-1.5 rounded-full bg-[#D7A8E8]" />
-            <span className="absolute top-1 -left-3 h-1 w-1 rounded-full bg-[#E7C6F2]" />
           </div>
           <p className="relative mt-3 text-[15px] font-semibold text-[#6A228C]">Parabéns!</p>
           <p className="relative text-[13px] text-[#8A6A9C]">Você está indo muito bem!</p>

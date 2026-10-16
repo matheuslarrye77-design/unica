@@ -10,7 +10,7 @@ export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: bo
 
   const body = locked ? (
     <div className="min-h-0 flex-1 overflow-hidden">
-      <div className="flex h-[111.111%] w-[111.111%] origin-top-left scale-90 flex-col gap-2">
+      <div className="flex h-[111.111%] w-[111.111%] origin-top-left scale-90 flex-col justify-between px-3 pt-1 pb-6">
         {children}
       </div>
     </div>

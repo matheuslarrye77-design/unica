@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { CalendarDays, Check, Mail, MoreHorizontal, User, Users } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, ChevronUp, Mail, MoreHorizontal, User, Users } from 'lucide-react';
 import { type FC } from 'react';
 import {
   DropdownMenu,
@@ -37,20 +37,34 @@ function SourceIcon({ source }: { source: string }) {
 export const ActivityCardView: FC<{
   activity: Activity;
   dragging?: boolean;
+  collapsed?: boolean;
+  onToggle?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   onMove?: (status: ActivityStatus) => void;
-}> = ({ activity, dragging = false, onEdit, onDelete, onMove }) => {
+}> = ({ activity, dragging = false, collapsed = false, onToggle, onEdit, onDelete, onMove }) => {
   const done = activity.status === 'done';
   const when = formatDueDate(done ? activity.completedOn ?? activity.dueDate : activity.dueDate);
   const leadership = activity.origin === 'leadership';
 
   return (
-    <article className={cn('rounded-2xl border border-[#F0E7F6] bg-white px-3.5 py-3 shadow-[0_8px_22px_rgba(80,40,120,0.05)]', dragging && 'opacity-40')}>
-      <div className="flex items-start gap-2">
-        <span className={cn('rounded-md px-1.5 py-0.5 text-[11px] font-medium', leadership ? 'bg-[#FDE7EE] text-[#E23B6A]' : 'bg-[#F3E4FA] text-[#8E35B8]')}>
+    <article className={cn('relative overflow-hidden rounded-2xl border bg-white px-3.5 py-3 shadow-[0_8px_22px_rgba(80,40,120,0.05)]', leadership ? 'border-[#E7B6C6]' : 'border-[#F0E7F6]', dragging && 'opacity-40')}>
+      {leadership ? <span className="pointer-events-none absolute inset-0 bg-[#FDE7EE]/70" /> : null}
+      <div className="relative flex items-start gap-2">
+        <span className={cn('rounded-md px-1.5 py-0.5 text-[11px] font-medium', leadership ? 'bg-white/80 text-[#E23B6A]' : 'bg-[#F3E4FA] text-[#8E35B8]')}>
           {ORIGIN_LABEL[activity.origin]}
         </span>
+        {onToggle ? (
+          <button
+            type="button"
+            aria-label={collapsed ? `Expandir ${activity.title}` : `Minimizar ${activity.title}`}
+            className="rounded-md p-1 text-[#B7A8C4] hover:bg-white/70"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={onToggle}
+          >
+            {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+          </button>
+        ) : null}
         {onEdit && onDelete && onMove ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -80,7 +94,9 @@ export const ActivityCardView: FC<{
           </DropdownMenu>
         ) : <span className="ml-auto" />}
       </div>
-      <h3 className="mt-2 text-[14.5px] font-semibold leading-snug text-[#2C2433]">{activity.title}</h3>
+      <h3 className="relative mt-2 text-[14.5px] font-semibold leading-snug text-[#2C2433]">{activity.title}</h3>
+      {collapsed ? null : (
+      <div className="relative">
       <p className="mt-2 flex items-center gap-1.5 text-[12.5px] text-[#8A7C98]">
         <SourceIcon source={activity.source} />
         {activity.source}
@@ -102,16 +118,20 @@ export const ActivityCardView: FC<{
           </span>
         )}
       </div>
+      </div>
+      )}
     </article>
   );
 };
 
 export const SortableActivityCard: FC<{
   activity: Activity;
+  collapsed?: boolean;
+  onToggle?: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onMove: (status: ActivityStatus) => void;
-}> = ({ activity, onEdit, onDelete, onMove }) => {
+}> = ({ activity, collapsed, onToggle, onEdit, onDelete, onMove }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: activity.id });
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -120,7 +140,7 @@ export const SortableActivityCard: FC<{
 
   return (
     <div ref={setNodeRef} style={style} className="cursor-grab touch-none active:cursor-grabbing" {...attributes} {...listeners}>
-      <ActivityCardView activity={activity} dragging={isDragging} onEdit={onEdit} onDelete={onDelete} onMove={onMove} />
+      <ActivityCardView activity={activity} dragging={isDragging} collapsed={collapsed} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} onMove={onMove} />
     </div>
   );
 };

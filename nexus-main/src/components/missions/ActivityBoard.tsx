@@ -11,7 +11,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { BarChart3, Check, Filter, Mail, Plus, Search, Star, Target, Trophy, User, Users } from 'lucide-react';
+import { BarChart3, Check, Mail, Plus, Search, Star, Target, Trophy, User, Users } from 'lucide-react';
 import { type FC, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -26,11 +26,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LilacWash } from '@/components/social/LilacWash';
 import {
-  ACTIVITY_SOURCES,
   ACTIVITY_STATUSES,
-  ORIGIN_LABEL,
   PRIORITY_LABEL,
   activitiesInStatus,
   createActivity,
@@ -42,7 +40,6 @@ import {
   updateActivity,
   type Activity,
   type ActivityDraft,
-  type ActivityOrigin,
   type ActivityStatus,
 } from '@/data/activities';
 import { cn } from '@/lib/utils';
@@ -65,9 +62,6 @@ export const ActivityBoard: FC = () => {
   const [activities, setActivities] = useState<Activity[]>(store.activities);
   const [categories, setCategories] = useState<string[]>(store.categories);
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('all');
-  const [origin, setOrigin] = useState<'all' | ActivityOrigin>('all');
-  const [source, setSource] = useState('all');
   const [dragging, setDragging] = useState<Activity | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Activity | null>(null);
@@ -91,12 +85,9 @@ export const ActivityBoard: FC = () => {
     return activities.filter((activity) => {
       const matchesTab = tab === 'mine' || activity.origin === 'leadership';
       const matchesTerm = !term || activity.title.toLowerCase().includes(term) || activity.description.toLowerCase().includes(term) || activity.source.toLowerCase().includes(term);
-      const matchesCategory = category === 'all' || activity.category === category;
-      const matchesOrigin = origin === 'all' || activity.origin === origin;
-      const matchesSource = source === 'all' || activity.source === source;
-      return matchesTab && matchesTerm && matchesCategory && matchesOrigin && matchesSource;
+      return matchesTab && matchesTerm;
     });
-  }, [activities, query, category, origin, source, tab]);
+  }, [activities, query, tab]);
 
   function columns(status: ActivityStatus) {
     return activitiesInStatus(visible, status);
@@ -154,13 +145,6 @@ export const ActivityBoard: FC = () => {
     else setParams({}, { replace: true });
   }
 
-  function clearFilters() {
-    setCategory('all');
-    setOrigin('all');
-    setSource('all');
-    setQuery('');
-  }
-
   return (
     <div>
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -173,20 +157,13 @@ export const ActivityBoard: FC = () => {
             <p className="mt-0.5 text-[13.5px] text-[#8A7C98]">Organize suas atividades pessoais e acompanhe as missões da liderança.</p>
           </div>
         </div>
-        <div className="relative hidden h-[92px] w-[360px] overflow-hidden rounded-[22px] bg-gradient-to-r from-[#F8EAFB] via-[#F3DDF8] to-[#E7C4F2] px-4 lg:block">
-          <div className="pointer-events-none absolute -top-8 right-8 h-24 w-24 rounded-full bg-[#D9A6EE]/80" />
-          <div className="pointer-events-none absolute -right-6 -bottom-10 h-28 w-28 rounded-full bg-[#C084E0]/55" />
-          <div className="pointer-events-none absolute top-3 right-16 h-8 w-8 rounded-full bg-white/50" />
-          <div className="relative flex h-full items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-full bg-white/80 text-[#8E35B8] shadow-sm">
-              <Target className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-[14px] font-semibold text-[#6A228C]">Missões em destaque</p>
-              <p className="mt-0.5 max-w-[210px] text-[12.5px] leading-snug text-[#8A5AA0]">Conquiste grandes resultados junto com seu time!</p>
-            </div>
-          </div>
-        </div>
+        <LilacWash
+          className="hidden h-[92px] w-[360px] items-center py-0 lg:flex"
+          icon={<Target className="h-5 w-5" />}
+          title={<p className="text-[14px]">Missões em destaque</p>}
+        >
+          <p className="mt-0.5 max-w-[210px] text-[12.5px] font-normal leading-snug text-[#8A5AA0]">Conquiste grandes resultados junto com seu time!</p>
+        </LilacWash>
       </div>
 
       <div className="mt-4 flex gap-6 border-b border-[#EDE6F3]">
@@ -212,32 +189,7 @@ export const ActivityBoard: FC = () => {
           <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[#B7A8C4]" />
           <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar atividades..." className={cn(fieldClass, 'pl-10')} />
         </div>
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className={cn(fieldClass, 'w-[180px]')}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as categorias</SelectItem>
-            {categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={origin} onValueChange={(value) => setOrigin(value as 'all' | ActivityOrigin)}>
-          <SelectTrigger className={cn(fieldClass, 'w-[170px]')}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os tipos</SelectItem>
-            <SelectItem value="mine">{ORIGIN_LABEL.mine}</SelectItem>
-            <SelectItem value="leadership">{ORIGIN_LABEL.leadership}</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={source} onValueChange={setSource}>
-          <SelectTrigger className={cn(fieldClass, 'w-[180px]')}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as origens</SelectItem>
-            {ACTIVITY_SOURCES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Button type="button" variant="outline" onClick={clearFilters} className={cn(fieldClass, 'px-4 font-medium text-[#5C5168]')}>
-          <Filter className="h-4 w-4" /> Filtros
-        </Button>
-        <Button type="button" onClick={() => openCreate('todo')} className="h-10 rounded-full bg-[#8E35B8] px-4 hover:bg-[#7A2CA0]">
+        <Button type="button" onClick={() => openCreate('todo')} className="ml-auto h-10 rounded-full bg-[#8E35B8] px-4 hover:bg-[#7A2CA0]">
           <Plus /> Nova atividade
         </Button>
       </div>

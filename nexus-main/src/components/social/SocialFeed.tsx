@@ -1,4 +1,5 @@
 import { Sun } from 'lucide-react';
+import { LilacWash } from './LilacWash';
 import { type FC, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { getTimeBasedGreeting } from '@/lib/utils';
@@ -204,23 +205,20 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   return (
     <div className="flex w-full flex-col gap-3">
       {mode === 'recognition' ? null : (
-        <section className="relative isolate min-h-[118px] overflow-hidden rounded-[22px] border border-white/80 bg-white px-5 py-4 shadow-[0_18px_40px_rgba(142,53,184,0.10)]">
-          <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_120%_at_100%_0%,#F8E4F4_0%,rgba(248,228,244,0)_58%)]" />
-          <div className="relative flex items-center gap-4">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-white/80 text-primary shadow-[inset_0_0_0_1px_rgba(142,53,184,0.12),0_8px_18px_rgba(142,53,184,0.12)]">
-              <Sun className="h-6 w-6" strokeWidth={1.75} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-[26px] font-semibold leading-tight tracking-tight">{getTimeBasedGreeting()}, {firstName}!</h1>
-              <p className="mt-1 text-[13.5px] text-muted-foreground">Que hoje seja um dia incrível.</p>
-            </div>
-            <p className="unica-script relative hidden w-[158px] shrink-0 -rotate-6 text-right text-[22px] leading-[1.15] text-primary lg:block">
+        <LilacWash
+          className="min-h-[118px]"
+          icon={<Sun className="h-6 w-6" strokeWidth={1.75} />}
+          title={<h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#6A228C]">{getTimeBasedGreeting()}, {firstName}!</h1>}
+          aside={(
+            <p className="unica-script hidden w-[148px] -rotate-6 text-right text-[22px] leading-[1.15] text-[#8E35B8] lg:block">
               <span className="block whitespace-nowrap">Juntos</span>
               <span className="block whitespace-nowrap">vamos mais</span>
               <span className="block whitespace-nowrap">longe!</span>
             </p>
-          </div>
-        </section>
+          )}
+        >
+          <p className="mt-1 text-[13.5px] font-normal text-[#8A5AA0]">Que hoje seja um dia incrível.</p>
+        </LilacWash>
       )}
 
       {mode === 'recognition' ? (canRecognize ? <RecognitionComposer onCreated={() => window.dispatchEvent(new Event('unica-feed-refresh'))} /> : null) : <CreatePost onPublish={publish} />}

@@ -7,8 +7,8 @@ import { type FC } from 'react';
 export const HomeRail: FC = () => (
   <>
     <CalendarPage rail />
+    <MissionsRail />
     <TeamMood />
     <BirthdayRail />
-    <MissionsRail />
   </>
 );

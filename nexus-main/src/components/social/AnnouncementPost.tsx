@@ -1,19 +1,21 @@
 import { Link } from 'react-router-dom';
 import { type FC } from 'react';
+import { Megaphone } from 'lucide-react';
 import { EmojiText } from '@/components/Emoji';
+import { LilacWash } from './LilacWash';
 import type { SocialPost } from './types';
 
 export const AnnouncementPost: FC<{ post: SocialPost }> = ({ post }) => {
   return (
-    <div className="mt-3 flex gap-3">
-      {post.image ? <img src={post.image} alt="" className="h-[72px] w-[128px] shrink-0 rounded-[10px] border border-[#F0D4EE] object-cover" /> : <div className="flex h-[72px] w-[128px] shrink-0 items-center justify-center rounded-[10px] border border-dashed border-[#F0D4EE] bg-[#F8E8F6] text-[12px] text-accent-foreground">Capa do jornal</div>}
-      <div className="min-w-0">
-        {post.bannerTitle ? <h3 className="text-[15px] font-semibold leading-5">{post.bannerTitle}</h3> : null}
-        <p className="mt-0.5 line-clamp-2 text-[13px] leading-5 text-muted-foreground"><EmojiText text={post.body} /></p>
-        <Link to="/announcements" className="mt-1 inline-flex text-[12.5px] font-medium text-primary hover:underline">
-          Ver no jornal
-        </Link>
-      </div>
-    </div>
+    <LilacWash
+      className="mt-3"
+      icon={<Megaphone className="h-5 w-5" strokeWidth={1.75} />}
+      title={post.bannerTitle || 'Jornal'}
+    >
+      <p className="mt-1 line-clamp-2 text-[13px] font-normal leading-5 text-[#8A5AA0]"><EmojiText text={post.body} /></p>
+      <Link to="/announcements" className="mt-2 inline-flex text-[12.5px] font-medium text-[#8E35B8] hover:underline">
+        Ver no jornal
+      </Link>
+    </LilacWash>
   );
 };
