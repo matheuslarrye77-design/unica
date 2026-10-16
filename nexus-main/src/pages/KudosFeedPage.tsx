@@ -50,24 +50,10 @@ function monthLabel() {
 }
 
 const STEP = {
-  1: { front: 'bg-gradient-to-b from-[#F8E7B0] to-[#D7A441]', side: '#A97828', top: '#FFF6D4', ink: '#6A4A10', box: 'h-14' },
-  2: { front: 'bg-gradient-to-b from-[#F7F4FB] to-[#C9C3D6]', side: '#9E98AE', top: '#FFFFFF', ink: '#514860', box: 'h-10' },
-  3: { front: 'bg-gradient-to-b from-[#F6D8C2] to-[#C88862]', side: '#9A6846', top: '#FBE8DA', ink: '#633C26', box: 'h-8' },
+  1: { strong: '#7C3AED', wash: '#EDE9FE', line: '#C4B5FD', height: 'h-[108px]', avatar: 'h-[68px] w-[68px]' },
+  2: { strong: '#DB2777', wash: '#FCE7F3', line: '#F9A8D4', height: 'h-[78px]', avatar: 'h-12 w-12' },
+  3: { strong: '#818CF8', wash: '#EEF2FF', line: '#C7D2FE', height: 'h-[58px]', avatar: 'h-12 w-12' },
 } as const;
-
-const PodiumBlock: FC<{ place: 1 | 2 | 3; count: number }> = ({ place, count }) => {
-  const tone = STEP[place];
-  return (
-    <div className={cn('relative w-full', tone.box)}>
-      <span className="absolute top-1.5 -right-2 bottom-0 w-2.5 rounded-r-[6px]" style={{ background: tone.side, transform: 'skewY(-24deg)', transformOrigin: 'left center' }} />
-      <span className="absolute -top-2.5 right-1 left-2 h-3.5 rounded-[6px]" style={{ background: tone.top, transform: 'skewX(-16deg)' }} />
-      <span className={cn('relative flex h-full flex-col items-center justify-center rounded-[8px] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_10px_16px_rgba(80,40,90,0.12)]', tone.front)}>
-        <span className="text-[16px] font-semibold leading-none" style={{ color: tone.ink }}>{place}</span>
-        <span className="mt-0.5 text-[10px] font-medium" style={{ color: tone.ink }}>{count}</span>
-      </span>
-    </div>
-  );
-};
 
 export const KudosFeedPage: FC = () => {
   const { canRecognize } = useInstitution();
@@ -140,23 +126,40 @@ export const KudosFeedPage: FC = () => {
                   <Calendar className="h-3.5 w-3.5 text-[#8E35B8]" /> {monthLabel()}
                 </p>
               </div>
-              <div className="mx-auto mt-4 max-w-lg [perspective:700px]">
+              <div className="mx-auto mt-5 max-w-xl">
                 <div className="grid grid-cols-3 items-end gap-4">
-                  {PODIUM.map((person) => (
-                    <div key={person.name} className="flex min-w-0 flex-col items-center text-center">
-                      <div className="relative">
-                        <img src={face(person.name)} alt="" className={cn('rounded-full bg-[#F3E4FA] shadow-sm', person.place === 1 ? 'h-14 w-14 ring-4 ring-[#F8E7B0]' : 'h-11 w-11 ring-2 ring-white')} />
-                        {person.place === 1 ? <Crown className="absolute -top-3 left-1/2 h-5 w-5 -translate-x-1/2 text-[#E2B100]" /> : null}
+                  {PODIUM.map((person) => {
+                    const tone = STEP[person.place];
+                    return (
+                      <div key={person.name} className="flex min-w-0 flex-col items-center text-center">
+                        <div className="relative">
+                          {person.place === 1 ? <Crown className="absolute -top-4 left-1/2 h-5 w-5 -translate-x-1/2 text-[#7C3AED]" /> : null}
+                          <img
+                            src={face(person.name)}
+                            alt=""
+                            className={cn('rounded-full bg-white object-cover', tone.avatar)}
+                            style={{ boxShadow: `0 0 0 3px #fff, 0 0 0 5px ${tone.strong}` }}
+                          />
+                        </div>
+                        <p className="mt-2 max-w-full truncate text-[13px] font-semibold text-[#241B33]">{person.name}</p>
+                        <p className="max-w-full truncate text-[11px] text-[#8A7C98]">{person.role}</p>
+                        <div className={cn('relative mt-4 w-full max-w-[104px]', tone.height)}>
+                          <span
+                            className="absolute -top-3 left-1/2 z-10 grid h-7 w-7 -translate-x-1/2 place-items-center rounded-full text-[13px] font-semibold text-white"
+                            style={{ background: tone.strong, boxShadow: `0 8px 16px ${tone.strong}55` }}
+                          >
+                            {person.place}
+                          </span>
+                          <div className="flex h-full flex-col overflow-hidden rounded-[20px] border" style={{ borderColor: tone.line, boxShadow: `0 10px 22px ${tone.strong}22` }}>
+                            <div className="flex-1" style={{ background: `linear-gradient(180deg, #ffffff 0%, ${tone.wash} 100%)` }} />
+                            <div className="flex h-9 items-center justify-center text-[16px] font-semibold text-white" style={{ background: tone.strong }}>{person.count}</div>
+                          </div>
+                        </div>
                       </div>
-                      <p className="mt-1.5 max-w-full truncate text-[13px] font-semibold text-[#241B33]">{person.name}</p>
-                      <p className="max-w-full truncate text-[11px] text-[#8A7C98]">{person.role}</p>
-                      <div className="mt-2 w-full">
-                        <PodiumBlock place={person.place} count={person.count} />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-                <div className="mx-6 mt-2 h-2 rounded-[100%] bg-[#E7D4F2]/80 blur-[1px]" />
+                <div className="mx-6 mt-2 h-1.5 rounded-full bg-gradient-to-r from-[#F9A8D4] via-[#C4B5FD] to-[#A5B4FC]" />
               </div>
             </section>
 
