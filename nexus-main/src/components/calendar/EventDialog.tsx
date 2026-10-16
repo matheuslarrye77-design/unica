@@ -54,8 +54,8 @@ export const EventDialog: FC<{
       personId: event.personId,
       personName: event.personName,
       avatar: event.avatar,
-    } : { ...empty, type: initialType ?? 'reuniao' });
-  }, [open, event, initialType]);
+    } : empty);
+  }, [open, event]);
 
   function choosePerson(id: string) {
     const person = directoryPeople.find((item) => item.id === id);

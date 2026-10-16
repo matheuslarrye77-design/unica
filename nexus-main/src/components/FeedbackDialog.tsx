@@ -37,8 +37,7 @@ export const FeedbackDialog: FC<{ open: boolean; onOpenChange: (open: boolean) =
   async function send() {
     setSending(true);
     try {
-      const saved = await submitFeedback({ destination, type, message: message.trim(), anonymous });
-      window.dispatchEvent(new CustomEvent('unica-feedback-created', { detail: saved.feedback }));
+      await submitFeedback({ destination, type, message: message.trim(), anonymous });
       toast.success('Feedback enviado.');
       setMessage('');
       setAnonymous(false);

@@ -25,7 +25,7 @@ export const RecognitionComposer: FC<{ onCreated: (created?: { name: string; mes
       await createFeedPost({ body: text, kind: 'recognition', recognizedName: person.name, tag });
       setMessage('');
       setPersonId('');
-      onCreated({ name: person.name, message: text, tag });
+      onCreated();
       toast.success('Reconhecimento publicado.');
     } catch (error) {
       toast.error(error instanceof Error && error.message === '403' ? 'Você não tem permissão para reconhecer.' : 'Não foi possível publicar o reconhecimento.');
