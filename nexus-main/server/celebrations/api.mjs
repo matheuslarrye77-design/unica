@@ -121,7 +121,7 @@ function cleanMedia(value) {
   const url = String(value.url ?? '');
   const kind = value.kind === 'gif' || value.kind === 'sticker' || value.kind === 'photo' ? value.kind : '';
   if (!kind) return null;
-  if (url.startsWith('/api/uploads/up-') || /^\/figurinhas\/[a-z0-9-]+\.svg$/.test(url)) return { kind, url };
+  if (url.startsWith('/api/uploads/up-') || /^\/figurinhas\/[a-z0-9-]+\.(svg|png|jpe?g|webp)$/.test(url) || /^\/gifs\/[a-z0-9-]+\.gif$/.test(url)) return { kind, url };
   return null;
 }
 

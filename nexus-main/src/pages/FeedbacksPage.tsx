@@ -1,4 +1,5 @@
 import { FeedbackDialog } from '@/components/FeedbackDialog';
+import { ComposerExtras } from '@/components/social/ComposerExtras';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,21 +62,32 @@ export const FeedbacksPage: FC = () => {
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setFailed(false);
-    loadFeedback()
-      .then((data) => {
-        if (!active) return;
-        setItems(data.feedback);
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    const load = (first: boolean) => {
+      if (first) {
+        setLoading(true);
+        setFailed(false);
+      }
+      loadFeedback()
+        .then((data) => {
+          if (!active) return;
+          setItems(data.feedback);
+          setFailed(false);
+        })
+        .catch(() => {
+          if (active && first) setFailed(true);
+        })
+        .finally(() => {
+          if (active && first) setLoading(false);
+        });
+    };
+    load(true);
+    const refresh = () => load(false);
+    const timer = window.setInterval(refresh, 5000);
+    window.addEventListener('focus', refresh);
     return () => {
       active = false;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
     };
   }, [demo, gestao]);
 
@@ -106,8 +118,8 @@ export const FeedbacksPage: FC = () => {
     try {
       const saved = await updateFeedbackStatus(item.id, status);
       setItems((current) => current.map((entry) => (entry.id === item.id ? saved.feedback : entry)));
-    } catch {
-      toast.error('Não foi possível atualizar o status.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível atualizar o status.');
     } finally {
       setSavingStatus(null);
     }
@@ -121,11 +133,16 @@ export const FeedbacksPage: FC = () => {
       const saved = await replyToFeedback(item.id, text);
       setItems((current) => current.map((entry) => (entry.id === item.id ? saved.feedback : entry)));
       setDrafts((current) => ({ ...current, [item.id]: '' }));
-    } catch {
-      toast.error('Não foi possível enviar a resposta.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível enviar a resposta.');
     } finally {
       setSending(null);
     }
+  }
+
+  function openReply(id: string) {
+    setOpenId(id);
+    window.setTimeout(() => document.getElementById(`resposta-${id}`)?.focus(), 0);
   }
 
   function onReplyKey(event: KeyboardEvent<HTMLTextAreaElement>, item: FeedbackItem) {
@@ -244,7 +261,7 @@ export const FeedbacksPage: FC = () => {
                           {STATUS[item.status].label}
                         </button>
                       ) : (
-                        <span className={cn('rounded-full px-2.5 py-1 text-[12px] font-medium', STATUS[item.status].className)}>{STATUS[item.status].label}</span>
+                        <button type="button" className={cn('rounded-full px-2.5 py-1 text-[12px] font-medium', STATUS[item.status].className)} onClick={() => toast.error('Somente a gestão pode alterar o status.')}>{STATUS[item.status].label}</button>
                       )}
                       {statusMenu === item.id ? (
                         <div className="absolute right-0 z-10 mt-1 w-36 rounded-xl border border-[#EFE6F4] bg-white p-1 shadow-lg">
@@ -256,6 +273,7 @@ export const FeedbacksPage: FC = () => {
                         </div>
                       ) : null}
                     </div>
+                    <button type="button" className="inline-flex items-center gap-1 text-[12px] font-medium text-[#6A228C]" onClick={() => openReply(item.id)}>Responder</button>
                     <button type="button" className="inline-flex items-center gap-1 text-[12px] text-[#8A7C98]" onClick={() => setOpenId(open ? null : item.id)} aria-label={replyLabel(count)}>
                       <MessageSquare className="h-3.5 w-3.5" /> {replyLabel(count)}
                     </button>
@@ -277,6 +295,7 @@ export const FeedbacksPage: FC = () => {
                     </div>
                     <div className="mt-3">
                       <Textarea
+                        id={`resposta-${item.id}`}
                         value={draft}
                         onChange={(event) => setDrafts((current) => ({ ...current, [item.id]: event.target.value }))}
                         onKeyDown={(event) => onReplyKey(event, item)}
@@ -284,6 +303,7 @@ export const FeedbacksPage: FC = () => {
                         className="min-h-20 rounded-xl border-[#EFE6F4]"
                         aria-label={`Resposta para ${item.title || 'sugestão'}`}
                       />
+                      <ComposerExtras onEmoji={(emoji) => setDrafts((current) => ({ ...current, [item.id]: `${current[item.id] ?? ''}${emoji}` }))} />
                       <div className="mt-2 flex justify-end">
                         <Button type="button" className="rounded-full" disabled={!draft.trim() || sending === item.id} onClick={() => void sendReply(item)}>
                           {sending === item.id ? 'Enviando...' : 'Enviar resposta'}

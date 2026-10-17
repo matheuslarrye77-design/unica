@@ -52,7 +52,7 @@ function nextBirthday(date: Date, from = new Date()) {
 }
 
 export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: boolean; rail?: boolean }> = ({ embedded = false, compact = false, page = false, rail = false }) => {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const birthdaysFocus = params.get('tipo') === 'aniversarios';
   const [currentDate, setCurrentDate] = useState(new Date());
   const [query, setQuery] = useState('');
@@ -331,6 +331,29 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
       return date;
     });
     const agenda = [...visibleEvents].sort((a, b) => a.date.getTime() - b.date.getTime() || a.title.localeCompare(b.title, 'pt-BR'));
+    const openBirthdays = () => {
+      const next = new URLSearchParams(params);
+      next.set('tipo', 'aniversarios');
+      setParams(next);
+    };
+    const openCalendar = () => {
+      const next = new URLSearchParams(params);
+      next.delete('tipo');
+      next.delete('escopo');
+      next.delete('pessoa');
+      next.delete('edicao');
+      setParams(next);
+    };
+    const sectionTabs = (
+      <div className="mt-4 flex gap-5 border-b border-[#EDE6F3]">
+        <button type="button" onClick={openCalendar} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', !birthdaysFocus ? 'border-[#8E35B8] text-[#6A228C]' : 'border-transparent text-[#8A7C98]')}>
+          <Calendar className="h-3.5 w-3.5" /> Calendário
+        </button>
+        <button type="button" onClick={openBirthdays} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', birthdaysFocus ? 'border-[#8E35B8] text-[#6A228C]' : 'border-transparent text-[#8A7C98]')}>
+          <Cake className="h-3.5 w-3.5" /> Aniversários
+        </button>
+      </div>
+    );
     if (birthdaysFocus) {
       return (
         <div id="calendario" className="min-w-0">
@@ -341,6 +364,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
               <p className="text-[13.5px] text-[#8A7C98]">Decore o bolo e as datas da equipe. O recado aparece ao tocar no enfeite.</p>
             </div>
           </div>
+          {sectionTabs}
           <CelebrationsCenter />
         </div>
       );
@@ -366,6 +390,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
             </Button>
           </div>
         </div>
+        {sectionTabs}
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button type="button" aria-label="Mês anterior" onClick={() => boardView === 'week' ? shiftWeek(-1) : shiftMonth(-1)} className="grid h-8 w-8 place-items-center rounded-full text-[#5C5168] hover:bg-white"><ChevronLeft className="h-4 w-4" /></button>

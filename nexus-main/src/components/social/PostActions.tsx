@@ -19,15 +19,11 @@ export const PostActions: FC<{
   onToggleSave?: () => void;
 }> = ({ post, onLike, onReact, onComment, onToggleSave }) => {
   const comments = post.comments.length;
-  const [menu, setMenu] = useState(false);
   const [people, setPeople] = useState(false);
-  const kinds = new Set((post.reactors ?? []).map((item) => item.kind));
-  const showLike = kinds.size === 0 ? post.liked : kinds.has('like');
-  const showLove = kinds.has('love') || (kinds.size === 0 && false);
+  const mine = new Set(post.myReactions ?? (post.reaction ? [post.reaction] : post.liked ? ['like'] : []));
   const saved = Boolean(post.saved);
 
   function choose(kind: 'like' | 'love') {
-    setMenu(false);
     if (onReact) onReact(kind);
     else onLike();
   }
@@ -36,32 +32,17 @@ export const PostActions: FC<{
     <div className="mt-3 border-t border-border pt-2.5">
       <div className="flex items-center justify-between gap-2">
         <div className="relative">
-          <button
-            type="button"
-            onClick={() => setMenu((open) => !open)}
-            aria-pressed={post.liked}
-            className={`inline-flex h-8 items-center gap-2 rounded-[8px] px-0.5 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${post.liked ? 'font-medium text-primary' : 'text-[#5C5870] hover:text-foreground'}`}
-          >
-            <span className="flex items-center" aria-hidden>
-              {showLike || (!showLike && !showLove) ? (
-                <span className="z-10 flex h-5 w-5 items-center justify-center rounded-full bg-[#1877F2] text-white ring-2 ring-white">
-                  <ThumbsUp className="h-3 w-3" fill="currentColor" />
-                </span>
-              ) : null}
-              {showLove ? (
-                <span className="-ml-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#E11D48] text-white ring-2 ring-white">
-                  <Heart className="h-3 w-3" fill="currentColor" />
-                </span>
-              ) : null}
-            </span>
-            <span onClick={(event) => { event.stopPropagation(); setPeople((open) => !open); setMenu(false); }}>{totalLabel(post.likes)}</span>
-          </button>
-          {menu ? (
-            <div className="absolute bottom-9 left-0 z-20 flex gap-1 rounded-full border border-border bg-card p-1 shadow-md">
-              <button type="button" className="rounded-full p-1.5 text-[#1877F2] hover:bg-accent" aria-label="Curtir" onClick={() => choose('like')}><ThumbsUp className="h-4 w-4" fill="currentColor" /></button>
-              <button type="button" className="rounded-full p-1.5 text-[#E11D48] hover:bg-accent" aria-label="Amei" onClick={() => choose('love')}><Heart className="h-4 w-4" fill="currentColor" /></button>
-            </div>
-          ) : null}
+          <div className="inline-flex h-8 items-center gap-1.5 text-[13px] text-[#5C5870]">
+            <button type="button" aria-label="Curtir com joinha" aria-pressed={mine.has('like')} className={`grid h-8 w-8 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${mine.has('like') ? 'bg-[#E8F1FF] text-[#1877F2]' : 'hover:bg-accent'}`} onClick={() => choose('like')}>
+              <ThumbsUp className="h-4 w-4" fill={mine.has('like') ? 'currentColor' : 'none'} />
+            </button>
+            <button type="button" aria-label="Curtir com coração" aria-pressed={mine.has('love')} className={`grid h-8 w-8 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${mine.has('love') ? 'bg-[#F3E8FF]' : 'hover:bg-accent'}`} onClick={() => choose('love')}>
+              <span className="grid h-5 w-5 place-items-center rounded-full bg-[#7C3AED] text-white">
+                <Heart className="h-3 w-3" fill="currentColor" />
+              </span>
+            </button>
+            <button type="button" className="rounded-md px-1 hover:text-foreground" onClick={() => setPeople((open) => !open)}>{totalLabel(post.likes)}</button>
+          </div>
           {people ? (
             <div className="absolute bottom-9 left-0 z-20 w-52 rounded-xl border border-border bg-card p-2 text-sm shadow-md">
               {(post.reactors ?? []).length === 0 ? <p className="px-1 py-1 text-muted-foreground">Ninguém reagiu ainda.</p> : null}

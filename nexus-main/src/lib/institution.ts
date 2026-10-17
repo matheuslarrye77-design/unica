@@ -90,9 +90,26 @@ function headers() {
   return base;
 }
 
+const API_ERRORS: Record<string, string> = {
+  forbidden: 'Você não tem permissão para esta ação.',
+  message: 'Escreva a resposta antes de enviar.',
+  missing: 'Esta sugestão não está mais disponível.',
+  unknown: 'Não foi possível identificar o seu perfil.',
+  title: 'Informe um título para a sugestão.',
+  status: 'Esse status não pode ser usado.',
+  '401': 'Entre novamente para continuar.',
+  '403': 'Você não tem permissão para esta ação.',
+  '404': 'Não encontramos este item.',
+  '500': 'O servidor não conseguiu salvar agora. Tente de novo.',
+};
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { ...init, credentials: 'include', headers: { ...headers(), ...init?.headers } });
-  if (!response.ok) throw new Error(String(response.status));
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    const code = String(body.error ?? response.status);
+    throw new Error(API_ERRORS[code] ?? API_ERRORS[String(response.status)] ?? 'Não foi possível concluir. Tente de novo.');
+  }
   return response.json() as Promise<T>;
 }
 

@@ -6,6 +6,8 @@ import { serverSecretKey, supabaseConfigError } from './auth/supabaseStore.mjs';
 const FILES = [
   ['feed', 'feed.json'],
   ['institution', 'institution.json'],
+  ['celebrations', 'celebrations.json'],
+  ['events', 'events.json'],
 ];
 
 function client() {

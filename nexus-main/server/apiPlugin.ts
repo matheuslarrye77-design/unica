@@ -397,6 +397,11 @@ export function institutionMiddleware(): Connect.NextHandleFunction {
         const item = store.feedback.find((entry) => entry.id === replyMatch[1]);
         if (!item) return send(res, 404, { error: 'missing' });
         if (access !== 'gestao' && item.authorId !== user.id) return send(res, 403, { error: 'forbidden' });
+        const recent = (item.replies ?? []).find((entry) => entry.authorId === user.id && entry.text === text && Date.now() - Date.parse(entry.createdAt) < 5000);
+        if (recent) {
+          send(res, 200, { feedback: publicFeedback(item) });
+          return;
+        }
         const reply: FeedbackReply = {
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           authorId: user.id,

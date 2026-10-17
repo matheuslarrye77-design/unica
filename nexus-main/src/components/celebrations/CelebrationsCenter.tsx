@@ -18,9 +18,16 @@ import {
 import { actor, useDemoProfile } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { Cake, TreePine, X } from 'lucide-react';
-import { useEffect, useMemo, useState, type FC, type PointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FC, type PointerEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+
+function openBirthday<T extends { month: number; day: number }>(people: T[]) {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+  return people.find((item) => item.month === month && item.day >= day) ?? people.find((item) => item.month > month) ?? people[0];
+}
 
 function labelDate(value: string) {
   const [year, month, day] = value.split('-');
@@ -45,6 +52,7 @@ export const CelebrationsCenter: FC = () => {
   const [openId, setOpenId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
 
   const people = useMemo(() => calendarEvents.filter((event) => event.type === 'birthday' && event.personName).map((event) => ({
     id: celebrationPersonId(event.personName ?? ''),
@@ -54,7 +62,7 @@ export const CelebrationsCenter: FC = () => {
     day: event.date.getDate(),
   })), []);
 
-  const person = people.find((item) => item.id === selectedPerson) ?? people[0];
+  const person = people.find((item) => item.id === selectedPerson) ?? openBirthday(people) ?? people[0];
 
   async function refresh() {
     if (scope === 'aniversarios') {
@@ -69,7 +77,7 @@ export const CelebrationsCenter: FC = () => {
       return;
     }
     const payload = await loadCelebration(`scope=collective${selectedEdition ? `&editionId=${encodeURIComponent(selectedEdition)}` : ''}`);
-    const current = payload.edition ?? payload.editions[0] ?? null;
+    const current = payload.edition ?? payload.editions.find((item) => item.writable) ?? payload.editions.find((item) => item.phase === 'preparing' || item.phase === 'open') ?? payload.editions[0] ?? null;
     if (current && current.id !== selectedEdition) {
       const next = new URLSearchParams(params);
       next.set('edicao', current.id);
@@ -121,7 +129,8 @@ export const CelebrationsCenter: FC = () => {
       await refresh();
       toast.success('Recado publicado no enfeite.');
     } catch (error) {
-      toast.error(error instanceof Error && error.message === 'closed' ? 'O prazo para novos recados encerrou.' : 'Não foi possível publicar.');
+      const reason = error instanceof Error ? error.message : '';
+      toast.error(reason === 'closed' ? 'O prazo para novos recados encerrou. Escolha uma celebração que ainda está aberta.' : reason === 'message' ? 'Escreva o recado antes de publicar o enfeite.' : 'Não foi possível publicar o recado.');
     } finally {
       setBusy(false);
     }
@@ -149,7 +158,11 @@ export const CelebrationsCenter: FC = () => {
     const up = (pointer: Event) => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
-      if (!(pointer instanceof PointerEvent) || !moved || !bounds) return;
+      if (!(pointer instanceof PointerEvent) || !moved) {
+        setOpenId(ornament.id);
+        return;
+      }
+      if (!bounds) return;
       const x = Math.min(88, Math.max(8, ((pointer.clientX - bounds.left) / bounds.width) * 100));
       const y = Math.min(88, Math.max(12, ((pointer.clientY - bounds.top) / bounds.height) * 100));
       void moveOrnament(ornament.id, { x, y }).catch(() => {
@@ -210,12 +223,12 @@ export const CelebrationsCenter: FC = () => {
       <div className="mx-auto mt-4 max-w-[440px]">
         <div className="flex gap-2 overflow-x-auto pb-2">
           {catalog.map((item) => (
-            <button key={item.id} type="button" onClick={() => setDraftKind(item.id)} className={cn('grid h-14 w-14 shrink-0 place-items-center rounded-2xl border bg-white', draftKind === item.id ? 'border-[#8E35B8]' : 'border-[#F0E7F6]')} aria-label={item.label}>
+            <button key={item.id} type="button" onClick={() => { setDraftKind(item.id); noteRef.current?.focus(); }} className={cn('grid h-14 w-14 shrink-0 place-items-center rounded-2xl border bg-white', draftKind === item.id ? 'border-[#8E35B8]' : 'border-[#F0E7F6]')} aria-label={item.label}>
               <span className="h-8 w-8"><OrnamentArt kind={item.id} /></span>
             </button>
           ))}
         </div>
-        <textarea value={message} onChange={(event) => setMessage(event.target.value)} maxLength={500} placeholder="Escreva o recado que fica escondido neste enfeite" className="mt-2 min-h-20 w-full rounded-2xl border border-[#E7DFF0] bg-white px-3 py-2 text-sm" />
+        <textarea ref={noteRef} value={message} onChange={(event) => setMessage(event.target.value)} maxLength={500} placeholder="Escreva o recado que fica escondido neste enfeite" className="mt-2 min-h-20 w-full rounded-2xl border border-[#E7DFF0] bg-white px-3 py-2 text-sm" />
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <label className="rounded-full bg-white px-3 py-1.5 text-[12px] text-[#6A228C]">
             Foto ou GIF
@@ -232,7 +245,7 @@ export const CelebrationsCenter: FC = () => {
           ))}
           <button type="button" disabled={busy || !edition?.writable || message.trim().length < 1} onClick={() => void publish()} className="ml-auto rounded-full bg-[#8E35B8] px-4 py-2 text-sm text-white disabled:opacity-40">Publicar</button>
         </div>
-        {edition && !edition.writable ? <p className="mt-2 text-[12px] text-[#8A7C98]">Novos recados estão bloqueados neste período.</p> : null}
+        {edition && !edition.writable ? <p className="mt-2 text-[12px] text-[#8A7C98]">Novos recados estão bloqueados neste período. Escolha um aniversário ou uma data da equipe que ainda está em preparação.</p> : null}
       </div>
       {leader ? <LeaderTools onSaved={refresh} /> : null}
       {opened ? (

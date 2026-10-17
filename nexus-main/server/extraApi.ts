@@ -195,7 +195,7 @@ function cleanMedia(value: unknown): Comment['media'] | undefined {
   if (!value || typeof value !== 'object') return undefined;
   const item = value as { kind?: string; url?: string };
   const url = String(item.url ?? '');
-  const allowed = url.startsWith('/api/uploads/up-') || /^\/figurinhas\/[a-z0-9-]+\.svg$/.test(url);
+  const allowed = url.startsWith('/api/uploads/up-') || /^\/figurinhas\/[a-z0-9-]+\.(svg|png|jpe?g|webp)$/.test(url) || /^\/gifs\/[a-z0-9-]+\.gif$/.test(url);
   if (!allowed) return undefined;
   if (item.kind !== 'gif' && item.kind !== 'sticker') return undefined;
   return { kind: item.kind, url };
@@ -334,9 +334,10 @@ export function extraApi(): Connect.NextHandleFunction {
       image: images[0],
       images,
       attachment: post.attachment,
-      likes: Array.isArray(post.reactions) ? reactions.length : post.likes,
-      liked: Boolean(mine),
+      likes: typeof post.likes === 'number' ? post.likes : reactions.length,
+      liked: reactions.some((item) => item.userId === userId && item.kind === 'like'),
       reaction: mine?.kind ?? null,
+      myReactions: [...new Set(reactions.filter((item) => item.userId === userId).map((item) => item.kind))],
       reactors: reactions.map((item) => ({ name: item.name, kind: item.kind })),
       shares: post.shares,
       shared: false,
@@ -486,16 +487,19 @@ export function extraApi(): Connect.NextHandleFunction {
       const likeMatch = /^\/api\/feed\/([^/]+)\/like$/.exec(url);
       if (req.method === 'POST' && likeMatch) {
         const body = JSON.parse((await readBody(req)).toString('utf8') || '{}') as { kind?: string };
-        const kind = body.kind === 'love' ? 'love' : body.kind === 'like' ? 'like' : '';
+        const kind: Reaction['kind'] | '' = body.kind === 'love' ? 'love' : body.kind === 'like' ? 'like' : '';
         if (!kind) return send(res, 400, { error: 'kind' });
         const feed = loadFeed();
         const post = feed.posts.find((item) => item.id === likeMatch[1]);
         if (!post) return send(res, 404, { error: 'missing' });
-        const reactions = reactionsOf(post).filter((item) => item.userId !== user.id);
-        const current = reactionsOf(post).find((item) => item.userId === user.id);
-        post.reactions = current?.kind === kind ? reactions : [...reactions, { userId: user.id, name: user.name, kind }];
-        post.likedBy = post.reactions.map((item) => item.userId);
-        post.likes = post.reactions.length;
+        const before = reactionsOf(post);
+        const exists = before.some((item) => item.userId === user.id && item.kind === kind);
+        const next = exists
+          ? before.filter((item) => !(item.userId === user.id && item.kind === kind))
+          : [...before, { userId: user.id, name: user.name, kind }];
+        post.reactions = next;
+        post.likedBy = [...new Set(next.map((item) => item.userId))];
+        post.likes = Math.max(0, (typeof post.likes === 'number' ? post.likes : before.length) + next.length - before.length);
         saveFeed(feed);
         send(res, 200, { post: publicPost(post, user.id, feed.saved?.[user.id] ?? []) });
         return;

@@ -40,6 +40,7 @@ export type SocialPost = {
   likes: number;
   liked: boolean;
   reaction?: 'like' | 'love' | null;
+  myReactions?: ('like' | 'love')[];
   reactors?: { name: string; kind: 'like' | 'love' }[];
   saved?: boolean;
   shares: number;

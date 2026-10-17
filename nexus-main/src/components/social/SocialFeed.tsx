@@ -37,7 +37,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
       }).catch(() => toast.error('Não foi possível abrir o mural.'));
     };
     refresh();
-    const timer = window.setInterval(refresh, 12000);
+    const timer = window.setInterval(refresh, 5000);
     window.addEventListener('unica-feed-refresh', refresh);
     window.addEventListener('focus', refresh);
     return () => {

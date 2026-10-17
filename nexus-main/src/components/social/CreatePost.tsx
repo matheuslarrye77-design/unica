@@ -3,6 +3,7 @@ import { type ChangeEvent, type FC, type FormEvent, useRef, useState } from 'rea
 import { toast } from 'sonner';
 import { uploadMedia } from '@/lib/feed';
 import { actor } from '@/lib/session';
+import { ComposerExtras } from './ComposerExtras';
 import { ImageAdjust } from './ImageAdjust';
 import type { Attachment, PollOption } from './types';
 
@@ -129,6 +130,20 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     if (fieldRef.current) resize(fieldRef.current, false);
   }
 
+  function insertEmoji(emoji: string) {
+    const field = fieldRef.current;
+    const start = field?.selectionStart ?? body.length;
+    const end = field?.selectionEnd ?? body.length;
+    const next = body.slice(0, start) + emoji + body.slice(end);
+    setBody(next);
+    setWriting(true);
+    requestAnimationFrame(() => {
+      field?.focus();
+      const cursor = start + emoji.length;
+      field?.setSelectionRange(cursor, cursor);
+    });
+  }
+
   const ready = !sending && progress === null && (body.trim().length > 0 || images.length > 0 || Boolean(attachment)) && (!pollOpen || options.filter((item) => item.trim()).length >= 2);
   const user = actor();
 
@@ -220,6 +235,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
           <ComposerAction icon={Video} label="Vídeo" onClick={() => videoRef.current?.click()} />
           <ComposerAction icon={FileText} label="Documento" onClick={() => fileRef.current?.click()} />
           <ComposerAction icon={ListChecks} label="Enquete" pressed={pollOpen} onClick={() => setPollOpen((open) => !open)} />
+          <ComposerExtras onEmoji={insertEmoji} />
         </div>
         <button
           type="submit"
