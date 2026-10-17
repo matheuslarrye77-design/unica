@@ -21,6 +21,7 @@ const types: { id: FeedbackItem['type']; label: string }[] = [
 export const FeedbackDialog: FC<{ open: boolean; onOpenChange: (open: boolean) => void }> = ({ open, onOpenChange }) => {
   const [destination, setDestination] = useState<FeedbackItem['destination']>('lideranca');
   const [type, setType] = useState<FeedbackItem['type']>('feedback');
+  const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [anonymous, setAnonymous] = useState(false);
   const [review, setReview] = useState(false);
@@ -37,8 +38,9 @@ export const FeedbackDialog: FC<{ open: boolean; onOpenChange: (open: boolean) =
   async function send() {
     setSending(true);
     try {
-      await submitFeedback({ destination, type, message: message.trim(), anonymous });
-      toast.success('Feedback enviado.');
+      await submitFeedback({ destination, type, title: title.trim(), message: message.trim(), anonymous });
+      toast.success('Sugestão enviada.');
+      setTitle('');
       setMessage('');
       setAnonymous(false);
       setReview(false);
@@ -46,7 +48,7 @@ export const FeedbackDialog: FC<{ open: boolean; onOpenChange: (open: boolean) =
       setType('feedback');
       onOpenChange(false);
     } catch {
-      toast.error('Não foi possível enviar o feedback.');
+      toast.error('Não foi possível enviar a sugestão.');
     } finally {
       setSending(false);
     }
@@ -61,7 +63,7 @@ export const FeedbackDialog: FC<{ open: boolean; onOpenChange: (open: boolean) =
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
-            Feedback
+            Nova sugestão
           </DialogTitle>
         </DialogHeader>
         {review ? (
@@ -69,6 +71,7 @@ export const FeedbackDialog: FC<{ open: boolean; onOpenChange: (open: boolean) =
             <p><span className="text-muted-foreground">Destino: </span>{destinationLabel}</p>
             <p><span className="text-muted-foreground">Tipo: </span>{typeLabel}</p>
             <p><span className="text-muted-foreground">Anonimato: </span>{anonymous ? 'Anônimo' : 'Identificado'}</p>
+            <p className="font-medium">{title.trim()}</p>
             <p className="rounded-xl border bg-muted/40 p-3 leading-6 whitespace-pre-wrap">{message.trim()}</p>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setReview(false)}>Voltar</Button>
@@ -97,6 +100,10 @@ export const FeedbackDialog: FC<{ open: boolean; onOpenChange: (open: boolean) =
               ))}
             </fieldset>
             <div className="space-y-2">
+              <Label htmlFor="feedback-titulo">Título</Label>
+              <input id="feedback-titulo" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Título da sugestão" className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="feedback-mensagem">Mensagem</Label>
               <Textarea id="feedback-mensagem" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Escreva sua mensagem" />
             </div>
@@ -106,7 +113,7 @@ export const FeedbackDialog: FC<{ open: boolean; onOpenChange: (open: boolean) =
             </label>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => close(false)}>Cancelar</Button>
-              <Button disabled={!message.trim()} onClick={() => setReview(true)}>Visualizar</Button>
+              <Button disabled={!title.trim() || !message.trim()} onClick={() => setReview(true)}>Visualizar</Button>
             </div>
           </div>
         )}

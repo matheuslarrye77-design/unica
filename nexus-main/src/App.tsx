@@ -105,7 +105,8 @@ const AppRoutes: FC = () => {
           <SettingsPage />
         }
       />
-      <Route path="/gestao/feedbacks" element={<FeedbacksPage />} />
+      <Route path="/sugestoes" element={<FeedbacksPage />} />
+      <Route path="/gestao/feedbacks" element={<Navigate to="/sugestoes" replace />} />
       <Route path="/gestao/configuracoes" element={<Navigate to="/configuracoes" replace />} />
       <Route path="/perfil" element={<ProfilePage />} />
       <Route path="/publicacao/:id" element={<PostPage />} />

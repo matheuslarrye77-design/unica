@@ -48,10 +48,10 @@ export const ActivityCardView: FC<{
   const leadership = activity.origin === 'leadership';
 
   return (
-    <article className={cn('relative overflow-hidden rounded-xl border bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(40,20,60,0.04)]', leadership ? 'border-[#F0D9F4] bg-[#FBF6FD]' : 'border-[#F3EEF6]', dragging && 'opacity-40')}>
+    <article className={cn('relative h-[128px] overflow-hidden rounded-xl border border-[#F3EEF6] bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(40,20,60,0.04)]', dragging && 'opacity-40')}>
       <div className="relative flex items-center gap-1.5">
         {leadership ? <img src="/atividades/alfinete.png" alt="" className="h-5 w-5 shrink-0 object-contain" /> : null}
-        <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-medium', leadership ? 'bg-white text-[#6A228C]' : 'bg-[#F6EEFB] text-[#8E35B8]')}>
+        <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-medium', leadership ? 'bg-[#F6EEFB] text-[#6A228C]' : 'bg-[#F6EEFB] text-[#8E35B8]')}>
           {ORIGIN_LABEL[activity.origin]}
         </span>
         {onToggle ? (
@@ -94,12 +94,12 @@ export const ActivityCardView: FC<{
           </DropdownMenu>
         ) : <span className="ml-auto" />}
       </div>
-      <h3 className="relative mt-1.5 text-[13px] font-semibold leading-snug text-[#2C2433]">{activity.title}</h3>
+      <h3 title={activity.title} className="relative mt-1.5 line-clamp-2 h-[2.6em] text-[13px] font-semibold leading-snug text-[#2C2433]">{activity.title}</h3>
       {collapsed ? null : (
       <div className="relative">
-      <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] font-normal text-[#8A7C98]">
+      <p className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[11.5px] font-normal text-[#8A7C98]">
         <SourceIcon source={activity.source} />
-        {activity.source}
+        <span className="truncate">{activity.source}</span>
       </p>
       <div className="mt-2 flex items-center gap-2">
         {when ? (

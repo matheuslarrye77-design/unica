@@ -19,8 +19,7 @@ import {
 import { type FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { isLeader, useInstitution } from '@/lib/institution';
-import { currentUser } from '@/data/mockData';
+import { useInstitution } from '@/lib/institution';
 
 const GROUPS = [
   {
@@ -39,6 +38,7 @@ const GROUPS = [
       { path: '/projects', label: 'Atividades', icon: ListChecks },
       { path: '/resources', label: 'Documentos', icon: FileText },
       { path: '/calendar', label: 'Calendários', icon: CalendarDays },
+      { path: '/sugestoes', label: 'Sugestões', icon: MessageSquare },
     ],
   },
   {
@@ -135,22 +135,11 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
   const location = useLocation();
   const { leftCollapsed, toggleLeft } = useShell();
   const institution = useInstitution();
-  const leader = isLeader(currentUser);
   const [closedGroups, setClosedGroups] = useState<string[]>([]);
-  const groups = GROUPS.map((group) => {
-    const items = group.items.filter((item) => item.path !== '/' || institution.muralAvailable);
-    if (group.id !== 'gestao' || !leader) return { ...group, items };
-    const equipe = items[0];
-    const missoes = items[items.length - 1];
-    return {
-      ...group,
-      items: [
-        equipe,
-        { path: '/gestao/feedbacks', label: 'Feedbacks', icon: MessageSquare },
-        missoes,
-      ],
-    };
-  });
+  const groups = GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => item.path !== '/' || institution.muralAvailable),
+  }));
 
   const itemClass = (active: boolean, collapsed: boolean) => cn(
     'flex h-9 items-center gap-2.5 rounded-[10px] px-2.5 text-[13.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',

@@ -14,7 +14,154 @@
       "wallpaperVersion": 0
     }
   },
-  "feedback": [],
+  "feedback": [
+    {
+      "id": "sug-docs",
+      "destination": "plataforma",
+      "type": "sugestao",
+      "title": "Dificuldade para acessar os documentos",
+      "message": "Ao abrir a área de documentos, a página demora para carregar e às vezes retorna ao início.",
+      "anonymous": true,
+      "authorId": "ana-ribeiro",
+      "authorName": null,
+      "createdAt": "2026-10-17T14:32:00.000Z",
+      "status": "analise",
+      "replies": [
+        {
+          "id": "sug-docs-1",
+          "authorId": "helena",
+          "authorName": "Helena Duarte",
+          "text": "Vamos verificar o carregamento da área de documentos.",
+          "createdAt": "2026-10-17T15:10:00.000Z"
+        },
+        {
+          "id": "sug-docs-2",
+          "authorId": "ana-ribeiro",
+          "authorName": null,
+          "text": "Acontece principalmente no início do expediente.",
+          "createdAt": "2026-10-17T15:40:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "sug-comunicacao",
+      "destination": "lideranca",
+      "type": "sugestao",
+      "title": "Melhorar a comunicação entre equipes",
+      "message": "Seria útil ter um resumo semanal das atividades e decisões da equipe.",
+      "anonymous": false,
+      "authorId": "ana-ribeiro",
+      "authorName": "Ana Ribeiro",
+      "createdAt": "2026-10-16T16:48:00.000Z",
+      "status": "novo",
+      "replies": [
+        {
+          "id": "sug-comunicacao-1",
+          "authorId": "ana-ribeiro",
+          "authorName": "Ana Ribeiro",
+          "text": "O resumo pode sair toda sexta-feira.",
+          "createdAt": "2026-10-16T17:05:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "sug-chat",
+      "destination": "plataforma",
+      "type": "sugestao",
+      "title": "Atalho para abrir o chat",
+      "message": "Sugiro um atalho rápido para abrir o chat com o cliente, sem precisar acessar o menu.",
+      "anonymous": false,
+      "authorId": "joao-silva",
+      "authorName": "João Silva",
+      "createdAt": "2026-10-12T10:24:00.000Z",
+      "status": "analise",
+      "replies": [
+        {
+          "id": "sug-chat-1",
+          "authorId": "helena",
+          "authorName": "Helena Duarte",
+          "text": "Atalho anotado para a próxima revisão.",
+          "createdAt": "2026-10-12T11:00:00.000Z"
+        },
+        {
+          "id": "sug-chat-2",
+          "authorId": "joao-silva",
+          "authorName": "João Silva",
+          "text": "Pode ficar ao lado da busca.",
+          "createdAt": "2026-10-12T11:20:00.000Z"
+        },
+        {
+          "id": "sug-chat-3",
+          "authorId": "helena",
+          "authorName": "Helena Duarte",
+          "text": "Vamos avaliar o espaço do cabeçalho.",
+          "createdAt": "2026-10-12T14:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "sug-tema",
+      "destination": "plataforma",
+      "type": "sugestao",
+      "title": "Adicionar opção de tema escuro",
+      "message": "Seria muito bom ter um tema escuro para facilitar o uso à noite.",
+      "anonymous": false,
+      "authorId": "bruno-costa",
+      "authorName": "Bruno Costa",
+      "createdAt": "2026-10-10T09:17:00.000Z",
+      "status": "respondido",
+      "replies": [
+        {
+          "id": "sug-tema-1",
+          "authorId": "helena",
+          "authorName": "Helena Duarte",
+          "text": "O tema escuro já está disponível no cabeçalho.",
+          "createdAt": "2026-10-10T18:00:00.000Z"
+        },
+        {
+          "id": "sug-tema-2",
+          "authorId": "bruno-costa",
+          "authorName": "Bruno Costa",
+          "text": "Encontrei o botão. Obrigado.",
+          "createdAt": "2026-10-11T09:00:00.000Z"
+        },
+        {
+          "id": "sug-tema-3",
+          "authorId": "helena",
+          "authorName": "Helena Duarte",
+          "text": "Se notar algum contraste ruim, avise.",
+          "createdAt": "2026-10-11T09:30:00.000Z"
+        },
+        {
+          "id": "sug-tema-4",
+          "authorId": "bruno-costa",
+          "authorName": "Bruno Costa",
+          "text": "Por enquanto está bom.",
+          "createdAt": "2026-10-11T10:00:00.000Z"
+        },
+        {
+          "id": "sug-tema-5",
+          "authorId": "helena",
+          "authorName": "Helena Duarte",
+          "text": "Sugestão marcada como respondida.",
+          "createdAt": "2026-10-11T10:15:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "sug-matheus",
+      "destination": "lideranca",
+      "type": "sugestao",
+      "title": "Atalho do mural no celular",
+      "message": "No celular, o mural fica longe do menu. Um atalho na primeira tela ajudaria no dia a dia.",
+      "anonymous": false,
+      "authorId": "1",
+      "authorName": "Matheus Larrie",
+      "createdAt": "2026-10-15T11:20:00.000Z",
+      "status": "novo",
+      "replies": []
+    }
+  ],
   "moods": {},
   "people": {}
 }

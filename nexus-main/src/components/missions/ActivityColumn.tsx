@@ -34,7 +34,7 @@ export const ActivityColumn: FC<{
   }
 
   return (
-    <section className={cn('flex flex-col rounded-[18px] p-2', paint.column, isOver && 'ring-2 ring-[#8E35B8]/20')}>
+    <section className={cn('flex h-full flex-col rounded-[18px] p-2', paint.column, isOver && 'ring-2 ring-[#8E35B8]/20')}>
       <header className="flex items-center gap-1.5 px-1 pb-2">
         <span className={cn('grid h-6 w-6 place-items-center rounded-full', paint.icon)}>
           <Icon className="h-3 w-3" strokeWidth={2.4} />
@@ -44,7 +44,7 @@ export const ActivityColumn: FC<{
           {activities.length}
         </span>
       </header>
-      <div ref={setNodeRef} className="flex min-h-12 flex-col gap-2">
+      <div ref={setNodeRef} className="flex min-h-12 flex-1 flex-col gap-2">
         {leadership.length > 0 ? (
           <button
             type="button"

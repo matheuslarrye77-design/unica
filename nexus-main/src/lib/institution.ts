@@ -1,4 +1,6 @@
 import { currentUser, employees, type Employee } from '@/data/mockData';
+import { LOGIN_REQUIRED } from '@/lib/loginGate';
+import { getDemoId } from '@/lib/session';
 import { useSyncExternalStore } from 'react';
 
 export type PolicyMode = 'leadership' | 'selected' | 'everyone';
@@ -14,15 +16,26 @@ export type InstitutionSettings = {
   calendar: { theme: CalendarTheme; wallpaperVersion: number };
 };
 
+export type SuggestionStatus = 'novo' | 'analise' | 'respondido';
+
+export type SuggestionReply = {
+  id: string;
+  authorName: string | null;
+  text: string;
+  createdAt: string;
+};
+
 export type FeedbackItem = {
   id: string;
   destination: 'lideranca' | 'plataforma';
   type: 'feedback' | 'sugestao';
+  title: string;
   message: string;
   anonymous: boolean;
   authorName: string | null;
   createdAt: string;
-  status: 'novo' | 'analise' | 'resolvido';
+  status: SuggestionStatus;
+  replies: SuggestionReply[];
 };
 
 type Snapshot = {
@@ -72,7 +85,9 @@ export function allows(user: { id: string; role: string; department?: string }, 
 }
 
 function headers() {
-  return { 'Content-Type': 'application/json' };
+  const base: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (!LOGIN_REQUIRED) base['x-unica-demo'] = getDemoId();
+  return base;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -137,7 +152,7 @@ export async function assertPermission(action: 'recognition' | 'documents') {
   await request(`/api/permissions/${action}`, { method: 'POST' });
 }
 
-export async function submitFeedback(input: { destination: FeedbackItem['destination']; type: FeedbackItem['type']; message: string; anonymous: boolean }) {
+export async function submitFeedback(input: { destination: FeedbackItem['destination']; type: FeedbackItem['type']; title: string; message: string; anonymous: boolean }) {
   return request<{ feedback: FeedbackItem }>('/api/feedback', { method: 'POST', body: JSON.stringify(input) });
 }
 
@@ -147,6 +162,10 @@ export async function loadFeedback() {
 
 export async function updateFeedbackStatus(id: string, status: FeedbackItem['status']) {
   return request<{ feedback: FeedbackItem }>(`/api/feedback/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+}
+
+export async function replyToFeedback(id: string, text: string) {
+  return request<{ feedback: FeedbackItem }>(`/api/feedback/${id}/replies`, { method: 'POST', body: JSON.stringify({ text }) });
 }
 
 export async function saveMood(emoji: string) {

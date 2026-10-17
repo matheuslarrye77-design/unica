@@ -20,16 +20,26 @@ type Settings = {
   calendar: { theme: string; wallpaperVersion: number };
 };
 
+type FeedbackReply = {
+  id: string;
+  authorId: string;
+  authorName: string | null;
+  text: string;
+  createdAt: string;
+};
+
 type Feedback = {
   id: string;
   destination: 'lideranca' | 'plataforma';
   type: 'feedback' | 'sugestao';
+  title?: string;
   message: string;
   anonymous: boolean;
   authorId: string | null;
   authorName: string | null;
   createdAt: string;
-  status: 'novo' | 'analise' | 'resolvido';
+  status: 'novo' | 'analise' | 'resolvido' | 'respondido';
+  replies?: FeedbackReply[];
 };
 
 type Store = {
@@ -43,6 +53,7 @@ const THEMES = ['padrao', 'halloween', 'natal', 'junina', 'anonovo'];
 
 const roster = new Map<string, Person>();
 roster.set(currentUser.id, currentUser);
+roster.set('helena', { id: 'helena', name: 'Helena Duarte', role: 'Gerente', department: 'Gestão' });
 for (const employee of employees) {
   if (!roster.has(employee.id)) roster.set(employee.id, employee);
 }
@@ -114,21 +125,140 @@ export function institutionApi(): Plugin {
     return roster.get(account.id) ?? account;
   }
 
+  function viewStatus(status: string): 'novo' | 'analise' | 'respondido' {
+    if (status === 'analise') return 'analise';
+    if (status === 'resolvido' || status === 'respondido') return 'respondido';
+    return 'novo';
+  }
+
   function publicFeedback(item: Feedback) {
+    const replies = Array.isArray(item.replies) ? item.replies : [];
     return {
       id: item.id,
       destination: item.destination,
       type: item.type,
+      title: item.title ?? '',
       message: item.message,
       anonymous: item.anonymous,
       authorName: item.anonymous ? null : item.authorName,
       createdAt: item.createdAt,
-      status: item.status,
+      status: viewStatus(item.status),
+      replies: replies.map((reply) => ({
+        id: reply.id,
+        authorName: item.anonymous && reply.authorId === item.authorId ? null : reply.authorName,
+        text: reply.text,
+        createdAt: reply.createdAt,
+      })),
     };
   }
 
+  function feedbackActor(req: IncomingMessage) {
+    if (!LOGIN_REQUIRED) {
+      const demo = String(req.headers['x-unica-demo'] ?? '');
+      if (demo === 'helena') return { user: roster.get('helena') ?? null, access: 'gestao' as const };
+      const matheus = roster.get(currentUser.id) ?? null;
+      return { user: matheus, access: 'colaborador' as const };
+    }
+    const user = userFrom(req);
+    if (!user) return { user: null, access: 'colaborador' as const };
+    return { user, access: isLeader(user) ? 'gestao' as const : 'colaborador' as const };
+  }
+
+  function ensureSuggestions(store: Store) {
+    const seeds: Feedback[] = [
+      {
+        id: 'sug-docs',
+        destination: 'plataforma',
+        type: 'sugestao',
+        title: 'Dificuldade para acessar os documentos',
+        message: 'Ao abrir a área de documentos, a página demora para carregar e às vezes retorna ao início.',
+        anonymous: true,
+        authorId: 'ana-ribeiro',
+        authorName: null,
+        createdAt: '2026-10-17T14:32:00.000Z',
+        status: 'analise',
+        replies: [
+          { id: 'sug-docs-1', authorId: 'helena', authorName: 'Helena Duarte', text: 'Vamos verificar o carregamento da área de documentos.', createdAt: '2026-10-17T15:10:00.000Z' },
+          { id: 'sug-docs-2', authorId: 'ana-ribeiro', authorName: null, text: 'Acontece principalmente no início do expediente.', createdAt: '2026-10-17T15:40:00.000Z' },
+        ],
+      },
+      {
+        id: 'sug-comunicacao',
+        destination: 'lideranca',
+        type: 'sugestao',
+        title: 'Melhorar a comunicação entre equipes',
+        message: 'Seria útil ter um resumo semanal das atividades e decisões da equipe.',
+        anonymous: false,
+        authorId: 'ana-ribeiro',
+        authorName: 'Ana Ribeiro',
+        createdAt: '2026-10-16T16:48:00.000Z',
+        status: 'novo',
+        replies: [
+          { id: 'sug-comunicacao-1', authorId: 'ana-ribeiro', authorName: 'Ana Ribeiro', text: 'O resumo pode sair toda sexta-feira.', createdAt: '2026-10-16T17:05:00.000Z' },
+        ],
+      },
+      {
+        id: 'sug-chat',
+        destination: 'plataforma',
+        type: 'sugestao',
+        title: 'Atalho para abrir o chat',
+        message: 'Sugiro um atalho rápido para abrir o chat com o cliente, sem precisar acessar o menu.',
+        anonymous: false,
+        authorId: 'joao-silva',
+        authorName: 'João Silva',
+        createdAt: '2026-10-12T10:24:00.000Z',
+        status: 'analise',
+        replies: [
+          { id: 'sug-chat-1', authorId: 'helena', authorName: 'Helena Duarte', text: 'Atalho anotado para a próxima revisão.', createdAt: '2026-10-12T11:00:00.000Z' },
+          { id: 'sug-chat-2', authorId: 'joao-silva', authorName: 'João Silva', text: 'Pode ficar ao lado da busca.', createdAt: '2026-10-12T11:20:00.000Z' },
+          { id: 'sug-chat-3', authorId: 'helena', authorName: 'Helena Duarte', text: 'Vamos avaliar o espaço do cabeçalho.', createdAt: '2026-10-12T14:00:00.000Z' },
+        ],
+      },
+      {
+        id: 'sug-tema',
+        destination: 'plataforma',
+        type: 'sugestao',
+        title: 'Adicionar opção de tema escuro',
+        message: 'Seria muito bom ter um tema escuro para facilitar o uso à noite.',
+        anonymous: false,
+        authorId: 'bruno-costa',
+        authorName: 'Bruno Costa',
+        createdAt: '2026-10-10T09:17:00.000Z',
+        status: 'respondido',
+        replies: [
+          { id: 'sug-tema-1', authorId: 'helena', authorName: 'Helena Duarte', text: 'O tema escuro já está disponível no cabeçalho.', createdAt: '2026-10-10T18:00:00.000Z' },
+          { id: 'sug-tema-2', authorId: 'bruno-costa', authorName: 'Bruno Costa', text: 'Encontrei o botão. Obrigado.', createdAt: '2026-10-11T09:00:00.000Z' },
+          { id: 'sug-tema-3', authorId: 'helena', authorName: 'Helena Duarte', text: 'Se notar algum contraste ruim, avise.', createdAt: '2026-10-11T09:30:00.000Z' },
+          { id: 'sug-tema-4', authorId: 'bruno-costa', authorName: 'Bruno Costa', text: 'Por enquanto está bom.', createdAt: '2026-10-11T10:00:00.000Z' },
+          { id: 'sug-tema-5', authorId: 'helena', authorName: 'Helena Duarte', text: 'Sugestão marcada como respondida.', createdAt: '2026-10-11T10:15:00.000Z' },
+        ],
+      },
+      {
+        id: 'sug-matheus',
+        destination: 'lideranca',
+        type: 'sugestao',
+        title: 'Atalho do mural no celular',
+        message: 'No celular, o mural fica longe do menu. Um atalho na primeira tela ajudaria no dia a dia.',
+        anonymous: false,
+        authorId: currentUser.id,
+        authorName: 'Matheus Larrie',
+        createdAt: '2026-10-15T11:20:00.000Z',
+        status: 'novo',
+        replies: [],
+      },
+    ];
+    let added = false;
+    for (const seed of seeds) {
+      if (!store.feedback.some((item) => item.id === seed.id)) {
+        store.feedback.push(seed);
+        added = true;
+      }
+    }
+    if (added) save(store);
+  }
+
   const attach: Connect.NextHandleFunction = async (req, res, next) => {
-    const url = req.url?.split('?')[0] ?? '';
+    const url = (req.url?.split('?')[0] ?? '').replace(/\/$/, '') || '/';
     if (!url.startsWith('/api/')) return next();
 
     try {
@@ -215,17 +345,22 @@ export function institutionApi(): Plugin {
       }
 
       if (req.method === 'GET' && url === '/api/feedback') {
-        const user = userFrom(req);
-        if (!user || !isLeader(user)) return send(res, 403, { error: 'forbidden' });
-        send(res, 200, { feedback: load().feedback.map(publicFeedback) });
+        const { user, access } = feedbackActor(req);
+        if (!user) return send(res, 401, { error: 'unknown' });
+        const store = load();
+        ensureSuggestions(store);
+        const visible = store.feedback.filter((item) => access === 'gestao' || item.authorId === user.id);
+        send(res, 200, { feedback: visible.map(publicFeedback) });
         return;
       }
 
       if (req.method === 'POST' && url === '/api/feedback') {
-        const user = userFrom(req);
+        const { user } = feedbackActor(req);
         if (!user) return send(res, 401, { error: 'unknown' });
         const body = JSON.parse((await readBody(req)).toString('utf8')) as Partial<Feedback>;
         const message = String(body.message ?? '').trim();
+        const title = String(body.title ?? '').trim();
+        if (!title || title.length > 140) return send(res, 400, { error: 'title' });
         if (!message || message.length > 4000) return send(res, 400, { error: 'message' });
         if (body.destination !== 'lideranca' && body.destination !== 'plataforma') return send(res, 400, { error: 'destination' });
         if (body.type !== 'feedback' && body.type !== 'sugestao') return send(res, 400, { error: 'type' });
@@ -235,12 +370,14 @@ export function institutionApi(): Plugin {
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           destination: body.destination,
           type: body.type,
+          title,
           message,
           anonymous,
-          authorId: anonymous ? null : user.id,
+          authorId: user.id,
           authorName: anonymous ? null : user.name,
           createdAt: new Date().toISOString(),
           status: 'novo',
+          replies: [],
         };
         store.feedback.unshift(item);
         save(store);
@@ -248,16 +385,41 @@ export function institutionApi(): Plugin {
         return;
       }
 
+      const replyMatch = /^\/api\/feedback\/([^/]+)\/replies$/.exec(url);
+      if (req.method === 'POST' && replyMatch) {
+        const { user, access } = feedbackActor(req);
+        if (!user) return send(res, 401, { error: 'unknown' });
+        const body = JSON.parse((await readBody(req)).toString('utf8')) as { text?: string };
+        const text = String(body.text ?? '').trim();
+        if (!text || text.length > 4000) return send(res, 400, { error: 'message' });
+        const store = load();
+        const item = store.feedback.find((entry) => entry.id === replyMatch[1]);
+        if (!item) return send(res, 404, { error: 'missing' });
+        if (access !== 'gestao' && item.authorId !== user.id) return send(res, 403, { error: 'forbidden' });
+        const reply: FeedbackReply = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          authorId: user.id,
+          authorName: item.anonymous && item.authorId === user.id ? null : user.name,
+          text,
+          createdAt: new Date().toISOString(),
+        };
+        item.replies = [...(item.replies ?? []), reply];
+        save(store);
+        send(res, 201, { feedback: publicFeedback(item) });
+        return;
+      }
+
       const statusMatch = /^\/api\/feedback\/([^/]+)$/.exec(url);
       if (req.method === 'PATCH' && statusMatch) {
-        const user = userFrom(req);
-        if (!user || !isLeader(user)) return send(res, 403, { error: 'forbidden' });
+        const { user, access } = feedbackActor(req);
+        if (!user || access !== 'gestao') return send(res, 403, { error: 'forbidden' });
         const body = JSON.parse((await readBody(req)).toString('utf8')) as { status?: string };
-        if (body.status !== 'novo' && body.status !== 'analise' && body.status !== 'resolvido') return send(res, 400, { error: 'status' });
+        const next = body.status === 'resolvido' ? 'respondido' : body.status;
+        if (next !== 'novo' && next !== 'analise' && next !== 'respondido') return send(res, 400, { error: 'status' });
         const store = load();
         const item = store.feedback.find((entry) => entry.id === statusMatch[1]);
         if (!item) return send(res, 404, { error: 'missing' });
-        item.status = body.status;
+        item.status = next;
         save(store);
         send(res, 200, { feedback: publicFeedback(item) });
         return;

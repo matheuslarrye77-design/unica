@@ -1,4 +1,6 @@
 import { currentUser } from '@/data/mockData';
+import { LOGIN_REQUIRED } from '@/lib/loginGate';
+import { useSyncExternalStore } from 'react';
 
 export type SessionUser = {
   id: string;
@@ -8,6 +10,65 @@ export type SessionUser = {
   avatar: string;
   email: string;
 };
+
+export type DemoId = 'matheus' | 'helena';
+
+export const DEMO_PROFILES = [
+  {
+    id: 'matheus' as const,
+    name: 'Matheus Larrie',
+    role: 'Colaborador',
+    department: 'Atendimento',
+    avatar: currentUser.avatar,
+    email: 'matheus.larrie@unica.local',
+    userId: currentUser.id,
+  },
+  {
+    id: 'helena' as const,
+    name: 'Helena Duarte',
+    role: 'Gerente',
+    department: 'Gestão',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=HelenaDuarte',
+    email: 'helena.duarte@unica.local',
+    userId: 'helena',
+  },
+];
+
+const DEMO_KEY = 'unica-demo-profile';
+let demoId: DemoId = 'matheus';
+try {
+  const stored = localStorage.getItem(DEMO_KEY);
+  if (stored === 'helena' || stored === 'matheus') demoId = stored;
+} catch {
+  demoId = 'matheus';
+}
+
+const demoListeners = new Set<() => void>();
+
+export function getDemoId() {
+  return demoId;
+}
+
+export function setDemoProfile(id: DemoId) {
+  demoId = id;
+  try {
+    localStorage.setItem(DEMO_KEY, id);
+  } catch {
+    /* navegador sem armazenamento */
+  }
+  demoListeners.forEach((listener) => listener());
+}
+
+export function useDemoProfile() {
+  return useSyncExternalStore(
+    (listener) => {
+      demoListeners.add(listener);
+      return () => demoListeners.delete(listener);
+    },
+    () => demoId,
+    () => 'matheus' as DemoId,
+  );
+}
 
 const TOKEN = 'unica-session';
 const USER = 'unica-user';
@@ -21,7 +82,18 @@ export function getSessionUser(): SessionUser | null {
   }
 }
 
-export function actor() {
+export function actor(): SessionUser {
+  if (!LOGIN_REQUIRED) {
+    const profile = DEMO_PROFILES.find((item) => item.id === demoId) ?? DEMO_PROFILES[0];
+    return {
+      id: profile.userId,
+      name: profile.name,
+      role: profile.role,
+      department: profile.department,
+      avatar: profile.avatar,
+      email: profile.email,
+    };
+  }
   return getSessionUser() ?? { ...currentUser, email: 'matheus.larrie@unica.local' };
 }
 

@@ -2,309 +2,310 @@ import { FeedbackDialog } from '@/components/FeedbackDialog';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { isLeader, type FeedbackItem } from '@/lib/institution';
-import { actor } from '@/lib/session';
+import { Textarea } from '@/components/ui/textarea';
+import { isLeader, loadFeedback, replyToFeedback, updateFeedbackStatus, type FeedbackItem, type SuggestionStatus } from '@/lib/institution';
+import { LOGIN_REQUIRED } from '@/lib/loginGate';
+import { actor, useDemoProfile } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import { Calendar, Check, ChevronDown, ChevronRight, Clock, Eye, Lock, Mail, MessageSquare, Plus, Search, Send, Trash2, UserRound } from 'lucide-react';
-import { useEffect, useMemo, useState, type FC } from 'react';
+import { ChevronRight, Filter, MessageSquare, Plus, Search } from 'lucide-react';
+import { useEffect, useMemo, useState, type FC, type KeyboardEvent } from 'react';
+import { toast } from 'sonner';
 
-type Destination = 'gestao' | 'suporte';
-type Status = 'recebido' | 'analise' | 'resolvido';
-
-type Reply = { id: string; author: string; text: string; when: string };
-
-type Item = {
-  id: string;
-  title: string;
-  body: string;
-  destination: Destination;
-  status: Status;
-  anonymous: boolean;
-  authorName: string;
-  authorId: string | null;
-  avatar?: string;
-  when: string;
-  replies: Reply[];
+const STATUS: Record<SuggestionStatus, { label: string; className: string }> = {
+  novo: { label: 'Novo', className: 'bg-[#FCE7F3] text-[#BE185D]' },
+  analise: { label: 'Análise', className: 'bg-[#F3E8FF] text-[#6D28D9]' },
+  respondido: { label: 'Respondido', className: 'bg-[#E0E7FF] text-[#3730A3]' },
 };
 
-const DEST: Record<Destination, string> = {
-  gestao: 'Gestão',
-  suporte: 'Suporte da plataforma',
-};
-
-const STATUS: Record<Status, { label: string; icon: typeof Clock }> = {
-  analise: { label: 'Em análise', icon: Clock },
-  recebido: { label: 'Recebido', icon: Mail },
-  resolvido: { label: 'Resolvido', icon: Check },
-};
-
-const BOARD: Item[] = [
-  {
-    id: 'fb-docs',
-    title: 'Dificuldade para acessar os documentos',
-    body: 'Ao abrir a área de documentos, a página demora para carregar e às vezes retorna ao início.',
-    destination: 'suporte',
-    status: 'analise',
-    anonymous: true,
-    authorName: 'Anônimo',
-    authorId: null,
-    when: 'Hoje, 14:32',
-    replies: [
-      { id: 'd1', author: 'Suporte da plataforma', text: 'Estamos acompanhando a lentidão na central de documentos.', when: 'Hoje, 15:05' },
-      { id: 'd2', author: 'Equipe Única', text: 'Vamos avisar por aqui quando a página estabilizar.', when: 'Hoje, 15:40' },
-    ],
-  },
-  {
-    id: 'fb-comunicacao',
-    title: 'Melhorar a comunicação entre equipes',
-    body: 'Seria útil ter um resumo semanal das atividades e decisões da equipe.',
-    destination: 'gestao',
-    status: 'recebido',
-    anonymous: false,
-    authorName: 'Ana Ribeiro',
-    authorId: 'ana',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AnaRibeiro',
-    when: 'Ontem, 16:48',
-    replies: [
-      { id: 'c1', author: 'Gestão', text: 'Boa ideia. Vamos incluir o resumo na reunião de segunda.', when: 'Ontem, 18:10' },
-    ],
-  },
-  {
-    id: 'fb-chat',
-    title: 'Atalho para abrir o chat',
-    body: 'Adicionar um atalho para acessar conversas recentes com mais rapidez.',
-    destination: 'suporte',
-    status: 'resolvido',
-    anonymous: false,
-    authorName: 'Carlos Mendes',
-    authorId: 'carlos',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=CarlosMendes',
-    when: '12 out, 09:15',
-    replies: [
-      { id: 'h1', author: 'Suporte da plataforma', text: 'O atalho entrou na barra do mural.', when: '13 out, 11:20' },
-      { id: 'h2', author: 'Carlos Mendes', text: 'Testei aqui e ficou bem mais rápido.', when: '13 out, 14:02' },
-      { id: 'h3', author: 'Suporte da plataforma', text: 'Fechamos este pedido como resolvido.', when: '13 out, 14:18' },
-    ],
-  },
-];
-
-function ownExample(user: { id: string; name: string; avatar: string }): Item {
-  return {
-    id: 'fb-meu',
-    title: 'Acesso aos documentos da equipe',
-    body: 'Quando entro na central de documentos, alguns arquivos demoram para abrir e a lista volta para o topo.',
-    destination: 'suporte',
-    status: 'analise',
-    anonymous: false,
-    authorName: user.name,
-    authorId: user.id,
-    avatar: user.avatar,
-    when: 'Hoje, 14:32',
-    replies: [
-      { id: 'm1', author: 'Suporte da plataforma', text: 'Recebemos o relato e já estamos olhando o carregamento da central.', when: 'Hoje, 15:10' },
-      { id: 'm2', author: 'Equipe Única', text: 'Assim que a correção subir, avisamos por aqui.', when: 'Hoje, 16:02' },
-    ],
-  };
+function initials(name: string) {
+  const parts = name.split(' ').filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || 'AN';
 }
 
-function fromApi(item: FeedbackItem, user: { id: string; name: string; avatar: string }): Item {
-  const destination: Destination = item.destination === 'plataforma' ? 'suporte' : 'gestao';
-  const status: Status = item.status === 'analise' ? 'analise' : item.status === 'resolvido' ? 'resolvido' : 'recebido';
-  return {
-    id: item.id,
-    title: item.message.split('\n')[0].slice(0, 72),
-    body: item.message,
-    destination,
-    status,
-    anonymous: item.anonymous,
-    authorName: item.anonymous ? 'Anônimo' : user.name,
-    authorId: item.anonymous ? null : user.id,
-    avatar: item.anonymous ? undefined : user.avatar,
-    when: 'Agora',
-    replies: [],
-  };
+function whenLabel(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const diff = Math.round((start - day) / 86_400_000);
+  const time = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  if (diff === 0) return `Hoje, ${time}`;
+  if (diff === 1) return `Ontem, ${time}`;
+  return `${date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}, ${time}`;
+}
+
+function replyLabel(count: number) {
+  return count === 1 ? '1 resposta' : `${count} respostas`;
 }
 
 export const FeedbacksPage: FC = () => {
-  const me = actor();
-  const leader = isLeader(me);
+  const demo = useDemoProfile();
+  const user = actor();
+  const gestao = LOGIN_REQUIRED ? isLeader(user) : demo === 'helena';
+  const [items, setItems] = useState<FeedbackItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [query, setQuery] = useState('');
-  const [destination, setDestination] = useState<'todos' | Destination>('todos');
-  const [status, setStatus] = useState<'todos' | Status>('todos');
-  const [scope, setScope] = useState<'todos' | 'meus'>('todos');
-  const [preview, setPreview] = useState(false);
-  const [open, setOpen] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<SuggestionStatus | 'todos'>('todos');
+  const [authorFilter, setAuthorFilter] = useState('');
+  const [period, setPeriod] = useState<'todos' | '7' | '30'>('todos');
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [statusMenu, setStatusMenu] = useState<string | null>(null);
+  const [savingStatus, setSavingStatus] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [sending, setSending] = useState<string | null>(null);
   const [composer, setComposer] = useState(false);
-  const [created, setCreated] = useState<Item[]>([]);
-  const [removed, setRemoved] = useState<string[]>([]);
-  const collaborator = preview || !leader;
 
   useEffect(() => {
-    function onCreated(event: Event) {
-      const detail = (event as CustomEvent<FeedbackItem>).detail;
-      if (!detail?.id) return;
-      setCreated((current) => [fromApi(detail, me), ...current.filter((item) => item.id !== detail.id)]);
-    }
-    window.addEventListener('unica-feedback-created', onCreated);
-    return () => window.removeEventListener('unica-feedback-created', onCreated);
-  }, [me.id, me.name, me.avatar]);
+    let active = true;
+    setLoading(true);
+    setFailed(false);
+    loadFeedback()
+      .then((data) => {
+        if (!active) return;
+        setItems(data.feedback);
+      })
+      .catch(() => {
+        if (active) setFailed(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [demo, gestao]);
 
-  const mine = useMemo(() => [ownExample(me), ...created].filter((item) => !removed.includes(item.id)), [created, me, removed]);
-  const board = BOARD.filter((item) => !removed.includes(item.id));
-  const source = collaborator || scope === 'meus' ? mine : [...created, ...board];
-  const text = query.trim().toLowerCase();
-  const visible = source.filter((item) => {
-    const haystack = `${item.title} ${item.body} ${item.authorName}`.toLowerCase();
-    return (destination === 'todos' || item.destination === destination)
-      && (status === 'todos' || item.status === status)
-      && (!text || haystack.includes(text));
-  });
-  const showPhotoStats = leader && !collaborator && scope === 'todos' && destination === 'todos' && status === 'todos' && !text;
-  const stats = showPhotoStats
-    ? [
-      { label: 'Total recebidos', value: '24', icon: MessageSquare },
-      { label: 'Em análise', value: '08', icon: Clock },
-      { label: 'Resolvidos', value: '16', icon: Check },
-    ]
-    : [
-      { label: 'Total recebidos', value: String(source.length).padStart(2, '0'), icon: MessageSquare },
-      { label: 'Em análise', value: String(source.filter((item) => item.status === 'analise').length).padStart(2, '0'), icon: Clock },
-      { label: 'Resolvidos', value: String(source.filter((item) => item.status === 'resolvido').length).padStart(2, '0'), icon: Check },
-    ];
+  const filtered = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    const author = authorFilter.trim().toLowerCase();
+    const limit = period === 'todos' ? null : Date.now() - Number(period) * 86_400_000;
+    return items.filter((item) => {
+      if (statusFilter !== 'todos' && item.status !== statusFilter) return false;
+      if (gestao && author && !(item.anonymous ? 'anônimo' : item.authorName ?? '').toLowerCase().includes(author)) return false;
+      if (limit !== null && new Date(item.createdAt).getTime() < limit) return false;
+      if (!term) return true;
+      return `${item.title} ${item.message}`.toLowerCase().includes(term);
+    });
+  }, [items, query, statusFilter, authorFilter, period, gestao]);
+
+  function clearFilters() {
+    setStatusFilter('todos');
+    setAuthorFilter('');
+    setPeriod('todos');
+    setQuery('');
+  }
+
+  async function changeStatus(item: FeedbackItem, status: SuggestionStatus) {
+    if (!gestao || item.status === status || savingStatus) return;
+    setSavingStatus(item.id);
+    setStatusMenu(null);
+    try {
+      const saved = await updateFeedbackStatus(item.id, status);
+      setItems((current) => current.map((entry) => (entry.id === item.id ? saved.feedback : entry)));
+    } catch {
+      toast.error('Não foi possível atualizar o status.');
+    } finally {
+      setSavingStatus(null);
+    }
+  }
+
+  async function sendReply(item: FeedbackItem) {
+    const text = (drafts[item.id] ?? '').trim();
+    if (!text || sending) return;
+    setSending(item.id);
+    try {
+      const saved = await replyToFeedback(item.id, text);
+      setItems((current) => current.map((entry) => (entry.id === item.id ? saved.feedback : entry)));
+      setDrafts((current) => ({ ...current, [item.id]: '' }));
+    } catch {
+      toast.error('Não foi possível enviar a resposta.');
+    } finally {
+      setSending(null);
+    }
+  }
+
+  function onReplyKey(event: KeyboardEvent<HTMLTextAreaElement>, item: FeedbackItem) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      void sendReply(item);
+    }
+  }
 
   return (
     <PageFrame>
-      <div>
-        {collaborator && leader ? (
-          <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#F3E4FA] px-3 py-1 text-[12px] font-medium text-[#6A228C]">
-            <Eye className="h-3.5 w-3.5" /> Visão do colaborador
-          </p>
-        ) : null}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]">
+      <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 grid h-10 w-10 place-items-center rounded-2xl bg-[#F3E8FF] text-[#7C3AED]">
               <MessageSquare className="h-5 w-5" />
             </span>
-            <div className="min-w-0">
-              <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#241B33]">Feedbacks</h1>
-              <p className="mt-0.5 text-[13.5px] text-[#8A7C98]">Ouça, acompanhe e transforme sugestões em melhorias.</p>
+            <div>
+              <h1 className="text-[26px] font-semibold tracking-tight text-[#241B33]">Sugestões</h1>
+              <p className="mt-1 max-w-xl text-[13px] leading-5 text-[#8A7C98]">Sua opinião também constrói o nosso futuro. Deixe aqui suas ideias, comentários e sugestões.</p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {leader ? (
-              <button
-                type="button"
-                aria-pressed={preview}
-                aria-label={preview ? 'Voltar à visão da gestão' : 'Ver como o colaborador vê'}
-                onClick={() => setPreview((value) => !value)}
-                className={cn('grid h-10 w-10 place-items-center rounded-full text-white', preview ? 'bg-[#6A228C]' : 'bg-[#8E35B8] hover:bg-[#7A2CA0]')}
-              >
-                <Eye className="h-4 w-4" />
-              </button>
-            ) : null}
-            <Button className="h-10 rounded-full bg-[#8E35B8] px-4 hover:bg-[#7A2CA0]" onClick={() => setComposer(true)}>
-              <Plus className="h-4 w-4" /> Novo feedback
+          <Button className="rounded-full" onClick={() => setComposer(true)}>
+            <Plus className="h-4 w-4" /> Nova sugestão
+          </Button>
+        </div>
+
+        <div className="mt-5 flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#B7A8C4]" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar sugestão..."
+              className="h-11 rounded-xl border-[#EFE6F4] bg-white pl-9"
+              aria-label="Buscar sugestão por título ou conteúdo"
+            />
+          </div>
+          <div className="relative">
+            <Button type="button" variant="outline" className="h-11 rounded-xl border-[#EFE6F4] bg-white" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen}>
+              <Filter className="h-4 w-4" /> Filtros
             </Button>
+            {filtersOpen ? (
+              <div className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-[#EFE6F4] bg-white p-3 shadow-lg">
+                <label className="block text-[12px] font-medium text-[#6B5A7A]">
+                  Status
+                  <select className="mt-1 h-9 w-full rounded-lg border border-[#EFE6F4] bg-white px-2 text-[13px]" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as SuggestionStatus | 'todos')}>
+                    <option value="todos">Todos</option>
+                    <option value="novo">Novo</option>
+                    <option value="analise">Análise</option>
+                    <option value="respondido">Respondido</option>
+                  </select>
+                </label>
+                {gestao ? (
+                  <>
+                    <label className="mt-3 block text-[12px] font-medium text-[#6B5A7A]">
+                      Colaborador
+                      <input className="mt-1 h-9 w-full rounded-lg border border-[#EFE6F4] px-2 text-[13px]" value={authorFilter} onChange={(event) => setAuthorFilter(event.target.value)} placeholder="Nome do autor" />
+                    </label>
+                    <label className="mt-3 block text-[12px] font-medium text-[#6B5A7A]">
+                      Período
+                      <select className="mt-1 h-9 w-full rounded-lg border border-[#EFE6F4] bg-white px-2 text-[13px]" value={period} onChange={(event) => setPeriod(event.target.value as 'todos' | '7' | '30')}>
+                        <option value="todos">Todo o período</option>
+                        <option value="7">Últimos 7 dias</option>
+                        <option value="30">Últimos 30 dias</option>
+                      </select>
+                    </label>
+                  </>
+                ) : null}
+                <button type="button" className="mt-3 text-[12px] font-medium text-[#8E35B8]" onClick={clearFilters}>Limpar filtros</button>
+              </div>
+            ) : null}
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          {stats.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <section key={stat.label} className="flex items-center gap-3 rounded-[22px] border border-[#F0E7F6] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]"><Icon className="h-5 w-5" /></span>
-                <span>
-                  <span className="block text-[12.5px] text-[#8A7C98]">{stat.label}</span>
-                  <span className="block text-[28px] font-semibold leading-none text-[#2C2433]">{stat.value}</span>
-                </span>
-              </section>
-            );
-          })}
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[200px] flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#B7A8C4]" />
-            <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar feedback..." className="h-10 rounded-full border-[#E7DFF0] bg-white pl-9" />
-          </div>
-          <select aria-label="Destino" className="h-10 rounded-full border border-[#E7DFF0] bg-white px-3 text-[13px] text-[#5C5168]" value={destination} onChange={(event) => setDestination(event.target.value as typeof destination)}>
-            <option value="todos">Todos os destinos</option>
-            <option value="gestao">Gestão</option>
-            <option value="suporte">Suporte da plataforma</option>
-          </select>
-          <select aria-label="Status" className="h-10 rounded-full border border-[#E7DFF0] bg-white px-3 text-[13px] text-[#5C5168]" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}>
-            <option value="todos">Todos os status</option>
-            <option value="recebido">Recebido</option>
-            <option value="analise">Em análise</option>
-            <option value="resolvido">Resolvido</option>
-          </select>
-          {collaborator ? null : (
-            <div className="flex rounded-full bg-white p-1 shadow-[0_4px_14px_rgba(80,40,120,0.05)]">
-              <button type="button" onClick={() => setScope('todos')} className={cn('rounded-full px-3 py-1.5 text-[13px] font-medium', scope === 'todos' ? 'bg-[#8E35B8] text-white' : 'text-[#8A7C98]')}>Todos</button>
-              <button type="button" onClick={() => setScope('meus')} className={cn('rounded-full px-3 py-1.5 text-[13px] font-medium', scope === 'meus' ? 'bg-[#8E35B8] text-white' : 'text-[#8A7C98]')}>Meus feedbacks</button>
+        <div className="mt-4 space-y-3">
+          {loading ? <p className="rounded-2xl border border-[#EFE6F4] bg-white px-4 py-8 text-center text-sm text-[#8A7C98]">Carregando sugestões...</p> : null}
+          {failed ? <p className="rounded-2xl border border-[#F8D0E3] bg-white px-4 py-8 text-center text-sm text-[#9D174D]">Não foi possível carregar as sugestões.</p> : null}
+          {!loading && !failed && filtered.length === 0 ? (
+            <div className="rounded-2xl border border-[#EFE6F4] bg-white px-4 py-10 text-center">
+              <p className="text-sm text-[#8A7C98]">{items.length === 0 ? 'Nenhuma sugestão ainda.' : 'Nenhuma sugestão encontrada para esta busca.'}</p>
+              {items.length === 0 ? (
+                <Button className="mt-4 rounded-full" onClick={() => setComposer(true)}>Criar a primeira sugestão</Button>
+              ) : (
+                <button type="button" className="mt-3 text-sm font-medium text-[#8E35B8]" onClick={clearFilters}>Limpar pesquisa</button>
+              )}
             </div>
-          )}
-        </div>
-
-        <div className="mt-4 grid gap-3">
-          {visible.length === 0 ? (
-            <p className="rounded-[22px] border border-[#F0E7F6] bg-white px-4 py-10 text-center text-sm text-[#8A7C98]">
-              {collaborator ? 'Você ainda não enviou feedbacks.' : 'Nenhum feedback encontrado.'}
-            </p>
-          ) : visible.map((item) => {
-            const StatusIcon = STATUS[item.status].icon;
-            const expanded = open === item.id;
+          ) : null}
+          {!loading && !failed ? filtered.map((item) => {
+            const name = item.anonymous ? 'Anônimo' : item.authorName || 'Colaborador';
+            const open = openId === item.id;
+            const count = item.replies?.length ?? 0;
+            const draft = drafts[item.id] ?? '';
             return (
-              <article key={item.id} className="rounded-[22px] border border-[#F0E7F6] bg-white p-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
-                <div className="flex items-start gap-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]"><MessageSquare className="h-4 w-4" /></span>
+              <article key={item.id} className="rounded-2xl border border-[#EFE6F4] bg-white">
+                <div className="flex items-start gap-3 px-4 py-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F3E8FF] text-[12px] font-semibold text-[#7C3AED]">{initials(name)}</span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-[15px] font-semibold text-[#2C2433]">{item.title}</h2>
-                      <span className="rounded-full bg-[#F3E4FA] px-2 py-0.5 text-[11px] font-medium text-[#6A228C]">{DEST[item.destination]}</span>
-                      <span className="ml-auto inline-flex items-center gap-1 text-[12px] text-[#8A7C98]"><StatusIcon className="h-3.5 w-3.5" /> {STATUS[item.status].label}</span>
-                    </div>
-                    <p className="mt-2 max-w-xl text-[13.5px] leading-snug text-[#5C5168]">{item.body}</p>
-                    {expanded ? (
-                      <div className="mt-3 grid gap-2 rounded-2xl bg-[#FBF7FC] p-3">
-                        {item.replies.length === 0 ? <p className="text-[12.5px] text-[#8A7C98]">Ainda sem respostas.</p> : item.replies.map((reply) => (
-                          <div key={reply.id}>
-                            <p className="text-[12.5px] font-semibold text-[#2C2433]">{reply.author} <span className="font-normal text-[#8A7C98]">· {reply.when}</span></p>
-                            <p className="text-[13px] text-[#5C5168]">{reply.text}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                    <div className="mt-3 flex flex-wrap items-center gap-3 text-[12px] text-[#8A7C98]">
-                      {item.avatar ? <img src={item.avatar} alt="" className="h-6 w-6 rounded-full bg-[#F3E4FA]" /> : <span className="grid h-6 w-6 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8]"><UserRound className="h-3.5 w-3.5" /></span>}
-                      <span className="font-medium text-[#2C2433]">{item.authorName}</span>
-                      <span className="inline-flex items-center gap-1">{item.anonymous ? <Lock className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />} {item.anonymous ? 'Anônimo' : 'Nome visível'}</span>
-                      <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> {item.when}</span>
-                      {collaborator ? (
-                        <button type="button" className="ml-auto inline-flex items-center gap-1 font-medium text-[#E2186A]" onClick={() => { if (confirm('Excluir este feedback?')) setRemoved((current) => [...current, item.id]); }}>
-                          <Trash2 className="h-3.5 w-3.5" /> Excluir
+                    <button type="button" className="block w-full text-left" onClick={() => { setOpenId(open ? null : item.id); setStatusMenu(null); }}>
+                      <span className="block truncate text-[14px] font-semibold text-[#241B33]">{item.title || item.message}</span>
+                      <span className="mt-0.5 block truncate text-[12.5px] text-[#8A7C98]">{item.message}</span>
+                    </button>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                      <span className="text-[12px] text-[#8A7C98]">{name}</span>
+                      <span className="text-[12px] text-[#8A7C98]">{whenLabel(item.createdAt)}</span>
+                      <span className="ml-auto flex items-center gap-3">
+                    <div className="relative">
+                      {gestao ? (
+                        <button
+                          type="button"
+                          className={cn('rounded-full px-2.5 py-1 text-[12px] font-medium', STATUS[item.status].className, savingStatus === item.id && 'opacity-60')}
+                          onClick={() => setStatusMenu(statusMenu === item.id ? null : item.id)}
+                          disabled={savingStatus === item.id}
+                          aria-label={`Alterar status de ${item.title || 'sugestão'}`}
+                        >
+                          {STATUS[item.status].label}
                         </button>
+                      ) : (
+                        <span className={cn('rounded-full px-2.5 py-1 text-[12px] font-medium', STATUS[item.status].className)}>{STATUS[item.status].label}</span>
+                      )}
+                      {statusMenu === item.id ? (
+                        <div className="absolute right-0 z-10 mt-1 w-36 rounded-xl border border-[#EFE6F4] bg-white p-1 shadow-lg">
+                          {(Object.keys(STATUS) as SuggestionStatus[]).map((status) => (
+                            <button key={status} type="button" className={cn('block w-full rounded-lg px-2 py-1.5 text-left text-[12px]', status === item.status ? 'bg-[#F8EAFB] font-medium' : 'hover:bg-[#FBF7FD]')} onClick={() => void changeStatus(item, status)}>
+                              {STATUS[status].label}
+                            </button>
+                          ))}
+                        </div>
                       ) : null}
                     </div>
-                  </div>
-                  <div className="hidden shrink-0 text-right sm:block">
-                    <p className="inline-flex items-center gap-1 text-[12px] text-[#8A7C98]"><Send className="h-3.5 w-3.5 text-[#8E35B8]" /> Destino</p>
-                    <p className="text-[13px] font-medium text-[#2C2433]">{DEST[item.destination]}</p>
-                    <button type="button" className="mt-2 inline-flex items-center gap-1 text-[12.5px] font-medium text-[#8E35B8]" onClick={() => setOpen(expanded ? null : item.id)}>
-                      <MessageSquare className="h-3.5 w-3.5" /> {item.replies.length} {item.replies.length === 1 ? 'resposta' : 'respostas'}
+                    <button type="button" className="inline-flex items-center gap-1 text-[12px] text-[#8A7C98]" onClick={() => setOpenId(open ? null : item.id)} aria-label={replyLabel(count)}>
+                      <MessageSquare className="h-3.5 w-3.5" /> {replyLabel(count)}
                     </button>
-                    <button type="button" aria-label={expanded ? 'Recolher respostas' : 'Ver respostas'} className="mt-2 grid h-7 w-7 place-items-center rounded-full text-[#C4B6D4]" onClick={() => setOpen(expanded ? null : item.id)}>
-                      {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                    </button>
+                    <ChevronRight className={cn('h-4 w-4 text-[#C4B6D4] transition-transform', open && 'rotate-90')} />
+                      </span>
+                    </div>
                   </div>
                 </div>
+                {open ? (
+                  <div className="border-t border-[#F3EEF6] px-4 py-3">
+                    <div className="space-y-3">
+                      {(item.replies ?? []).length === 0 ? <p className="text-[13px] text-[#8A7C98]">Ainda não há respostas.</p> : null}
+                      {(item.replies ?? []).map((reply) => (
+                        <div key={reply.id} className="rounded-xl bg-[#FBF7FD] px-3 py-2">
+                          <p className="text-[12px] font-medium text-[#6B5A7A]">{reply.authorName || 'Anônimo'} <span className="font-normal text-[#B7A8C4]">{whenLabel(reply.createdAt)}</span></p>
+                          <p className="mt-1 whitespace-pre-wrap text-[13px] leading-5 text-[#2C2433]">{reply.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3">
+                      <Textarea
+                        value={draft}
+                        onChange={(event) => setDrafts((current) => ({ ...current, [item.id]: event.target.value }))}
+                        onKeyDown={(event) => onReplyKey(event, item)}
+                        placeholder="Escreva uma resposta"
+                        className="min-h-20 rounded-xl border-[#EFE6F4]"
+                        aria-label={`Resposta para ${item.title || 'sugestão'}`}
+                      />
+                      <div className="mt-2 flex justify-end">
+                        <Button type="button" className="rounded-full" disabled={!draft.trim() || sending === item.id} onClick={() => void sendReply(item)}>
+                          {sending === item.id ? 'Enviando...' : 'Enviar resposta'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </article>
             );
-          })}
+          }) : null}
         </div>
       </div>
-      <FeedbackDialog open={composer} onOpenChange={setComposer} />
+      <FeedbackDialog
+        open={composer}
+        onOpenChange={(open) => {
+          setComposer(open);
+          if (!open) {
+            void loadFeedback().then((data) => setItems(data.feedback)).catch(() => undefined);
+          }
+        }}
+      />
     </PageFrame>
   );
 };

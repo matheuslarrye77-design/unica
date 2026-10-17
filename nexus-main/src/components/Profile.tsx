@@ -8,13 +8,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
-import { actor, logout } from '@/lib/session';
+import { actor, DEMO_PROFILES, logout, setDemoProfile, useDemoProfile } from '@/lib/session';
 import { Bell, LogOut, Settings, User } from 'lucide-react';
 import { type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export const Profile: FC = () => {
   const navigate = useNavigate();
+  const demo = useDemoProfile();
   const user = actor();
 
   return (
@@ -56,6 +57,21 @@ export const Profile: FC = () => {
           <Bell className="mr-2 h-4 w-4" />
           <span>Notificações</span>
         </DropdownMenuItem>
+        {LOGIN_REQUIRED ? null : (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-[11px] font-medium text-muted-foreground">Perfis de demonstração</DropdownMenuLabel>
+            {DEMO_PROFILES.map((profile) => (
+              <DropdownMenuItem key={profile.id} className={demo === profile.id ? 'cursor-pointer bg-accent' : 'cursor-pointer'} onClick={() => setDemoProfile(profile.id)}>
+                <img src={profile.avatar} alt="" className="mr-2 h-6 w-6 rounded-full" />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm">{profile.name.split(' ')[0]}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">{profile.id === 'helena' ? 'Gestão' : 'Colaborador'}</span>
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="cursor-pointer text-red-600 focus:text-red-600"

@@ -188,7 +188,7 @@ export const ActivityBoard: FC = () => {
 
       <div className="mt-3 grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_272px]">
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
-          <div className="grid grid-cols-1 items-start gap-2.5 lg:grid-cols-3">
+          <div className="grid grid-cols-1 items-stretch gap-2.5 lg:grid-cols-3">
             {ACTIVITY_STATUSES.map((status) => (
               <ActivityColumn
                 key={status}

@@ -292,7 +292,8 @@ export function extraApi(): Connect.NextHandleFunction {
 
   return async (req, res, next) => {
     const url = req.url?.split('?')[0] ?? '';
-    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && !url.startsWith('/api/feed') && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
+    const feedRoute = url === '/api/feed' || url.startsWith('/api/feed/');
+    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && !feedRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
       return next();
     }
     try {
