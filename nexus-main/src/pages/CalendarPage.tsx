@@ -5,6 +5,7 @@ import { calendarEvents, type CalendarEvent } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { directoryPeople, isLeader, useInstitution, wallpaperUrl, type CalendarTheme } from '@/lib/institution';
 import { Calendar, Cake, ChevronLeft, ChevronRight, MapPin, Plus, Search, X } from 'lucide-react';
+import { CelebrationsCenter } from '@/components/celebrations/CelebrationsCenter';
 import { EventDialog } from '@/components/calendar/EventDialog';
 import { deleteEvent, notifyEvents, parseAgendaDate, useAgendaEvents, type AgendaEvent } from '@/lib/events';
 import { actor } from '@/lib/session';
@@ -330,6 +331,20 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
       return date;
     });
     const agenda = [...visibleEvents].sort((a, b) => a.date.getTime() - b.date.getTime() || a.title.localeCompare(b.title, 'pt-BR'));
+    if (birthdaysFocus) {
+      return (
+        <div id="calendario" className="min-w-0">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]"><Cake className="h-5 w-5" /></span>
+            <div>
+              <h1 className="text-[26px] font-semibold tracking-tight text-[#241B33]">Celebrações</h1>
+              <p className="text-[13.5px] text-[#8A7C98]">Decore o bolo e as datas da equipe. O recado aparece ao tocar no enfeite.</p>
+            </div>
+          </div>
+          <CelebrationsCenter />
+        </div>
+      );
+    }
     return (
       <div id="calendario" className="min-w-0">
         <div className="flex items-center justify-between gap-4">

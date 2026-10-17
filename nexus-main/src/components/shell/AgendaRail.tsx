@@ -1,7 +1,8 @@
 import { calendarEvents } from '@/data/mockData';
+import { celebrationPersonId } from '@/lib/celebrations';
 import { Cake, ChevronRight, Sparkles } from 'lucide-react';
 import { useState, type FC } from 'react';
-import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 
 export const AgendaRail: FC = () => {
   const start = new Date();
@@ -20,8 +21,6 @@ export const AgendaRail: FC = () => {
     .sort((a, b) => a.date.getTime() - b.date.getTime())
     .slice(0, 3);
   const noteTarget = nextBirthday;
-  const [noteFor, setNoteFor] = useState<string | null>(null);
-  const [note, setNote] = useState('');
   const [expanded, setExpanded] = useState(false);
   const visibleUpcoming = expanded ? upcoming : upcoming.slice(0, 3);
 
@@ -67,30 +66,10 @@ export const AgendaRail: FC = () => {
                   <span className="mt-0.5 block truncate text-[12px] text-[#8A7C98]">
                     {event.type === 'birthday' ? `${event.date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} · Equipe` : [event.place, event.time].filter(Boolean).join(' · ')}
                   </span>
-                  {showNote ? (
-                    <div className="mt-1">
-                      {noteFor ? (
-                        <form
-                          className="mb-2"
-                          onSubmit={(submit) => {
-                            submit.preventDefault();
-                            if (!note.trim()) return;
-                            toast.success(`Recado enviado para ${noteFor}.`);
-                            setNote('');
-                            setNoteFor(null);
-                          }}
-                        >
-                          <textarea value={note} onChange={(change) => setNote(change.target.value)} placeholder="Escreva um recado..." className="h-16 w-full resize-none rounded-xl border border-[#E7DFF0] px-3 py-2 text-[13px]" />
-                          <div className="mt-1.5 flex justify-end gap-2">
-                            <button type="button" className="text-[12px] text-[#8A7C98]" onClick={() => setNoteFor(null)}>Cancelar</button>
-                            <button type="submit" className="rounded-full bg-[#8E35B8] px-3 py-1 text-[12px] font-medium text-white">Enviar</button>
-                          </div>
-                        </form>
-                      ) : null}
-                      <button type="button" onClick={() => setNoteFor(noteFor ? null : (event.personName ?? event.title))} className="inline-flex items-center gap-1 text-[12px] font-medium text-[#8E35B8]">
-                        <Cake className="h-3.5 w-3.5" /> Deixe um recado
-                      </button>
-                    </div>
+                  {showNote && event.personName ? (
+                    <Link to={`/calendar?tipo=aniversarios&pessoa=${celebrationPersonId(event.personName)}`} className="mt-1 inline-flex items-center gap-1 text-[12px] font-medium text-[#8E35B8]">
+                      <Cake className="h-3.5 w-3.5" /> Deixe um recado
+                    </Link>
                   ) : null}
                 </span>
                 {event.avatar ? <img src={event.avatar} alt="" className="h-8 w-8 shrink-0 rounded-full bg-[#F3E4FA]" /> : <ChevronRight className="mt-2 h-4 w-4 shrink-0 text-[#C4B6D4]" />}

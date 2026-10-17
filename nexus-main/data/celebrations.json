@@ -1,0 +1,132 @@
+{
+  "settings": {
+    "viewMonths": 2,
+    "timezone": "America/Sao_Paulo"
+  },
+  "people": {
+    "caio-mendes": {
+      "name": "Caio Mendes",
+      "avatar": "",
+      "month": 10,
+      "day": 18
+    },
+    "ana-souza": {
+      "name": "Ana Souza",
+      "avatar": "",
+      "month": 10,
+      "day": 15
+    }
+  },
+  "editions": [
+    {
+      "id": "natal-2026",
+      "scope": "collective",
+      "theme": "natal",
+      "title": "Natal",
+      "year": 2026,
+      "prepareFrom": "2026-11-01",
+      "messageUntil": "2026-12-24",
+      "openAt": "2026-12-25",
+      "viewUntil": "2027-01-06"
+    },
+    {
+      "id": "anonovo-2027",
+      "scope": "collective",
+      "theme": "anonovo",
+      "title": "Ano Novo",
+      "year": 2027,
+      "prepareFrom": "2026-12-01",
+      "messageUntil": "2026-12-31",
+      "openAt": "2027-01-01",
+      "viewUntil": "2027-01-15"
+    },
+    {
+      "id": "halloween-2026",
+      "scope": "collective",
+      "theme": "halloween",
+      "title": "Halloween",
+      "year": 2026,
+      "prepareFrom": "2026-10-01",
+      "messageUntil": "2026-10-31",
+      "openAt": "2026-10-31",
+      "viewUntil": "2026-11-07"
+    },
+    {
+      "id": "bday-caio-mendes-2026",
+      "scope": "birthday",
+      "theme": "bolo",
+      "title": "Aniversário de Caio Mendes",
+      "personId": "caio-mendes",
+      "personName": "Caio Mendes",
+      "avatar": "",
+      "year": 2026,
+      "celebration": "2026-10-18",
+      "prepareFrom": "2026-10-01",
+      "messageUntil": "2026-10-18",
+      "openAt": "2026-10-18",
+      "viewUntil": "2026-12-18"
+    },
+    {
+      "id": "bday-ana-souza-2026",
+      "scope": "birthday",
+      "theme": "bolo",
+      "title": "Aniversário de Ana Souza",
+      "personId": "ana-souza",
+      "personName": "Ana Souza",
+      "avatar": "",
+      "year": 2026,
+      "celebration": "2026-10-15",
+      "prepareFrom": "2026-10-01",
+      "messageUntil": "2026-10-15",
+      "openAt": "2026-10-15",
+      "viewUntil": "2026-12-15"
+    }
+  ],
+  "ornaments": [
+    {
+      "id": "orn-mvcrvyim-fxxe",
+      "editionId": "bday-caio-mendes-2026",
+      "kind": "bombom",
+      "x": 40,
+      "y": 46,
+      "scale": 1,
+      "message": "Um ano de boas entregas, Caio.",
+      "media": null,
+      "authorId": "1",
+      "authorName": "Matheus Larrie",
+      "authorAvatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Matheus",
+      "createdAt": "2026-10-17T19:11:37.342Z",
+      "updatedAt": "2026-10-17T19:11:37.342Z"
+    },
+    {
+      "id": "orn-mvcrxobm-5jsk",
+      "editionId": "halloween-2026",
+      "kind": "abobora",
+      "x": 55,
+      "y": 60,
+      "scale": 1,
+      "message": "Boa temporada para a equipe.",
+      "media": null,
+      "authorId": "helena",
+      "authorName": "Helena Duarte",
+      "authorAvatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=HelenaDuarte",
+      "createdAt": "2026-10-17T19:12:57.442Z",
+      "updatedAt": "2026-10-17T19:12:57.442Z"
+    },
+    {
+      "id": "orn-mvcs02ud-jrg7",
+      "editionId": "bday-caio-mendes-2026",
+      "kind": "estrela",
+      "x": 50,
+      "y": 42,
+      "scale": 1,
+      "message": "Que a estrela deste ano seja sua, Caio.",
+      "media": null,
+      "authorId": "1",
+      "authorName": "Matheus Larrie",
+      "authorAvatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Matheus",
+      "createdAt": "2026-10-17T19:14:49.573Z",
+      "updatedAt": "2026-10-17T19:14:49.573Z"
+    }
+  ]
+}

@@ -64,9 +64,9 @@ export const BirthdayRail: FC = () => {
                 <span className="block truncate text-[12.5px] font-medium leading-4">{person.name}</span>
                 <span className="block truncate text-[11px] text-muted-foreground">{person.whenLabel}</span>
               </span>
-              <Link to="/calendar?tipo=aniversarios" className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-medium text-primary hover:underline">
+              <Link to={person.id === 'foto-ana' ? '/calendar?tipo=aniversarios&pessoa=ana-souza' : '/calendar?tipo=aniversarios'} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-medium text-primary hover:underline">
                 <Emoji emoji="🎉" className="h-3.5 w-3.5" />
-                Parabéns
+                Deixe um Recado
               </Link>
             </li>
           ))}
