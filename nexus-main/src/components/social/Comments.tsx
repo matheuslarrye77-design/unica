@@ -47,7 +47,7 @@ export const Comments: FC<{
               <p className="text-sm leading-5">
                 <span className="font-semibold">{comment.author}</span> {comment.body ? <EmojiText text={comment.body} /> : null}
               </p>
-              {comment.media ? <img src={comment.media.url} alt={comment.media.kind === 'gif' ? 'GIF' : 'Figurinha'} className={comment.media.kind === 'gif' ? 'mt-1 h-32 w-32 rounded-xl object-cover' : 'mt-1 h-28 w-28 rounded-xl object-contain'} /> : null}
+              {comment.media ? <img src={comment.media.url} alt={comment.media.kind === 'gif' ? 'GIF' : 'Figurinha'} className="mt-1 h-28 w-28 rounded-xl bg-[#F8EAFB] object-contain" /> : null}
               <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
                 <span>{comment.time}</span>
                 <button type="button" onClick={() => onLike(comment.id)} className={comment.liked ? 'inline-flex items-center gap-1 font-medium text-primary' : 'inline-flex items-center gap-1 hover:text-foreground'}>

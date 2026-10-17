@@ -1,6 +1,6 @@
 import { Sun } from 'lucide-react';
 import { LilacWash } from './LilacWash';
-import { type FC, useEffect, useState } from 'react';
+import { type FC, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { getTimeBasedGreeting } from '@/lib/utils';
 import { cancelRepost, commentFeedPost, createFeedPost, deleteFeedComment, deleteFeedPost, likeFeedComment, likeFeedPost, loadFeed, republishPost, saveFeedPost, shareFeedPost, uploadMedia, voteFeedPost, type Repost } from '@/lib/feed';
@@ -24,17 +24,26 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   const [shareId, setShareId] = useState<string | null>(null);
   const [repostId, setRepostId] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  const feedTicket = useRef(0);
   const firstName = user.name.split(' ')[0];
+
+  function holdFeed() {
+    feedTicket.current += 1;
+  }
 
   useEffect(() => {
     const refresh = () => {
+      const ticket = ++feedTicket.current;
       void loadFeed().then((feed) => {
+        if (ticket !== feedTicket.current) return;
         setPosts((current) => feed.posts.map((post) => {
           const previous = current.find((item) => item.id === post.id);
           return previous ? { ...post, commentsOpen: previous.commentsOpen } : post;
         }));
         setReposts(feed.reposts);
-      }).catch(() => toast.error('Não foi possível abrir o mural.'));
+      }).catch(() => {
+        if (ticket === feedTicket.current) toast.error('Não foi possível abrir o mural.');
+      });
     };
     refresh();
     const timer = window.setInterval(refresh, 5000);
@@ -54,6 +63,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   async function publish(draft: NewPostDraft) {
     try {
       const result = await createFeedPost({ body: draft.body, images: draft.images, image: draft.images?.[0], attachment: draft.attachment, poll: draft.poll });
+      holdFeed();
       setPosts((current) => [result.post, ...current]);
       toast.success('Publicação enviada.');
     } catch {
@@ -66,6 +76,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
     if (!window.confirm('Excluir esta publicação?')) return;
     try {
       await deleteFeedPost(post.id);
+      holdFeed();
       setPosts((current) => current.filter((item) => item.id !== post.id));
       setReposts((current) => current.filter((item) => item.originalId !== post.id));
       toast.success('Publicação excluída.');
@@ -148,7 +159,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   const mine = new Set(reposts.filter((item) => item.userId === user.id).map((item) => item.originalId));
   const visiblePosts = (mode === 'recognition' ? posts.filter((post) => post.kind === 'recognition') : posts).filter((post) => !savedOnly || post.saved);
   function canRemove(post: SocialPost) {
-    return post.authorId === user.id || post.author === user.name || isLeader(user);
+    return post.authorId === user.id || post.author === user.name;
   }
   const visibleReposts = mode === 'recognition'
     ? reposts.filter((repost) => posts.find((post) => post.id === repost.originalId)?.kind === 'recognition')
@@ -162,16 +173,21 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
           republished={mine.has(post.id)}
           commentDraft={drafts[post.id] ?? ''}
           onCommentDraft={(value) => setDrafts((current) => ({ ...current, [post.id]: value }))}
-          onLike={() => void likeFeedPost(post.id, 'like').then((result) => replace(result.post)).catch(() => toast.error('Não foi possível registrar a reação.'))}
-          onReact={(kind) => void likeFeedPost(post.id, kind).then((result) => replace(result.post)).catch(() => toast.error('Não foi possível registrar a reação.'))}
+          onLike={() => void likeFeedPost(post.id, 'like').then((result) => { holdFeed(); replace(result.post); }).catch(() => toast.error('Não foi possível registrar a reação.'))}
+          onReact={(kind) => void likeFeedPost(post.id, kind).then((result) => { holdFeed(); replace(result.post); }).catch(() => toast.error('Não foi possível registrar a reação.'))}
           onToggleSave={() => void saveFeedPost(post.id).then((result) => replace(result.post)).catch(() => toast.error('Não foi possível salvar a publicação.'))}
           onShare={() => setShareId(post.id)}
-          onToggleComments={() => setPosts((current) => current.map((item) => item.id === post.id ? { ...item, commentsOpen: !item.commentsOpen } : item))}
+          onToggleComments={() => {
+            const open = !post.commentsOpen;
+            setPosts((current) => current.map((item) => item.id === post.id ? { ...item, commentsOpen: open } : item));
+            if (open) window.setTimeout(() => document.getElementById(`comentario-${post.id}`)?.focus(), 0);
+          }}
           onAddComment={() => {
             const text = (drafts[post.id] ?? '').trim();
             const media = commentMedia[post.id];
             if (!text && !media) return;
             void commentFeedPost(post.id, text, media ?? undefined).then((result) => {
+              holdFeed();
               replace({ ...result.post, commentsOpen: true });
               setDrafts((current) => ({ ...current, [post.id]: '' }));
               setCommentMedia((current) => ({ ...current, [post.id]: null }));

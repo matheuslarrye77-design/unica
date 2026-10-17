@@ -72,7 +72,16 @@ export const PostCard: FC<{
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onRepublish}>{republished ? 'Desfazer republicação' : 'Republicar'}</DropdownMenuItem>
             <DropdownMenuItem onClick={onShare}>Compartilhar</DropdownMenuItem>
-            {onDelete ? <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">Excluir</DropdownMenuItem> : null}
+            {onDelete ? (
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => {
+                  window.setTimeout(() => onDelete(), 0);
+                }}
+              >
+                Excluir
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       </header>

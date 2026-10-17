@@ -9,7 +9,7 @@ import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { actor, useDemoProfile } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { ChevronRight, Filter, MessageSquare, Plus, Search } from 'lucide-react';
-import { useEffect, useMemo, useState, type FC, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FC, type KeyboardEvent } from 'react';
 import { toast } from 'sonner';
 
 const STATUS: Record<SuggestionStatus, { label: string; className: string }> = {
@@ -59,17 +59,23 @@ export const FeedbacksPage: FC = () => {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [sending, setSending] = useState<string | null>(null);
   const [composer, setComposer] = useState(false);
+  const listTicket = useRef(0);
+
+  function holdList() {
+    listTicket.current += 1;
+  }
 
   useEffect(() => {
     let active = true;
     const load = (first: boolean) => {
+      const ticket = ++listTicket.current;
       if (first) {
         setLoading(true);
         setFailed(false);
       }
       loadFeedback()
         .then((data) => {
-          if (!active) return;
+          if (!active || ticket !== listTicket.current) return;
           setItems(data.feedback);
           setFailed(false);
         })
@@ -117,6 +123,7 @@ export const FeedbacksPage: FC = () => {
     setStatusMenu(null);
     try {
       const saved = await updateFeedbackStatus(item.id, status);
+      holdList();
       setItems((current) => current.map((entry) => (entry.id === item.id ? saved.feedback : entry)));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Não foi possível atualizar o status.');
@@ -131,6 +138,7 @@ export const FeedbacksPage: FC = () => {
     setSending(item.id);
     try {
       const saved = await replyToFeedback(item.id, text);
+      holdList();
       setItems((current) => current.map((entry) => (entry.id === item.id ? saved.feedback : entry)));
       setDrafts((current) => ({ ...current, [item.id]: '' }));
     } catch (error) {

@@ -195,7 +195,11 @@ function cleanMedia(value: unknown): Comment['media'] | undefined {
   if (!value || typeof value !== 'object') return undefined;
   const item = value as { kind?: string; url?: string };
   const url = String(item.url ?? '');
-  const allowed = url.startsWith('/api/uploads/up-') || /^\/figurinhas\/[a-z0-9-]+\.(svg|png|jpe?g|webp)$/.test(url) || /^\/gifs\/[a-z0-9-]+\.gif$/.test(url);
+  const allowed = url.startsWith('/api/uploads/up-')
+    || /^\/figurinhas\/[a-z0-9-]+\.(svg|png|jpe?g|webp)$/.test(url)
+    || /^\/gifs\/[a-z0-9-]+\.gif$/.test(url)
+    || /^https:\/\/fonts\.gstatic\.com\/s\/e\/notoemoji\/latest\/[a-z0-9_]+\/512\.webp$/.test(url)
+    || (url.startsWith('https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/') && /_3d(?:_default)?\.png$/.test(url));
   if (!allowed) return undefined;
   if (item.kind !== 'gif' && item.kind !== 'sticker') return undefined;
   return { kind: item.kind, url };
@@ -493,10 +497,11 @@ export function extraApi(): Connect.NextHandleFunction {
         const post = feed.posts.find((item) => item.id === likeMatch[1]);
         if (!post) return send(res, 404, { error: 'missing' });
         const before = reactionsOf(post);
-        const exists = before.some((item) => item.userId === user.id && item.kind === kind);
-        const next = exists
-          ? before.filter((item) => !(item.userId === user.id && item.kind === kind))
-          : [...before, { userId: user.id, name: user.name, kind }];
+        const mine = before.filter((item) => item.userId === user.id);
+        const same = mine.some((item) => item.kind === kind);
+        const next = same
+          ? before.filter((item) => item.userId !== user.id)
+          : [...before.filter((item) => item.userId !== user.id), { userId: user.id, name: user.name, kind }];
         post.reactions = next;
         post.likedBy = [...new Set(next.map((item) => item.userId))];
         post.likes = Math.max(0, (typeof post.likes === 'number' ? post.likes : before.length) + next.length - before.length);
@@ -622,7 +627,7 @@ export function extraApi(): Connect.NextHandleFunction {
         const index = feed.posts.findIndex((item) => item.id === deletePost[1]);
         if (index < 0) return send(res, 404, { error: 'missing' });
         const post = feed.posts[index];
-        const allowed = post.authorId === user.id || post.author === user.name || isLeader(user);
+        const allowed = post.authorId === user.id || post.author === user.name;
         if (!allowed) return send(res, 403, { error: 'forbidden' });
         feed.posts.splice(index, 1);
         feed.reposts = feed.reposts.filter((item) => item.originalId !== post.id);
