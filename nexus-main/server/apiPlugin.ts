@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import type { Connect, Plugin } from 'vite';
+import { dataDir } from './dataDir.mjs';
 import { extraApi } from './extraApi';
 import { builtinAccounts } from './auth/accounts';
 import { localUserFromRequest } from './auth/localStore.mjs';
@@ -95,8 +96,8 @@ function send(res: ServerResponse, status: number, body: unknown) {
   res.end(JSON.stringify(body));
 }
 
-export function institutionApi(): Plugin {
-  const dir = path.resolve(process.cwd(), 'data');
+export function institutionMiddleware(): Connect.NextHandleFunction {
+  const dir = dataDir();
   const file = path.join(dir, 'institution.json');
   const wallpaper = path.join(dir, 'calendar-wallpaper');
 
@@ -483,15 +484,19 @@ export function institutionApi(): Plugin {
     }
   };
 
+  return attach;
+}
+
+export function institutionApi(): Plugin {
   return {
     name: 'unica-institution-api',
     configureServer(server) {
       server.middlewares.use(extraApi());
-      server.middlewares.use(attach);
+      server.middlewares.use(institutionMiddleware());
     },
     configurePreviewServer(server) {
       server.middlewares.use(extraApi());
-      server.middlewares.use(attach);
+      server.middlewares.use(institutionMiddleware());
     },
   };
 }

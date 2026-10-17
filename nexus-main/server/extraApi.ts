@@ -13,6 +13,7 @@ import { applyAuthResult } from './auth/http.mjs';
 import { createLocalStore, localUserFromRequest } from './auth/localStore.mjs';
 import { isLeader } from './auth/permissions.mjs';
 import { handleCelebrations } from './celebrations/api.mjs';
+import { dataDir } from './dataDir.mjs';
 import { handleUpload } from './uploads';
 
 type Account = {
@@ -227,7 +228,7 @@ function send(res: ServerResponse, status: number, body: unknown) {
 }
 
 export function extraApi(): Connect.NextHandleFunction {
-  const dir = path.resolve(process.cwd(), 'data');
+  const dir = dataDir();
   const authFile = path.join(dir, 'auth.json');
   const feedFile = path.join(dir, 'feed.json');
   const eventsFile = path.join(dir, 'events.json');
@@ -298,7 +299,7 @@ export function extraApi(): Connect.NextHandleFunction {
   function loadFeed(): FeedStore {
     try {
       const parsed = JSON.parse(fs.readFileSync(feedFile, 'utf8')) as FeedStore;
-      return { posts: parsed.posts ?? [], reposts: parsed.reposts ?? [] };
+      return { posts: parsed.posts ?? [], reposts: parsed.reposts ?? [], saved: parsed.saved ?? {} };
     } catch {
       const store = { posts: seedPosts(), reposts: [] };
       fs.mkdirSync(dir, { recursive: true });
@@ -340,7 +341,7 @@ export function extraApi(): Connect.NextHandleFunction {
       shares: post.shares,
       shared: false,
       commentsOpen: false,
-      comments: post.comments.map((comment) => ({
+      comments: (Array.isArray(post.comments) ? post.comments : []).map((comment) => ({
         id: comment.id,
         author: comment.author,
         authorId: comment.authorId,
