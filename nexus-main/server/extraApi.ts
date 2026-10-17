@@ -3,10 +3,10 @@ import fs from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import type { Connect } from 'vite';
-import { samplePosts } from '../src/components/social/samplePosts';
-import { teamRoster } from '../src/data/team';
-import { LOGIN_REQUIRED } from '../src/lib/loginGate';
-import { builtinAccounts } from './auth/accounts';
+import { samplePosts } from '../src/components/social/samplePosts.js';
+import { teamRoster } from '../src/data/team.js';
+import { LOGIN_REQUIRED } from '../src/lib/loginGate.js';
+import { builtinAccounts } from './auth/accounts.js';
 import { hashPassword } from './auth/credentials.mjs';
 import { performLogin, performLogout, performSession } from './auth/flow.mjs';
 import { applyAuthResult } from './auth/http.mjs';
@@ -14,7 +14,7 @@ import { createLocalStore, localUserFromRequest } from './auth/localStore.mjs';
 import { isLeader } from './auth/permissions.mjs';
 import { handleCelebrations } from './celebrations/api.mjs';
 import { dataDir } from './dataDir.mjs';
-import { handleUpload } from './uploads';
+import { handleUpload } from './uploads.js';
 
 type Account = {
   id: string;

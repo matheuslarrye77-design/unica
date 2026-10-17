@@ -1,4 +1,4 @@
-import type { SocialPost } from './types';
+import type { SocialPost } from './types.js';
 
 const avatar = (seed: string) => `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
 

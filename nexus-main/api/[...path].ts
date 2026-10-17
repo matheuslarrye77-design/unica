@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { institutionMiddleware } from '../server/apiPlugin';
+import { institutionMiddleware } from '../server/apiPlugin.js';
 import { dataDir } from '../server/dataDir.mjs';
 import { flushDocuments, hydrateDocuments } from '../server/durable.mjs';
-import { extraApi } from '../server/extraApi';
+import { extraApi } from '../server/extraApi.js';
 
 const feed = extraApi();
 const institution = institutionMiddleware();

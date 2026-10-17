@@ -3,12 +3,12 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import type { Connect, Plugin } from 'vite';
 import { dataDir } from './dataDir.mjs';
-import { extraApi } from './extraApi';
-import { builtinAccounts } from './auth/accounts';
+import { extraApi } from './extraApi.js';
+import { builtinAccounts } from './auth/accounts.js';
 import { localUserFromRequest } from './auth/localStore.mjs';
 import { isLeader } from './auth/permissions.mjs';
-import { currentUser, employees } from '../src/data/mockData';
-import { LOGIN_REQUIRED } from '../src/lib/loginGate';
+import { currentUser, employees } from '../src/data/mockData.js';
+import { LOGIN_REQUIRED } from '../src/lib/loginGate.js';
 
 type Person = { id: string; name: string; role: string; department?: string };
 
