@@ -22,16 +22,16 @@ import {
 } from '@/data/activities';
 import { cn } from '@/lib/utils';
 
-const statusPill: Record<ActivityStatus, string> = {
-  todo: 'bg-[#FCE7F3] text-[#DB2777]',
-  in_progress: 'bg-[#EDE9FE] text-[#7C3AED]',
-  done: 'bg-[#E0E7FF] text-[#818CF8]',
+const priorityClass: Record<Activity['priority'], string> = {
+  high: 'bg-[#FCE7F3] text-[#BE185D]',
+  medium: 'bg-[#EDE9FE] text-[#6D28D9]',
+  low: 'bg-[#E0E7FF] text-[#4338CA]',
 };
 
 function SourceIcon({ source }: { source: string }) {
-  if (source === 'E-mail') return <Mail className="h-3.5 w-3.5" />;
-  if (source.startsWith('Equipe')) return <Users className="h-3.5 w-3.5" />;
-  return <User className="h-3.5 w-3.5" />;
+  if (source === 'E-mail') return <Mail className="h-3 w-3" />;
+  if (source.startsWith('Equipe')) return <Users className="h-3 w-3" />;
+  return <User className="h-3 w-3" />;
 }
 
 export const ActivityCardView: FC<{
@@ -48,21 +48,21 @@ export const ActivityCardView: FC<{
   const leadership = activity.origin === 'leadership';
 
   return (
-    <article className={cn('relative overflow-hidden rounded-2xl border bg-white px-3.5 py-3 shadow-[0_8px_22px_rgba(80,40,120,0.05)]', leadership ? 'border-[#E7C4F2] bg-[#F8EAFB]' : 'border-[#F0E7F6]', dragging && 'opacity-40')}>
-      <div className="relative flex items-start gap-2">
-        {leadership ? <img src="/atividades/alfinete.png" alt="" className="mt-0.5 h-8 w-8 shrink-0 object-contain" /> : null}
-        <span className={cn('rounded-md px-1.5 py-0.5 text-[11px] font-medium', leadership ? 'bg-white text-[#6A228C]' : 'bg-[#F3E4FA] text-[#8E35B8]')}>
+    <article className={cn('relative overflow-hidden rounded-xl border bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(40,20,60,0.04)]', leadership ? 'border-[#F0D9F4] bg-[#FBF6FD]' : 'border-[#F3EEF6]', dragging && 'opacity-40')}>
+      <div className="relative flex items-center gap-1.5">
+        {leadership ? <img src="/atividades/alfinete.png" alt="" className="h-5 w-5 shrink-0 object-contain" /> : null}
+        <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-medium', leadership ? 'bg-white text-[#6A228C]' : 'bg-[#F6EEFB] text-[#8E35B8]')}>
           {ORIGIN_LABEL[activity.origin]}
         </span>
         {onToggle ? (
           <button
             type="button"
             aria-label={collapsed ? `Expandir ${activity.title}` : `Minimizar ${activity.title}`}
-            className="rounded-md p-1 text-[#B7A8C4] hover:bg-white/70"
+            className="rounded-md p-0.5 text-[#B7A8C4] hover:bg-white/70"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={onToggle}
           >
-            {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            {collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
           </button>
         ) : null}
         {onEdit && onDelete && onMove ? (
@@ -71,10 +71,10 @@ export const ActivityCardView: FC<{
               <button
                 type="button"
                 aria-label={`Ações de ${activity.title}`}
-                className="ml-auto rounded-md p-1 text-[#B7A8C4] hover:bg-[#F8F2FB]"
+                className="ml-auto rounded-md p-0.5 text-[#B7A8C4] hover:bg-[#F8F2FB]"
                 onPointerDown={(event) => event.stopPropagation()}
               >
-                <MoreHorizontal className="h-4 w-4" />
+                <MoreHorizontal className="h-3.5 w-3.5" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -94,26 +94,26 @@ export const ActivityCardView: FC<{
           </DropdownMenu>
         ) : <span className="ml-auto" />}
       </div>
-      <h3 className="relative mt-2 text-[14.5px] font-semibold leading-snug text-[#2C2433]">{activity.title}</h3>
+      <h3 className="relative mt-1.5 text-[13px] font-semibold leading-snug text-[#2C2433]">{activity.title}</h3>
       {collapsed ? null : (
       <div className="relative">
-      <p className="mt-2 flex items-center gap-1.5 text-[12.5px] text-[#8A7C98]">
+      <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] font-normal text-[#8A7C98]">
         <SourceIcon source={activity.source} />
         {activity.source}
       </p>
-      <div className="mt-2.5 flex items-center gap-2">
+      <div className="mt-2 flex items-center gap-2">
         {when ? (
-          <p className="flex min-w-0 items-center gap-1.5 text-[12px] text-[#8A7C98]">
-            <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+          <p className="flex min-w-0 items-center gap-1 text-[11px] font-normal text-[#8A7C98]">
+            <CalendarDays className="h-3 w-3 shrink-0" />
             <span className="truncate">{done ? `Concluída em: ${when}` : `Prazo: ${when}`}</span>
           </p>
         ) : <span />}
         {done ? (
-          <span className={cn('ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium', statusPill.done)}>
+          <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-[#D1FAE5] px-1.5 py-0.5 text-[10px] font-medium text-[#047857]">
             <Check className="h-3 w-3" /> Concluída
           </span>
         ) : (
-          <span className={cn('ml-auto shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', statusPill[activity.status])}>
+          <span className={cn('ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium', priorityClass[activity.priority])}>
             {PRIORITY_LABEL[activity.priority]}
           </span>
         )}
