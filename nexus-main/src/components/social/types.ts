@@ -13,6 +13,7 @@ export type SocialComment = {
   time: string;
   likes: number;
   liked: boolean;
+  media?: { kind: 'gif' | 'sticker'; url: string };
 };
 
 export type PollOption = {
@@ -34,9 +35,13 @@ export type SocialPost = {
   time: string;
   body: string;
   image?: string;
+  images?: string[];
   attachment?: Attachment;
   likes: number;
   liked: boolean;
+  reaction?: 'like' | 'love' | null;
+  reactors?: { name: string; kind: 'like' | 'love' }[];
+  saved?: boolean;
   shares: number;
   shared: boolean;
   comments: SocialComment[];

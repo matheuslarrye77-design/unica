@@ -1,6 +1,7 @@
 import { EmojiText } from '@/components/Emoji';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { FileText, MoreHorizontal } from 'lucide-react';
+import { PhotoGallery } from './PhotoGallery';
 import { type FC } from 'react';
 import { Link } from 'react-router-dom';
 import { AnnouncementPost } from './AnnouncementPost';
@@ -24,6 +25,8 @@ export const PostCard: FC<{
   commentDraft: string;
   onCommentDraft: (value: string) => void;
   onLike: () => void;
+  onReact?: (kind: 'like' | 'love') => void;
+  onToggleSave?: () => void;
   onShare: () => void;
   onToggleComments: () => void;
   onAddComment: () => void;
@@ -34,9 +37,12 @@ export const PostCard: FC<{
   republished?: boolean;
   canDeleteComment?: (commentId: string) => boolean;
   onDeleteComment?: (commentId: string) => void;
+  pendingMedia?: { kind: 'gif' | 'sticker'; url: string } | null;
+  onMedia?: (media: { kind: 'gif' | 'sticker'; url: string } | null) => void;
+  onGifFile?: (file: File) => void;
   repost?: { name: string; avatar: string; note: string };
   preview?: boolean;
-}> = ({ post, commentDraft, onCommentDraft, onLike, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, republished, canDeleteComment, onDeleteComment, repost }) => {
+}> = ({ post, commentDraft, onCommentDraft, onLike, onReact, onToggleSave, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, republished, canDeleteComment, onDeleteComment, pendingMedia, onMedia, onGifFile, repost }) => {
   const plain = post.kind === 'text' || post.kind === 'image' || post.kind === 'leadership';
 
   return (
@@ -72,7 +78,7 @@ export const PostCard: FC<{
       </header>
 
       {plain && post.body ? <p className="mt-2 text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90"><EmojiText text={post.body} /></p> : null}
-      {post.kind === 'image' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
+      {post.images && post.images.length > 0 ? <PhotoGallery images={post.images} /> : post.kind === 'image' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
       {post.kind === 'leadership' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
       {post.attachment?.type === 'video' && post.attachment.url ? <video src={post.attachment.url} controls className="mt-3 max-h-[420px] w-full rounded-xl bg-black" /> : null}
       {post.attachment?.type === 'document' ? (
@@ -97,7 +103,7 @@ export const PostCard: FC<{
       {repost ? (
         <Link to={`/publicacao/${post.id}`} className="mt-3 block text-sm font-medium text-primary">Ver publicação original</Link>
       ) : null}
-      <PostActions post={post} republished={republished} onLike={onLike} onComment={onToggleComments} onShare={onShare} onRepublish={onRepublish} />
+      <PostActions post={post} republished={republished} onLike={onLike} onReact={onReact} onToggleSave={onToggleSave} onComment={onToggleComments} onShare={onShare} onRepublish={onRepublish} />
       {post.commentsOpen && !repost ? (
         <Comments
           inputId={`comentario-${post.id}`}
@@ -106,6 +112,9 @@ export const PostCard: FC<{
           onDraft={onCommentDraft}
           onSubmit={onAddComment}
           onLike={onLikeComment}
+          pendingMedia={pendingMedia}
+          onMedia={onMedia}
+          onGifFile={onGifFile}
           canDelete={canDeleteComment}
           onDelete={onDeleteComment}
         />

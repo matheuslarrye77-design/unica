@@ -25,7 +25,7 @@ export const Dashboard: FC = () => {
           <Profile />
         </div>
         <div className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
-          <SocialFeed preview />
+          <SocialFeed />
         </div>
       </div>
     </PageFrame>

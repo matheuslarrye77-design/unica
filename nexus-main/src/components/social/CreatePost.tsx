@@ -1,14 +1,17 @@
 import { FileText, ImagePlus, ListChecks, Send, Video, X } from 'lucide-react';
 import { type ChangeEvent, type FC, type FormEvent, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { uploadMedia } from '@/lib/feed';
 import { actor } from '@/lib/session';
+import { ImageAdjust } from './ImageAdjust';
 import type { Attachment, PollOption } from './types';
 
-const MAX_MEDIA = 8 * 1024 * 1024;
+const VIDEO_MAX = 200 * 1024 * 1024;
+const DOC_MAX = 40 * 1024 * 1024;
 
 export type NewPostDraft = {
   body: string;
-  image?: string;
+  images?: string[];
   attachment?: Attachment;
   poll?: PollOption[];
 };
@@ -16,8 +19,12 @@ export type NewPostDraft = {
 export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise<void> }> = ({ onPublish }) => {
   const [body, setBody] = useState('');
   const [writing, setWriting] = useState(false);
-  const [image, setImage] = useState('');
+  const [images, setImages] = useState<string[]>([]);
+  const [editing, setEditing] = useState<File | null>(null);
+  const [queue, setQueue] = useState<File[]>([]);
   const [attachment, setAttachment] = useState<Attachment | undefined>();
+  const [progress, setProgress] = useState<number | null>(null);
+  const [sending, setSending] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
   const [options, setOptions] = useState(['', '']);
   const fieldRef = useRef<HTMLTextAreaElement>(null);
@@ -25,35 +32,66 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
   const videoRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  function readData(file: File, onLoad: (url: string) => void) {
-    if (file.size > MAX_MEDIA) {
-      toast.error('O arquivo passa de 8 MB.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => onLoad(String(reader.result ?? ''));
-    reader.readAsDataURL(file);
+  function openEditor(files: File[]) {
+    const [next, ...rest] = files;
+    setQueue(rest);
+    setEditing(next ?? null);
   }
 
   function readImage(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const files = [...(event.target.files ?? [])].filter((file) => file.type.startsWith('image/'));
     event.target.value = '';
-    if (!file) return;
-    readData(file, setImage);
+    if (files.length === 0) return;
+    if (images.length + files.length > 10) {
+      toast.error('É possível enviar até 10 fotos.');
+      return;
+    }
+    openEditor(files);
+  }
+
+  async function confirmImage(file: File) {
+    setEditing(null);
+    try {
+      setProgress(0);
+      const uploaded = await uploadMedia(file, setProgress);
+      setImages((current) => [...current, uploaded.url]);
+    } catch {
+      toast.error('Não foi possível enviar a foto.');
+    } finally {
+      setProgress(null);
+      const [next, ...rest] = queue;
+      setQueue(rest);
+      setEditing(next ?? null);
+    }
+  }
+
+  async function uploadAttachment(file: File, type: 'video' | 'document') {
+    const limit = type === 'video' ? VIDEO_MAX : DOC_MAX;
+    if (file.size > limit) {
+      toast.error(type === 'video' ? 'O vídeo passa de 200 MB.' : 'O documento passa de 40 MB.');
+      return;
+    }
+    try {
+      setProgress(0);
+      const uploaded = await uploadMedia(file, setProgress);
+      setAttachment({ type, name: uploaded.name || file.name, url: uploaded.url });
+    } catch {
+      toast.error('Não foi possível enviar o arquivo. Tente novamente.');
+    } finally {
+      setProgress(null);
+    }
   }
 
   function readVideo(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file) return;
-    readData(file, (url) => setAttachment({ type: 'video', name: file.name, url }));
+    if (file) void uploadAttachment(file, 'video');
   }
 
   function readFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file) return;
-    readData(file, (url) => setAttachment({ type: 'document', name: file.name, url }));
+    if (file) void uploadAttachment(file, 'document');
   }
 
   function resize(element: HTMLTextAreaElement, expanded: boolean) {
@@ -64,27 +102,34 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
 
   async function publish(event: FormEvent) {
     event.preventDefault();
+    if (sending) return;
     const text = body.trim();
-    const poll = pollOpen
-      ? options.map((label) => label.trim()).filter(Boolean).map((label, index) => ({ id: `opt-${index}`, label, votes: 0 }))
-      : undefined;
-    const hasMedia = Boolean(image || attachment);
-    if ((!text && !hasMedia) || (pollOpen && (poll?.length ?? 0) < 2)) return;
-    try {
-      await onPublish({ body: text, image: image || undefined, attachment, poll });
-    } catch {
+    const labels = pollOpen ? options.map((label) => label.trim()).filter(Boolean) : [];
+    const poll = labels.map((label, index) => ({ id: `opt-${index}`, label, votes: 0 }));
+    if (pollOpen && new Set(labels.map((label) => label.toLowerCase())).size !== labels.length) {
+      toast.error('As opções da enquete não podem se repetir.');
       return;
     }
+    const hasMedia = images.length > 0 || Boolean(attachment);
+    if ((!text && !hasMedia) || (pollOpen && labels.length < 2)) return;
+    setSending(true);
+    try {
+      await onPublish({ body: text, images, attachment, poll: pollOpen ? poll : undefined });
+    } catch {
+      setSending(false);
+      return;
+    }
+    setSending(false);
     setBody('');
     setWriting(false);
-    setImage('');
+    setImages([]);
     setAttachment(undefined);
     setPollOpen(false);
     setOptions(['', '']);
     if (fieldRef.current) resize(fieldRef.current, false);
   }
 
-  const ready = (body.trim().length > 0 || Boolean(image) || Boolean(attachment)) && (!pollOpen || options.filter((item) => item.trim()).length >= 2);
+  const ready = !sending && progress === null && (body.trim().length > 0 || images.length > 0 || Boolean(attachment)) && (!pollOpen || options.filter((item) => item.trim()).length >= 2);
   const user = actor();
 
   return (
@@ -115,14 +160,19 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
         />
       </div>
 
-      {image ? (
-        <div className="relative mt-3 overflow-hidden rounded-xl">
-          <img src={image} alt="" className="max-h-80 w-full object-cover" />
-          <button type="button" onClick={() => setImage('')} className="absolute right-2 top-2 rounded-full bg-background/90 p-1" aria-label="Remover foto">
-            <X className="h-4 w-4" />
-          </button>
+      {images.length > 0 ? (
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {images.map((src) => (
+            <div key={src} className="relative">
+              <img src={src} alt="" className="h-24 w-full rounded-xl object-cover" />
+              <button type="button" onClick={() => setImages((current) => current.filter((item) => item !== src))} className="absolute right-1 top-1 rounded-full bg-background/90 p-1" aria-label="Remover foto">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
         </div>
       ) : null}
+      {progress !== null ? <div className="mt-3 h-1 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary" style={{ width: `${Math.round(progress * 100)}%` }} /></div> : null}
 
       {attachment?.type === 'video' && attachment.url ? (
         <div className="relative mt-3 overflow-hidden rounded-xl bg-black">
@@ -143,15 +193,17 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
       {pollOpen ? (
         <div className="mt-3 space-y-2">
           {options.map((option, index) => (
-            <input
-              key={index}
-              value={option}
-              onChange={(event) => setOptions((current) => current.map((item, itemIndex) => (itemIndex === index ? event.target.value : item)))}
-              placeholder={`Opção ${index + 1}`}
-              className="h-10 w-full rounded-xl border border-border px-3 text-sm outline-none focus-visible:border-primary"
-            />
+            <div key={index} className="flex items-center gap-2">
+              <input
+                value={option}
+                onChange={(event) => setOptions((current) => current.map((item, itemIndex) => (itemIndex === index ? event.target.value : item)))}
+                placeholder={`Opção ${index + 1}`}
+                className="h-10 min-w-0 flex-1 rounded-xl border border-border px-3 text-sm outline-none focus-visible:border-primary"
+              />
+              {options.length > 2 ? <button type="button" aria-label={`Remover opção ${index + 1}`} onClick={() => setOptions((current) => current.filter((_, itemIndex) => itemIndex !== index))}><X className="h-4 w-4" /></button> : null}
+            </div>
           ))}
-          {options.length < 4 ? (
+          {options.length < 12 ? (
             <button type="button" onClick={() => setOptions((current) => [...current, ''])} className="text-sm font-medium text-primary">
               Adicionar opção
             </button>
@@ -161,7 +213,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
-          <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={readImage} />
+          <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple className="hidden" onChange={readImage} />
           <input ref={videoRef} type="file" accept="video/*" className="hidden" onChange={readVideo} />
           <input ref={fileRef} type="file" className="hidden" onChange={readFile} />
           <ComposerAction icon={ImagePlus} label="Foto" onClick={() => photoRef.current?.click()} />
@@ -175,9 +227,10 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
           className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-[#7A2498] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-45"
         >
           <Send className="h-[18px] w-[18px]" />
-          Publicar
+          {sending ? 'Publicando...' : 'Publicar'}
         </button>
       </div>
+      {editing ? <ImageAdjust file={editing} onCancel={() => { setEditing(null); setQueue([]); }} onConfirm={(file) => void confirmImage(file)} /> : null}
     </form>
   );
 };

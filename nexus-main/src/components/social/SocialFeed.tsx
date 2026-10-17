@@ -3,8 +3,8 @@ import { LilacWash } from './LilacWash';
 import { type FC, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { getTimeBasedGreeting } from '@/lib/utils';
-import { cancelRepost, commentFeedPost, createFeedPost, deleteFeedComment, deleteFeedPost, likeFeedPost, loadFeed, republishPost, shareFeedPost, type Repost } from '@/lib/feed';
-import { actor } from '@/lib/session';
+import { cancelRepost, commentFeedPost, createFeedPost, deleteFeedComment, deleteFeedPost, likeFeedComment, likeFeedPost, loadFeed, republishPost, saveFeedPost, shareFeedPost, uploadMedia, voteFeedPost, type Repost } from '@/lib/feed';
+import { actor, useDemoProfile } from '@/lib/session';
 import { isLeader, useInstitution } from '@/lib/institution';
 import { CreatePost, type NewPostDraft } from './CreatePost';
 import { FeedPreview } from './FeedPreview';
@@ -13,11 +13,14 @@ import { RecognitionComposer } from './RecognitionComposer';
 import type { SocialPost } from './types';
 
 export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean }> = ({ mode = 'mural', preview = false }) => {
+  const demo = useDemoProfile();
   const user = actor();
   const { canRecognize } = useInstitution();
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [reposts, setReposts] = useState<Repost[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [commentMedia, setCommentMedia] = useState<Record<string, { kind: 'gif' | 'sticker'; url: string } | null>>({});
+  const [savedOnly, setSavedOnly] = useState(false);
   const [shareId, setShareId] = useState<string | null>(null);
   const [repostId, setRepostId] = useState<string | null>(null);
   const [note, setNote] = useState('');
@@ -26,14 +29,23 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   useEffect(() => {
     const refresh = () => {
       void loadFeed().then((feed) => {
-        setPosts(feed.posts);
+        setPosts((current) => feed.posts.map((post) => {
+          const previous = current.find((item) => item.id === post.id);
+          return previous ? { ...post, commentsOpen: previous.commentsOpen } : post;
+        }));
         setReposts(feed.reposts);
       }).catch(() => toast.error('Não foi possível abrir o mural.'));
     };
     refresh();
+    const timer = window.setInterval(refresh, 12000);
     window.addEventListener('unica-feed-refresh', refresh);
-    return () => window.removeEventListener('unica-feed-refresh', refresh);
-  }, []);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('unica-feed-refresh', refresh);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [demo]);
 
   function replace(post: SocialPost) {
     setPosts((current) => current.map((item) => (item.id === post.id ? { ...post, commentsOpen: item.commentsOpen } : item)));
@@ -41,7 +53,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
 
   async function publish(draft: NewPostDraft) {
     try {
-      const result = await createFeedPost({ body: draft.body, image: draft.image, attachment: draft.attachment, poll: draft.poll });
+      const result = await createFeedPost({ body: draft.body, images: draft.images, image: draft.images?.[0], attachment: draft.attachment, poll: draft.poll });
       setPosts((current) => [result.post, ...current]);
       toast.success('Publicação enviada.');
     } catch {
@@ -134,9 +146,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   }
 
   const mine = new Set(reposts.filter((item) => item.userId === user.id).map((item) => item.originalId));
-  const visiblePosts = mode === 'recognition' ? posts.filter((post) => post.kind === 'recognition') : posts;
-  const freshPosts = visiblePosts.filter((post) => post.time === 'agora');
-  const olderPosts = visiblePosts.filter((post) => post.time !== 'agora');
+  const visiblePosts = (mode === 'recognition' ? posts.filter((post) => post.kind === 'recognition') : posts).filter((post) => !savedOnly || post.saved);
   function canRemove(post: SocialPost) {
     return post.authorId === user.id || post.author === user.name || isLeader(user);
   }
@@ -152,19 +162,28 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
           republished={mine.has(post.id)}
           commentDraft={drafts[post.id] ?? ''}
           onCommentDraft={(value) => setDrafts((current) => ({ ...current, [post.id]: value }))}
-          onLike={() => void likeFeedPost(post.id).then((result) => replace(result.post))}
+          onLike={() => void likeFeedPost(post.id, 'like').then((result) => replace(result.post)).catch(() => toast.error('Não foi possível registrar a reação.'))}
+          onReact={(kind) => void likeFeedPost(post.id, kind).then((result) => replace(result.post)).catch(() => toast.error('Não foi possível registrar a reação.'))}
+          onToggleSave={() => void saveFeedPost(post.id).then((result) => replace(result.post)).catch(() => toast.error('Não foi possível salvar a publicação.'))}
           onShare={() => setShareId(post.id)}
           onToggleComments={() => setPosts((current) => current.map((item) => item.id === post.id ? { ...item, commentsOpen: !item.commentsOpen } : item))}
           onAddComment={() => {
             const text = (drafts[post.id] ?? '').trim();
-            if (!text) return;
-            void commentFeedPost(post.id, text).then((result) => {
+            const media = commentMedia[post.id];
+            if (!text && !media) return;
+            void commentFeedPost(post.id, text, media ?? undefined).then((result) => {
               replace({ ...result.post, commentsOpen: true });
               setDrafts((current) => ({ ...current, [post.id]: '' }));
-            });
+              setCommentMedia((current) => ({ ...current, [post.id]: null }));
+            }).catch(() => toast.error('Não foi possível comentar.'));
           }}
-          onLikeComment={() => undefined}
-          onVote={() => undefined}
+          pendingMedia={commentMedia[post.id]}
+          onMedia={(media) => setCommentMedia((current) => ({ ...current, [post.id]: media }))}
+          onGifFile={(file) => {
+            void uploadMedia(file).then((uploaded) => setCommentMedia((current) => ({ ...current, [post.id]: { kind: 'gif', url: uploaded.url } }))).catch(() => toast.error('Não foi possível enviar o GIF.'));
+          }}
+          onLikeComment={(commentId) => void likeFeedComment(post.id, commentId).then((result) => replace({ ...result.post, commentsOpen: true })).catch(() => toast.error('Não foi possível curtir o comentário.'))}
+          onVote={(optionId) => void voteFeedPost(post.id, optionId).then((result) => replace(result.post)).catch(() => toast.error('Não foi possível registrar o voto.'))}
           onRepublish={() => {
             const existing = reposts.find((item) => item.userId === user.id && item.originalId === post.id);
             if (existing) {
@@ -216,7 +235,13 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
 
       {mode === 'recognition' ? (canRecognize ? <RecognitionComposer onCreated={() => window.dispatchEvent(new Event('unica-feed-refresh'))} /> : null) : <CreatePost onPublish={publish} />}
 
-      {mode === 'mural' ? freshPosts.map(renderFeedPost) : null}
+      {mode === 'mural' ? (
+        <div className="flex justify-end">
+          <button type="button" aria-pressed={savedOnly} onClick={() => setSavedOnly((value) => !value)} className={`rounded-full px-3 py-1 text-[13px] ${savedOnly ? 'bg-accent text-primary' : 'text-[#5C5870] hover:bg-accent'}`}>Salvos</button>
+        </div>
+      ) : null}
+
+      {savedOnly && visiblePosts.length === 0 ? <p className="unica-surface px-5 py-8 text-center text-[13px] text-muted-foreground">Nenhuma publicação salva.</p> : null}
 
       {preview && mode === 'mural' ? <FeedPreview /> : null}
 
@@ -250,7 +275,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
         );
       })}
 
-      {(mode === 'mural' ? olderPosts : visiblePosts).map(renderFeedPost)}
+      {visiblePosts.map(renderFeedPost)}
     </div>
   );
 };
