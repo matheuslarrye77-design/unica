@@ -1,4 +1,5 @@
-const MEDIA = /^https:\/\/(?:i|media\d?)\.giphy\.com\/media\/[A-Za-z0-9]+\/[A-Za-z0-9._-]+\.(?:gif|webp)$/;
+const HOST = /^(?:i|media\d*)\.giphy\.com$/;
+const PATH = /^\/media\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\.(?:gif|webp)$/;
 
 export function cleanGifQuery(value) {
   const text = String(value ?? '').replace(/[\u0000-\u001f]/g, '').trim().replace(/\s+/g, ' ').slice(0, 50);
@@ -8,8 +9,14 @@ export function cleanGifQuery(value) {
 }
 
 export function gifMediaUrl(value) {
-  const url = String(value ?? '');
-  return MEDIA.test(url) ? url : '';
+  let url;
+  try {
+    url = new URL(String(value ?? ''));
+  } catch {
+    return '';
+  }
+  if (url.protocol !== 'https:' || !HOST.test(url.hostname) || !PATH.test(url.pathname)) return '';
+  return `https://${url.hostname}${url.pathname}`;
 }
 
 function pickUrl(images) {

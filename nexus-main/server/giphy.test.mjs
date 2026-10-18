@@ -24,12 +24,13 @@ test('search terms are limited to short text', () => {
 test('only official GIPHY media addresses are returned', () => {
   const gifs = sanitizeGifs({
     data: [
-      { id: 'abc123', title: 'Risada', images: { fixed_width: { url: 'https://media.giphy.com/media/abc123/200w.gif' }, fixed_width_small: { url: 'https://media.giphy.com/media/abc123/100w.gif' } } },
+      { id: 'abc123', title: 'Risada', images: { fixed_width: { url: 'https://media1.giphy.com/media/abc123/200w.gif?cid=abc&rid=200w.gif&ct=g' }, fixed_width_small: { url: 'https://media1.giphy.com/media/abc123/100w.gif?cid=abc' } } },
       { id: 'bad', title: 'Outro', images: { fixed_width: { url: 'https://evil.example/media/bad/200w.gif' } } },
     ],
   });
   assert.equal(gifs.length, 1);
-  assert.equal(gifs[0].url, 'https://media.giphy.com/media/abc123/200w.gif');
+  assert.equal(gifs[0].url, 'https://media1.giphy.com/media/abc123/200w.gif');
+  assert.equal(gifs[0].preview, 'https://media1.giphy.com/media/abc123/100w.gif');
 });
 
 test('the search uses the official GIPHY endpoint and hides the key from the result', async () => {
