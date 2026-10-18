@@ -1,4 +1,5 @@
 import { useState, type FC } from 'react';
+import { GiphyMark } from './GifPicker';
 
 export const PhotoGallery: FC<{ images: string[] }> = ({ images }) => {
   const [open, setOpen] = useState<number | null>(null);
@@ -17,6 +18,7 @@ export const PhotoGallery: FC<{ images: string[] }> = ({ images }) => {
           </button>
         ))}
       </div>
+      {shown.some((src) => src.includes('.giphy.com/')) ? <div className="mt-1"><GiphyMark /></div> : null}
       {open !== null ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4" onClick={() => setOpen(null)}>
           <img src={images[open]} alt="" className="max-h-[85vh] max-w-full rounded-xl object-contain" />

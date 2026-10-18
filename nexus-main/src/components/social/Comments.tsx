@@ -2,6 +2,7 @@ import { EmojiText } from '@/components/Emoji';
 import { Heart, Trash2, X } from 'lucide-react';
 import { useRef, type FC, type FormEvent, type KeyboardEvent } from 'react';
 import { ComposerExtras } from './ComposerExtras';
+import { GiphyMark } from './GifPicker';
 import type { SocialComment } from './types';
 
 export const Comments: FC<{
@@ -48,6 +49,7 @@ export const Comments: FC<{
                 <span className="font-semibold">{comment.author}</span> {comment.body ? <EmojiText text={comment.body} /> : null}
               </p>
               {comment.media ? <img src={comment.media.url} alt={comment.media.kind === 'gif' ? 'GIF' : 'Figurinha'} className="mt-1 h-28 w-28 rounded-xl bg-[#F8EAFB] object-contain" /> : null}
+              {comment.media?.url.includes('.giphy.com/') ? <div className="mt-1"><GiphyMark /></div> : null}
               <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
                 <span>{comment.time}</span>
                 <button type="button" onClick={() => onLike(comment.id)} className={comment.liked ? 'inline-flex items-center gap-1 font-medium text-primary' : 'inline-flex items-center gap-1 hover:text-foreground'}>

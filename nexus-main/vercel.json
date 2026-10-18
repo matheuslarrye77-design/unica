@@ -10,6 +10,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/:segment/:first/:path*",
+      "destination": "/api/:segment?nested=:segment/:first/:path*"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

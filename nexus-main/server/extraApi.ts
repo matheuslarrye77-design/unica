@@ -13,6 +13,7 @@ import { applyAuthResult } from './auth/http.mjs';
 import { createLocalStore, localUserFromRequest } from './auth/localStore.mjs';
 import { isLeader } from './auth/permissions.mjs';
 import { handleCelebrations } from './celebrations/api.mjs';
+import { gifMediaUrl, searchGifs } from './giphy.mjs';
 import { dataDir } from './dataDir.mjs';
 import { handleUpload } from './uploads.js';
 
@@ -66,6 +67,7 @@ type FeedPost = {
   eventWhen?: string;
   eventWhere?: string;
   createdAt: string;
+  updatedAt?: string;
 };
 
 type Repost = {
@@ -88,7 +90,13 @@ type AuthStore = {
   colleagues: Colleague[];
 };
 
-type FeedStore = { posts: FeedPost[]; reposts: Repost[]; saved?: Record<string, string[]> };
+type FeedStore = {
+  posts: FeedPost[];
+  reposts: Repost[];
+  saved?: Record<string, string[]>;
+  deletedIds?: string[];
+  deletedRepostIds?: string[];
+};
 
 const helena: Account = {
   id: 'helena',
@@ -199,7 +207,8 @@ function cleanMedia(value: unknown): Comment['media'] | undefined {
     || /^\/figurinhas\/[a-z0-9-]+\.(svg|png|jpe?g|webp)$/.test(url)
     || /^\/gifs\/[a-z0-9-]+\.gif$/.test(url)
     || /^https:\/\/fonts\.gstatic\.com\/s\/e\/notoemoji\/latest\/[a-z0-9_]+\/512\.webp$/.test(url)
-    || (url.startsWith('https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/') && /_3d(?:_default)?\.png$/.test(url));
+    || (url.startsWith('https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/') && /_3d(?:_default)?\.png$/.test(url))
+    || Boolean(gifMediaUrl(url));
   if (!allowed) return undefined;
   if (item.kind !== 'gif' && item.kind !== 'sticker') return undefined;
   return { kind: item.kind, url };
@@ -303,7 +312,15 @@ export function extraApi(): Connect.NextHandleFunction {
   function loadFeed(): FeedStore {
     try {
       const parsed = JSON.parse(fs.readFileSync(feedFile, 'utf8')) as FeedStore;
-      return { posts: parsed.posts ?? [], reposts: parsed.reposts ?? [], saved: parsed.saved ?? {} };
+      const deleted = new Set(parsed.deletedIds ?? []);
+      const deletedReposts = new Set(parsed.deletedRepostIds ?? []);
+      return {
+        posts: (parsed.posts ?? []).filter((post) => !deleted.has(post.id)),
+        reposts: (parsed.reposts ?? []).filter((item) => !deletedReposts.has(item.id)),
+        saved: parsed.saved ?? {},
+        deletedIds: [...deleted],
+        deletedRepostIds: [...deletedReposts],
+      };
     } catch {
       const store = { posts: seedPosts(), reposts: [] };
       fs.mkdirSync(dir, { recursive: true });
@@ -315,6 +332,11 @@ export function extraApi(): Connect.NextHandleFunction {
   function saveFeed(store: FeedStore) {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(feedFile, JSON.stringify(store));
+  }
+
+  function remember(store: FeedStore, post?: FeedPost) {
+    if (post) post.updatedAt = new Date().toISOString();
+    saveFeed(store);
   }
 
   function accountFrom(req: IncomingMessage) {
@@ -383,7 +405,8 @@ export function extraApi(): Connect.NextHandleFunction {
     const feedRoute = url === '/api/feed' || url.startsWith('/api/feed/');
     const uploadRoute = url.startsWith('/api/uploads');
     const celebrationRoute = url === '/api/celebrations' || url.startsWith('/api/celebrations/');
-    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && !feedRoute && !uploadRoute && !celebrationRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
+    const gifRoute = url === '/api/gifs';
+    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && !feedRoute && !uploadRoute && !celebrationRoute && !gifRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
       return next();
     }
     try {
@@ -409,8 +432,14 @@ export function extraApi(): Connect.NextHandleFunction {
         return;
       }
 
-      const user = (feedRoute || uploadRoute || celebrationRoute) ? muralUser(req) : accountFrom(req);
+      const user = (feedRoute || uploadRoute || celebrationRoute || gifRoute) ? muralUser(req) : accountFrom(req);
       if (!user) return send(res, 401, { error: 'unauthorized' });
+      if (req.method === 'GET' && gifRoute) {
+        const params = new URL(req.url ?? '', 'http://internal').searchParams;
+        const result = await searchGifs(params.get('q') ?? '');
+        send(res, result.status, result.body);
+        return;
+      }
       if (celebrationRoute) {
         await handleCelebrations(req, res, url, user, dir, isLeader(user));
         return;
@@ -480,7 +509,7 @@ export function extraApi(): Connect.NextHandleFunction {
           createdAt: new Date().toISOString(),
         };
         feed.posts.unshift(post);
-        saveFeed(feed);
+        remember(feed, post);
         send(res, 201, { post: publicPost(post, user.id, feed.saved?.[user.id] ?? []) });
         } catch {
           if (!res.headersSent) send(res, 500, { error: 'publish' });
@@ -505,7 +534,7 @@ export function extraApi(): Connect.NextHandleFunction {
         post.reactions = next;
         post.likedBy = [...new Set(next.map((item) => item.userId))];
         post.likes = Math.max(0, (typeof post.likes === 'number' ? post.likes : before.length) + next.length - before.length);
-        saveFeed(feed);
+        remember(feed, post);
         send(res, 200, { post: publicPost(post, user.id, feed.saved?.[user.id] ?? []) });
         return;
       }
@@ -533,7 +562,7 @@ export function extraApi(): Connect.NextHandleFunction {
           const next = post.poll.find((item) => item.id === optionId);
           if (next) next.votes += 1;
         }
-        saveFeed(feed);
+        remember(feed, post);
         send(res, 200, { post: publicPost(post, user.id, feed.saved?.[user.id] ?? []) });
         return;
       }
@@ -548,7 +577,7 @@ export function extraApi(): Connect.NextHandleFunction {
         if (list.has(post.id)) list.delete(post.id);
         else list.add(post.id);
         feed.saved[user.id] = [...list];
-        saveFeed(feed);
+        remember(feed);
         send(res, 200, { post: publicPost(post, user.id, feed.saved[user.id]), saved: feed.saved[user.id] });
         return;
       }
@@ -559,7 +588,7 @@ export function extraApi(): Connect.NextHandleFunction {
         const post = feed.posts.find((item) => item.id === shareMatch[1]);
         if (!post) return send(res, 404, { error: 'missing' });
         post.shares += 1;
-        saveFeed(feed);
+        remember(feed, post);
         send(res, 200, { post: publicPost(post, user.id, feed.saved?.[user.id] ?? []) });
         return;
       }
@@ -586,7 +615,7 @@ export function extraApi(): Connect.NextHandleFunction {
           media,
           createdAt: new Date().toISOString(),
         });
-        saveFeed(feed);
+        remember(feed, post);
         send(res, 201, { post: publicPost(post, user.id, feed.saved?.[user.id] ?? []) });
         return;
       }
@@ -601,7 +630,7 @@ export function extraApi(): Connect.NextHandleFunction {
         const already = comment.likedBy.includes(user.id);
         comment.likedBy = already ? comment.likedBy.filter((id) => id !== user.id) : [...comment.likedBy, user.id];
         comment.likes = comment.likedBy.length;
-        saveFeed(feed);
+        remember(feed, post);
         send(res, 200, { post: publicPost(post, user.id, feed.saved?.[user.id] ?? []) });
         return;
       }
@@ -616,7 +645,7 @@ export function extraApi(): Connect.NextHandleFunction {
         const allowed = comment.authorId === user.id || post.authorId === user.id || isLeader(user);
         if (!allowed) return send(res, 403, { error: 'forbidden' });
         post.comments = post.comments.filter((item) => item.id !== comment.id);
-        saveFeed(feed);
+        remember(feed, post);
         send(res, 200, { post: publicPost(post, user.id, feed.saved?.[user.id] ?? []) });
         return;
       }
@@ -629,6 +658,9 @@ export function extraApi(): Connect.NextHandleFunction {
         const post = feed.posts[index];
         const allowed = post.authorId === user.id || post.author === user.name;
         if (!allowed) return send(res, 403, { error: 'forbidden' });
+        const removedReposts = feed.reposts.filter((item) => item.originalId === post.id).map((item) => item.id);
+        feed.deletedIds = [...new Set([...(feed.deletedIds ?? []), post.id])];
+        feed.deletedRepostIds = [...new Set([...(feed.deletedRepostIds ?? []), ...removedReposts])];
         feed.posts.splice(index, 1);
         feed.reposts = feed.reposts.filter((item) => item.originalId !== post.id);
         saveFeed(feed);
@@ -666,6 +698,7 @@ export function extraApi(): Connect.NextHandleFunction {
         const repost = feed.reposts.find((item) => item.id === undo[1]);
         if (!repost) return send(res, 404, { error: 'missing' });
         if (repost.userId !== user.id && !isLeader(user)) return send(res, 403, { error: 'forbidden' });
+        feed.deletedRepostIds = [...new Set([...(feed.deletedRepostIds ?? []), repost.id])];
         feed.reposts = feed.reposts.filter((item) => item.id !== repost.id);
         saveFeed(feed);
         send(res, 200, { ok: true });

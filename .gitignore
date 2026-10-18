@@ -8,3 +8,5 @@ data/*.db-*
 data/uploads
 .env
 .env.local
+.vercel
+.env*

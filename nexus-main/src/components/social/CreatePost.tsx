@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { uploadMedia } from '@/lib/feed';
 import { actor } from '@/lib/session';
 import { ComposerExtras } from './ComposerExtras';
+import { GiphyMark } from './GifPicker';
 import { ImageAdjust } from './ImageAdjust';
 import type { Attachment, PollOption } from './types';
 
@@ -187,6 +188,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
           ))}
         </div>
       ) : null}
+      {images.some((src) => src.includes('.giphy.com/')) ? <div className="mt-2"><GiphyMark /></div> : null}
       {progress !== null ? <div className="mt-3 h-1 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary" style={{ width: `${Math.round(progress * 100)}%` }} /></div> : null}
 
       {attachment?.type === 'video' && attachment.url ? (
@@ -235,7 +237,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
           <ComposerAction icon={Video} label="Vídeo" onClick={() => videoRef.current?.click()} />
           <ComposerAction icon={FileText} label="Documento" onClick={() => fileRef.current?.click()} />
           <ComposerAction icon={ListChecks} label="Enquete" pressed={pollOpen} onClick={() => setPollOpen((open) => !open)} />
-          <ComposerExtras onEmoji={insertEmoji} />
+          <ComposerExtras onEmoji={insertEmoji} onGif={(url) => setImages((current) => (current.includes(url) || current.length >= 10 ? current : [...current, url]))} />
         </div>
         <button
           type="submit"

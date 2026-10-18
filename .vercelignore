@@ -1,0 +1,7 @@
+emoji-mart-5.6.0
+emoji-mart-5.6.0.zip
+cd
+.env
+.env.*
+.vercel
+nexus-main/data/auth.json

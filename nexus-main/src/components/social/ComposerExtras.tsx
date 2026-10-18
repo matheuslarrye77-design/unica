@@ -1,6 +1,7 @@
 import { ImagePlay, Smile, Sticker } from 'lucide-react';
 import { useMemo, useState, type FC } from 'react';
-import { EMOJI_GROUPS, GIFS, STICKERS } from './mediaCatalog';
+import { GifPicker } from './GifPicker';
+import { EMOJI_GROUPS, STICKERS } from './mediaCatalog';
 
 type Panel = 'emoji' | 'sticker' | 'gif' | null;
 
@@ -16,7 +17,6 @@ export const ComposerExtras: FC<{
   const term = query.trim().toLowerCase();
   const categories = useMemo(() => ['Todas', ...new Set(STICKERS.map((item) => item.category))], []);
   const stickers = STICKERS.filter((item) => (stickerCategory === 'Todas' || item.category === stickerCategory) && (!term || `${item.title} ${item.tags}`.toLowerCase().includes(term)));
-  const gifs = GIFS.filter((item) => !term || `${item.title} ${item.tags}`.toLowerCase().includes(term));
 
   function toggle(next: Panel) {
     setPanel((current) => (current === next ? null : next));
@@ -64,20 +64,7 @@ export const ComposerExtras: FC<{
               </div>
             </>
           ) : null}
-          {panel === 'gif' ? (
-            <>
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar GIF: risada, vergonha, comemoração" aria-label="Buscar GIF" className="mb-2 h-9 w-full rounded-lg border border-[#EFE6F4] px-2 text-[13px]" />
-              {gifs.length === 0 ? <p className="px-1 py-3 text-center text-[12px] text-[#8A7C98]">Nenhum GIF encontrado.</p> : null}
-              <div className="grid max-h-56 grid-cols-2 gap-2 overflow-y-auto">
-                {gifs.map((item) => (
-                  <button key={item.id} type="button" className="overflow-hidden rounded-xl bg-[#FBF7FD]" onClick={() => { onGif?.(item.url); setPanel(null); }} aria-label={item.title}>
-                    <img src={item.url} alt={item.title} className="aspect-square w-full object-cover" />
-                    <span className="block px-1 py-1 text-[11px] text-[#6A228C]">{item.title}</span>
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : null}
+          {panel === 'gif' ? <GifPicker onPick={(url) => { onGif?.(url); setPanel(null); }} /> : null}
         </div>
       ) : null}
     </div>

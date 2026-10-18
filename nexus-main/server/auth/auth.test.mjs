@@ -145,11 +145,13 @@ test('POST /api/login responde JSON', async () => {
 
 test('vercel.json não entrega index.html para /api', () => {
   const config = JSON.parse(fs.readFileSync(new URL('../../vercel.json', import.meta.url), 'utf8'));
-  const source = config.rewrites[0].source;
-  const pattern = new RegExp(`^${source}$`);
+  const spa = config.rewrites.find((item) => item.destination === '/index.html');
+  const pattern = new RegExp(`^${spa.source}$`);
   assert.equal(pattern.test('/api/login'), false);
   assert.equal(pattern.test('/api/session'), false);
   assert.equal(pattern.test('/api/logout'), false);
+  assert.equal(pattern.test('/api/gifs'), false);
+  assert.equal(pattern.test('/api/feed'), false);
   assert.equal(pattern.test('/kudos'), true);
   assert.equal(config.rewrites.some((item) => item.destination === '/index.html' && item.source === '/(.*)'), false);
   assert.equal(fs.existsSync(new URL('../../api/login.ts', import.meta.url)), true);
