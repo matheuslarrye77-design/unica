@@ -29,6 +29,8 @@ dist-ssr
 
 # Credenciais locais. Não publicar.
 data/auth.json
+data/stickers.json
+data/stickers/
 .env
 .env.*
 !.env.example

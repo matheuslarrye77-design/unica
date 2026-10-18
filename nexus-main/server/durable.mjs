@@ -164,6 +164,60 @@ async function writeBlob(id, payload) {
   }
 }
 
+const STICKER_FILE = /^stk-[a-f0-9]{16}$/;
+
+export async function readStickerLibrary() {
+  if (!blobToken()) return { mode: 'local', ok: true, items: null };
+  const remote = await readBlob('stickers');
+  return { mode: 'blob', ok: remote.ok, items: Array.isArray(remote.payload?.items) ? remote.payload.items : [] };
+}
+
+export async function writeStickerLibrary(items) {
+  if (!blobToken()) return { mode: 'local', ok: true };
+  return { mode: 'blob', ok: await writeBlob('stickers', { items }) };
+}
+
+export async function readStickerFile(id) {
+  if (!STICKER_FILE.test(id)) return { ok: false, bytes: null, type: '' };
+  const token = blobToken();
+  const storeId = storeIdFromToken(token);
+  if (!token || !storeId) return { mode: 'local', ok: false, bytes: null, type: '' };
+  try {
+    const response = await fetch(`https://${storeId}.private.blob.vercel-storage.com/unica/stickers/${id}?cache=0`, {
+      headers: blobHeaders(token, storeId),
+    });
+    if (!response.ok) return { mode: 'blob', ok: false, bytes: null, type: '' };
+    return { mode: 'blob', ok: true, bytes: Buffer.from(await response.arrayBuffer()), type: response.headers.get('content-type') || '' };
+  } catch {
+    console.error('[unica] sticker read', 'network');
+    return { mode: 'blob', ok: false, bytes: null, type: '' };
+  }
+}
+
+export async function writeStickerFile(id, bytes, contentType) {
+  if (!STICKER_FILE.test(id)) return false;
+  const token = blobToken();
+  const storeId = storeIdFromToken(token);
+  if (!token || !storeId) return false;
+  try {
+    const response = await fetch(`https://vercel.com/api/blob/?pathname=unica/stickers/${id}`, {
+      method: 'PUT',
+      headers: blobHeaders(token, storeId, {
+        'x-vercel-blob-access': 'private',
+        'x-content-type': contentType,
+        'x-add-random-suffix': '0',
+        'x-allow-overwrite': '0',
+      }),
+      body: bytes,
+    });
+    if (!response.ok) console.error('[unica] sticker write', response.status);
+    return response.ok;
+  } catch {
+    console.error('[unica] sticker write', 'network');
+    return false;
+  }
+}
+
 export async function openDocuments(dir) {
   const ready = new Set();
   const missing = new Set();

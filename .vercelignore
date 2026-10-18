@@ -5,3 +5,5 @@ cd
 .env.*
 .vercel
 nexus-main/data/auth.json
+nexus-main/data/stickers.json
+nexus-main/data/stickers/

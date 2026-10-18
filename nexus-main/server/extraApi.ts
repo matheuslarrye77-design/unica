@@ -14,6 +14,7 @@ import { createLocalStore, localUserFromRequest } from './auth/localStore.mjs';
 import { isLeader } from './auth/permissions.mjs';
 import { handleCelebrations } from './celebrations/api.mjs';
 import { gifMediaUrl, searchGifs } from './giphy.mjs';
+import { handleStickerRequest, stickerMediaUrl } from './stickers.mjs';
 import { dataDir } from './dataDir.mjs';
 import { handleUpload } from './uploads.js';
 
@@ -208,7 +209,8 @@ function cleanMedia(value: unknown): Comment['media'] | undefined {
     || /^\/gifs\/[a-z0-9-]+\.gif$/.test(url)
     || /^https:\/\/fonts\.gstatic\.com\/s\/e\/notoemoji\/latest\/[a-z0-9_]+\/512\.webp$/.test(url)
     || (url.startsWith('https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/') && /_3d(?:_default)?\.png$/.test(url))
-    || Boolean(gifMediaUrl(url));
+    || Boolean(gifMediaUrl(url))
+    || Boolean(stickerMediaUrl(url));
   if (!allowed) return undefined;
   if (item.kind !== 'gif' && item.kind !== 'sticker') return undefined;
   return { kind: item.kind, url };
@@ -406,7 +408,8 @@ export function extraApi(): Connect.NextHandleFunction {
     const uploadRoute = url.startsWith('/api/uploads');
     const celebrationRoute = url === '/api/celebrations' || url.startsWith('/api/celebrations/');
     const gifRoute = url === '/api/gifs';
-    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && !feedRoute && !uploadRoute && !celebrationRoute && !gifRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
+    const stickerRoute = url === '/api/stickers' || url.startsWith('/api/stickers/');
+    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && !feedRoute && !uploadRoute && !celebrationRoute && !gifRoute && !stickerRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
       return next();
     }
     try {
@@ -429,6 +432,12 @@ export function extraApi(): Connect.NextHandleFunction {
 
       if (req.method === 'POST' && url === '/api/logout') {
         applyAuthResult(res, await performLogout(createLocalStore(authFile, accounts), req.headers.cookie));
+        return;
+      }
+
+      if (stickerRoute) {
+        const handled = await handleStickerRequest(req, res, url, dir, muralUser(req));
+        if (!handled) send(res, 404, { error: 'missing' });
         return;
       }
 
