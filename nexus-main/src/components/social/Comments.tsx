@@ -1,6 +1,7 @@
 import { EmojiText } from '@/components/Emoji';
 import { Heart, Trash2, X } from 'lucide-react';
-import { useRef, type FC, type FormEvent, type KeyboardEvent } from 'react';
+import { useState, useRef, type FC, type FormEvent, type KeyboardEvent } from 'react';
+import { keepSticker } from '@/lib/stickers';
 import { ComposerExtras } from './ComposerExtras';
 import { GiphyMark } from './GifPicker';
 import type { SocialComment } from './types';
@@ -48,7 +49,12 @@ export const Comments: FC<{
               <p className="text-sm leading-5">
                 <span className="font-semibold">{comment.author}</span> {comment.body ? <EmojiText text={comment.body} /> : null}
               </p>
-              {comment.media ? <img src={comment.media.url} alt={comment.media.kind === 'gif' ? 'GIF' : 'Figurinha'} className="mt-1 h-28 w-28 rounded-xl bg-[#F8EAFB] object-contain" /> : null}
+              {comment.media ? (
+                <div className="mt-1">
+                  <img src={comment.media.url} alt={comment.media.kind === 'gif' ? 'GIF' : 'Figurinha'} className="h-28 w-28 rounded-xl bg-[#F8EAFB] object-contain" />
+                  {comment.media.kind === 'sticker' && /^\/api\/stickers\/stk-[a-f0-9]{16}$/.test(comment.media.url) ? <SaveSticker url={comment.media.url} /> : null}
+                </div>
+              ) : null}
               {comment.media?.url.includes('.giphy.com/') ? <div className="mt-1"><GiphyMark /></div> : null}
               <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
                 <span>{comment.time}</span>
@@ -91,5 +97,23 @@ export const Comments: FC<{
         <ComposerExtras onEmoji={insertEmoji} onSticker={(url) => onMedia?.({ kind: 'sticker', url })} onGif={(url) => onMedia?.({ kind: 'gif', url })} />
       </form>
     </div>
+  );
+};
+
+const SaveSticker: FC<{ url: string }> = ({ url }) => {
+  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  return (
+    <button
+      type="button"
+      disabled={state === 'saving' || state === 'saved'}
+      className="mt-1 text-xs font-medium text-[#6A228C] disabled:opacity-60"
+      onClick={() => {
+        if (state === 'saving' || state === 'saved') return;
+        setState('saving');
+        void keepSticker(url).then(() => setState('saved')).catch(() => setState('error'));
+      }}
+    >
+      {state === 'saved' ? 'Figurinha salva' : state === 'saving' ? 'Salvando...' : state === 'error' ? 'Tentar de novo' : 'Salvar figurinha'}
+    </button>
   );
 };

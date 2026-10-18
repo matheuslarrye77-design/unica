@@ -1,7 +1,8 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { readStickerFile, readStickerLibrary, writeStickerFile, writeStickerLibrary } from './durable.mjs';
+import { gifMediaUrl } from './giphy.mjs';
 
 const MAX_BYTES = 2 * 1024 * 1024;
 const MAX_PER_USER = 40;
@@ -46,30 +47,33 @@ function imageFile(dir, id) {
 function readLocal(dir) {
   try {
     const parsed = JSON.parse(fs.readFileSync(libraryFile(dir), 'utf8'));
-    return Array.isArray(parsed.items) ? parsed.items : [];
+    return {
+      items: Array.isArray(parsed.items) ? parsed.items : [],
+      gifs: Array.isArray(parsed.gifs) ? parsed.gifs : [],
+    };
   } catch {
-    return [];
+    return { items: [], gifs: [] };
   }
 }
 
-function writeLocal(dir, items) {
+function writeLocal(dir, items, gifs) {
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(libraryFile(dir), JSON.stringify({ items }));
+  fs.writeFileSync(libraryFile(dir), JSON.stringify({ items, gifs }));
 }
 
-async function loadItems(dir) {
+async function loadLibrary(dir) {
   const remote = await readStickerLibrary();
   if (remote.mode === 'blob') {
     if (!remote.ok) return null;
-    return remote.items ?? [];
+    return { items: remote.items ?? [], gifs: remote.gifs ?? [] };
   }
   return readLocal(dir);
 }
 
-async function storeItems(dir, items) {
-  const saved = await writeStickerLibrary(items);
+async function storeLibrary(dir, items, gifs) {
+  const saved = await writeStickerLibrary(items, gifs);
   if (saved.mode === 'blob') return saved.ok;
-  writeLocal(dir, items);
+  writeLocal(dir, items, gifs);
   return true;
 }
 
@@ -101,22 +105,72 @@ export function listStickers(items, userId) {
     .map((item) => ({ id: item.id, url: `/api/stickers/${item.id}`, createdAt: item.createdAt }));
 }
 
+function stickerBody(item) {
+  return { id: item.id, url: `/api/stickers/${item.id}`, createdAt: item.createdAt };
+}
+
 export async function saveSticker(dir, userId, bytes) {
   const owner = safeUser(userId);
   const mime = detectImage(bytes);
   if (!owner || !mime) return { status: 400, body: { error: 'file' } };
   return exclusive(async () => {
-    const items = await loadItems(dir);
-    if (!items) return { status: 503, body: { error: 'unavailable' } };
-    const mine = items.filter((item) => item.userId === owner);
+    const library = await loadLibrary(dir);
+    if (!library) return { status: 503, body: { error: 'unavailable' } };
+    const mine = library.items.filter((item) => item.userId === owner);
     if (mine.length >= MAX_PER_USER) return { status: 400, body: { error: 'limit' } };
     const id = `stk-${randomBytes(8).toString('hex')}`;
     const stored = await storeBytes(dir, id, bytes, mime);
     if (!stored) return { status: 503, body: { error: 'unavailable' } };
     const item = { id, userId: owner, mime, createdAt: new Date().toISOString() };
-    const saved = await storeItems(dir, [item, ...items]);
+    const saved = await storeLibrary(dir, [item, ...library.items], library.gifs);
     if (!saved) return { status: 503, body: { error: 'unavailable' } };
-    return { status: 201, body: { sticker: { id, url: `/api/stickers/${id}`, createdAt: item.createdAt } } };
+    return { status: 201, body: { sticker: stickerBody(item) } };
+  });
+}
+
+export async function keepSticker(dir, userId, sourceId) {
+  const owner = safeUser(userId);
+  if (!owner || !ID.test(sourceId)) return { status: 400, body: { error: 'file' } };
+  return exclusive(async () => {
+    const library = await loadLibrary(dir);
+    if (!library) return { status: 503, body: { error: 'unavailable' } };
+    const found = library.items.find((item) => item.id === sourceId);
+    if (!found) return { status: 404, body: { error: 'missing' } };
+    const existing = library.items.find((item) => item.userId === owner && item.id === sourceId);
+    if (existing) return { status: 200, body: { sticker: stickerBody(existing) } };
+    const mine = library.items.filter((item) => item.userId === owner);
+    if (mine.length >= MAX_PER_USER) return { status: 400, body: { error: 'limit' } };
+    const item = { id: sourceId, userId: owner, mime: found.mime, createdAt: new Date().toISOString() };
+    const saved = await storeLibrary(dir, [item, ...library.items], library.gifs);
+    if (!saved) return { status: 503, body: { error: 'unavailable' } };
+    return { status: 201, body: { sticker: stickerBody(item) } };
+  });
+}
+
+export function listGifs(gifs, userId) {
+  const owner = safeUser(userId);
+  return gifs
+    .filter((item) => item?.userId === owner && gifMediaUrl(item.url))
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    .slice(0, MAX_PER_USER)
+    .map((item) => ({ id: String(item.id), title: String(item.title || 'GIF'), url: gifMediaUrl(item.url), createdAt: item.createdAt }));
+}
+
+export async function saveGif(dir, userId, url, title) {
+  const owner = safeUser(userId);
+  const media = gifMediaUrl(url);
+  if (!owner || !media) return { status: 400, body: { error: 'file' } };
+  return exclusive(async () => {
+    const library = await loadLibrary(dir);
+    if (!library) return { status: 503, body: { error: 'unavailable' } };
+    const existing = library.gifs.find((item) => item.userId === owner && item.url === media);
+    if (existing) return { status: 200, body: { gif: listGifs([existing], owner)[0] } };
+    const mine = library.gifs.filter((item) => item.userId === owner);
+    const next = mine.slice(0, MAX_PER_USER - 1);
+    const item = { id: createHash('sha256').update(media).digest('hex').slice(0, 16), userId: owner, title: String(title || 'GIF').slice(0, 80), url: media, createdAt: new Date().toISOString() };
+    const saved = await storeLibrary(dir, library.items, [item, ...next, ...library.gifs.filter((entry) => entry.userId !== owner)]);
+    if (!saved) return { status: 503, body: { error: 'unavailable' } };
+    return { status: 201, body: { gif: listGifs([item], owner)[0] } };
   });
 }
 
@@ -164,23 +218,34 @@ export async function handleStickerRequest(req, res, url, dir, user) {
     return true;
   }
   if (req.method === 'GET') {
-    const items = await loadItems(dir);
-    if (!items) {
+    const library = await loadLibrary(dir);
+    if (!library) {
       send(res, 503, { error: 'unavailable' });
       return true;
     }
-    send(res, 200, { stickers: listStickers(items, user.id) });
+    send(res, 200, { stickers: listStickers(library.items, user.id), gifs: listGifs(library.gifs, user.id) });
     return true;
   }
   if (req.method === 'POST') {
-    let encoded = '';
+    let body = {};
     try {
       const raw = await readLimited(req, 2_900_000);
-      encoded = String(JSON.parse(raw.toString('utf8') || '{}').data ?? '');
+      body = JSON.parse(raw.toString('utf8') || '{}');
     } catch {
       send(res, 400, { error: 'file' });
       return true;
     }
+    if (body.source) {
+      const result = await keepSticker(dir, user.id, String(body.source));
+      send(res, result.status, result.body);
+      return true;
+    }
+    if (body.gif) {
+      const result = await saveGif(dir, user.id, String(body.gif), body.title);
+      send(res, result.status, result.body);
+      return true;
+    }
+    const encoded = String(body.data ?? '');
     if (!encoded || encoded.length > 2_900_000) {
       send(res, 400, { error: 'file' });
       return true;
@@ -195,10 +260,10 @@ export async function handleStickerRequest(req, res, url, dir, user) {
 
 export async function stickerBytes(dir, id) {
   if (!ID.test(id)) return null;
-  const items = await loadItems(dir);
-  if (!items?.some((item) => item.id === id)) return null;
+  const library = await loadLibrary(dir);
+  if (!library?.items.some((item) => item.id === id)) return null;
   const bytes = await loadBytes(dir, id);
   if (!bytes) return null;
-  const mime = items.find((item) => item.id === id)?.mime || detectImage(bytes) || 'application/octet-stream';
+  const mime = library.items.find((item) => item.id === id)?.mime || detectImage(bytes) || 'application/octet-stream';
   return { bytes, mime };
 }

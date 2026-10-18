@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
+import { readUploadFile, writeUploadFile } from './durable.mjs';
 
 const CHUNK = 1024 * 1024;
 
@@ -124,21 +125,31 @@ export async function handleUpload(req: IncomingMessage, res: ServerResponse, ur
   const metaFile = path.join(root, `${id}.json`);
   const dataFile = path.join(root, id);
   const meta = readMeta(metaFile);
-  if (!meta) {
-    send(res, 404, { error: 'missing' });
-    return;
-  }
 
   if (req.method === 'GET') {
-    if (!meta.done) {
+    if (meta?.done && fs.existsSync(dataFile)) {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', meta.mime);
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(meta.name)}"`);
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      fs.createReadStream(dataFile).pipe(res);
+      return;
+    }
+    const stored = await readUploadFile(id);
+    if (!stored) {
       send(res, 404, { error: 'missing' });
       return;
     }
     res.statusCode = 200;
-    res.setHeader('Content-Type', meta.mime);
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(meta.name)}"`);
-    res.setHeader('Cache-Control', 'private, max-age=3600');
-    fs.createReadStream(dataFile).pipe(res);
+    res.setHeader('Content-Type', stored.mime);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(stored.name)}"`);
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    res.end(stored.bytes);
+    return;
+  }
+
+  if (!meta) {
+    send(res, 404, { error: 'missing' });
     return;
   }
 
@@ -181,6 +192,11 @@ export async function handleUpload(req: IncomingMessage, res: ServerResponse, ur
     }
     meta.done = true;
     fs.writeFileSync(metaFile, JSON.stringify(meta));
+    if (meta.mime.startsWith('image/') && meta.size <= 12 * 1024 * 1024) {
+      const bytes = fs.readFileSync(dataFile);
+      const stored = await writeUploadFile(id, bytes, meta.mime, { name: meta.name });
+      if (process.env.BLOB_READ_WRITE_TOKEN && !stored) console.error('[unica] media write', 'upload');
+    }
     send(res, 200, { url: `/api/uploads/${id}`, name: meta.name, mime: meta.mime });
     return;
   }

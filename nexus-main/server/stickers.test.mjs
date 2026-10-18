@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { detectImage, listStickers, saveSticker, stickerBytes, stickerMediaUrl } from './stickers.mjs';
+import { detectImage, keepSticker, listGifs, listStickers, saveGif, saveSticker, stickerBytes, stickerMediaUrl } from './stickers.mjs';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 
@@ -29,6 +29,14 @@ test('a saved sticker stays available for the same person', async () => {
     const stored = await stickerBytes(dir, first.body.sticker.id);
     assert.equal(stored.mime, 'image/png');
     assert.equal(stored.bytes.equals(png), true);
+    const kept = await keepSticker(dir, 'helena', first.body.sticker.id);
+    assert.equal(kept.status, 201);
+    const gif = await saveGif(dir, '1', 'https://media.giphy.com/media/abc123/200w.gif', 'Risada');
+    assert.equal(gif.status, 201);
+    const library = JSON.parse(fs.readFileSync(path.join(dir, 'stickers.json'), 'utf8'));
+    assert.equal(listStickers(library.items, '1').length, 2);
+    assert.equal(listStickers(library.items, 'helena').length, 1);
+    assert.equal(listGifs(library.gifs, '1')[0].url, 'https://media.giphy.com/media/abc123/200w.gif');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
     if (previous === undefined) delete process.env.BLOB_READ_WRITE_TOKEN;

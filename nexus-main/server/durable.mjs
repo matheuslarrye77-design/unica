@@ -167,54 +167,97 @@ async function writeBlob(id, payload) {
 const STICKER_FILE = /^stk-[a-f0-9]{16}$/;
 
 export async function readStickerLibrary() {
-  if (!blobToken()) return { mode: 'local', ok: true, items: null };
+  if (!blobToken()) return { mode: 'local', ok: true, items: null, gifs: null };
   const remote = await readBlob('stickers');
-  return { mode: 'blob', ok: remote.ok, items: Array.isArray(remote.payload?.items) ? remote.payload.items : [] };
+  return {
+    mode: 'blob',
+    ok: remote.ok,
+    items: Array.isArray(remote.payload?.items) ? remote.payload.items : [],
+    gifs: Array.isArray(remote.payload?.gifs) ? remote.payload.gifs : [],
+  };
 }
 
-export async function writeStickerLibrary(items) {
+export async function writeStickerLibrary(items, gifs = []) {
   if (!blobToken()) return { mode: 'local', ok: true };
-  return { mode: 'blob', ok: await writeBlob('stickers', { items }) };
+  return { mode: 'blob', ok: await writeBlob('stickers', { items, gifs }) };
 }
 
 export async function readStickerFile(id) {
   if (!STICKER_FILE.test(id)) return { ok: false, bytes: null, type: '' };
-  const token = blobToken();
-  const storeId = storeIdFromToken(token);
-  if (!token || !storeId) return { mode: 'local', ok: false, bytes: null, type: '' };
-  try {
-    const response = await fetch(`https://${storeId}.private.blob.vercel-storage.com/unica/stickers/${id}?cache=0`, {
-      headers: blobHeaders(token, storeId),
-    });
-    if (!response.ok) return { mode: 'blob', ok: false, bytes: null, type: '' };
-    return { mode: 'blob', ok: true, bytes: Buffer.from(await response.arrayBuffer()), type: response.headers.get('content-type') || '' };
-  } catch {
-    console.error('[unica] sticker read', 'network');
-    return { mode: 'blob', ok: false, bytes: null, type: '' };
-  }
+  if (!blobToken()) return { mode: 'local', ok: false, bytes: null, type: '' };
+  const file = await getPrivate(`unica/stickers/${id}`);
+  if (!file) return { mode: 'blob', ok: false, bytes: null, type: '' };
+  return { mode: 'blob', ok: true, bytes: file.bytes, type: file.type };
 }
 
-export async function writeStickerFile(id, bytes, contentType) {
-  if (!STICKER_FILE.test(id)) return false;
+const PRIVATE_FILE = /^unica\/(?:stickers\/stk-[a-f0-9]{16}|uploads\/up-[a-f0-9]{16}(?:\.json)?)$/;
+
+async function putPrivate(pathname, body, contentType) {
+  if (!PRIVATE_FILE.test(pathname)) return false;
   const token = blobToken();
   const storeId = storeIdFromToken(token);
   if (!token || !storeId) return false;
   try {
-    const response = await fetch(`https://vercel.com/api/blob/?pathname=unica/stickers/${id}`, {
+    const response = await fetch(`https://vercel.com/api/blob/?pathname=${pathname}`, {
       method: 'PUT',
       headers: blobHeaders(token, storeId, {
         'x-vercel-blob-access': 'private',
         'x-content-type': contentType,
         'x-add-random-suffix': '0',
-        'x-allow-overwrite': '0',
+        'x-allow-overwrite': '1',
       }),
-      body: bytes,
+      body,
     });
-    if (!response.ok) console.error('[unica] sticker write', response.status);
+    if (!response.ok) console.error('[unica] media write', response.status);
     return response.ok;
   } catch {
-    console.error('[unica] sticker write', 'network');
+    console.error('[unica] media write', 'network');
     return false;
+  }
+}
+
+async function getPrivate(pathname) {
+  if (!PRIVATE_FILE.test(pathname)) return null;
+  const token = blobToken();
+  const storeId = storeIdFromToken(token);
+  if (!token || !storeId) return null;
+  try {
+    const response = await fetch(`https://${storeId}.private.blob.vercel-storage.com/${pathname}?cache=0`, {
+      headers: blobHeaders(token, storeId),
+    });
+    if (!response.ok) return null;
+    return { bytes: Buffer.from(await response.arrayBuffer()), type: response.headers.get('content-type') || '' };
+  } catch {
+    console.error('[unica] media read', 'network');
+    return null;
+  }
+}
+
+export async function writeStickerFile(id, bytes, contentType) {
+  if (!STICKER_FILE.test(id)) return false;
+  if (!blobToken()) return false;
+  return putPrivate(`unica/stickers/${id}`, bytes, contentType);
+}
+
+const UPLOAD_FILE = /^up-[a-f0-9]{16}$/;
+
+export async function writeUploadFile(id, bytes, contentType, meta) {
+  if (!UPLOAD_FILE.test(id) || !blobToken()) return false;
+  const file = await putPrivate(`unica/uploads/${id}`, bytes, contentType);
+  const info = await putPrivate(`unica/uploads/${id}.json`, Buffer.from(JSON.stringify({ name: String(meta?.name || 'arquivo').slice(0, 180), mime: contentType, size: bytes.length })), 'application/json');
+  return file && info;
+}
+
+export async function readUploadFile(id) {
+  if (!UPLOAD_FILE.test(id) || !blobToken()) return null;
+  const info = await getPrivate(`unica/uploads/${id}.json`);
+  const file = await getPrivate(`unica/uploads/${id}`);
+  if (!info || !file) return null;
+  try {
+    const meta = JSON.parse(info.bytes.toString('utf8'));
+    return { bytes: file.bytes, mime: String(meta.mime || file.type || 'application/octet-stream'), name: String(meta.name || 'arquivo') };
+  } catch {
+    return { bytes: file.bytes, mime: file.type || 'application/octet-stream', name: 'arquivo' };
   }
 }
 
