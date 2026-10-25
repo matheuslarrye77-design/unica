@@ -1,8 +1,8 @@
 import { EmojiText } from '@/components/Emoji';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { FileText, MoreHorizontal } from 'lucide-react';
+import { AudioLines, FileText, MoreHorizontal } from 'lucide-react';
 import { PhotoGallery } from './PhotoGallery';
-import { type FC } from 'react';
+import { useEffect, useRef, type FC } from 'react';
 import { Link } from 'react-router-dom';
 import { AnnouncementPost } from './AnnouncementPost';
 import { Comments } from './Comments';
@@ -10,7 +10,31 @@ import { EventPost } from './EventPost';
 import { PollPost } from './PollPost';
 import { PostActions } from './PostActions';
 import { RecognitionPost } from './RecognitionPost';
-import type { SocialPost } from './types';
+import type { CommentMedia, SocialPost } from './types';
+
+const AudioClip: FC<{ url: string; start: number; duration?: number }> = ({ url, start, duration }) => {
+  const ref = useRef<HTMLAudioElement>(null);
+  useEffect(() => {
+    const audio = ref.current;
+    if (!audio) return;
+    const place = () => {
+      if (audio.currentTime < start || (duration && audio.currentTime >= start + duration)) audio.currentTime = start;
+    };
+    const tick = () => {
+      if (duration && audio.currentTime >= start + duration) {
+        audio.pause();
+        audio.currentTime = start;
+      }
+    };
+    audio.addEventListener('play', place);
+    audio.addEventListener('timeupdate', tick);
+    return () => {
+      audio.removeEventListener('play', place);
+      audio.removeEventListener('timeupdate', tick);
+    };
+  }, [start, duration]);
+  return <audio ref={ref} src={url} controls preload="metadata" className="w-full" />;
+};
 
 const kindLabel: Partial<Record<SocialPost['kind'], string>> = {
   leadership: 'Liderança',
@@ -37,12 +61,13 @@ export const PostCard: FC<{
   republished?: boolean;
   canDeleteComment?: (commentId: string) => boolean;
   onDeleteComment?: (commentId: string) => void;
-  pendingMedia?: { kind: 'gif' | 'sticker'; url: string } | null;
-  onMedia?: (media: { kind: 'gif' | 'sticker'; url: string } | null) => void;
+  pendingMedia?: CommentMedia | null;
+  onMedia?: (media: CommentMedia | null) => void;
+  onPasteFile?: (file: File) => void;
   onGifFile?: (file: File) => void;
   repost?: { name: string; avatar: string; note: string };
   preview?: boolean;
-}> = ({ post, commentDraft, onCommentDraft, onLike, onReact, onToggleSave, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, republished, canDeleteComment, onDeleteComment, pendingMedia, onMedia, onGifFile, repost }) => {
+}> = ({ post, commentDraft, onCommentDraft, onLike, onReact, onToggleSave, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, republished, canDeleteComment, onDeleteComment, pendingMedia, onMedia, onGifFile, onPasteFile, repost }) => {
   const plain = post.kind === 'text' || post.kind === 'image' || post.kind === 'leadership';
 
   return (
@@ -86,10 +111,28 @@ export const PostCard: FC<{
         </DropdownMenu>
       </header>
 
-      {plain && post.body ? <p className="mt-2 text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90"><EmojiText text={post.body} /></p> : null}
-      {post.images && post.images.length > 0 ? <PhotoGallery images={post.images} /> : post.kind === 'image' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
+      {post.blocks && post.blocks.length > 0 ? (
+        <div className="mt-2 space-y-2">
+          {post.blocks.map((block, index) => block.type === 'text' ? (
+            <p key={`${post.id}-texto-${index}`} className="text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90"><EmojiText text={block.text} /></p>
+          ) : (
+            <img key={`${post.id}-imagem-${index}`} src={block.url} alt="" className="max-h-[480px] w-full rounded-[12px] bg-[#F8F7FC] object-contain" />
+          ))}
+        </div>
+      ) : (
+        <>
+          {plain && post.body ? <p className="mt-2 text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90"><EmojiText text={post.body} /></p> : null}
+          {post.images && post.images.length > 0 ? <PhotoGallery images={post.images} /> : post.kind === 'image' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-contain bg-[#F8F7FC]" /> : null}
+        </>
+      )}
       {post.kind === 'leadership' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
-      {post.attachment?.type === 'video' && post.attachment.url ? <video src={post.attachment.url} controls className="mt-3 max-h-[420px] w-full rounded-xl bg-black" /> : null}
+      {post.attachment?.type === 'video' && post.attachment.url ? <video src={post.attachment.url} controls preload="metadata" className="mt-3 max-h-[420px] w-full rounded-xl bg-black" /> : null}
+      {post.attachment?.type === 'audio' && post.attachment.url ? (
+        <div className="mt-3 rounded-xl border border-border px-3 py-2">
+          <p className="mb-1 flex items-center gap-2 text-sm"><AudioLines className="h-4 w-4 text-primary" />{post.attachment.name}</p>
+          <AudioClip url={post.attachment.url} start={post.attachment.start ?? 0} duration={post.attachment.duration} />
+        </div>
+      ) : null}
       {post.attachment?.type === 'document' ? (
         post.attachment.url ? (
           <a href={post.attachment.url} download={post.attachment.name} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm text-foreground">
@@ -124,6 +167,7 @@ export const PostCard: FC<{
           pendingMedia={pendingMedia}
           onMedia={onMedia}
           onGifFile={onGifFile}
+          onPasteFile={onPasteFile}
           canDelete={canDeleteComment}
           onDelete={onDeleteComment}
         />

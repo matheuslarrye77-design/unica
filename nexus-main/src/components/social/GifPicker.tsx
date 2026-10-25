@@ -10,13 +10,6 @@ function messageFor(error: unknown) {
   return 'Não foi possível buscar GIFs.';
 }
 
-export const GiphyMark: FC = () => (
-  <a href="https://giphy.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] text-[#8A7C98] hover:text-[#6A228C]">
-    <img src="https://giphy.com/static/img/poweredby_giphy.png" alt="" className="h-4 w-auto" />
-    Powered by GIPHY
-  </a>
-);
-
 export const GifPicker: FC<{ onPick: (url: string) => void }> = ({ onPick }) => {
   const [query, setQuery] = useState('');
   const [gifs, setGifs] = useState<GifHit[]>([]);
@@ -86,7 +79,6 @@ export const GifPicker: FC<{ onPick: (url: string) => void }> = ({ onPick }) => 
           ))}
         </div>
       ) : null}
-      <div className="mt-2 px-1"><GiphyMark /></div>
     </>
   );
 };

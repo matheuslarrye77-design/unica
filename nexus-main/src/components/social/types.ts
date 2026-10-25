@@ -1,8 +1,14 @@
 export type Attachment = {
-  type: 'video' | 'document';
+  type: 'video' | 'document' | 'audio';
   name: string;
   url?: string;
+  start?: number;
+  duration?: number;
 };
+
+export type CommentMedia = { kind: 'gif' | 'sticker' | 'image' | 'video'; url: string };
+
+export type PostBlock = { type: 'text'; text: string } | { type: 'image'; url: string };
 
 export type SocialComment = {
   id: string;
@@ -13,7 +19,7 @@ export type SocialComment = {
   time: string;
   likes: number;
   liked: boolean;
-  media?: { kind: 'gif' | 'sticker'; url: string };
+  media?: CommentMedia;
 };
 
 export type PollOption = {
@@ -36,6 +42,7 @@ export type SocialPost = {
   body: string;
   image?: string;
   images?: string[];
+  blocks?: PostBlock[];
   attachment?: Attachment;
   likes: number;
   liked: boolean;

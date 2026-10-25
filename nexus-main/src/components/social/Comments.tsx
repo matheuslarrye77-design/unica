@@ -1,10 +1,10 @@
 import { EmojiText } from '@/components/Emoji';
-import { Heart, Trash2, X } from 'lucide-react';
-import { useState, useRef, type FC, type FormEvent, type KeyboardEvent } from 'react';
+import { Heart, Star, Trash2, X } from 'lucide-react';
+import { useState, useRef, type ClipboardEvent, type FC, type FormEvent, type KeyboardEvent } from 'react';
+import { actor } from '@/lib/session';
 import { keepSticker } from '@/lib/stickers';
 import { ComposerExtras } from './ComposerExtras';
-import { GiphyMark } from './GifPicker';
-import type { SocialComment } from './types';
+import type { CommentMedia, SocialComment } from './types';
 
 export const Comments: FC<{
   inputId: string;
@@ -15,10 +15,11 @@ export const Comments: FC<{
   onLike: (commentId: string) => void;
   canDelete?: (commentId: string) => boolean;
   onDelete?: (commentId: string) => void;
-  pendingMedia?: { kind: 'gif' | 'sticker'; url: string } | null;
-  onMedia?: (media: { kind: 'gif' | 'sticker'; url: string } | null) => void;
+  pendingMedia?: CommentMedia | null;
+  onMedia?: (media: CommentMedia | null) => void;
   onGifFile?: (file: File) => void;
-}> = ({ inputId, comments, draft, onDraft, onSubmit, onLike, canDelete, onDelete, pendingMedia, onMedia }) => {
+  onPasteFile?: (file: File) => void;
+}> = ({ inputId, comments, draft, onDraft, onSubmit, onLike, canDelete, onDelete, pendingMedia, onMedia, onPasteFile }) => {
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -30,6 +31,14 @@ export const Comments: FC<{
     const end = field?.selectionEnd ?? draft.length;
     onDraft(draft.slice(0, start) + emoji + draft.slice(end));
     requestAnimationFrame(() => field?.focus());
+  }
+  function onPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const data = event.clipboardData;
+    const direct = [...data.files].find((file) => file.type.startsWith('image/') || file.type.startsWith('video/'));
+    const file = direct ?? [...data.items].map((item) => (item.kind === 'file' ? item.getAsFile() : null)).find((item) => item && (item.type.startsWith('image/') || item.type.startsWith('video/')));
+    if (!file) return;
+    event.preventDefault();
+    onPasteFile?.(file);
   }
   function onKey(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -50,12 +59,15 @@ export const Comments: FC<{
                 <span className="font-semibold">{comment.author}</span> {comment.body ? <EmojiText text={comment.body} /> : null}
               </p>
               {comment.media ? (
-                <div className="mt-1">
-                  <img src={comment.media.url} alt={comment.media.kind === 'gif' ? 'GIF' : 'Figurinha'} className="h-28 w-28 rounded-xl bg-[#F8EAFB] object-contain" />
-                  {comment.media.kind === 'sticker' && /^\/api\/stickers\/stk-[a-f0-9]{16}$/.test(comment.media.url) ? <SaveSticker url={comment.media.url} /> : null}
+                <div className="relative mt-1 inline-block">
+                  {comment.media.kind === 'video' ? (
+                    <video src={comment.media.url} controls className="max-h-48 max-w-full rounded-xl bg-black" />
+                  ) : (
+                    <img src={comment.media.url} alt={comment.media.kind === 'gif' ? 'GIF' : comment.media.kind === 'sticker' ? 'Figurinha' : 'Foto'} className={`${comment.media.kind === 'image' ? 'max-h-60 max-w-full' : 'h-28 w-28'} rounded-xl bg-[#F8EAFB] object-contain`} />
+                  )}
+                  {comment.media.kind === 'sticker' && comment.authorId !== actor().id && /^\/api\/stickers\/stk-[a-f0-9]{16}$/.test(comment.media.url) ? <SaveSticker url={comment.media.url} /> : null}
                 </div>
               ) : null}
-              {comment.media?.url.includes('.giphy.com/') ? <div className="mt-1"><GiphyMark /></div> : null}
               <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
                 <span>{comment.time}</span>
                 <button type="button" onClick={() => onLike(comment.id)} className={comment.liked ? 'inline-flex items-center gap-1 font-medium text-primary' : 'inline-flex items-center gap-1 hover:text-foreground'}>
@@ -76,7 +88,7 @@ export const Comments: FC<{
       <form onSubmit={submit} className="space-y-2">
         {pendingMedia ? (
           <div className="relative inline-block">
-            <img src={pendingMedia.url} alt="" className="h-16 w-16 rounded-xl object-cover" />
+            {pendingMedia.kind === 'video' ? <video src={pendingMedia.url} className="h-16 rounded-xl" /> : <img src={pendingMedia.url} alt="" className="h-16 w-16 rounded-xl object-cover" />}
             <button type="button" aria-label="Remover anexo" className="absolute -right-1 -top-1 rounded-full bg-card p-0.5" onClick={() => onMedia?.(null)}><X className="h-3 w-3" /></button>
           </div>
         ) : null}
@@ -88,6 +100,7 @@ export const Comments: FC<{
             value={draft}
             rows={1}
             onChange={(event) => onDraft(event.target.value)}
+            onPaste={onPaste}
             onKeyDown={onKey}
             placeholder="Escreva um comentário..."
             className="min-h-10 min-w-0 flex-1 resize-none rounded-2xl border border-border bg-muted/40 px-4 py-2 text-sm outline-none focus-visible:border-primary"
@@ -106,14 +119,15 @@ const SaveSticker: FC<{ url: string }> = ({ url }) => {
     <button
       type="button"
       disabled={state === 'saving' || state === 'saved'}
-      className="mt-1 text-xs font-medium text-[#6A228C] disabled:opacity-60"
+      aria-label={state === 'saved' ? 'Figurinha salva' : 'Salvar figurinha'}
+      className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-white/95 text-[#8E35B8] shadow disabled:opacity-70"
       onClick={() => {
         if (state === 'saving' || state === 'saved') return;
         setState('saving');
         void keepSticker(url).then(() => setState('saved')).catch(() => setState('error'));
       }}
     >
-      {state === 'saved' ? 'Figurinha salva' : state === 'saving' ? 'Salvando...' : state === 'error' ? 'Tentar de novo' : 'Salvar figurinha'}
+      <Star className="h-3.5 w-3.5" fill={state === 'saved' ? 'currentColor' : 'none'} />
     </button>
   );
 };

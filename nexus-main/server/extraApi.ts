@@ -36,7 +36,7 @@ type Comment = {
   time: string;
   likes: number;
   likedBy: string[];
-  media?: { kind: 'gif' | 'sticker'; url: string };
+  media?: { kind: 'gif' | 'sticker' | 'image' | 'video'; url: string };
   createdAt?: string;
 };
 
@@ -54,7 +54,8 @@ type FeedPost = {
   body: string;
   image?: string;
   images?: string[];
-  attachment?: { type: 'video' | 'document'; name: string; url?: string };
+  blocks?: ({ type: 'text'; text: string } | { type: 'image'; url: string })[];
+  attachment?: { type: 'video' | 'document' | 'audio'; name: string; url?: string; start?: number; duration?: number };
   likes: number;
   likedBy: string[];
   reactions?: Reaction[];
@@ -191,13 +192,38 @@ function cleanImages(value: unknown) {
 
 function cleanAttachment(value: unknown): FeedPost['attachment'] | undefined {
   if (!value || typeof value !== 'object') return undefined;
-  const item = value as { type?: string; name?: string; url?: string };
-  if (item.type !== 'video' && item.type !== 'document') return undefined;
+  const item = value as { type?: string; name?: string; url?: string; start?: number; duration?: number };
+  if (item.type !== 'video' && item.type !== 'document' && item.type !== 'audio') return undefined;
   const name = String(item.name ?? '').trim().slice(0, 180);
   if (!name) return undefined;
   const url = typeof item.url === 'string' && item.url.startsWith('/api/uploads/up-') ? item.url : undefined;
   if (!url) return undefined;
-  return { type: item.type, name, url };
+  if (item.type !== 'audio') return { type: item.type, name, url };
+  const start = Number(item.start ?? 0);
+  const duration = Number(item.duration ?? 0);
+  const clip = Number.isFinite(start) && Number.isFinite(duration) && start >= 0 && duration > 0 && duration <= 120 * 60
+    ? { start: Math.round(start), duration: Math.round(duration) }
+    : {};
+  return { type: item.type, name, url, ...clip };
+}
+
+function cleanBlocks(value: unknown): FeedPost['blocks'] {
+  if (!Array.isArray(value)) return [];
+  const blocks: NonNullable<FeedPost['blocks']> = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object') continue;
+    const block = entry as { type?: string; text?: string; url?: string };
+    if (block.type === 'text') {
+      const text = String(block.text ?? '').trim().slice(0, 4000);
+      if (text) blocks.push({ type: 'text', text });
+    }
+    if (block.type === 'image') {
+      const url = cleanImage(block.url);
+      if (url) blocks.push({ type: 'image', url });
+    }
+    if (blocks.length >= 20) break;
+  }
+  return blocks;
 }
 
 function cleanMedia(value: unknown): Comment['media'] | undefined {
@@ -212,7 +238,8 @@ function cleanMedia(value: unknown): Comment['media'] | undefined {
     || Boolean(gifMediaUrl(url))
     || Boolean(stickerMediaUrl(url));
   if (!allowed) return undefined;
-  if (item.kind !== 'gif' && item.kind !== 'sticker') return undefined;
+  if (item.kind !== 'gif' && item.kind !== 'sticker' && item.kind !== 'image' && item.kind !== 'video') return undefined;
+  if ((item.kind === 'image' || item.kind === 'video') && !url.startsWith('/api/uploads/up-')) return undefined;
   return { kind: item.kind, url };
 }
 
@@ -361,6 +388,7 @@ export function extraApi(): Connect.NextHandleFunction {
       body: post.body,
       image: images[0],
       images,
+      blocks: post.blocks,
       attachment: post.attachment,
       likes: typeof post.likes === 'number' ? post.likes : reactions.length,
       liked: reactions.some((item) => item.userId === userId && item.kind === 'like'),
@@ -472,9 +500,10 @@ export function extraApi(): Connect.NextHandleFunction {
 
       if (req.method === 'POST' && url === '/api/feed') {
         try {
-        const body = JSON.parse((await readBody(req)).toString('utf8')) as Partial<FeedPost> & { images?: unknown };
-        const text = String(body.body ?? '').trim();
-        const images = cleanImages(body.images ?? (body.image ? [body.image] : []));
+        const body = JSON.parse((await readBody(req)).toString('utf8')) as Partial<FeedPost> & { images?: unknown; blocks?: unknown };
+        const blocks = cleanBlocks(body.blocks);
+        const text = blocks?.length ? blocks.filter((block) => block.type === 'text').map((block) => block.text).join('\n\n') : String(body.body ?? '').trim();
+        const images = blocks?.length ? blocks.filter((block) => block.type === 'image').map((block) => block.url) : cleanImages(body.images ?? (body.image ? [body.image] : []));
         const attachment = cleanAttachment(body.attachment);
         const labels = Array.isArray(body.poll)
           ? body.poll.map((item) => String(item.label ?? '').trim()).filter(Boolean).slice(0, 12)
@@ -505,6 +534,7 @@ export function extraApi(): Connect.NextHandleFunction {
           body: text,
           image: images[0],
           images,
+          blocks: blocks?.length ? blocks : undefined,
           attachment,
           likes: 0,
           likedBy: [],

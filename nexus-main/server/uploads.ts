@@ -4,13 +4,23 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import { readUploadFile, writeUploadFile } from './durable.mjs';
 
-const CHUNK = 1024 * 1024;
+const CHUNK = 4 * 1024 * 1024;
 
 const LIMITS: Record<string, number> = {
   'image/jpeg': 12 * 1024 * 1024,
   'image/png': 12 * 1024 * 1024,
   'image/webp': 12 * 1024 * 1024,
   'image/gif': 12 * 1024 * 1024,
+  'audio/mpeg': 80 * 1024 * 1024,
+  'audio/mp4': 80 * 1024 * 1024,
+  'audio/m4a': 80 * 1024 * 1024,
+  'audio/x-m4a': 80 * 1024 * 1024,
+  'audio/wav': 80 * 1024 * 1024,
+  'audio/wave': 80 * 1024 * 1024,
+  'audio/x-wav': 80 * 1024 * 1024,
+  'audio/ogg': 80 * 1024 * 1024,
+  'audio/webm': 80 * 1024 * 1024,
+  'audio/aac': 80 * 1024 * 1024,
   'video/mp4': 200 * 1024 * 1024,
   'video/webm': 200 * 1024 * 1024,
   'application/pdf': 40 * 1024 * 1024,
@@ -58,8 +68,11 @@ function sniff(buf: Buffer, mime: string) {
   if (mime === 'image/gif') return buf.toString('ascii', 0, 3) === 'GIF';
   if (mime === 'image/webp') return buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP';
   if (mime === 'application/pdf') return buf.toString('ascii', 0, 4) === '%PDF';
-  if (mime === 'video/webm') return buf[0] === 0x1a && buf[1] === 0x45;
-  if (mime === 'video/mp4') return buf.toString('ascii', 4, 8) === 'ftyp';
+  if (mime === 'video/webm' || mime === 'audio/webm') return buf[0] === 0x1a && buf[1] === 0x45;
+  if (mime === 'video/mp4' || mime === 'audio/mp4' || mime === 'audio/m4a' || mime === 'audio/x-m4a') return buf.toString('ascii', 4, 8) === 'ftyp';
+  if (mime === 'audio/mpeg' || mime === 'audio/aac') return (buf[0] === 0x49 && buf[1] === 0x44 && buf[2] === 0x33) || buf[0] === 0xff;
+  if (mime === 'audio/wav' || mime === 'audio/wave' || mime === 'audio/x-wav') return buf.toString('ascii', 0, 4) === 'RIFF';
+  if (mime === 'audio/ogg') return buf.toString('ascii', 0, 4) === 'OggS';
   if (mime === 'text/plain') return !buf.includes(0);
   return buf[0] === 0x50 && buf[1] === 0x4b;
 }
@@ -192,7 +205,8 @@ export async function handleUpload(req: IncomingMessage, res: ServerResponse, ur
     }
     meta.done = true;
     fs.writeFileSync(metaFile, JSON.stringify(meta));
-    if (meta.mime.startsWith('image/') && meta.size <= 12 * 1024 * 1024) {
+    const durable = (meta.mime.startsWith('image/') && meta.size <= 12 * 1024 * 1024) || (meta.mime.startsWith('audio/') && meta.size <= 30 * 1024 * 1024);
+    if (durable) {
       const bytes = fs.readFileSync(dataFile);
       const stored = await writeUploadFile(id, bytes, meta.mime, { name: meta.name });
       if (process.env.BLOB_READ_WRITE_TOKEN && !stored) console.error('[unica] media write', 'upload');

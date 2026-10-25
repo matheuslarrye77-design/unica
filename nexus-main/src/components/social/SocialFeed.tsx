@@ -10,7 +10,7 @@ import { CreatePost, type NewPostDraft } from './CreatePost';
 import { FeedPreview } from './FeedPreview';
 import { PostCard } from './PostCard';
 import { RecognitionComposer } from './RecognitionComposer';
-import type { SocialPost } from './types';
+import type { CommentMedia, SocialPost } from './types';
 
 export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean }> = ({ mode = 'mural', preview = false }) => {
   const demo = useDemoProfile();
@@ -19,7 +19,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [reposts, setReposts] = useState<Repost[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [commentMedia, setCommentMedia] = useState<Record<string, { kind: 'gif' | 'sticker'; url: string } | null>>({});
+  const [commentMedia, setCommentMedia] = useState<Record<string, CommentMedia | null>>({});
   const [savedOnly, setSavedOnly] = useState(false);
   const [shareId, setShareId] = useState<string | null>(null);
   const [repostId, setRepostId] = useState<string | null>(null);
@@ -62,7 +62,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
 
   async function publish(draft: NewPostDraft) {
     try {
-      const result = await createFeedPost({ body: draft.body, images: draft.images, image: draft.images?.[0], attachment: draft.attachment, poll: draft.poll });
+      const result = await createFeedPost({ body: draft.body, images: draft.images, image: draft.images?.[0], blocks: draft.blocks, attachment: draft.attachment, poll: draft.poll });
       holdFeed();
       setPosts((current) => [result.post, ...current]);
       toast.success('Publicação enviada.');
@@ -197,6 +197,10 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
           onMedia={(media) => setCommentMedia((current) => ({ ...current, [post.id]: media }))}
           onGifFile={(file) => {
             void uploadMedia(file).then((uploaded) => setCommentMedia((current) => ({ ...current, [post.id]: { kind: 'gif', url: uploaded.url } }))).catch(() => toast.error('Não foi possível enviar o GIF.'));
+          }}
+          onPasteFile={(file) => {
+            const kind = file.type.startsWith('video/') ? 'video' : 'image';
+            void uploadMedia(file).then((uploaded) => setCommentMedia((current) => ({ ...current, [post.id]: { kind, url: uploaded.url } }))).catch(() => toast.error('Não foi possível colar o arquivo.'));
           }}
           onLikeComment={(commentId) => void likeFeedComment(post.id, commentId).then((result) => replace({ ...result.post, commentsOpen: true })).catch(() => toast.error('Não foi possível curtir o comentário.'))}
           onVote={(optionId) => void voteFeedPost(post.id, optionId).then((result) => replace(result.post)).catch(() => toast.error('Não foi possível registrar o voto.'))}

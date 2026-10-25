@@ -1,4 +1,4 @@
-import { ImagePlay, Smile, Sticker } from 'lucide-react';
+import { ImagePlay, Plus, Smile, Sticker } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
 import { listStickers, saveSticker, type SavedSticker } from '@/lib/stickers';
 import { GifPicker } from './GifPicker';
@@ -80,10 +80,11 @@ export const ComposerExtras: FC<{
           {panel === 'sticker' ? (
             <>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(event) => { void uploadSticker(event.target.files?.[0]); event.target.value = ''; }} />
-              <button type="button" disabled={uploading} className="mb-2 h-9 w-full rounded-lg bg-[#F8EAFB] text-[13px] font-medium text-[#6A228C] disabled:opacity-50" onClick={() => fileRef.current?.click()}>{uploading ? 'Salvando figurinha...' : 'Enviar imagem'}</button>
               {uploadError ? <p className="mb-2 px-1 text-center text-[12px] text-[#9D174D]">{uploadError}</p> : null}
-              {savedStickers.length === 0 ? <p className="px-1 py-3 text-center text-[12px] text-[#8A7C98]">Você ainda não enviou uma figurinha.</p> : null}
               <div className="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto">
+                <button type="button" disabled={uploading} aria-label="Enviar figurinha" className="grid aspect-square place-items-center rounded-xl border border-dashed border-[#D7B6E8] bg-[#FBF7FD] text-[#8E35B8] disabled:opacity-50" onClick={() => fileRef.current?.click()}>
+                  <Plus className="h-6 w-6" />
+                </button>
                 {savedStickers.map((item) => (
                   <button key={item.id} type="button" className="rounded-xl bg-[#FBF7FD] p-1" onClick={() => { onSticker?.(item.url); setPanel(null); }} aria-label="Minha figurinha">
                     <img src={item.url} alt="" className="aspect-square w-full rounded-lg object-contain" />
