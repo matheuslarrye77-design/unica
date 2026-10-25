@@ -185,6 +185,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
           onAddComment={() => {
             const text = (drafts[post.id] ?? '').trim();
             const media = commentMedia[post.id];
+            if (media?.url.startsWith('blob:')) return;
             if (!text && !media) return;
             void commentFeedPost(post.id, text, media ?? undefined).then((result) => {
               holdFeed();
@@ -200,7 +201,16 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
           }}
           onPasteFile={(file) => {
             const kind = file.type.startsWith('video/') ? 'video' : 'image';
-            void uploadMedia(file).then((uploaded) => setCommentMedia((current) => ({ ...current, [post.id]: { kind, url: uploaded.url } }))).catch(() => toast.error('Não foi possível colar o arquivo.'));
+            const local = URL.createObjectURL(file);
+            setCommentMedia((current) => ({ ...current, [post.id]: { kind, url: local } }));
+            void uploadMedia(file).then((uploaded) => {
+              URL.revokeObjectURL(local);
+              setCommentMedia((current) => ({ ...current, [post.id]: { kind, url: uploaded.url } }));
+            }).catch(() => {
+              URL.revokeObjectURL(local);
+              setCommentMedia((current) => ({ ...current, [post.id]: null }));
+              toast.error('Não foi possível colar o arquivo.');
+            });
           }}
           onLikeComment={(commentId) => void likeFeedComment(post.id, commentId).then((result) => replace({ ...result.post, commentsOpen: true })).catch(() => toast.error('Não foi possível curtir o comentário.'))}
           onVote={(optionId) => void voteFeedPost(post.id, optionId).then((result) => replace(result.post)).catch(() => toast.error('Não foi possível registrar o voto.'))}

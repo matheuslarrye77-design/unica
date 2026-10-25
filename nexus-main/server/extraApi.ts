@@ -201,8 +201,9 @@ function cleanAttachment(value: unknown): FeedPost['attachment'] | undefined {
   if (item.type !== 'audio') return { type: item.type, name, url };
   const start = Number(item.start ?? 0);
   const duration = Number(item.duration ?? 0);
+  const roundTime = (value: number) => Math.round(value * 100) / 100;
   const clip = Number.isFinite(start) && Number.isFinite(duration) && start >= 0 && duration > 0 && duration <= 120 * 60
-    ? { start: Math.round(start), duration: Math.round(duration) }
+    ? { start: roundTime(start), duration: roundTime(duration) }
     : {};
   return { type: item.type, name, url, ...clip };
 }

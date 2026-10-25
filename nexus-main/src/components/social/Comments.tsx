@@ -1,8 +1,8 @@
 import { EmojiText } from '@/components/Emoji';
 import { Heart, Star, Trash2, X } from 'lucide-react';
-import { useState, useRef, type ClipboardEvent, type FC, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useState, useRef, type ClipboardEvent, type FC, type FormEvent, type KeyboardEvent } from 'react';
 import { actor } from '@/lib/session';
-import { keepSticker } from '@/lib/stickers';
+import { forgetSticker, keepSticker, stickerIsSaved } from '@/lib/stickers';
 import { ComposerExtras } from './ComposerExtras';
 import type { CommentMedia, SocialComment } from './types';
 
@@ -105,7 +105,7 @@ export const Comments: FC<{
             placeholder="Escreva um comentário..."
             className="min-h-10 min-w-0 flex-1 resize-none rounded-2xl border border-border bg-muted/40 px-4 py-2 text-sm outline-none focus-visible:border-primary"
           />
-          <button type="submit" disabled={!draft.trim() && !pendingMedia} className="h-10 text-sm font-semibold text-primary disabled:opacity-40">Publicar</button>
+          <button type="submit" disabled={(!draft.trim() && !pendingMedia) || Boolean(pendingMedia?.url.startsWith('blob:'))} className="h-10 text-sm font-semibold text-primary disabled:opacity-40">{pendingMedia?.url.startsWith('blob:') ? 'Enviando...' : 'Publicar'}</button>
         </div>
         <ComposerExtras onEmoji={insertEmoji} onSticker={(url) => onMedia?.({ kind: 'sticker', url })} onGif={(url) => onMedia?.({ kind: 'gif', url })} />
       </form>
@@ -114,20 +114,29 @@ export const Comments: FC<{
 };
 
 const SaveSticker: FC<{ url: string }> = ({ url }) => {
-  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let current = true;
+    void stickerIsSaved(url).then((value) => { if (current) setSaved(value); }).catch(() => undefined);
+    return () => { current = false; };
+  }, [url]);
   return (
     <button
       type="button"
-      disabled={state === 'saving' || state === 'saved'}
-      aria-label={state === 'saved' ? 'Figurinha salva' : 'Salvar figurinha'}
-      className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-white/95 text-[#8E35B8] shadow disabled:opacity-70"
+      aria-pressed={saved}
+      disabled={busy}
+      aria-label={saved ? 'Remover figurinha salva' : 'Salvar figurinha'}
+      className={`absolute right-0.5 top-0.5 grid h-5 w-5 place-items-center rounded-full bg-black/35 text-white backdrop-blur-[1px] transition-opacity hover:opacity-100 ${saved ? 'opacity-90' : 'opacity-55'}`}
       onClick={() => {
-        if (state === 'saving' || state === 'saved') return;
-        setState('saving');
-        void keepSticker(url).then(() => setState('saved')).catch(() => setState('error'));
+        if (busy) return;
+        const next = !saved;
+        setBusy(true);
+        const action = next ? keepSticker(url) : forgetSticker(url);
+        void action.then(() => setSaved(next)).catch(() => undefined).finally(() => setBusy(false));
       }}
     >
-      <Star className="h-3.5 w-3.5" fill={state === 'saved' ? 'currentColor' : 'none'} />
+      <Star className="h-2.5 w-2.5" strokeWidth={2} fill={saved ? 'currentColor' : 'none'} />
     </button>
   );
 };

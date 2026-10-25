@@ -23,6 +23,7 @@ const LIMITS: Record<string, number> = {
   'audio/aac': 80 * 1024 * 1024,
   'video/mp4': 200 * 1024 * 1024,
   'video/webm': 200 * 1024 * 1024,
+  'video/quicktime': 200 * 1024 * 1024,
   'application/pdf': 40 * 1024 * 1024,
   'text/plain': 8 * 1024 * 1024,
   'application/msword': 40 * 1024 * 1024,
@@ -69,12 +70,53 @@ function sniff(buf: Buffer, mime: string) {
   if (mime === 'image/webp') return buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP';
   if (mime === 'application/pdf') return buf.toString('ascii', 0, 4) === '%PDF';
   if (mime === 'video/webm' || mime === 'audio/webm') return buf[0] === 0x1a && buf[1] === 0x45;
-  if (mime === 'video/mp4' || mime === 'audio/mp4' || mime === 'audio/m4a' || mime === 'audio/x-m4a') return buf.toString('ascii', 4, 8) === 'ftyp';
+  if (mime === 'video/mp4' || mime === 'video/quicktime' || mime === 'audio/mp4' || mime === 'audio/m4a' || mime === 'audio/x-m4a') return buf.toString('ascii', 4, 8) === 'ftyp';
   if (mime === 'audio/mpeg' || mime === 'audio/aac') return (buf[0] === 0x49 && buf[1] === 0x44 && buf[2] === 0x33) || buf[0] === 0xff;
   if (mime === 'audio/wav' || mime === 'audio/wave' || mime === 'audio/x-wav') return buf.toString('ascii', 0, 4) === 'RIFF';
   if (mime === 'audio/ogg') return buf.toString('ascii', 0, 4) === 'OggS';
   if (mime === 'text/plain') return !buf.includes(0);
   return buf[0] === 0x50 && buf[1] === 0x4b;
+}
+
+function readBody(req: IncomingMessage, max: number) {
+  return new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > max) {
+        reject(new Error('size'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
+const DIRECT_CAP = 4 * 1024 * 1024;
+
+async function finishUpload(meta: Meta, dataFile: string, metaFile: string) {
+  const sample = Buffer.alloc(16);
+  const fd = fs.openSync(dataFile, 'r');
+  fs.readSync(fd, sample, 0, 16, 0);
+  fs.closeSync(fd);
+  if (!sniff(sample, meta.mime)) {
+    fs.rmSync(dataFile, { force: true });
+    fs.rmSync(metaFile, { force: true });
+    return null;
+  }
+  meta.done = true;
+  fs.writeFileSync(metaFile, JSON.stringify(meta));
+  const durable = (meta.mime.startsWith('image/') && meta.size <= 12 * 1024 * 1024) || (meta.mime.startsWith('audio/') && meta.size <= 30 * 1024 * 1024);
+  if (durable) {
+    const bytes = fs.readFileSync(dataFile);
+    const stored = await writeUploadFile(meta.id, bytes, meta.mime, { name: meta.name });
+    if (process.env.BLOB_READ_WRITE_TOKEN && !stored) console.error('[unica] media write', 'upload');
+  }
+  return { url: `/api/uploads/${meta.id}`, name: meta.name, mime: meta.mime };
 }
 
 function writeChunk(req: IncomingMessage, file: string, offset: number, max: number) {
@@ -104,6 +146,46 @@ function writeChunk(req: IncomingMessage, file: string, offset: number, max: num
 export async function handleUpload(req: IncomingMessage, res: ServerResponse, url: string, userId: string, dir: string) {
   const root = path.join(dir, 'uploads');
   fs.mkdirSync(root, { recursive: true });
+
+  if (req.method === 'POST' && url === '/api/uploads' && req.headers['x-upload-direct'] === '1') {
+    const mime = String(req.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
+    const limit = LIMITS[mime];
+    let rawName = 'arquivo';
+    try {
+      rawName = decodeURIComponent(String(req.headers['x-upload-name'] ?? 'arquivo'));
+    } catch {
+      rawName = 'arquivo';
+    }
+    const name = rawName.replace(/[^\w.\- ()]/g, '').slice(0, 180);
+    if (!limit || !name) {
+      send(res, 400, { error: 'file' });
+      return;
+    }
+    let bytes: Buffer;
+    try {
+      bytes = await readBody(req, Math.min(limit, DIRECT_CAP));
+    } catch {
+      send(res, 400, { error: 'file' });
+      return;
+    }
+    if (!bytes.length || bytes.length > DIRECT_CAP || !sniff(bytes.subarray(0, 16), mime)) {
+      send(res, 400, { error: 'file' });
+      return;
+    }
+    const id = `up-${randomBytes(8).toString('hex')}`;
+    const meta: Meta = { id, name, mime, size: bytes.length, received: bytes.length, ownerId: userId, done: false };
+    const metaFile = path.join(root, `${id}.json`);
+    const dataFile = path.join(root, id);
+    fs.writeFileSync(metaFile, JSON.stringify(meta));
+    fs.writeFileSync(dataFile, bytes);
+    const done = await finishUpload(meta, dataFile, metaFile);
+    if (!done) {
+      send(res, 400, { error: 'type' });
+      return;
+    }
+    send(res, 201, done);
+    return;
+  }
 
   if (req.method === 'POST' && url === '/api/uploads') {
     const raw = await new Promise<string>((resolve, reject) => {
@@ -180,6 +262,15 @@ export async function handleUpload(req: IncomingMessage, res: ServerResponse, ur
     try {
       const received = await writeChunk(req, dataFile, offset, meta.size);
       meta.received += received;
+      if (meta.received === meta.size) {
+        const done = await finishUpload(meta, dataFile, metaFile);
+        if (!done) {
+          send(res, 400, { error: 'type' });
+          return;
+        }
+        send(res, 200, { received: meta.received, ...done });
+        return;
+      }
       fs.writeFileSync(metaFile, JSON.stringify(meta));
       send(res, 200, { received: meta.received });
     } catch {
@@ -189,29 +280,20 @@ export async function handleUpload(req: IncomingMessage, res: ServerResponse, ur
   }
 
   if (req.method === 'POST') {
+    if (meta.done && meta.received === meta.size) {
+      send(res, 200, { url: `/api/uploads/${id}`, name: meta.name, mime: meta.mime });
+      return;
+    }
     if (meta.received !== meta.size) {
       send(res, 409, { error: 'incomplete', received: meta.received });
       return;
     }
-    const sample = Buffer.alloc(16);
-    const fd = fs.openSync(dataFile, 'r');
-    fs.readSync(fd, sample, 0, 16, 0);
-    fs.closeSync(fd);
-    if (!sniff(sample, meta.mime)) {
-      fs.rmSync(dataFile, { force: true });
-      fs.rmSync(metaFile, { force: true });
+    const done = await finishUpload(meta, dataFile, metaFile);
+    if (!done) {
       send(res, 400, { error: 'type' });
       return;
     }
-    meta.done = true;
-    fs.writeFileSync(metaFile, JSON.stringify(meta));
-    const durable = (meta.mime.startsWith('image/') && meta.size <= 12 * 1024 * 1024) || (meta.mime.startsWith('audio/') && meta.size <= 30 * 1024 * 1024);
-    if (durable) {
-      const bytes = fs.readFileSync(dataFile);
-      const stored = await writeUploadFile(id, bytes, meta.mime, { name: meta.name });
-      if (process.env.BLOB_READ_WRITE_TOKEN && !stored) console.error('[unica] media write', 'upload');
-    }
-    send(res, 200, { url: `/api/uploads/${id}`, name: meta.name, mime: meta.mime });
+    send(res, 200, done);
     return;
   }
 

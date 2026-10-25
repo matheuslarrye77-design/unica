@@ -128,6 +128,20 @@ export async function saveSticker(dir, userId, bytes) {
   });
 }
 
+export async function forgetSticker(dir, userId, sourceId) {
+  const owner = safeUser(userId);
+  if (!owner || !ID.test(sourceId)) return { status: 400, body: { error: 'file' } };
+  return exclusive(async () => {
+    const library = await loadLibrary(dir);
+    if (!library) return { status: 503, body: { error: 'unavailable' } };
+    const next = library.items.filter((item) => !(item.userId === owner && item.id === sourceId));
+    if (next.length === library.items.length) return { status: 200, body: { removed: true } };
+    const saved = await storeLibrary(dir, next, library.gifs);
+    if (!saved) return { status: 503, body: { error: 'unavailable' } };
+    return { status: 200, body: { removed: true } };
+  });
+}
+
 export async function keepSticker(dir, userId, sourceId) {
   const owner = safeUser(userId);
   if (!owner || !ID.test(sourceId)) return { status: 400, body: { error: 'file' } };
@@ -233,6 +247,11 @@ export async function handleStickerRequest(req, res, url, dir, user) {
       body = JSON.parse(raw.toString('utf8') || '{}');
     } catch {
       send(res, 400, { error: 'file' });
+      return true;
+    }
+    if (body.forget) {
+      const result = await forgetSticker(dir, user.id, String(body.forget));
+      send(res, result.status, result.body);
       return true;
     }
     if (body.source) {

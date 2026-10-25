@@ -1,6 +1,9 @@
 import type { SocialPost } from '@/components/social/types';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { authHeaders, getDemoId } from '@/lib/session';
+import { shrinkVideo } from '@/lib/shrinkVideo';
+
+const DIRECT = 4 * 1024 * 1024;
 
 export type Repost = {
   id: string;
@@ -22,31 +25,85 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+function fileMime(file: File) {
+  if (file.type) return file.type;
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.mp4')) return 'video/mp4';
+  if (name.endsWith('.mov')) return 'video/quicktime';
+  if (name.endsWith('.webm')) return 'video/webm';
+  if (name.endsWith('.wav')) return 'audio/wav';
+  if (name.endsWith('.mp3')) return 'audio/mpeg';
+  return 'application/octet-stream';
+}
+
 export async function uploadMedia(file: File, onProgress?: (ratio: number) => void) {
+  const prepared = file.type.startsWith('video/') ? await shrinkVideo(file) : file;
+  const mime = fileMime(prepared);
+  if (prepared.size <= DIRECT) return sendDirect(prepared, mime, onProgress);
   const started = await request<{ id: string; chunkSize: number }>('/api/uploads', {
     method: 'POST',
-    body: JSON.stringify({ name: file.name, mime: file.type || 'application/octet-stream', size: file.size }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: prepared.name, mime, size: prepared.size }),
   });
   const chunkSize = started.chunkSize || 1024 * 1024;
   let offset = 0;
-  while (offset < file.size) {
-    const slice = file.slice(offset, Math.min(file.size, offset + chunkSize));
-    await sendChunk(started.id, slice, offset);
+  let finished: { url: string; name: string; mime: string } | null = null;
+  while (offset < prepared.size) {
+    const slice = prepared.slice(offset, Math.min(prepared.size, offset + chunkSize));
+    const body = await sendChunk(started.id, slice, offset, (loaded) => {
+      onProgress?.(prepared.size === 0 ? 1 : (offset + loaded) / prepared.size);
+    });
     offset += slice.size;
-    onProgress?.(file.size === 0 ? 1 : offset / file.size);
+    onProgress?.(prepared.size === 0 ? 1 : offset / prepared.size);
+    if (body.url) finished = { url: body.url, name: body.name || prepared.name, mime: body.mime || mime };
   }
+  if (finished) return finished;
   return request<{ url: string; name: string; mime: string }>(`/api/uploads/${started.id}`, { method: 'POST' });
 }
 
-function sendChunk(id: string, blob: Blob, offset: number) {
-  return new Promise<void>((resolve, reject) => {
+function sendDirect(file: File, mime: string, onProgress?: (ratio: number) => void) {
+  return new Promise<{ url: string; name: string; mime: string }>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/uploads');
+    xhr.withCredentials = true;
+    xhr.setRequestHeader('Content-Type', mime);
+    xhr.setRequestHeader('x-upload-direct', '1');
+    xhr.setRequestHeader('x-upload-name', encodeURIComponent(file.name));
+    const demo = demoHeaders();
+    if (demo['x-unica-demo']) xhr.setRequestHeader('x-unica-demo', demo['x-unica-demo']);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress?.(event.loaded / event.total);
+    };
+    xhr.onload = () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(String(xhr.status)));
+        return;
+      }
+      resolve(JSON.parse(xhr.responseText) as { url: string; name: string; mime: string });
+    };
+    xhr.onerror = () => reject(new Error('network'));
+    xhr.send(file);
+  });
+}
+
+function sendChunk(id: string, blob: Blob, offset: number, onProgress?: (loaded: number) => void) {
+  return new Promise<{ url?: string; name?: string; mime?: string }>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', `/api/uploads/${id}`);
     xhr.withCredentials = true;
     xhr.setRequestHeader('x-upload-offset', String(offset));
     const demo = demoHeaders();
     if (demo['x-unica-demo']) xhr.setRequestHeader('x-unica-demo', demo['x-unica-demo']);
-    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(String(xhr.status))));
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress?.(event.loaded);
+    };
+    xhr.onload = () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(String(xhr.status)));
+        return;
+      }
+      resolve(JSON.parse(xhr.responseText || '{}') as { url?: string; name?: string; mime?: string });
+    };
     xhr.onerror = () => reject(new Error('network'));
     xhr.send(blob);
   });
