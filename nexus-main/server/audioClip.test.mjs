@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { clampClip, encodeWavChannels, initialClipSeconds, peaksFromSamples, wavDuration } from '../src/lib/audioClip.ts';
+import { clampClip, clipChoices, encodeWavChannels, initialClipSeconds, peaksFromSamples, wavDuration } from '../src/lib/audioClip.ts';
 
 test('the clip window matches the chosen seconds', () => {
   assert.equal(initialClipSeconds(80), 30);
@@ -12,6 +12,12 @@ test('the clip window matches the chosen seconds', () => {
   assert.deepEqual(clampClip(50, 45, 20), { start: 5, duration: 45, end: 50 });
   assert.deepEqual(clampClip(8, 30, 0), { start: 0, duration: 8, end: 8 });
   assert.equal(clampClip(30, 10, -4).start, 0);
+  const choices = clipChoices(200);
+  assert.deepEqual(choices.filter((choice) => choice.available && !choice.full).map((choice) => choice.label), ['10s', '15s', '30s', '45s', '60s', '1:30', '2:00', '2:30', '3:00']);
+  assert.equal(choices.at(-1)?.label, 'Completo');
+  assert.equal(choices.find((choice) => choice.label === '60s')?.available, true);
+  assert.equal(clipChoices(40).find((choice) => choice.label === '60s')?.available, false);
+  assert.equal(clipChoices(40).some((choice) => choice.label === '1:30'), false);
 });
 
 test('the waveform follows the samples and the wav lasts the chosen length', () => {

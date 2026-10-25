@@ -1,6 +1,7 @@
 import { AudioLines, FileText, ImagePlus, ListChecks, Send, Video, X } from 'lucide-react';
 import { type ChangeEvent, type ClipboardEvent, type FC, type FormEvent, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { formatClip } from '@/lib/audioClip';
 import { uploadMedia } from '@/lib/feed';
 import { actor } from '@/lib/session';
 import { AudioTrim } from './AudioTrim';
@@ -11,6 +12,8 @@ import type { Attachment, PollOption, PostBlock } from './types';
 const VIDEO_MAX = 200 * 1024 * 1024;
 const DOC_MAX = 40 * 1024 * 1024;
 const AUDIO_MAX = 80 * 1024 * 1024;
+
+type DraftBlock = { id: string; type: 'text'; text: string } | { id: string; type: 'image'; url: string };
 
 export type NewPostDraft = {
   body: string;
@@ -32,8 +35,7 @@ function clipboardFile(data: DataTransfer | null) {
 
 export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise<void> }> = ({ onPublish }) => {
   const [writing, setWriting] = useState(false);
-  const [text, setText] = useState('');
-  const [images, setImages] = useState<string[]>([]);
+  const [blocks, setBlocks] = useState<DraftBlock[]>([{ id: 'texto', type: 'text', text: '' }]);
   const [videoPreview, setVideoPreview] = useState('');
   const [editing, setEditing] = useState<File | null>(null);
   const [queue, setQueue] = useState<File[]>([]);
@@ -43,7 +45,8 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
   const [sending, setSending] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
   const [options, setOptions] = useState(['', '']);
-  const fieldRef = useRef<HTMLTextAreaElement>(null);
+  const focusId = useRef('texto');
+  const fields = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const photoRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLInputElement>(null);
@@ -56,8 +59,25 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
   }
 
   function placeImage(url: string) {
-    setImages((current) => current.length >= 10 ? current : [...current, url]);
+    const imageId = `imagem-${Date.now()}`;
+    const textId = `texto-${Date.now()}`;
+    let focus = focusId.current;
+    setBlocks((current) => {
+      if (current.filter((block) => block.type === 'image').length >= 10) return current;
+      const index = Math.max(0, current.findIndex((block) => block.id === focusId.current));
+      const next = [...current];
+      next.splice(index + 1, 0, { id: imageId, type: 'image', url });
+      if (next[index + 2]?.type !== 'text') {
+        next.splice(index + 2, 0, { id: textId, type: 'text', text: '' });
+        focus = textId;
+      } else if (next[index + 2]?.type === 'text') {
+        focus = next[index + 2].id;
+      }
+      return next;
+    });
+    focusId.current = focus;
     setWriting(true);
+    requestAnimationFrame(() => fields.current[focus]?.focus());
   }
 
   function readImage(event: ChangeEvent<HTMLInputElement>) {
@@ -65,7 +85,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     event.target.value = '';
     const photos = files.filter((file) => file.type !== 'image/gif');
     const gifs = files.filter((file) => file.type === 'image/gif');
-    const count = images.length;
+    const count = blocks.filter((block) => block.type === 'image').length;
     if (count + files.length > 10) {
       toast.error('É possível enviar até 10 fotos.');
       return;
@@ -181,7 +201,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
       });
       return;
     }
-    if (images.length >= 10) {
+    if (blocks.filter((block) => block.type === 'image').length >= 10) {
       toast.error('É possível enviar até 10 fotos.');
       return;
     }
@@ -192,9 +212,12 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     event.preventDefault();
     if (sending) return;
     const content: PostBlock[] = [];
-    if (text.trim()) content.push({ type: 'text', text: text.trim() });
-    images.forEach((url) => content.push({ type: 'image', url }));
-    const body = text.trim();
+    for (const block of blocks) {
+      if (block.type === 'image') content.push({ type: 'image', url: block.url });
+      else if (block.text.trim()) content.push({ type: 'text', text: block.text.trim() });
+    }
+    const body = content.flatMap((block) => block.type === 'text' ? [block.text] : []).join('\n\n');
+    const images = content.flatMap((block) => block.type === 'image' ? [block.url] : []);
     const labels = pollOpen ? options.map((label) => label.trim()).filter(Boolean) : [];
     const poll = labels.map((label, index) => ({ id: `opt-${index}`, label, votes: 0 }));
     if (pollOpen && new Set(labels.map((label) => label.toLowerCase())).size !== labels.length) {
@@ -212,8 +235,8 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     }
     setSending(false);
     setWriting(false);
-    setText('');
-    setImages([]);
+    setBlocks([{ id: 'texto', type: 'text', text: '' }]);
+    focusId.current = 'texto';
     clearVideo();
     setAttachment(undefined);
     setPollOpen(false);
@@ -221,15 +244,36 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
   }
 
   function insertEmoji(emoji: string) {
-    const field = fieldRef.current;
-    const start = field?.selectionStart ?? text.length;
-    const end = field?.selectionEnd ?? text.length;
-    setText(text.slice(0, start) + emoji + text.slice(end));
+    const id = focusId.current;
+    const field = fields.current[id];
+    setBlocks((current) => current.map((block) => {
+      if (block.type !== 'text' || block.id !== id) return block;
+      const start = field?.selectionStart ?? block.text.length;
+      const end = field?.selectionEnd ?? block.text.length;
+      return { ...block, text: block.text.slice(0, start) + emoji + block.text.slice(end) };
+    }));
     setWriting(true);
   }
 
-  const textReady = Boolean(text.trim());
-  const imageReady = images.length > 0;
+  function removeImage(id: string) {
+    setBlocks((current) => {
+      const next: DraftBlock[] = [];
+      for (const block of current) {
+        if (block.id === id) continue;
+        const previous = next[next.length - 1];
+        if (block.type === 'text' && previous?.type === 'text') {
+          previous.text = [previous.text, block.text].filter(Boolean).join('\n');
+          continue;
+        }
+        next.push(block);
+      }
+      if (!next.some((block) => block.type === 'text')) next.unshift({ id: 'texto', type: 'text', text: '' });
+      return next;
+    });
+  }
+
+  const textReady = blocks.some((block) => block.type === 'text' && block.text.trim());
+  const imageReady = blocks.some((block) => block.type === 'image');
   const ready = !sending && progress === null && (textReady || imageReady || Boolean(attachment)) && (!pollOpen || options.filter((item) => item.trim()).length >= 2);
   const user = actor();
   const expanded = writing || textReady || imageReady;
@@ -240,38 +284,38 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
         <img src={user.avatar} alt="" className="h-10 w-10 rounded-full bg-muted object-cover" />
         <div className="min-w-0 flex-1">
           <div className="rounded-[10px] border border-border bg-[#F8F7FC] px-3 py-2 focus-within:border-primary focus-within:ring-2 focus-within:ring-ring/30">
-            <textarea
-              ref={fieldRef}
-              id="novo-post"
-              aria-label="Publicação"
-              value={text}
-              rows={1}
-              onFocus={(event) => {
-                setWriting(true);
-                event.currentTarget.style.height = '0px';
-                event.currentTarget.style.height = `${Math.min(Math.max(event.currentTarget.scrollHeight, 40), 180)}px`;
-              }}
-              onPaste={pasteMedia}
-              onChange={(event) => {
-                setText(event.target.value);
-                event.currentTarget.style.height = '0px';
-                event.currentTarget.style.height = `${Math.min(Math.max(event.currentTarget.scrollHeight, 40), 180)}px`;
-              }}
-              placeholder="Compartilhe algo com a equipe..."
-              className="w-full resize-none overflow-y-auto bg-transparent text-[13.5px] leading-5 outline-none placeholder:text-muted-foreground"
-            />
-            {images.length > 0 ? (
-              <div className="mt-2 space-y-2">
-                {images.map((url, index) => (
-                  <div key={`${url}-${index}`} className="relative">
-                    <img src={url} alt="" className="max-h-80 w-full rounded-xl object-contain" />
-                    <button type="button" onClick={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="absolute right-1 top-1 rounded-full bg-background/90 p-1" aria-label="Remover foto">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))}
+            {blocks.map((block, index) => block.type === 'text' ? (
+              <textarea
+                key={block.id}
+                ref={(node) => { fields.current[block.id] = node; }}
+                id={index === 0 ? 'novo-post' : undefined}
+                aria-label="Publicação"
+                value={block.text}
+                rows={1}
+                onFocus={(event) => {
+                  focusId.current = block.id;
+                  setWriting(true);
+                  event.currentTarget.style.height = '0px';
+                  event.currentTarget.style.height = `${Math.min(Math.max(event.currentTarget.scrollHeight, index === 0 ? 40 : 32), 180)}px`;
+                }}
+                onPaste={pasteMedia}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setBlocks((current) => current.map((item) => item.id === block.id && item.type === 'text' ? { ...item, text: value } : item));
+                  event.currentTarget.style.height = '0px';
+                  event.currentTarget.style.height = `${Math.min(Math.max(event.currentTarget.scrollHeight, index === 0 ? 40 : 32), 180)}px`;
+                }}
+                placeholder={index === 0 ? 'Compartilhe algo com a equipe...' : ''}
+                className={`w-full resize-none overflow-y-auto bg-transparent text-[13.5px] leading-5 outline-none placeholder:text-muted-foreground ${index === 0 ? '' : 'mt-2 min-h-8'}`}
+              />
+            ) : (
+              <div key={block.id} className="relative mt-2">
+                <img src={block.url} alt="" className="max-h-80 w-full rounded-xl object-contain" />
+                <button type="button" onClick={() => removeImage(block.id)} className="absolute right-1 top-1 rounded-full bg-background/90 p-1" aria-label="Remover foto">
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
-            ) : null}
+            ))}
           </div>
         </div>
       </div>
@@ -296,7 +340,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
         <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2 text-sm">
           <span className="min-w-0">
             <span className="flex items-center gap-2"><AudioLines className="h-4 w-4 text-primary" />{attachment.name}</span>
-            <span className="mt-1 block text-xs text-muted-foreground">Trecho de {Math.max(1, Math.round(attachment.duration ?? 0))} s</span>
+            <span className="mt-1 block text-xs text-muted-foreground">Trecho de {formatClip(attachment.duration ?? 0)}</span>
           </span>
           <button type="button" onClick={() => setAttachment(undefined)} aria-label="Remover áudio"><X className="h-4 w-4" /></button>
         </div>
@@ -341,7 +385,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
           <ComposerAction icon={AudioLines} label="Áudio" onClick={() => audioRef.current?.click()} />
           <ComposerAction icon={FileText} label="Documento" onClick={() => fileRef.current?.click()} />
           <ComposerAction icon={ListChecks} label="Enquete" pressed={pollOpen} onClick={() => setPollOpen((open) => !open)} />
-          <ComposerExtras onEmoji={insertEmoji} onGif={(url) => { if (images.length < 10) placeImage(url); }} />
+          <ComposerExtras onEmoji={insertEmoji} onGif={(url) => { if (blocks.filter((block) => block.type === 'image').length < 10) placeImage(url); }} />
         </div>
         <button
           type="submit"

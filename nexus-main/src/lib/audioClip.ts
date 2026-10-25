@@ -1,5 +1,38 @@
 export const CLIP_CHOICES = [10, 15, 30, 45, 60];
 
+export type ClipChoice = {
+  id: string;
+  seconds: number;
+  label: string;
+  available: boolean;
+  full?: boolean;
+};
+
+export function formatClip(seconds: number) {
+  const total = Math.max(0, Math.round(seconds));
+  if (total < 60) return `${total}s`;
+  const minutes = Math.floor(total / 60);
+  const rest = total % 60;
+  return `${minutes}:${String(rest).padStart(2, '0')}`;
+}
+
+export function clipChoices(total: number): ClipChoice[] {
+  const safe = Number.isFinite(total) && total > 0 ? total : 0;
+  const fixed = CLIP_CHOICES.map((seconds) => ({
+    id: String(seconds),
+    seconds,
+    label: `${seconds}s`,
+    available: safe + 0.05 >= seconds,
+  }));
+  const extra: ClipChoice[] = [];
+  const limit = Math.min(safe, 120 * 60);
+  for (let seconds = 90; seconds <= limit + 0.05; seconds += 30) {
+    extra.push({ id: String(seconds), seconds, label: formatClip(seconds), available: true });
+  }
+  const full: ClipChoice[] = safe > 0 ? [{ id: 'full', seconds: safe, label: 'Completo', available: true, full: true }] : [];
+  return [...fixed, ...extra, ...full];
+}
+
 export function initialClipSeconds(total: number) {
   if (!Number.isFinite(total) || total <= 0) return 0;
   if (total >= 30) return 30;

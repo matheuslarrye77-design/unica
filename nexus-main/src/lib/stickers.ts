@@ -33,7 +33,16 @@ export async function listLibrary() {
 }
 
 export async function listStickers() {
+  const ticket = libraryVersion;
   const library = await listLibrary();
+  if (ticket !== libraryVersion) {
+    const again = libraryVersion;
+    const fresh = await listLibrary();
+    if (again !== libraryVersion) return libraryItems ?? fresh.stickers;
+    publishLibrary(fresh.stickers);
+    return fresh.stickers;
+  }
+  publishLibrary(library.stickers);
   return library.stickers;
 }
 
@@ -51,7 +60,31 @@ export async function saveSticker(file: File) {
   });
   const body = await readJson(response);
   if (!response.ok || !body.sticker) throw new Error(body.error || 'unavailable');
+  changeLibrary((items) => [body.sticker!, ...items.filter((item) => item.url !== body.sticker?.url)]);
   return body.sticker;
+}
+
+let libraryItems: SavedSticker[] | null = null;
+let libraryVersion = 0;
+const libraryListeners = new Set<(items: SavedSticker[]) => void>();
+
+function publishLibrary(items: SavedSticker[]) {
+  libraryItems = items;
+  libraryListeners.forEach((listener) => listener(items));
+}
+
+function changeLibrary(update: (items: SavedSticker[]) => SavedSticker[]) {
+  libraryVersion += 1;
+  if (!libraryItems) return;
+  publishLibrary(update(libraryItems));
+}
+
+export function subscribeStickerLibrary(listener: (items: SavedSticker[]) => void) {
+  libraryListeners.add(listener);
+  if (libraryItems) listener(libraryItems);
+  return () => {
+    libraryListeners.delete(listener);
+  };
 }
 
 const savedUrls = new Set<string>();
@@ -101,6 +134,7 @@ export async function keepSticker(url: string) {
   const body = await readJson(response);
   if (!response.ok || !body.sticker) throw new Error(body.error || 'unavailable');
   rememberSticker(body.sticker.url, true);
+  changeLibrary((items) => [body.sticker!, ...items.filter((item) => item.url !== body.sticker?.url)]);
   return body.sticker;
 }
 
@@ -115,6 +149,7 @@ export async function forgetSticker(url: string) {
   const body = await readJson(response);
   if (!response.ok) throw new Error(body.error || 'unavailable');
   rememberSticker(url, false);
+  changeLibrary((items) => items.filter((item) => item.url !== url));
 }
 
 export async function saveGif(url: string, title: string) {

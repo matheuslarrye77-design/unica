@@ -127,7 +127,7 @@ const SaveSticker: FC<{ url: string }> = ({ url }) => {
       aria-pressed={saved}
       disabled={busy}
       aria-label={saved ? 'Remover figurinha salva' : 'Salvar figurinha'}
-      className={`absolute right-0.5 top-0.5 grid h-5 w-5 place-items-center rounded-full bg-black/35 text-white backdrop-blur-[1px] transition-opacity hover:opacity-100 ${saved ? 'opacity-90' : 'opacity-55'}`}
+      className={`absolute right-0.5 top-0.5 grid h-6 w-6 place-items-center text-[#8E35B8] drop-shadow-[0_0_1px_rgba(255,255,255,0.9)] ${saved ? 'opacity-100' : 'opacity-80'}`}
       onClick={() => {
         if (busy) return;
         const next = !saved;
@@ -136,7 +136,7 @@ const SaveSticker: FC<{ url: string }> = ({ url }) => {
         void action.then(() => setSaved(next)).catch(() => undefined).finally(() => setBusy(false));
       }}
     >
-      <Star className="h-2.5 w-2.5" strokeWidth={2} fill={saved ? 'currentColor' : 'none'} />
+      <Star className="h-3.5 w-3.5" strokeWidth={2.25} fill={saved ? 'currentColor' : 'none'} />
     </button>
   );
 };

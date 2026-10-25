@@ -1,6 +1,6 @@
 import { ImagePlay, Plus, Smile, Sticker } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
-import { listStickers, saveSticker, type SavedSticker } from '@/lib/stickers';
+import { listStickers, saveSticker, subscribeStickerLibrary, type SavedSticker } from '@/lib/stickers';
 import { GifPicker } from './GifPicker';
 import { EMOJI_GROUPS } from './mediaCatalog';
 
@@ -17,6 +17,8 @@ export const ComposerExtras: FC<{
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => subscribeStickerLibrary(setSavedStickers), []);
 
   useEffect(() => {
     if (panel !== 'sticker') return;
