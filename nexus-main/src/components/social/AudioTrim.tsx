@@ -2,21 +2,10 @@ import { Pause, Play } from 'lucide-react';
 import { type FC, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import { clampClip, clipChoices, clipToWavFile, formatClip, initialClipSeconds, mixdown, peaksFromSamples } from '@/lib/audioClip';
 
-function viewFor(length: number, nextStart: number, duration: number) {
-  const fraction = length > 0 ? Math.min(0.92, Math.max(0.55, duration / length)) : 0.55;
-  const visible = duration > 0 && fraction > 0 ? duration / fraction : length;
-  const maxView = Math.max(0, length - visible);
-  const viewStart = Math.min(maxView, Math.max(0, nextStart - (visible - duration) / 2));
-  return { visible, viewStart };
-}
-
-function barsFor(peaks: number[], length: number, viewStart: number, visible: number, count: number) {
-  if (peaks.length === 0 || length <= 0 || visible <= 0) return peaks;
-  return Array.from({ length: count }, (_, index) => {
-    const time = viewStart + ((index + 0.5) / count) * visible;
-    const source = Math.min(peaks.length - 1, Math.max(0, Math.floor((time / length) * peaks.length)));
-    return peaks[source] ?? 0.2;
-  });
+function shownBars(peaks: number[] | null, count: number) {
+  const source = peaks ?? Array.from({ length: count }, () => 0.28);
+  if (source.length === count) return source;
+  return Array.from({ length: count }, (_, index) => source[Math.min(source.length - 1, Math.floor((index / count) * source.length))] ?? 0.2);
 }
 
 function clock(seconds: number) {
@@ -30,7 +19,7 @@ export const AudioTrim: FC<{ file: File; onCancel: () => void; onConfirm: (file:
   const audioRef = useRef<HTMLAudioElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const bufferRef = useRef<AudioBuffer | null>(null);
-  const dragRef = useRef<{ x: number; start: number; width: number; visible: number } | null>(null);
+  const dragRef = useRef<{ x: number; start: number; duration: number; width: number; mode: 'move' | 'start' | 'end' } | null>(null);
   const [src, setSrc] = useState('');
   const [length, setLength] = useState(0);
   const [selected, setSelected] = useState(0);
@@ -125,27 +114,50 @@ export const AudioTrim: FC<{ file: File; onCancel: () => void; onConfirm: (file:
     void audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
   }
 
-  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+  function startDrag(mode: 'move' | 'start' | 'end', event: ReactPointerEvent<HTMLElement>) {
     if (length <= 0) return;
     event.preventDefault();
-    const rect = event.currentTarget.getBoundingClientRect();
-    const view = viewFor(length, start, selected);
+    const width = trackRef.current?.getBoundingClientRect().width ?? 1;
     setMenu(false);
-    dragRef.current = { x: event.clientX, start, width: rect.width, visible: view.visible };
+    dragRef.current = { x: event.clientX, start, duration: selected, width, mode };
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
     } catch {
-      // O arraste continua enquanto o ponteiro estiver sobre a forma de onda.
+      // O arraste continua enquanto o ponteiro estiver sobre o seletor.
     }
     pauseAt(start);
   }
 
-  function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).closest('[data-edge]')) return;
+    startDrag('move', event);
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLElement>) {
     const drag = dragRef.current;
-    if (!drag || drag.width <= 0) return;
-    const delta = ((event.clientX - drag.x) / drag.width) * drag.visible;
-    const clip = clampClip(length, selected, drag.start + delta);
+    if (!drag || drag.width <= 0 || length <= 0) return;
+    const delta = ((event.clientX - drag.x) / drag.width) * length;
+    const minDuration = Math.min(1, length);
+    if (drag.mode === 'start') {
+      const end = drag.start + drag.duration;
+      const nextStart = Math.min(Math.max(0, drag.start + delta), end - minDuration);
+      setStart(nextStart);
+      setSelected(end - nextStart);
+      setWhole(false);
+      setPlayhead(nextStart);
+      return;
+    }
+    if (drag.mode === 'end') {
+      const nextEnd = Math.max(drag.start + minDuration, Math.min(length, drag.start + drag.duration + delta));
+      setStart(drag.start);
+      setSelected(nextEnd - drag.start);
+      setWhole(false);
+      setPlayhead(drag.start);
+      return;
+    }
+    const clip = clampClip(length, drag.duration, drag.start + delta);
     setStart(clip.start);
+    setSelected(clip.duration);
     setPlayhead(clip.start);
   }
 
@@ -189,19 +201,17 @@ export const AudioTrim: FC<{ file: File; onCancel: () => void; onConfirm: (file:
     }
   }
 
-  const view = viewFor(length, start, selected);
-  const windowStyle = length > 0 && selected > 0 && view.visible > 0
-    ? { left: `${((start - view.viewStart) / view.visible) * 100}%`, width: `${(selected / view.visible) * 100}%` }
-    : { left: '0%', width: '0%' };
-  const bars = barsFor(peaks ?? Array.from({ length: 72 }, () => 0.28), length, view.viewStart, view.visible || length, 72);
-  const ballLeft = length > 0 && view.visible > 0 ? ((start - view.viewStart + selected / 2) / view.visible) * 100 : 50;
+  const span = length > 0 ? length : 1;
+  const selectionLeft = (start / span) * 100;
+  const selectionWidth = (selected / span) * 100;
+  const progressEnd = playing ? Math.min(start + selected, Math.max(start, playhead)) : start + Math.min(selected, Math.max(selected * 0.12, 0.4));
+  const bars = shownBars(peaks, 64);
+  const durationLabel = whole ? 'Tudo' : selected < 60 ? String(Math.max(1, Math.round(selected))) : formatClip(selected);
   const ready = length > 0 && selected > 0 && Boolean(bufferRef.current);
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-end bg-black/60 p-3 sm:place-items-center">
-      <div className="w-full max-w-md rounded-3xl bg-[#1A1022] p-4 text-white shadow-xl" role="dialog" aria-label="Escolher trecho do áudio">
-        <p className="text-sm font-medium">Escolher trecho do áudio</p>
-        <p className="mt-1 truncate text-xs text-white/60">{file.name}</p>
+    <div className="fixed inset-0 z-50 grid place-items-end bg-black/55 p-3 sm:place-items-center">
+      <div className="w-full max-w-lg rounded-2xl bg-[#2E2E2E] px-4 py-4 text-white" role="dialog" aria-label="Escolher trecho do áudio" onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
         <audio
           ref={audioRef}
           src={src || undefined}
@@ -227,69 +237,66 @@ export const AudioTrim: FC<{ file: File; onCancel: () => void; onConfirm: (file:
           }}
           onEnded={() => pauseAt(start)}
         />
-        <div className="mt-4 flex items-center gap-3">
-          <button type="button" aria-label={playing ? 'Pausar' : 'Reproduzir trecho'} disabled={length <= 0} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/10 text-white disabled:opacity-40" onClick={togglePlay}>
-            {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-          </button>
-          <div className="min-w-0 flex-1">
-            <div className="relative mb-2 h-11">
-              {length > 0 ? (
-                <div className="absolute top-0 -translate-x-1/2" style={{ left: `${Math.min(84, Math.max(16, ballLeft))}%` }}>
-                  <button type="button" aria-label="Duração do trecho" aria-expanded={menu} className="grid h-9 min-w-9 place-items-center rounded-full bg-white px-2 text-[11px] font-semibold leading-none text-[#6A228C] shadow" onClick={() => setMenu((open) => !open)}>
-                    {whole ? 'Tudo' : formatClip(selected)}
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3">
+          <div className="relative col-start-1 row-start-1">
+            <button type="button" aria-label="Duração do trecho" aria-expanded={menu} disabled={length <= 0} className={`grid h-10 shrink-0 place-items-center rounded-full bg-white text-[12px] font-semibold leading-none text-[#3A3A3A] disabled:opacity-40 ${durationLabel.length > 2 ? 'min-w-10 px-2' : 'w-10'}`} onClick={() => setMenu((open) => !open)}>
+              {length > 0 ? durationLabel : '…'}
+            </button>
+            {menu ? (
+              <div className="absolute left-0 top-11 z-10 max-h-52 w-28 overflow-y-auto rounded-2xl bg-[#242424] py-1 shadow-xl" role="menu" aria-label="Opções de duração">
+                {clipChoices(length).map((choice) => (
+                  <button key={choice.id} type="button" role="menuitem" disabled={!choice.available} className="block w-full px-3 py-1.5 text-left text-xs text-white disabled:opacity-30 hover:bg-white/10 disabled:hover:bg-transparent" onClick={() => choice.available && choose(choice.seconds, Boolean(choice.full))}>
+                    {choice.label}
                   </button>
-                  {menu ? (
-                    <div className="absolute left-1/2 top-11 z-10 max-h-52 w-28 -translate-x-1/2 overflow-y-auto rounded-2xl bg-[#2A1833] py-1 shadow-xl" role="menu" aria-label="Opções de duração">
-                      {clipChoices(length).map((choice) => (
-                        <button key={choice.id} type="button" role="menuitem" disabled={!choice.available} className="block w-full px-3 py-1.5 text-left text-xs text-white disabled:opacity-30 hover:bg-white/10 disabled:hover:bg-transparent" onClick={() => choice.available && choose(choice.seconds, Boolean(choice.full))}>
-                          {choice.label}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ) : <span className="text-[11px] text-white/60">Lendo o áudio...</span>}
-            </div>
-            <div
-              ref={trackRef}
-              role="slider"
-              tabIndex={0}
-              aria-label="Trecho do áudio"
-              aria-valuemin={0}
-              aria-valuemax={Math.max(0, Math.round((length - selected) * 10) / 10)}
-              aria-valuenow={Math.round(start * 10) / 10}
-              aria-valuetext={`De ${clock(start)} até ${clock(start + selected)}`}
-              className="relative h-16 touch-none overflow-hidden rounded-2xl bg-[#120914]"
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointerCancel={onPointerUp}
-              onKeyDown={onKey}
-            >
-              <div className="absolute inset-x-1 bottom-2 top-2 flex items-end gap-px">
-                {bars.map((peak, index) => (
-                  <span key={index} className={`w-px flex-1 rounded-full ${waveError ? 'bg-white/35' : 'bg-white'}`} style={{ height: `${Math.max(4, Math.round(peak * 48))}px` }} />
                 ))}
               </div>
-              <div className="pointer-events-none absolute inset-y-1" style={windowStyle}>
-                <div
-                  className="absolute inset-0 rounded-2xl"
-                  style={{
-                    padding: '2px',
-                    background: 'linear-gradient(90deg,#F9A8D4,#E879F9,#FB923C,#C084FC)',
-                    WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                    WebkitMaskComposite: 'xor',
-                    maskComposite: 'exclude',
-                  }}
-                />
-                <div className="absolute inset-[2px] rounded-[14px] bg-white/10" />
-              </div>
-              {playing && view.visible > 0 ? <span className="pointer-events-none absolute inset-y-2 w-0.5 rounded-full bg-[#F9A8D4] shadow-[0_0_0_1px_#6A228C]" style={{ left: `${((playhead - view.viewStart) / view.visible) * 100}%` }} /> : null}
-            </div>
+            ) : null}
+          </div>
+          <div className="relative col-start-2 row-start-1 h-5">
+            <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[#5C5C5C]" />
+            <div className="absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-[#F5D90A]" style={{ left: `${selectionLeft}%`, width: `${Math.max(0.6, ((progressEnd - start) / span) * 100)}%` }} />
+            <button type="button" data-edge="start" aria-label="Ajustar início" className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#E100FF]" style={{ left: `${selectionLeft}%` }} onPointerDown={(event) => startDrag('start', event)} />
+            <button type="button" data-edge="end" aria-label="Ajustar fim" className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#E100FF]" style={{ left: `${Math.min(100, selectionLeft + selectionWidth)}%` }} onPointerDown={(event) => startDrag('end', event)} />
+          </div>
+          <button type="button" aria-label={playing ? 'Pausar' : 'Reproduzir trecho'} disabled={length <= 0} className="col-start-3 row-start-1 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[#2A2A2A] disabled:opacity-40" onClick={togglePlay}>
+            {playing ? <Pause className="h-4 w-4" fill="currentColor" /> : <Play className="h-4 w-4" fill="currentColor" />}
+          </button>
+        <div
+          ref={trackRef}
+          role="slider"
+          tabIndex={0}
+          aria-label="Trecho do áudio"
+          aria-valuemin={0}
+          aria-valuemax={Math.max(0, Math.round((length - selected) * 10) / 10)}
+          aria-valuenow={Math.round(start * 10) / 10}
+          aria-valuetext={`De ${clock(start)} até ${clock(start + selected)}`}
+          className="relative col-start-2 row-start-2 mt-3 h-24 touch-none"
+          onPointerDown={onPointerDown}
+          onKeyDown={onKey}
+        >
+          <div className="absolute inset-x-0 top-3 bottom-3 flex items-center justify-between">
+            {bars.map((peak, index) => (
+              <span key={index} className={`w-[2px] shrink-0 rounded-full ${waveError ? 'bg-white/35' : 'bg-white'}`} style={{ height: `${Math.max(6, Math.round(peak * 68))}px` }} />
+            ))}
+          </div>
+          <div className="pointer-events-none absolute inset-y-1" style={{ left: `${selectionLeft}%`, width: `${selectionWidth}%` }}>
+            <div
+              className="absolute inset-0"
+              style={{
+                borderRadius: 10,
+                padding: '6px',
+                background: 'conic-gradient(from 0deg, #FF3B30 0deg, #FF4F93 70deg, #FF4F93 110deg, #D946EF 160deg, #7C3AED 210deg, #C026D3 250deg, #FF4F93 300deg, #FFE14A 328deg, #FF9A1A 348deg, #FF3B30 360deg)',
+                WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
+                WebkitMaskComposite: 'xor',
+                maskComposite: 'exclude',
+              }}
+            />
+            <button type="button" data-edge="start" aria-label="Ajustar início do trecho" className="pointer-events-auto absolute inset-y-0 left-0 w-4 cursor-ew-resize" onPointerDown={(event) => startDrag('start', event)} />
+            <button type="button" data-edge="end" aria-label="Ajustar fim do trecho" className="pointer-events-auto absolute inset-y-0 right-0 w-4 cursor-ew-resize" onPointerDown={(event) => startDrag('end', event)} />
           </div>
         </div>
+        </div>
         {waveError ? <p className="mt-2 text-xs text-white/60">A forma de onda não pôde ser lida, então este arquivo não pode ser recortado.</p> : null}
-        <p className="mt-2 text-center text-xs text-white/70">{length > 0 ? `${clock(start)} – ${clock(start + selected)}` : 'Aguarde o áudio carregar.'}</p>
         {error ? <p className="mt-2 text-xs text-[#F9A8D4]">{error}</p> : null}
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" className="rounded-full px-4 py-2 text-sm text-white/80" onClick={() => { pauseAt(start); onCancel(); }}>Cancelar</button>

@@ -1,0 +1,13 @@
+---
+description: Publicar no site oficial assim que uma alteração pedida estiver pronta
+alwaysApply: true
+---
+
+# Publicar sempre
+
+Quando o Matheuz pedir uma alteração no Única Conecta, publique no site oficial assim que ela estiver pronta e verificada. Não espere um pedido separado de envio.
+
+- Faça commit só dos arquivos da alteração e envie para `main`. O push dispara o deploy de https://unica-abd9.vercel.app.
+- Deixe de fora `data/auth.json`, `data/feed.json`, `data/institution.json`, outros JSON de dados, `.env`, segredos, `emoji-mart-5.6.0` e a pasta `cd`.
+- Não altere a configuração do git, não use `--force` e não apague o projeto `unica-qw4h`, o repositório, o Supabase nem os dados do mural.
+- Se o envio para `main` pedir aprovação, repita o mesmo comando com o motivo exato do bloqueio.
