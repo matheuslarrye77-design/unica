@@ -1,7 +1,7 @@
 import { Award } from 'lucide-react';
 import { type FC } from 'react';
-import { EmojiText } from '@/components/Emoji';
 import { LilacWash } from './LilacWash';
+import { ReadMore } from './ReadMore';
 import type { SocialPost } from './types';
 
 export const RecognitionPost: FC<{ post: SocialPost }> = ({ post }) => {
@@ -11,10 +11,8 @@ export const RecognitionPost: FC<{ post: SocialPost }> = ({ post }) => {
   return (
     <div className="mt-3">
       {title ? <h3 className="text-[16px] font-semibold leading-6 text-foreground">{title}</h3> : null}
-      <div className="mt-1.5 space-y-2 text-[14.5px] leading-6 text-[#3C3952] dark:text-foreground/90">
-        {post.body.split('\n').filter((line) => line.trim()).map((line) => (
-          <p key={line}><EmojiText text={line} /></p>
-        ))}
+      <div className="mt-1.5">
+        <ReadMore id={`${post.id}-reconhecimento`} text={post.body} className="text-[14.5px] leading-6 text-[#3C3952] dark:text-foreground/90" />
       </div>
       <LilacWash
         className="mt-3"

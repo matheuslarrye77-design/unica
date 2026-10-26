@@ -5,7 +5,18 @@ export type SavedSticker = {
   id: string;
   url: string;
   createdAt: string;
+  uses?: number;
+  priority?: number;
+  usedAt?: string;
 };
+
+export function orderedStickers(items: SavedSticker[]) {
+  return [...items].sort((a, b) =>
+    (b.priority ?? 0) - (a.priority ?? 0)
+    || (b.uses ?? 0) - (a.uses ?? 0)
+    || String(b.usedAt ?? '').localeCompare(String(a.usedAt ?? ''))
+    || String(b.createdAt).localeCompare(String(a.createdAt)));
+}
 
 function demoHeaders(): Record<string, string> {
   return LOGIN_REQUIRED ? {} : { 'x-unica-demo': getDemoId() };
@@ -60,7 +71,7 @@ export async function saveSticker(file: File) {
   });
   const body = await readJson(response);
   if (!response.ok || !body.sticker) throw new Error(body.error || 'unavailable');
-  changeLibrary((items) => [body.sticker!, ...items.filter((item) => item.url !== body.sticker?.url)]);
+  changeLibrary((items) => orderedStickers([body.sticker!, ...items.filter((item) => item.url !== body.sticker?.url)]));
   return body.sticker;
 }
 
@@ -134,8 +145,30 @@ export async function keepSticker(url: string) {
   const body = await readJson(response);
   if (!response.ok || !body.sticker) throw new Error(body.error || 'unavailable');
   rememberSticker(body.sticker.url, true);
-  changeLibrary((items) => [body.sticker!, ...items.filter((item) => item.url !== body.sticker?.url)]);
+  changeLibrary((items) => orderedStickers([body.sticker!, ...items.filter((item) => item.url !== body.sticker?.url)]));
   return body.sticker;
+}
+
+async function touchSticker(field: 'use' | 'priority', url: string) {
+  const source = /^\/api\/stickers\/(stk-[a-f0-9]{16})$/.exec(url)?.[1] ?? '';
+  const response = await fetch('/api/stickers', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { ...authHeaders(), ...demoHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ [field]: source }),
+  });
+  const body = await readJson(response);
+  if (!response.ok || !body.sticker) throw new Error(body.error || 'unavailable');
+  changeLibrary((items) => orderedStickers(items.map((item) => (item.id === body.sticker?.id ? body.sticker! : item))));
+  return body.sticker;
+}
+
+export function useSticker(url: string) {
+  return touchSticker('use', url);
+}
+
+export function prioritizeSticker(url: string) {
+  return touchSticker('priority', url);
 }
 
 export async function forgetSticker(url: string) {

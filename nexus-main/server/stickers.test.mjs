@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { detectImage, forgetSticker, keepSticker, listGifs, listStickers, saveGif, saveSticker, stickerBytes, stickerMediaUrl } from './stickers.mjs';
+import { detectImage, forgetSticker, keepSticker, listGifs, listStickers, prioritizeSticker, saveGif, saveSticker, stickerBytes, stickerMediaUrl, useSticker } from './stickers.mjs';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 
@@ -45,6 +45,17 @@ test('a saved sticker stays available for the same person', async () => {
     assert.equal(listGifs(after.gifs, '1').length, 1);
     const stillThere = await stickerBytes(dir, first.body.sticker.id);
     assert.equal(stillThere.bytes.equals(png), true);
+    const used = await useSticker(dir, '1', first.body.sticker.id);
+    assert.equal(used.status, 200);
+    const usedAgain = await useSticker(dir, '1', first.body.sticker.id);
+    assert.equal(usedAgain.body.sticker.uses, 2);
+    const afterUse = JSON.parse(fs.readFileSync(path.join(dir, 'stickers.json'), 'utf8'));
+    assert.equal(listStickers(afterUse.items, '1')[0].id, first.body.sticker.id);
+    const raised = await prioritizeSticker(dir, '1', again.body.sticker.id);
+    assert.equal(raised.status, 200);
+    const afterPriority = JSON.parse(fs.readFileSync(path.join(dir, 'stickers.json'), 'utf8'));
+    assert.equal(listStickers(afterPriority.items, '1')[0].id, again.body.sticker.id);
+    assert.equal(listGifs(afterPriority.gifs, '1').length, 1);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
     if (previous === undefined) delete process.env.BLOB_READ_WRITE_TOKEN;

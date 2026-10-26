@@ -1,5 +1,5 @@
 import { AudioLines, FileText, ImagePlus, ListChecks, Send, Video, X } from 'lucide-react';
-import { type ChangeEvent, type ClipboardEvent, type FC, type FormEvent, useRef, useState } from 'react';
+import { type ChangeEvent, type ClipboardEvent, type FC, type FormEvent, type KeyboardEvent, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { formatClip } from '@/lib/audioClip';
 import { uploadMedia } from '@/lib/feed';
@@ -123,7 +123,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     try {
       setProgress(0);
       const uploaded = await uploadMedia(file, setProgress);
-      setAttachment({ type, name: uploaded.name || file.name, url: uploaded.url, start: clip?.start, duration: clip?.duration });
+      setAttachment({ type, name: type === 'audio' ? 'Áudio' : (uploaded.name || file.name), url: uploaded.url, start: clip?.start, duration: clip?.duration });
       return true;
     } catch {
       toast.error('Não foi possível enviar o arquivo. Tente novamente.');
@@ -255,6 +255,29 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     setWriting(true);
   }
 
+  function onBlockKey(event: KeyboardEvent<HTMLTextAreaElement>, index: number) {
+    const field = event.currentTarget;
+    const atStart = field.selectionStart === 0 && field.selectionEnd === 0;
+    const atEnd = field.selectionStart === field.value.length && field.selectionEnd === field.value.length;
+    if ((event.key === 'Backspace' || event.key === 'Delete') && atStart) {
+      const previous = blocks[index - 1];
+      if (previous?.type === 'image') {
+        event.preventDefault();
+        const earlier = blocks[index - 2];
+        removeImage(previous.id);
+        if (earlier?.type === 'text') requestAnimationFrame(() => fields.current[earlier.id]?.focus());
+        return;
+      }
+    }
+    if (event.key === 'Delete' && atEnd) {
+      const next = blocks[index + 1];
+      if (next?.type === 'image') {
+        event.preventDefault();
+        removeImage(next.id);
+      }
+    }
+  }
+
   function removeImage(id: string) {
     setBlocks((current) => {
       const next: DraftBlock[] = [];
@@ -299,6 +322,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
                   event.currentTarget.style.height = `${Math.min(Math.max(event.currentTarget.scrollHeight, index === 0 ? 40 : 32), 180)}px`;
                 }}
                 onPaste={pasteMedia}
+                onKeyDown={(event) => onBlockKey(event, index)}
                 onChange={(event) => {
                   const value = event.target.value;
                   setBlocks((current) => current.map((item) => item.id === block.id && item.type === 'text' ? { ...item, text: value } : item));
@@ -338,10 +362,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
 
       {attachment?.type === 'audio' && attachment.url ? (
         <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2 text-sm">
-          <span className="min-w-0">
-            <span className="flex items-center gap-2"><AudioLines className="h-4 w-4 text-primary" />{attachment.name}</span>
-            <span className="mt-1 block text-xs text-muted-foreground">Trecho de {formatClip(attachment.duration ?? 0)}</span>
-          </span>
+          <span className="flex min-w-0 items-center gap-2 text-sm"><AudioLines className="h-4 w-4 text-primary" />Trecho de {formatClip(attachment.duration ?? 0)}</span>
           <button type="button" onClick={() => setAttachment(undefined)} aria-label="Remover áudio"><X className="h-4 w-4" /></button>
         </div>
       ) : null}

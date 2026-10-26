@@ -1,6 +1,7 @@
 import { useState, type FC } from 'react';
 import { toast } from 'sonner';
 import { PostCard } from './PostCard';
+import { ExpandProvider } from './ReadMore';
 import type { SocialPost } from './types';
 
 const avatar = (seed: string) => `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
@@ -58,6 +59,7 @@ export const FeedPreview: FC = () => {
   }
 
   return (
+    <ExpandProvider>
     <section aria-label="Prévia visual do mural" className="flex flex-col gap-3">
       {posts.map((post) => (
         <PostCard
@@ -68,7 +70,7 @@ export const FeedPreview: FC = () => {
           onCommentDraft={(value) => setDrafts((current) => ({ ...current, [post.id]: value }))}
           onLike={() => patch(post.id, (item) => ({ ...item, liked: !item.liked, likes: item.likes + (item.liked ? -1 : 1) }))}
           onShare={() => toast('Prévia: esta publicação não entra no mural.')}
-          onToggleComments={() => patch(post.id, (item) => ({ ...item, commentsOpen: !item.commentsOpen }))}
+          onToggleComments={() => setPosts((current) => current.map((item) => ({ ...item, commentsOpen: item.id === post.id ? !post.commentsOpen : false })))}
           onAddComment={() => {
             const text = (drafts[post.id] ?? '').trim();
             if (!text) return;
@@ -85,5 +87,6 @@ export const FeedPreview: FC = () => {
         />
       ))}
     </section>
+    </ExpandProvider>
   );
 };

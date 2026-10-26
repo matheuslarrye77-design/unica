@@ -7,6 +7,7 @@ import { cancelRepost, commentFeedPost, createFeedPost, deleteFeedComment, delet
 import { actor, useDemoProfile } from '@/lib/session';
 import { isLeader, useInstitution } from '@/lib/institution';
 import { CreatePost, type NewPostDraft } from './CreatePost';
+import { ExpandProvider } from './ReadMore';
 import { FeedPreview } from './FeedPreview';
 import { PostCard } from './PostCard';
 import { RecognitionComposer } from './RecognitionComposer';
@@ -179,7 +180,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
           onShare={() => setShareId(post.id)}
           onToggleComments={() => {
             const open = !post.commentsOpen;
-            setPosts((current) => current.map((item) => item.id === post.id ? { ...item, commentsOpen: open } : item));
+            setPosts((current) => current.map((item) => ({ ...item, commentsOpen: item.id === post.id ? open : false })));
             if (open) window.setTimeout(() => document.getElementById(`comentario-${post.id}`)?.focus(), 0);
           }}
           onAddComment={() => {
@@ -252,6 +253,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   }
 
   return (
+    <ExpandProvider>
     <div className="flex w-full flex-col gap-3">
       {mode === 'recognition' ? null : (
         <LilacWash
@@ -307,5 +309,6 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
 
       {visiblePosts.map(renderFeedPost)}
     </div>
+    </ExpandProvider>
   );
 };

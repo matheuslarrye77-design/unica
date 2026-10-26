@@ -97,16 +97,30 @@ async function loadBytes(dir, id) {
   }
 }
 
+function compareStickers(a, b) {
+  return (Number(b.priority) || 0) - (Number(a.priority) || 0)
+    || (Number(b.uses) || 0) - (Number(a.uses) || 0)
+    || String(b.usedAt || '').localeCompare(String(a.usedAt || ''))
+    || String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+}
+
+function stickerBody(item) {
+  return {
+    id: item.id,
+    url: `/api/stickers/${item.id}`,
+    createdAt: item.createdAt,
+    uses: Number(item.uses) || 0,
+    priority: Number(item.priority) || 0,
+    usedAt: typeof item.usedAt === 'string' ? item.usedAt : '',
+  };
+}
+
 export function listStickers(items, userId) {
   const owner = safeUser(userId);
   return items
     .filter((item) => item?.userId === owner && ID.test(item.id))
-    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
-    .map((item) => ({ id: item.id, url: `/api/stickers/${item.id}`, createdAt: item.createdAt }));
-}
-
-function stickerBody(item) {
-  return { id: item.id, url: `/api/stickers/${item.id}`, createdAt: item.createdAt };
+    .sort(compareStickers)
+    .map((item) => stickerBody(item));
 }
 
 export async function saveSticker(dir, userId, bytes) {
@@ -140,6 +154,34 @@ export async function forgetSticker(dir, userId, sourceId) {
     if (!saved) return { status: 503, body: { error: 'unavailable' } };
     return { status: 200, body: { removed: true } };
   });
+}
+
+function updateOwnSticker(dir, userId, sourceId, change) {
+  const owner = safeUser(userId);
+  if (!owner || !ID.test(sourceId)) return Promise.resolve({ status: 400, body: { error: 'file' } });
+  return exclusive(async () => {
+    const library = await loadLibrary(dir);
+    if (!library) return { status: 503, body: { error: 'unavailable' } };
+    const current = library.items.find((item) => item.userId === owner && item.id === sourceId);
+    if (!current) return { status: 404, body: { error: 'missing' } };
+    const nextItem = change(current);
+    const next = library.items.map((item) => (item.userId === owner && item.id === sourceId ? nextItem : item));
+    const saved = await storeLibrary(dir, next, library.gifs);
+    if (!saved) return { status: 503, body: { error: 'unavailable' } };
+    return { status: 200, body: { sticker: stickerBody(nextItem) } };
+  });
+}
+
+export function useSticker(dir, userId, sourceId) {
+  return updateOwnSticker(dir, userId, sourceId, (item) => ({
+    ...item,
+    uses: (Number(item.uses) || 0) + 1,
+    usedAt: new Date().toISOString(),
+  }));
+}
+
+export function prioritizeSticker(dir, userId, sourceId) {
+  return updateOwnSticker(dir, userId, sourceId, (item) => ({ ...item, priority: Date.now() }));
 }
 
 export async function keepSticker(dir, userId, sourceId) {
@@ -256,6 +298,16 @@ export async function handleStickerRequest(req, res, url, dir, user) {
     }
     if (body.source) {
       const result = await keepSticker(dir, user.id, String(body.source));
+      send(res, result.status, result.body);
+      return true;
+    }
+    if (body.use) {
+      const result = await useSticker(dir, user.id, String(body.use));
+      send(res, result.status, result.body);
+      return true;
+    }
+    if (body.priority) {
+      const result = await prioritizeSticker(dir, user.id, String(body.priority));
       send(res, result.status, result.body);
       return true;
     }

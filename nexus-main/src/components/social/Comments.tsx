@@ -1,9 +1,9 @@
-import { EmojiText } from '@/components/Emoji';
 import { Heart, Star, Trash2, X } from 'lucide-react';
 import { useEffect, useState, useRef, type ClipboardEvent, type FC, type FormEvent, type KeyboardEvent } from 'react';
 import { actor } from '@/lib/session';
 import { forgetSticker, keepSticker, stickerIsSaved } from '@/lib/stickers';
 import { ComposerExtras } from './ComposerExtras';
+import { ReadMore, useExpand } from './ReadMore';
 import type { CommentMedia, SocialComment } from './types';
 
 export const Comments: FC<{
@@ -21,6 +21,7 @@ export const Comments: FC<{
   onPasteFile?: (file: File) => void;
 }> = ({ inputId, comments, draft, onDraft, onSubmit, onLike, canDelete, onDelete, pendingMedia, onMedia, onPasteFile }) => {
   const fieldRef = useRef<HTMLTextAreaElement>(null);
+  const expand = useExpand();
   function submit(event: FormEvent) {
     event.preventDefault();
     onSubmit();
@@ -44,6 +45,13 @@ export const Comments: FC<{
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       onSubmit();
+      return;
+    }
+    const atStart = event.currentTarget.selectionStart === 0 && event.currentTarget.selectionEnd === 0;
+    const empty = event.currentTarget.value === '';
+    if (pendingMedia && atStart && (event.key === 'Backspace' || (event.key === 'Delete' && empty))) {
+      event.preventDefault();
+      onMedia?.(null);
     }
   }
 
@@ -55,9 +63,11 @@ export const Comments: FC<{
           <li key={comment.id} className="flex gap-2.5">
             <img src={comment.avatar} alt="" className="h-8 w-8 rounded-full bg-muted" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm leading-5">
-                <span className="font-semibold">{comment.author}</span> {comment.body ? <EmojiText text={comment.body} /> : null}
-              </p>
+              <div onClick={() => expand?.setId(expand.id === `comentario-${comment.id}` ? null : `comentario-${comment.id}`)}>
+                {comment.body ? (
+                  <ReadMore id={`comentario-${comment.id}`} text={comment.body} prefix={<span className="font-semibold">{comment.author} </span>} className="text-sm leading-5" />
+                ) : <p className="text-sm font-semibold leading-5">{comment.author}</p>}
+              </div>
               {comment.media ? (
                 <div className="relative mt-1 inline-block">
                   {comment.media.kind === 'video' ? (

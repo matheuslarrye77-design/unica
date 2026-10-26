@@ -1,12 +1,12 @@
 import { type FC } from 'react';
-import { EmojiText } from '@/components/Emoji';
+import { ReadMore } from './ReadMore';
 import type { SocialPost } from './types';
 
 export const PollPost: FC<{ post: SocialPost; onVote: (optionId: string) => void }> = ({ post, onVote }) => {
   const total = (post.poll ?? []).reduce((sum, option) => sum + option.votes, 0);
   return (
     <div className="mt-3">
-      <p className="text-sm leading-6"><EmojiText text={post.body} /></p>
+      <ReadMore id={`${post.id}-enquete`} text={post.body} className="text-sm leading-6" />
       <ul className="mt-3 space-y-2">
         {(post.poll ?? []).map((option) => {
           const percent = total === 0 ? 0 : Math.round((option.votes / total) * 100);

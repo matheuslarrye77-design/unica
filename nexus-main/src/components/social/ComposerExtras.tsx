@@ -1,6 +1,6 @@
-import { ImagePlay, Plus, Smile, Sticker } from 'lucide-react';
+import { ArrowUp, ImagePlay, Plus, Smile, Sticker, X } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
-import { listStickers, saveSticker, subscribeStickerLibrary, type SavedSticker } from '@/lib/stickers';
+import { forgetSticker, listStickers, prioritizeSticker, saveSticker, subscribeStickerLibrary, useSticker, type SavedSticker } from '@/lib/stickers';
 import { GifPicker } from './GifPicker';
 import { EMOJI_GROUPS } from './mediaCatalog';
 
@@ -16,6 +16,7 @@ export const ComposerExtras: FC<{
   const [savedStickers, setSavedStickers] = useState<SavedSticker[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [editing, setEditing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => subscribeStickerLibrary(setSavedStickers), []);
@@ -83,14 +84,29 @@ export const ComposerExtras: FC<{
             <>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(event) => { void uploadSticker(event.target.files?.[0]); event.target.value = ''; }} />
               {uploadError ? <p className="mb-2 px-1 text-center text-[12px] text-[#9D174D]">{uploadError}</p> : null}
+              <div className="mb-2 flex justify-end px-1">
+                <button type="button" className="text-[12px] font-semibold text-[#8E35B8]" aria-pressed={editing} onClick={() => setEditing((current) => !current)}>{editing ? 'Concluir' : 'Editar'}</button>
+              </div>
               <div className="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto">
                 <button type="button" disabled={uploading} aria-label="Enviar figurinha" className="grid aspect-square place-items-center rounded-xl border border-dashed border-[#D7B6E8] bg-[#FBF7FD] text-[#8E35B8] disabled:opacity-50" onClick={() => fileRef.current?.click()}>
                   <Plus className="h-6 w-6" />
                 </button>
                 {savedStickers.map((item) => (
-                  <button key={item.id} type="button" className="rounded-xl bg-[#FBF7FD] p-1" onClick={() => { onSticker?.(item.url); setPanel(null); }} aria-label="Minha figurinha">
+                  <div key={item.id} className="relative rounded-xl bg-[#FBF7FD] p-1">
                     <img src={item.url} alt="" className="aspect-square w-full rounded-lg object-contain" />
-                  </button>
+                    {editing ? (
+                      <>
+                        <button type="button" aria-label="Colocar figurinha em primeiro" className="absolute left-1 top-1 z-10 grid h-6 w-6 place-items-center rounded-full bg-white text-[#8E35B8] shadow" onClick={() => { void prioritizeSticker(item.url).catch(() => setUploadError('Não foi possível priorizar a figurinha.')); }}>
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button type="button" aria-label="Remover figurinha" className="absolute right-1 top-1 z-10 grid h-6 w-6 place-items-center rounded-full bg-white text-[#9D174D] shadow" onClick={() => { void forgetSticker(item.url).catch(() => setUploadError('Não foi possível remover a figurinha.')); }}>
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" className="absolute inset-0 z-10" aria-label="Minha figurinha" onClick={() => { void useSticker(item.url).catch(() => undefined); onSticker?.(item.url); setPanel(null); }} />
+                    )}
+                  </div>
                 ))}
               </div>
             </>

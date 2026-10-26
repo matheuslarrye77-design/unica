@@ -238,7 +238,7 @@ export const AudioTrim: FC<{ file: File; onCancel: () => void; onConfirm: (file:
           onEnded={() => pauseAt(start)}
         />
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3">
-          <div className="relative col-start-1 row-start-1">
+          <div className="relative z-30 col-start-1 row-start-1">
             <button type="button" aria-label="Duração do trecho" aria-expanded={menu} disabled={length <= 0} className={`grid h-10 shrink-0 place-items-center rounded-full bg-white text-[12px] font-semibold leading-none text-[#3A3A3A] disabled:opacity-40 ${durationLabel.length > 2 ? 'min-w-10 px-2' : 'w-10'}`} onClick={() => setMenu((open) => !open)}>
               {length > 0 ? durationLabel : '…'}
             </button>
