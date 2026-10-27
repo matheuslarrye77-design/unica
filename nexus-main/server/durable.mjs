@@ -56,9 +56,21 @@ function blobStoreIds() {
   return ids;
 }
 
+let lastBlobRead = { status: 0, hasStore: false, hasOidc: false, hasToken: false };
+
+export function blobReadState() {
+  return lastBlobRead;
+}
+
 async function fetchBlob(pathname) {
   const ids = blobStoreIds();
   const tokens = blobBearers();
+  lastBlobRead = {
+    status: 0,
+    hasStore: ids.length > 0,
+    hasOidc: Boolean(String(process.env.VERCEL_OIDC_TOKEN || '').trim()),
+    hasToken: Boolean(blobToken()),
+  };
   if (!ids.length || !tokens.length) return { ok: false, status: 0, bytes: null, type: '' };
   let saw404 = false;
   let sawDenied = false;
@@ -90,9 +102,14 @@ async function fetchBlob(pathname) {
       }
     }
   }
-  if (saw404 && !sawDenied) return { ok: true, status: 404, bytes: null, type: '' };
-  console.error('[unica] document read', sawDenied ? 403 : 'network');
-  return { ok: false, status: sawDenied ? 403 : 0, bytes: null, type: '' };
+  if (saw404 && !sawDenied) {
+    lastBlobRead = { ...lastBlobRead, status: 404 };
+    return { ok: true, status: 404, bytes: null, type: '' };
+  }
+  const status = sawDenied ? 403 : 0;
+  lastBlobRead = { ...lastBlobRead, status };
+  console.error('[unica] document read', status || 'network');
+  return { ok: false, status, bytes: null, type: '' };
 }
 
 function readJson(file) {

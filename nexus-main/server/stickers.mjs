@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { readStickerFile, readStickerLibrary, writeStickerFile, writeStickerLibrary } from './durable.mjs';
+import { blobReadState, readStickerFile, readStickerLibrary, writeStickerFile, writeStickerLibrary } from './durable.mjs';
 import { gifMediaUrl } from './giphy.mjs';
 
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -276,7 +276,7 @@ export async function handleStickerRequest(req, res, url, dir, user) {
   if (req.method === 'GET') {
     const library = await loadLibrary(dir);
     if (!library) {
-      send(res, 503, { error: 'unavailable' });
+      send(res, 503, { error: 'unavailable', detail: blobReadState() });
       return true;
     }
     send(res, 200, { stickers: listStickers(library.items, user.id), gifs: listGifs(library.gifs, user.id) });
