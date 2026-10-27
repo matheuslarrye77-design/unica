@@ -55,7 +55,7 @@ type FeedPost = {
   body: string;
   image?: string;
   images?: string[];
-  blocks?: ({ type: 'text'; text: string } | { type: 'image'; url: string })[];
+  blocks?: ({ type: 'text'; text: string } | { type: 'image'; url: string; display?: 'sticker' | 'gif' })[];
   attachment?: { type: 'video' | 'document' | 'audio'; name: string; url?: string; start?: number; duration?: number };
   likes: number;
   likedBy: string[];
@@ -218,14 +218,15 @@ function cleanBlocks(value: unknown): FeedPost['blocks'] {
   const blocks: NonNullable<FeedPost['blocks']> = [];
   for (const entry of value) {
     if (!entry || typeof entry !== 'object') continue;
-    const block = entry as { type?: string; text?: string; url?: string };
+    const block = entry as { type?: string; text?: string; url?: string; display?: string };
     if (block.type === 'text') {
       const text = String(block.text ?? '').trim().slice(0, 4000);
       if (text) blocks.push({ type: 'text', text });
     }
     if (block.type === 'image') {
       const url = cleanImage(block.url);
-      if (url) blocks.push({ type: 'image', url });
+      const display = block.display === 'sticker' || block.display === 'gif' ? block.display : undefined;
+      if (url) blocks.push(display ? { type: 'image', url, display } : { type: 'image', url });
     }
     if (blocks.length >= 20) break;
   }

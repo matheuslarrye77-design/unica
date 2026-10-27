@@ -8,7 +8,7 @@ export type Attachment = {
 
 export type CommentMedia = { kind: 'gif' | 'sticker' | 'image' | 'video'; url: string };
 
-export type PostBlock = { type: 'text'; text: string } | { type: 'image'; url: string };
+export type PostBlock = { type: 'text'; text: string } | { type: 'image'; url: string; display?: 'sticker' | 'gif' };
 
 export type SocialComment = {
   id: string;

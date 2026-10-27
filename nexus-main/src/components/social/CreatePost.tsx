@@ -16,7 +16,7 @@ const VIDEO_MAX = 200 * 1024 * 1024;
 const DOC_MAX = 40 * 1024 * 1024;
 const AUDIO_MAX = 80 * 1024 * 1024;
 
-type DraftBlock = { id: string; type: 'text'; text: string } | { id: string; type: 'image'; url: string };
+type DraftBlock = { id: string; type: 'text'; text: string } | { id: string; type: 'image'; url: string; display?: 'sticker' | 'gif' };
 
 export type NewPostDraft = {
   body: string;
@@ -72,7 +72,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     setEditing(next ?? null);
   }
 
-  function placeImage(url: string) {
+  function placeImage(url: string, display?: 'sticker' | 'gif') {
     const imageId = `imagem-${Date.now()}`;
     const textId = `texto-${Date.now()}`;
     let focus = focusId.current;
@@ -80,7 +80,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
       if (current.filter((block) => block.type === 'image').length >= 10) return current;
       const index = Math.max(0, current.findIndex((block) => block.id === focusId.current));
       const next = [...current];
-      next.splice(index + 1, 0, { id: imageId, type: 'image', url });
+      next.splice(index + 1, 0, { id: imageId, type: 'image', url, display });
       if (next[index + 2]?.type !== 'text') {
         next.splice(index + 2, 0, { id: textId, type: 'text', text: '' });
         focus = textId;
@@ -260,7 +260,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     if (sending) return;
     const content: PostBlock[] = [];
     for (const block of blocks) {
-      if (block.type === 'image') content.push({ type: 'image', url: block.url });
+      if (block.type === 'image') content.push(block.display ? { type: 'image', url: block.url, display: block.display } : { type: 'image', url: block.url });
       else if (block.text.trim()) content.push({ type: 'text', text: block.text.trim() });
     }
     const body = content.flatMap((block) => block.type === 'text' ? [block.text] : []).join('\n\n');
@@ -437,9 +437,9 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
                 className={`w-full resize-none overflow-y-auto bg-transparent text-[13.5px] leading-5 outline-none placeholder:text-muted-foreground ${index === 0 ? '' : 'mt-2 min-h-8'}`}
               />
             ) : (
-              <div key={block.id} className="relative mt-2">
-                <img src={block.url} alt="" className="max-h-80 w-full rounded-xl object-contain" />
-                <button type="button" onClick={() => removeImage(block.id)} className="absolute right-1 top-1 rounded-full bg-background/90 p-1" aria-label="Remover foto">
+              <div key={block.id} className={`relative mt-2 ${block.display ? 'w-24' : ''}`}>
+                <img src={block.url} alt="" className={block.display ? 'h-24 w-24 rounded-xl bg-[#F8EAFB] object-contain' : 'max-h-80 w-full rounded-xl object-contain'} />
+                <button type="button" onClick={() => removeImage(block.id)} className="absolute right-1 top-1 rounded-full bg-background/90 p-1" aria-label={block.display === 'gif' ? 'Remover GIF' : block.display === 'sticker' ? 'Remover figurinha' : 'Remover foto'}>
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -497,23 +497,23 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
         </div>
       ) : null}
 
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-2 flex items-center gap-1.5">
         <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple className="hidden" onChange={readImage} />
         <input ref={videoRef} type="file" accept="video/*" className="hidden" onChange={readVideo} />
         <input ref={audioRef} type="file" accept="audio/*" className="hidden" onChange={readAudio} />
         <input ref={fileRef} type="file" className="hidden" onChange={readFile} />
-        <button type="button" data-composer-tool aria-label={feeling ? `Humor: ${feeling.label}` : 'Emojis, humor, GIFs e figurinhas'} aria-expanded={menu === 'face'} title={feeling ? feeling.label : 'Emojis, humor, GIFs e figurinhas'} onClick={(event) => toggleMenu('face', event)} className={`relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8] transition-colors hover:bg-[#EBD4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 active:bg-[#E0C4F2] ${menu === 'face' || feeling ? 'ring-2 ring-[#8E35B8]/30' : ''}`}>
-          <Smile className="h-[18px] w-[18px]" />
-          {feeling ? <span className="absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-white ring-1 ring-[#E4C8EE]"><Emoji emoji={feeling.emoji} className="h-3 w-3" /></span> : null}
+        <button type="button" data-composer-tool aria-label={feeling ? `Humor: ${feeling.label}` : 'Emojis, humor, GIFs e figurinhas'} aria-expanded={menu === 'face'} title={feeling ? feeling.label : 'Emojis, humor, GIFs e figurinhas'} onClick={(event) => toggleMenu('face', event)} className={`relative grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8] transition-colors hover:bg-[#EBD4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 active:bg-[#E0C4F2] ${menu === 'face' || feeling ? 'ring-2 ring-[#8E35B8]/30' : ''}`}>
+          <Smile className="h-3.5 w-3.5" />
+          {feeling ? <span className="absolute -bottom-0.5 -right-0.5 grid h-3.5 w-3.5 place-items-center rounded-full bg-white ring-1 ring-[#E4C8EE]"><Emoji emoji={feeling.emoji} className="h-2.5 w-2.5" /></span> : null}
         </button>
-        <button type="button" data-composer-tool aria-label={audience === 'management' ? 'Somente gestão' : 'Público'} aria-pressed={audience === 'management'} aria-expanded={menu === 'lock'} title={audience === 'management' ? 'Somente gestão' : 'Público'} onClick={(event) => toggleMenu('lock', event)} className={`grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8] transition-colors hover:bg-[#EBD4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 active:bg-[#E0C4F2] ${menu === 'lock' || audience === 'management' ? 'ring-2 ring-[#8E35B8]/30' : ''}`}>
-          <Lock className="h-[18px] w-[18px]" />
+        <button type="button" data-composer-tool aria-label={audience === 'management' ? 'Somente gestão' : 'Público'} aria-pressed={audience === 'management'} aria-expanded={menu === 'lock'} title={audience === 'management' ? 'Somente gestão' : 'Público'} onClick={(event) => toggleMenu('lock', event)} className={`grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8] transition-colors hover:bg-[#EBD4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 active:bg-[#E0C4F2] ${menu === 'lock' || audience === 'management' ? 'ring-2 ring-[#8E35B8]/30' : ''}`}>
+          <Lock className="h-3.5 w-3.5" />
         </button>
-        <button type="button" data-composer-tool aria-label="Adicionar conteúdo" aria-expanded={menu === 'add'} title="Adicionar conteúdo" onClick={(event) => toggleMenu('add', event)} className={`grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8] transition-colors hover:bg-[#EBD4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 active:bg-[#E0C4F2] ${menu === 'add' ? 'ring-2 ring-[#8E35B8]/30' : ''}`}>
-          <Plus className="h-[18px] w-[18px]" />
+        <button type="button" data-composer-tool aria-label="Adicionar conteúdo" aria-expanded={menu === 'add'} title="Adicionar conteúdo" onClick={(event) => toggleMenu('add', event)} className={`grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8] transition-colors hover:bg-[#EBD4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 active:bg-[#E0C4F2] ${menu === 'add' ? 'ring-2 ring-[#8E35B8]/30' : ''}`}>
+          <Plus className="h-3.5 w-3.5" />
         </button>
-        <button type="submit" aria-label="Publicar" title="Publicar" aria-busy={sending} disabled={!ready} className="ml-auto grid h-9 w-11 shrink-0 place-items-center rounded-full bg-[#8E35B8] text-white transition-colors hover:bg-[#7A2498] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 active:bg-[#6A228C] disabled:cursor-not-allowed disabled:opacity-45">
-          {sending ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Send className="h-[18px] w-[18px]" />}
+        <button type="submit" aria-label="Publicar" title="Publicar" aria-busy={sending} disabled={!ready} className="ml-auto grid h-7 w-9 shrink-0 place-items-center rounded-full bg-[#8E35B8] text-white transition-colors hover:bg-[#7A2498] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 active:bg-[#6A228C] disabled:cursor-not-allowed disabled:opacity-45">
+          {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
         </button>
       </div>
         </div>
@@ -528,8 +528,8 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
                   ))}
                 </div>
                 {faceTab === 'emoji' ? <ComposerExtras embedded="emoji" onEmoji={insertEmoji} /> : null}
-                {faceTab === 'gif' ? <ComposerExtras embedded="gif" onEmoji={insertEmoji} onGif={(url) => { if (blocks.filter((block) => block.type === 'image').length < 10) placeImage(url); }} onPicked={() => setMenu(null)} /> : null}
-                {faceTab === 'sticker' ? <ComposerExtras embedded="sticker" onEmoji={insertEmoji} onSticker={(url) => { if (blocks.filter((block) => block.type === 'image').length < 10) placeImage(url); }} onPicked={() => setMenu(null)} /> : null}
+                {faceTab === 'gif' ? <ComposerExtras embedded="gif" onEmoji={insertEmoji} onGif={(url) => { if (blocks.filter((block) => block.type === 'image').length < 10) placeImage(url, 'gif'); }} onPicked={() => setMenu(null)} /> : null}
+                {faceTab === 'sticker' ? <ComposerExtras embedded="sticker" onEmoji={insertEmoji} onSticker={(url) => { if (blocks.filter((block) => block.type === 'image').length < 10) placeImage(url, 'sticker'); }} onPicked={() => setMenu(null)} /> : null}
                 {faceTab === 'mood' ? (
                   <div>
                     <div role="listbox" aria-label="Humor">

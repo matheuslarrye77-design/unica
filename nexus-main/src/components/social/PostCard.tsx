@@ -72,7 +72,7 @@ export const PostCard: FC<{
 }> = ({ post, commentDraft, onCommentDraft, onLike, onReact, onToggleSave, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, republished, canDeleteComment, onDeleteComment, pendingMedia, onMedia, onGifFile, onPasteFile, repost }) => {
   const plain = post.kind === 'text' || post.kind === 'image' || post.kind === 'leadership';
   const [imagesOpen, setImagesOpen] = useState(false);
-  const imageTotal = post.blocks?.filter((block) => block.type === 'image').length ?? 0;
+  const imageTotal = post.blocks?.filter((block) => block.type === 'image' && block.display !== 'sticker' && block.display !== 'gif').length ?? 0;
   const mood = MOODS.find((item) => item.emoji === post.mood);
   let shownImages = 0;
 
@@ -125,6 +125,7 @@ export const PostCard: FC<{
         <div className="mt-2 space-y-2">
           {post.blocks.map((block, index) => {
             if (block.type === 'text') return <ReadMore key={`${post.id}-texto-${index}`} id={`${post.id}-texto-${index}`} text={block.text} className="text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90" />;
+            if (block.display === 'sticker' || block.display === 'gif') return <img key={`${post.id}-imagem-${index}`} src={block.url} alt={block.display === 'gif' ? 'GIF' : 'Figurinha'} className="h-24 w-24 rounded-xl bg-[#F8EAFB] object-contain" />;
             shownImages += 1;
             if (imageTotal > 1 && !imagesOpen && shownImages > 1) return null;
             return <img key={`${post.id}-imagem-${index}`} src={block.url} alt="" className="max-h-[480px] w-full rounded-[12px] bg-[#F8F7FC] object-contain" />;

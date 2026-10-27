@@ -14,7 +14,7 @@ export const ComposerExtras: FC<{
   onPicked?: () => void;
 }> = ({ onEmoji, onSticker, onGif, embedded, onPicked }) => {
   const [panel, setPanel] = useState<Panel>(embedded ?? null);
-  const [group, setGroup] = useState(EMOJI_GROUPS[0].id);
+  const emojis = [...new Set(EMOJI_GROUPS.flatMap((item) => item.items))];
   const [savedStickers, setSavedStickers] = useState<SavedSticker[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
@@ -65,18 +65,11 @@ export const ComposerExtras: FC<{
   const body = (
     <>
       {active === 'emoji' ? (
-        <>
-          <div className="flex gap-1 overflow-x-auto pb-2">
-            {EMOJI_GROUPS.map((item) => (
-              <button key={item.id} type="button" className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] ${group === item.id ? 'bg-[#8E35B8] text-white' : 'bg-[#F8EAFB] text-[#6A228C]'}`} onClick={() => setGroup(item.id)}>{item.label}</button>
-            ))}
-          </div>
-          <div className="grid grid-cols-6 gap-1">
-            {EMOJI_GROUPS.find((item) => item.id === group)?.items.map((emoji) => (
-              <button key={emoji} type="button" className="grid h-10 place-items-center rounded-lg text-xl hover:bg-[#F8EAFB]" onClick={() => onEmoji(emoji)}>{emoji}</button>
-            ))}
-          </div>
-        </>
+        <div className="grid max-h-52 grid-cols-8 gap-0.5 overflow-y-auto">
+          {emojis.map((emoji) => (
+            <button key={emoji} type="button" className="grid h-8 place-items-center rounded-lg text-lg hover:bg-[#F8EAFB]" onClick={() => onEmoji(emoji)}>{emoji}</button>
+          ))}
+        </div>
       ) : null}
       {active === 'sticker' ? (
         <>
@@ -85,13 +78,13 @@ export const ComposerExtras: FC<{
           <div className="mb-2 flex justify-end px-1">
             <button type="button" className="text-[12px] font-semibold text-[#8E35B8]" aria-pressed={editing} onClick={() => setEditing((current) => !current)}>{editing ? 'Concluir' : 'Editar'}</button>
           </div>
-          <div className="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto">
-            <button type="button" disabled={uploading} aria-label="Enviar figurinha" className="grid aspect-square place-items-center rounded-xl border border-dashed border-[#D7B6E8] bg-[#FBF7FD] text-[#8E35B8] disabled:opacity-50" onClick={() => fileRef.current?.click()}>
-              <Plus className="h-6 w-6" />
+          <div className="grid max-h-48 grid-cols-5 gap-1.5 overflow-y-auto">
+            <button type="button" disabled={uploading} aria-label="Enviar figurinha" className="grid h-14 w-14 place-items-center rounded-xl border border-dashed border-[#D7B6E8] bg-[#FBF7FD] text-[#8E35B8] disabled:opacity-50" onClick={() => fileRef.current?.click()}>
+              <Plus className="h-4 w-4" />
             </button>
             {savedStickers.map((item) => (
-              <div key={item.id} className="relative rounded-xl bg-[#FBF7FD] p-1">
-                <img src={item.url} alt="" className="aspect-square w-full rounded-lg object-contain" />
+              <div key={item.id} className="relative h-14 w-14 rounded-xl bg-[#FBF7FD] p-1">
+                <img src={item.url} alt="" className="h-full w-full rounded-lg object-contain" />
                 {editing ? (
                   <>
                     <button type="button" aria-label="Colocar figurinha em primeiro" className="absolute left-1 top-1 z-10 grid h-6 w-6 place-items-center rounded-full bg-white text-[#8E35B8] shadow" onClick={() => { void prioritizeSticker(item.url).catch(() => setUploadError('Não foi possível priorizar a figurinha.')); }}>
