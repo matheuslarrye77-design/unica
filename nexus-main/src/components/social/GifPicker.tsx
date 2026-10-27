@@ -58,7 +58,7 @@ export const GifPicker: FC<{ onPick: (url: string) => void }> = ({ onPick }) => 
       {saved.length > 0 ? (
         <div className="mb-2">
           <p className="mb-1 px-1 text-[12px] font-medium text-[#6A228C]">Salvos</p>
-          <div className="grid max-h-40 grid-cols-5 gap-1.5 overflow-y-auto">
+          <div className="grid max-h-40 grid-cols-[repeat(auto-fill,3.5rem)] justify-start gap-1.5 overflow-y-auto">
             {saved.map((item) => (
               <button key={item.id} type="button" className="h-14 w-14 overflow-hidden rounded-xl bg-[#FBF7FD] disabled:opacity-60" disabled={picking} onClick={() => choose(item)} aria-label={item.title}>
                 <img src={item.url} alt={item.title} className="h-full w-full object-contain" />
@@ -71,7 +71,7 @@ export const GifPicker: FC<{ onPick: (url: string) => void }> = ({ onPick }) => 
       {status === 'empty' ? <p className="px-1 py-3 text-center text-[12px] text-[#8A7C98]">Nenhum GIF encontrado.</p> : null}
       {status === 'error' ? <p className="px-1 py-3 text-center text-[12px] text-[#8A7C98]">{message}</p> : null}
       {status === 'ready' ? (
-        <div className="grid max-h-48 grid-cols-5 gap-1.5 overflow-y-auto">
+        <div className="grid max-h-48 grid-cols-[repeat(auto-fill,3.5rem)] justify-start gap-1.5 overflow-y-auto">
           {gifs.map((item) => (
             <button key={item.id} type="button" className="h-14 w-14 overflow-hidden rounded-xl bg-[#FBF7FD] disabled:opacity-60" disabled={picking} onClick={() => choose(item)} aria-label={item.title}>
               <img src={item.preview} alt={item.title} className="h-full w-full object-contain" />

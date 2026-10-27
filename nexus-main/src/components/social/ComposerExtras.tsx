@@ -78,7 +78,7 @@ export const ComposerExtras: FC<{
           <div className="mb-2 flex justify-end px-1">
             <button type="button" className="text-[12px] font-semibold text-[#8E35B8]" aria-pressed={editing} onClick={() => setEditing((current) => !current)}>{editing ? 'Concluir' : 'Editar'}</button>
           </div>
-          <div className="grid max-h-48 grid-cols-5 gap-1.5 overflow-y-auto">
+          <div className="grid max-h-48 grid-cols-[repeat(auto-fill,3.5rem)] justify-start gap-1.5 overflow-y-auto">
             <button type="button" disabled={uploading} aria-label="Enviar figurinha" className="grid h-14 w-14 place-items-center rounded-xl border border-dashed border-[#D7B6E8] bg-[#FBF7FD] text-[#8E35B8] disabled:opacity-50" onClick={() => fileRef.current?.click()}>
               <Plus className="h-4 w-4" />
             </button>

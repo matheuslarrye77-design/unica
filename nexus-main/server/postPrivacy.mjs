@@ -19,10 +19,14 @@ export function cleanMoodAudience(value) {
   return value === 'management' || value === 'self' ? value : 'team';
 }
 
+export function isManagement(user) {
+  return /admin|líder|lider|coordena|diret|vp\b|chief|head|gerente/i.test(String(user?.role ?? ''));
+}
+
 export function canSeePost(post, user) {
   if (!post) return false;
   if (post.audience !== 'management') return true;
-  return post.authorId === user?.id || isLeader(user);
+  return post.authorId === user?.id || isManagement(user);
 }
 
 export function canSeeMood(post, user) {

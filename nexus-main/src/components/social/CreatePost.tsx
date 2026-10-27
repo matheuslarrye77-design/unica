@@ -55,7 +55,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
   const [moodId, setMoodId] = useState<string | null>(null);
   const [menu, setMenu] = useState<'face' | 'lock' | 'add' | null>(null);
   const [faceTab, setFaceTab] = useState<'emoji' | 'mood' | 'gif' | 'sticker'>('emoji');
-  const [anchor, setAnchor] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [anchor, setAnchor] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
   const [audience, setAudience] = useState<'team' | 'management'>('team');
   const [moodAudience, setMoodAudience] = useState<'team' | 'management' | 'self'>('team');
   const [shareMood, setShareMood] = useState(true);
@@ -389,10 +389,9 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     const rect = event.currentTarget.getBoundingClientRect();
     const width = next === 'face' ? Math.min(320, window.innerWidth - 16) : Math.min(220, window.innerWidth - 16);
     const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
-    const estimated = next === 'face' ? 300 : next === 'add' ? 220 : 120;
-    const below = rect.bottom + 8;
-    const top = below + estimated > window.innerHeight ? Math.max(8, rect.top - estimated - 8) : below;
-    setAnchor({ top, left, width });
+    const top = rect.bottom + 8;
+    const maxHeight = Math.min(360, Math.max(160, window.innerHeight - top - 8));
+    setAnchor({ top, left, width, maxHeight });
     setMenu(next);
   }
 
@@ -519,7 +518,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
         </div>
       </div>
       {menu && anchor ? createPortal(
-          <div data-composer-menu className="fixed z-[80] max-h-[min(360px,calc(100vh-16px))] overflow-auto rounded-2xl border border-[#EDE7F3] bg-white p-2 shadow-sm" style={{ top: anchor.top, left: anchor.left, width: anchor.width }}>
+          <div data-composer-menu className="fixed z-[80] overflow-auto rounded-2xl border border-[#EDE7F3] bg-white p-2 shadow-sm" style={{ top: anchor.top, left: anchor.left, width: anchor.width, maxHeight: anchor.maxHeight }}>
             {menu === 'face' ? (
               <div>
                 <div role="tablist" aria-label="Conteúdo da publicação" className="mb-2 grid grid-cols-4 gap-1">

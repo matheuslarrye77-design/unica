@@ -38,6 +38,63 @@ function blobHeaders(token, storeId, extra = {}) {
   };
 }
 
+function blobBearers() {
+  const tokens = [];
+  const oidc = String(process.env.VERCEL_OIDC_TOKEN || '').trim();
+  const rw = blobToken();
+  if (oidc) tokens.push(oidc);
+  if (rw && rw !== oidc) tokens.push(rw);
+  return tokens;
+}
+
+function blobStoreIds() {
+  const ids = [];
+  const fromEnv = String(process.env.BLOB_STORE_ID || '').trim().replace(/^store_/, '');
+  const fromToken = storeIdFromToken(blobToken());
+  if (fromEnv) ids.push(fromEnv);
+  if (fromToken && !ids.includes(fromToken)) ids.push(fromToken);
+  return ids;
+}
+
+async function fetchBlob(pathname) {
+  const ids = blobStoreIds();
+  const tokens = blobBearers();
+  if (!ids.length || !tokens.length) return { ok: false, status: 0, bytes: null, type: '' };
+  let saw404 = false;
+  let sawDenied = false;
+  for (const id of ids) {
+    for (const host of [`${id}.private.blob.vercel-storage.com`, `store_${id}.private.blob.vercel-storage.com`]) {
+      for (const token of tokens) {
+        for (const headers of [{ authorization: `Bearer ${token}` }, blobHeaders(token, id)]) {
+          try {
+            const response = await fetch(`https://${host}/${pathname}`, { headers });
+            if (response.status === 404) {
+              saw404 = true;
+              continue;
+            }
+            if (response.status === 401 || response.status === 403) {
+              sawDenied = true;
+              continue;
+            }
+            if (!response.ok) continue;
+            return {
+              ok: true,
+              status: 200,
+              bytes: Buffer.from(await response.arrayBuffer()),
+              type: response.headers.get('content-type') || '',
+            };
+          } catch {
+            /* tenta outro endereço ou credencial do armazenamento */
+          }
+        }
+      }
+    }
+  }
+  if (saw404 && !sawDenied) return { ok: true, status: 404, bytes: null, type: '' };
+  console.error('[unica] document read', sawDenied ? 403 : 'network');
+  return { ok: false, status: sawDenied ? 403 : 0, bytes: null, type: '' };
+}
+
 function readJson(file) {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -96,33 +153,40 @@ function supabaseClient() {
   });
 }
 
-async function readDocument(id) {
-  if (blobToken()) return readBlob(id);
-  if (supabaseConfigError()) return { ok: false, payload: null };
-  const { data, error } = await supabaseClient().from('unica_documents').select('payload').eq('id', id).maybeSingle();
-  if (error) {
-    console.error('[unica] document read', error.code || 'unknown');
+async function readSupabaseDocument(id) {
+  if (!process.env.SUPABASE_URL || !serverSecretKey()) return { ok: false, payload: null };
+  try {
+    const { data, error } = await supabaseClient().from('unica_documents').select('payload').eq('id', id).maybeSingle();
+    if (error) {
+      console.error('[unica] document read', error.code || 'unknown');
+      return { ok: false, payload: null };
+    }
+    return { ok: true, payload: data?.payload ?? null };
+  } catch {
+    console.error('[unica] document read', 'network');
     return { ok: false, payload: null };
   }
-  return { ok: true, payload: data?.payload ?? null };
+}
+
+async function readDocument(id) {
+  if (!blobToken()) return readSupabaseDocument(id);
+  const blob = await readBlob(id);
+  if (id !== 'feed') return blob;
+  const backup = await readSupabaseDocument(id);
+  if (blob.payload && backup.payload) return { ok: true, payload: mergeFeed(backup.payload, blob.payload) };
+  if (blob.ok && blob.payload) return blob;
+  if (backup.ok && backup.payload) return { ok: true, payload: backup.payload };
+  return blob;
 }
 
 async function readBlob(id) {
-  const token = blobToken();
-  const storeId = storeIdFromToken(token);
-  if (!token || !storeId) return { ok: false, payload: null };
+  if (!blobStoreIds().length || !blobBearers().length) return { ok: false, payload: null };
+  const result = await fetchBlob(`unica/${id}.json`);
+  if (!result.ok) return { ok: false, payload: null };
+  if (result.status === 404) return { ok: true, payload: null };
   try {
-    const response = await fetch(`https://${storeId}.private.blob.vercel-storage.com/unica/${id}.json?cache=0`, {
-      headers: blobHeaders(token, storeId),
-    });
-    if (response.status === 404) return { ok: true, payload: null };
-    if (!response.ok) {
-      console.error('[unica] document read', response.status);
-      return { ok: false, payload: null };
-    }
-    return { ok: true, payload: await response.json() };
+    return { ok: true, payload: JSON.parse(result.bytes.toString('utf8')) };
   } catch {
-    console.error('[unica] document read', 'network');
     return { ok: false, payload: null };
   }
 }
@@ -138,30 +202,37 @@ async function writeDocument(id, payload) {
   return true;
 }
 
-async function writeBlob(id, payload) {
-  const token = blobToken();
-  const storeId = storeIdFromToken(token);
-  if (!token || !storeId) return false;
-  try {
-    const response = await fetch(`https://vercel.com/api/blob/?pathname=unica/${id}.json`, {
-      method: 'PUT',
-      headers: blobHeaders(token, storeId, {
-        'x-vercel-blob-access': 'private',
-        'x-content-type': 'application/json',
-        'x-add-random-suffix': '0',
-        'x-allow-overwrite': '1',
-      }),
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      console.error('[unica] document write', response.status);
-      return false;
+async function writeRaw(pathname, body, contentType) {
+  const ids = blobStoreIds();
+  const tokens = blobBearers();
+  if (!ids.length || !tokens.length) return false;
+  let status = 0;
+  for (const storeId of ids) {
+    for (const token of tokens) {
+      try {
+        const response = await fetch(`https://vercel.com/api/blob/?pathname=${pathname}`, {
+          method: 'PUT',
+          headers: blobHeaders(token, storeId, {
+            'x-vercel-blob-access': 'private',
+            'x-content-type': contentType,
+            'x-add-random-suffix': '0',
+            'x-allow-overwrite': '1',
+          }),
+          body,
+        });
+        if (response.ok) return true;
+        status = response.status;
+      } catch {
+        status = 0;
+      }
     }
-    return true;
-  } catch {
-    console.error('[unica] document write', 'network');
-    return false;
   }
+  console.error('[unica] document write', status || 'network');
+  return false;
+}
+
+async function writeBlob(id, payload) {
+  return writeRaw(`unica/${id}.json`, JSON.stringify(payload), 'application/json');
 }
 
 const STICKER_FILE = /^stk-[a-f0-9]{16}$/;
@@ -194,43 +265,14 @@ const PRIVATE_FILE = /^unica\/(?:stickers\/stk-[a-f0-9]{16}|uploads\/up-[a-f0-9]
 
 async function putPrivate(pathname, body, contentType) {
   if (!PRIVATE_FILE.test(pathname)) return false;
-  const token = blobToken();
-  const storeId = storeIdFromToken(token);
-  if (!token || !storeId) return false;
-  try {
-    const response = await fetch(`https://vercel.com/api/blob/?pathname=${pathname}`, {
-      method: 'PUT',
-      headers: blobHeaders(token, storeId, {
-        'x-vercel-blob-access': 'private',
-        'x-content-type': contentType,
-        'x-add-random-suffix': '0',
-        'x-allow-overwrite': '1',
-      }),
-      body,
-    });
-    if (!response.ok) console.error('[unica] media write', response.status);
-    return response.ok;
-  } catch {
-    console.error('[unica] media write', 'network');
-    return false;
-  }
+  return writeRaw(pathname, body, contentType);
 }
 
 async function getPrivate(pathname) {
   if (!PRIVATE_FILE.test(pathname)) return null;
-  const token = blobToken();
-  const storeId = storeIdFromToken(token);
-  if (!token || !storeId) return null;
-  try {
-    const response = await fetch(`https://${storeId}.private.blob.vercel-storage.com/${pathname}?cache=0`, {
-      headers: blobHeaders(token, storeId),
-    });
-    if (!response.ok) return null;
-    return { bytes: Buffer.from(await response.arrayBuffer()), type: response.headers.get('content-type') || '' };
-  } catch {
-    console.error('[unica] media read', 'network');
-    return null;
-  }
+  const result = await fetchBlob(pathname);
+  if (!result.ok || result.status === 404 || !result.bytes) return null;
+  return { bytes: result.bytes, type: result.type };
 }
 
 export async function writeStickerFile(id, bytes, contentType) {
@@ -297,6 +339,7 @@ export async function openDocuments(dir) {
         if (!local) continue;
         const remote = await readDocument(id);
         if (!remote.ok) continue;
+        if (id === 'feed' && !remote.payload) continue;
         if (id !== 'feed' && remote.payload && !ready.has(id)) continue;
         let payload = id === 'feed' ? mergeFeed(local, remote.payload) : local;
         let saved = await writeDocument(id, payload);

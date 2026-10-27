@@ -14,7 +14,9 @@ test('posts antigos continuam visíveis para a equipe', () => {
 
 test('publicação da gestão não aparece para quem não é da gestão', () => {
   const post = { id: 'privado', authorId: '1', audience: 'management', body: 'reserva' };
+  const newsroom = { id: 'camila', role: 'Colaborador', department: 'Comunicação' };
   assert.equal(canSeePost(post, staff), false);
+  assert.equal(canSeePost(post, newsroom), false);
   assert.equal(canSeePost(post, author), true);
   assert.equal(canSeePost(post, leader), true);
 });
