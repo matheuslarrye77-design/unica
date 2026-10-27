@@ -10,8 +10,10 @@ export const ComposerExtras: FC<{
   onEmoji: (emoji: string) => void;
   onSticker?: (url: string) => void;
   onGif?: (url: string) => void;
-}> = ({ onEmoji, onSticker, onGif }) => {
-  const [panel, setPanel] = useState<Panel>(null);
+  embedded?: 'emoji' | 'sticker' | 'gif';
+  onPicked?: () => void;
+}> = ({ onEmoji, onSticker, onGif, embedded, onPicked }) => {
+  const [panel, setPanel] = useState<Panel>(embedded ?? null);
   const [group, setGroup] = useState(EMOJI_GROUPS[0].id);
   const [savedStickers, setSavedStickers] = useState<SavedSticker[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -21,12 +23,14 @@ export const ComposerExtras: FC<{
 
   useEffect(() => subscribeStickerLibrary(setSavedStickers), []);
 
+  const active = embedded ?? panel;
+
   useEffect(() => {
-    if (panel !== 'sticker') return;
+    if (active !== 'sticker') return;
     let current = true;
     listStickers().then((items) => { if (current) setSavedStickers(items); }).catch(() => { if (current) setUploadError('Não foi possível carregar suas figurinhas.'); });
     return () => { current = false; };
-  }, [panel]);
+  }, [active]);
 
   async function uploadSticker(file: File | undefined) {
     if (!file || uploading) return;
@@ -45,6 +49,7 @@ export const ComposerExtras: FC<{
       setSavedStickers((current) => [sticker, ...current.filter((item) => item.id !== sticker.id)]);
       onSticker?.(sticker.url);
       setPanel(null);
+      onPicked?.();
     } catch (error) {
       const code = error instanceof Error ? error.message : '';
       setUploadError(code === 'limit' ? 'Você chegou ao limite de 40 figurinhas salvas.' : code === 'file' ? 'Essa imagem não pode virar figurinha.' : 'Não foi possível salvar a figurinha.');
@@ -57,6 +62,59 @@ export const ComposerExtras: FC<{
     setPanel((current) => (current === next ? null : next));
   }
 
+  const body = (
+    <>
+      {active === 'emoji' ? (
+        <>
+          <div className="flex gap-1 overflow-x-auto pb-2">
+            {EMOJI_GROUPS.map((item) => (
+              <button key={item.id} type="button" className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] ${group === item.id ? 'bg-[#8E35B8] text-white' : 'bg-[#F8EAFB] text-[#6A228C]'}`} onClick={() => setGroup(item.id)}>{item.label}</button>
+            ))}
+          </div>
+          <div className="grid grid-cols-6 gap-1">
+            {EMOJI_GROUPS.find((item) => item.id === group)?.items.map((emoji) => (
+              <button key={emoji} type="button" className="grid h-10 place-items-center rounded-lg text-xl hover:bg-[#F8EAFB]" onClick={() => onEmoji(emoji)}>{emoji}</button>
+            ))}
+          </div>
+        </>
+      ) : null}
+      {active === 'sticker' ? (
+        <>
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(event) => { void uploadSticker(event.target.files?.[0]); event.target.value = ''; }} />
+          {uploadError ? <p className="mb-2 px-1 text-center text-[12px] text-[#9D174D]">{uploadError}</p> : null}
+          <div className="mb-2 flex justify-end px-1">
+            <button type="button" className="text-[12px] font-semibold text-[#8E35B8]" aria-pressed={editing} onClick={() => setEditing((current) => !current)}>{editing ? 'Concluir' : 'Editar'}</button>
+          </div>
+          <div className="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto">
+            <button type="button" disabled={uploading} aria-label="Enviar figurinha" className="grid aspect-square place-items-center rounded-xl border border-dashed border-[#D7B6E8] bg-[#FBF7FD] text-[#8E35B8] disabled:opacity-50" onClick={() => fileRef.current?.click()}>
+              <Plus className="h-6 w-6" />
+            </button>
+            {savedStickers.map((item) => (
+              <div key={item.id} className="relative rounded-xl bg-[#FBF7FD] p-1">
+                <img src={item.url} alt="" className="aspect-square w-full rounded-lg object-contain" />
+                {editing ? (
+                  <>
+                    <button type="button" aria-label="Colocar figurinha em primeiro" className="absolute left-1 top-1 z-10 grid h-6 w-6 place-items-center rounded-full bg-white text-[#8E35B8] shadow" onClick={() => { void prioritizeSticker(item.url).catch(() => setUploadError('Não foi possível priorizar a figurinha.')); }}>
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" aria-label="Remover figurinha" className="absolute right-1 top-1 z-10 grid h-6 w-6 place-items-center rounded-full bg-white text-[#9D174D] shadow" onClick={() => { void forgetSticker(item.url).catch(() => setUploadError('Não foi possível remover a figurinha.')); }}>
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" className="absolute inset-0 z-10" aria-label="Minha figurinha" onClick={() => { void useSticker(item.url).catch(() => undefined); onSticker?.(item.url); setPanel(null); onPicked?.(); }} />
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
+      {active === 'gif' ? <GifPicker onPick={(url) => { onGif?.(url); setPanel(null); onPicked?.(); }} /> : null}
+    </>
+  );
+
+  if (embedded) return <div className="min-w-0">{body}</div>;
+
   return (
     <div className="min-w-0">
       <div className="flex items-center gap-1">
@@ -66,52 +124,7 @@ export const ComposerExtras: FC<{
       </div>
       {panel ? (
         <div className="mt-2 w-full max-w-sm rounded-2xl border border-[#EFE6F4] bg-white p-2 shadow-lg">
-          {panel === 'emoji' ? (
-            <>
-              <div className="flex gap-1 overflow-x-auto pb-2">
-                {EMOJI_GROUPS.map((item) => (
-                  <button key={item.id} type="button" className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] ${group === item.id ? 'bg-[#8E35B8] text-white' : 'bg-[#F8EAFB] text-[#6A228C]'}`} onClick={() => setGroup(item.id)}>{item.label}</button>
-                ))}
-              </div>
-              <div className="grid grid-cols-6 gap-1">
-                {EMOJI_GROUPS.find((item) => item.id === group)?.items.map((emoji) => (
-                  <button key={emoji} type="button" className="grid h-10 place-items-center rounded-lg text-xl hover:bg-[#F8EAFB]" onClick={() => onEmoji(emoji)}>{emoji}</button>
-                ))}
-              </div>
-            </>
-          ) : null}
-          {panel === 'sticker' ? (
-            <>
-              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(event) => { void uploadSticker(event.target.files?.[0]); event.target.value = ''; }} />
-              {uploadError ? <p className="mb-2 px-1 text-center text-[12px] text-[#9D174D]">{uploadError}</p> : null}
-              <div className="mb-2 flex justify-end px-1">
-                <button type="button" className="text-[12px] font-semibold text-[#8E35B8]" aria-pressed={editing} onClick={() => setEditing((current) => !current)}>{editing ? 'Concluir' : 'Editar'}</button>
-              </div>
-              <div className="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto">
-                <button type="button" disabled={uploading} aria-label="Enviar figurinha" className="grid aspect-square place-items-center rounded-xl border border-dashed border-[#D7B6E8] bg-[#FBF7FD] text-[#8E35B8] disabled:opacity-50" onClick={() => fileRef.current?.click()}>
-                  <Plus className="h-6 w-6" />
-                </button>
-                {savedStickers.map((item) => (
-                  <div key={item.id} className="relative rounded-xl bg-[#FBF7FD] p-1">
-                    <img src={item.url} alt="" className="aspect-square w-full rounded-lg object-contain" />
-                    {editing ? (
-                      <>
-                        <button type="button" aria-label="Colocar figurinha em primeiro" className="absolute left-1 top-1 z-10 grid h-6 w-6 place-items-center rounded-full bg-white text-[#8E35B8] shadow" onClick={() => { void prioritizeSticker(item.url).catch(() => setUploadError('Não foi possível priorizar a figurinha.')); }}>
-                          <ArrowUp className="h-3.5 w-3.5" />
-                        </button>
-                        <button type="button" aria-label="Remover figurinha" className="absolute right-1 top-1 z-10 grid h-6 w-6 place-items-center rounded-full bg-white text-[#9D174D] shadow" onClick={() => { void forgetSticker(item.url).catch(() => setUploadError('Não foi possível remover a figurinha.')); }}>
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </>
-                    ) : (
-                      <button type="button" className="absolute inset-0 z-10" aria-label="Minha figurinha" onClick={() => { void useSticker(item.url).catch(() => undefined); onSticker?.(item.url); setPanel(null); }} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : null}
-          {panel === 'gif' ? <GifPicker onPick={(url) => { onGif?.(url); setPanel(null); }} /> : null}
+          {body}
         </div>
       ) : null}
     </div>

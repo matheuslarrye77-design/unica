@@ -1,9 +1,9 @@
-import { AudioLines, FileText, ImagePlus, ListChecks, Lock, Plus, Send, Smile, Video, X } from 'lucide-react';
-import { type ChangeEvent, type ClipboardEvent, type DragEvent, type FC, type FormEvent, type KeyboardEvent, useRef, useState } from 'react';
+import { AudioLines, FileText, ImagePlus, ListChecks, Loader2, Lock, Plus, Send, Smile, Users, Video, X } from 'lucide-react';
+import { type ChangeEvent, type ClipboardEvent, type DragEvent, type FC, type FormEvent, type KeyboardEvent, type MouseEvent, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { Emoji } from '@/components/Emoji';
 import { MOODS } from '@/components/shell/TeamMood';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatClip } from '@/lib/audioClip';
 import { uploadMedia } from '@/lib/feed';
 import { actor } from '@/lib/session';
@@ -41,7 +41,6 @@ function clipboardFile(data: DataTransfer | null) {
 }
 
 export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise<void> }> = ({ onPublish }) => {
-  const [writing, setWriting] = useState(false);
   const [blocks, setBlocks] = useState<DraftBlock[]>([{ id: 'texto', type: 'text', text: '' }]);
   const [videoPreview, setVideoPreview] = useState('');
   const [editing, setEditing] = useState<File | null>(null);
@@ -54,7 +53,9 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
   const [options, setOptions] = useState(['', '']);
   const [over, setOver] = useState(false);
   const [moodId, setMoodId] = useState<string | null>(null);
-  const [moodOpen, setMoodOpen] = useState(false);
+  const [menu, setMenu] = useState<'face' | 'lock' | 'add' | null>(null);
+  const [faceTab, setFaceTab] = useState<'emoji' | 'mood' | 'gif' | 'sticker'>('emoji');
+  const [anchor, setAnchor] = useState<{ top: number; left: number; width: number } | null>(null);
   const [audience, setAudience] = useState<'team' | 'management'>('team');
   const [moodAudience, setMoodAudience] = useState<'team' | 'management' | 'self'>('team');
   const [shareMood, setShareMood] = useState(true);
@@ -89,7 +90,6 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
       return next;
     });
     focusId.current = focus;
-    setWriting(true);
     requestAnimationFrame(() => fields.current[focus]?.focus());
   }
 
@@ -103,7 +103,6 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     }
     gifs.forEach((file) => void uploadImage(file));
     if (photos.length > 0) openEditor(photos);
-    setWriting(true);
   }
 
   function readImage(event: ChangeEvent<HTMLInputElement>) {
@@ -175,7 +174,6 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
         setVideoPreview((current) => current === local ? '' : current);
       }
     });
-    setWriting(true);
   }
 
   function readVideo(event: ChangeEvent<HTMLInputElement>) {
@@ -190,7 +188,6 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
       return;
     }
     setAudioFile(file);
-    setWriting(true);
   }
 
   function readAudio(event: ChangeEvent<HTMLInputElement>) {
@@ -215,7 +212,6 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     if (video) takeVideo(video);
     if (audio) takeAudio(audio);
     if (document) void uploadAttachment(document, 'document');
-    if (files.length > 0) setWriting(true);
   }
 
   function onDropFiles(event: DragEvent<HTMLFormElement>) {
@@ -296,7 +292,6 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
       return;
     }
     setSending(false);
-    setWriting(false);
     setBlocks([{ id: 'texto', type: 'text', text: '' }]);
     focusId.current = 'texto';
     clearVideo();
@@ -304,7 +299,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     setPollOpen(false);
     setOptions(['', '']);
     setMoodId(null);
-    setMoodOpen(false);
+    setMenu(null);
     setAudience('team');
     setMoodAudience('team');
     setShareMood(true);
@@ -319,7 +314,6 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
       const end = field?.selectionEnd ?? block.text.length;
       return { ...block, text: block.text.slice(0, start) + emoji + block.text.slice(end) };
     }));
-    setWriting(true);
   }
 
   function onBlockKey(event: KeyboardEvent<HTMLTextAreaElement>, index: number) {
@@ -366,10 +360,41 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
   const imageReady = blocks.some((block) => block.type === 'image');
   const ready = !sending && progress === null && (textReady || imageReady || Boolean(attachment)) && (!pollOpen || options.filter((item) => item.trim()).length >= 2);
   const user = actor();
-  const expanded = writing || textReady || imageReady;
   const feeling = MOODS.find((item) => item.id === moodId);
-  const audienceLabel = audience === 'management' ? 'Somente a gestão' : 'Todos da equipe';
-  const moodLabel = moodAudience === 'self' ? 'Somente eu' : moodAudience === 'management' ? 'Somente a gestão' : 'Todos da equipe';
+  const moodLabel = moodAudience === 'self' ? 'Somente eu' : moodAudience === 'management' ? 'Somente a gestão' : 'Público';
+
+  useEffect(() => {
+    if (!menu) return;
+    function onKey(event: globalThis.KeyboardEvent) {
+      if (event.key === 'Escape') setMenu(null);
+    }
+    function onPointer(event: PointerEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('[data-composer-menu], [data-composer-tool]')) return;
+      setMenu(null);
+    }
+    window.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointer);
+    };
+  }, [menu]);
+
+  function toggleMenu(next: 'face' | 'lock' | 'add', event: MouseEvent<HTMLButtonElement>) {
+    if (menu === next) {
+      setMenu(null);
+      return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const width = next === 'face' ? Math.min(320, window.innerWidth - 16) : Math.min(220, window.innerWidth - 16);
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+    const estimated = next === 'face' ? 300 : next === 'add' ? 220 : 120;
+    const below = rect.bottom + 8;
+    const top = below + estimated > window.innerHeight ? Math.max(8, rect.top - estimated - 8) : below;
+    setAnchor({ top, left, width });
+    setMenu(next);
+  }
 
   return (
     <form
@@ -383,8 +408,8 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
       onDrop={onDropFiles}
       className="unica-surface relative px-4 py-3"
     >
-      <div className={expanded ? 'flex items-start gap-3' : 'flex items-center gap-3'}>
-        <img src={user.avatar} alt="" className="h-10 w-10 rounded-full bg-muted object-cover" />
+      <div className="flex items-start gap-3">
+        <img src={user.avatar} alt="" className="mt-1 h-10 w-10 shrink-0 rounded-full bg-muted object-cover" />
         <div className="min-w-0 flex-1">
           <div className={`rounded-2xl border bg-white px-3 py-2 focus-within:border-[#E4C8EE] focus-within:ring-2 focus-within:ring-[#F3E4FA] ${over ? 'border-[#8E35B8] ring-2 ring-[#F3E4FA]' : 'border-[#EDE7F3]'}`}>
             {blocks.map((block, index) => block.type === 'text' ? (
@@ -397,7 +422,6 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
                 rows={1}
                 onFocus={(event) => {
                   focusId.current = block.id;
-                  setWriting(true);
                   event.currentTarget.style.height = '0px';
                   event.currentTarget.style.height = `${Math.min(Math.max(event.currentTarget.scrollHeight, index === 0 ? 40 : 32), 180)}px`;
                 }}
@@ -421,8 +445,6 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
               </div>
             ))}
           </div>
-        </div>
-      </div>
 
       {progress !== null ? (
         <div className="mt-3">
@@ -475,118 +497,101 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
         </div>
       ) : null}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        {feeling ? (
-          <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[#F8EAFB] px-2.5 py-1 text-[13px] text-[#6A228C]">
-            <Emoji emoji={feeling.emoji} className="h-4 w-4" />
-            <span>{feeling.label}</span>
-            <button type="button" className="rounded-full px-1 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40" onClick={() => setMoodOpen(true)}>Alterar</button>
-            <button type="button" aria-label="Remover sentimento" className="rounded-full p-0.5 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40" onClick={() => { setMoodId(null); setMoodOpen(false); }}>
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </span>
-        ) : (
-          <button type="button" aria-expanded={moodOpen} className="inline-flex h-8 items-center gap-1.5 rounded-full px-2 text-[13px] text-[#6A228C] hover:bg-[#F8EAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40" onClick={() => setMoodOpen((open) => !open)}>
-            <Smile className="h-4 w-4" />
-            Como você está?
-          </button>
-        )}
-        <PrivacyMenu noun="Publicação" label={audienceLabel} options={[{ id: 'team', label: 'Todos da equipe' }, { id: 'management', label: 'Somente a gestão' }]} value={audience} onChange={(value) => setAudience(value as 'team' | 'management')} />
-        {feeling ? <PrivacyMenu noun="Sentimento" label={moodLabel} options={[{ id: 'team', label: 'Todos da equipe' }, { id: 'management', label: 'Somente a gestão' }, { id: 'self', label: 'Somente eu' }]} value={moodAudience} onChange={(value) => setMoodAudience(value as 'team' | 'management' | 'self')} /> : null}
-        {feeling ? (
-          <label className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
-            <input type="checkbox" checked={shareMood} onChange={(event) => setShareMood(event.target.checked)} className="accent-[#8E35B8]" />
-            Atualizar humor da equipe
-          </label>
-        ) : null}
-      </div>
-      {moodOpen ? (
-        <div className="relative">
-          <button type="button" aria-label="Fechar sentimentos" className="fixed inset-0 z-[70] cursor-default" onClick={() => setMoodOpen(false)} />
-          <div role="listbox" aria-label="Como você está?" className="absolute z-[80] mt-1 w-48 rounded-xl border border-[#EDE7F3] bg-white p-1 shadow-sm" onKeyDown={(event) => { if (event.key === 'Escape') setMoodOpen(false); }}>
-            {MOODS.map((mood) => (
-              <button
-                key={mood.id}
-                type="button"
-                role="option"
-                aria-selected={moodId === mood.id}
-                onClick={() => { setMoodId(mood.id); setMoodOpen(false); }}
-                className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${moodId === mood.id ? 'bg-[#F3E4FA] text-[#6A228C]' : 'text-[#3C3952] hover:bg-[#F8F7FC]'}`}
-              >
-                <Emoji emoji={mood.emoji} className="h-4 w-4" />
-                {mood.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="mt-2 flex flex-wrap items-center gap-1">
+      <div className="mt-2 flex items-center gap-2">
         <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple className="hidden" onChange={readImage} />
         <input ref={videoRef} type="file" accept="video/*" className="hidden" onChange={readVideo} />
         <input ref={audioRef} type="file" accept="audio/*" className="hidden" onChange={readAudio} />
         <input ref={fileRef} type="file" className="hidden" onChange={readFile} />
-        <ComposerAction icon={ImagePlus} label="Foto" onClick={() => photoRef.current?.click()} />
-        <ComposerAction icon={Video} label="Vídeo" onClick={() => videoRef.current?.click()} />
-        <ComposerAction icon={AudioLines} label="Áudio" onClick={() => audioRef.current?.click()} />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button type="button" aria-label="Adicionar conteúdo" className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#6A228C] hover:bg-[#F8EAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
-              <Plus className="h-[18px] w-[18px]" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={() => fileRef.current?.click()}>
-              <FileText className="h-4 w-4" />
-              Documento
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setPollOpen((open) => !open)}>
-              <ListChecks className="h-4 w-4" />
-              {pollOpen ? 'Fechar enquete' : 'Enquete'}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <ComposerExtras onEmoji={insertEmoji} onGif={(url) => { if (blocks.filter((block) => block.type === 'image').length < 10) placeImage(url); }} />
-        <button
-          type="submit"
-          disabled={!ready}
-          className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-full bg-[#8E35B8] px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-[#7A2498] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-45"
-        >
-          <Send className="h-3.5 w-3.5" />
-          {sending ? 'Publicando...' : 'Publicar'}
+        <button type="button" data-composer-tool aria-label={feeling ? `Humor: ${feeling.label}` : 'Emojis, humor, GIFs e figurinhas'} aria-expanded={menu === 'face'} title={feeling ? feeling.label : 'Emojis, humor, GIFs e figurinhas'} onClick={(event) => toggleMenu('face', event)} className={`relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8] transition-colors hover:bg-[#EBD4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 active:bg-[#E0C4F2] ${menu === 'face' || feeling ? 'ring-2 ring-[#8E35B8]/30' : ''}`}>
+          <Smile className="h-[18px] w-[18px]" />
+          {feeling ? <span className="absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-white ring-1 ring-[#E4C8EE]"><Emoji emoji={feeling.emoji} className="h-3 w-3" /></span> : null}
+        </button>
+        <button type="button" data-composer-tool aria-label={audience === 'management' ? 'Somente gestão' : 'Público'} aria-pressed={audience === 'management'} aria-expanded={menu === 'lock'} title={audience === 'management' ? 'Somente gestão' : 'Público'} onClick={(event) => toggleMenu('lock', event)} className={`grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8] transition-colors hover:bg-[#EBD4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 active:bg-[#E0C4F2] ${menu === 'lock' || audience === 'management' ? 'ring-2 ring-[#8E35B8]/30' : ''}`}>
+          <Lock className="h-[18px] w-[18px]" />
+        </button>
+        <button type="button" data-composer-tool aria-label="Adicionar conteúdo" aria-expanded={menu === 'add'} title="Adicionar conteúdo" onClick={(event) => toggleMenu('add', event)} className={`grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8] transition-colors hover:bg-[#EBD4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 active:bg-[#E0C4F2] ${menu === 'add' ? 'ring-2 ring-[#8E35B8]/30' : ''}`}>
+          <Plus className="h-[18px] w-[18px]" />
+        </button>
+        <button type="submit" aria-label="Publicar" title="Publicar" aria-busy={sending} disabled={!ready} className="ml-auto grid h-9 w-11 shrink-0 place-items-center rounded-full bg-[#8E35B8] text-white transition-colors hover:bg-[#7A2498] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 active:bg-[#6A228C] disabled:cursor-not-allowed disabled:opacity-45">
+          {sending ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Send className="h-[18px] w-[18px]" />}
         </button>
       </div>
+        </div>
+      </div>
+      {menu && anchor ? createPortal(
+          <div data-composer-menu className="fixed z-[80] max-h-[min(360px,calc(100vh-16px))] overflow-auto rounded-2xl border border-[#EDE7F3] bg-white p-2 shadow-sm" style={{ top: anchor.top, left: anchor.left, width: anchor.width }}>
+            {menu === 'face' ? (
+              <div>
+                <div role="tablist" aria-label="Conteúdo da publicação" className="mb-2 grid grid-cols-4 gap-1">
+                  {([['emoji', 'Emojis'], ['mood', 'Humor'], ['gif', 'GIFs'], ['sticker', 'Figurinhas']] as const).map(([id, label]) => (
+                    <button key={id} type="button" role="tab" aria-selected={faceTab === id} className={`rounded-full px-1 py-1 text-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 ${faceTab === id ? 'bg-[#8E35B8] text-white' : 'bg-[#F8EAFB] text-[#6A228C]'}`} onClick={() => setFaceTab(id)}>{label}</button>
+                  ))}
+                </div>
+                {faceTab === 'emoji' ? <ComposerExtras embedded="emoji" onEmoji={insertEmoji} /> : null}
+                {faceTab === 'gif' ? <ComposerExtras embedded="gif" onEmoji={insertEmoji} onGif={(url) => { if (blocks.filter((block) => block.type === 'image').length < 10) placeImage(url); }} onPicked={() => setMenu(null)} /> : null}
+                {faceTab === 'sticker' ? <ComposerExtras embedded="sticker" onEmoji={insertEmoji} onSticker={(url) => { if (blocks.filter((block) => block.type === 'image').length < 10) placeImage(url); }} onPicked={() => setMenu(null)} /> : null}
+                {faceTab === 'mood' ? (
+                  <div>
+                    <div role="listbox" aria-label="Humor">
+                      {MOODS.map((mood) => (
+                        <button key={mood.id} type="button" role="option" aria-selected={moodId === mood.id} onClick={() => setMoodId(mood.id)} className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 ${moodId === mood.id ? 'bg-[#F3E4FA] text-[#6A228C]' : 'text-[#3C3952] hover:bg-[#F8F7FC]'}`}>
+                          <Emoji emoji={mood.emoji} className="h-4 w-4" />
+                          {mood.label}
+                        </button>
+                      ))}
+                    </div>
+                    {feeling ? (
+                      <div className="mt-2 space-y-2 border-t border-[#EDE7F3] px-1 pt-2">
+                        <p className="text-[12px] text-muted-foreground">Quem vê o sentimento: {moodLabel}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {([['team', 'Público'], ['management', 'Somente gestão'], ['self', 'Somente eu']] as const).map(([id, label]) => (
+                            <button key={id} type="button" aria-pressed={moodAudience === id} onClick={() => setMoodAudience(id)} className={`rounded-full px-2 py-1 text-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 ${moodAudience === id ? 'bg-[#F3E4FA] font-semibold text-[#6A228C]' : 'text-[#3C3952] hover:bg-[#F8F7FC]'}`}>{label}</button>
+                          ))}
+                        </div>
+                        <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                          <input type="checkbox" checked={shareMood} onChange={(event) => setShareMood(event.target.checked)} className="accent-[#8E35B8]" />
+                          Atualizar humor da equipe
+                        </label>
+                        <button type="button" className="text-[12px] font-medium text-[#8E35B8]" onClick={() => setMoodId(null)}>Remover sentimento</button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {menu === 'lock' ? (
+              <div role="menu" aria-label="Visibilidade da publicação">
+                <button type="button" role="menuitemradio" aria-checked={audience === 'team'} onClick={() => { setAudience('team'); setMenu(null); }} className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 ${audience === 'team' ? 'bg-[#F3E4FA] font-semibold text-[#6A228C]' : 'text-[#3C3952] hover:bg-[#F8F7FC]'}`}>
+                  <Users className="h-4 w-4" />
+                  Público
+                </button>
+                <button type="button" role="menuitemradio" aria-checked={audience === 'management'} onClick={() => { setAudience('management'); setMenu(null); }} className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40 ${audience === 'management' ? 'bg-[#F3E4FA] font-semibold text-[#6A228C]' : 'text-[#3C3952] hover:bg-[#F8F7FC]'}`}>
+                  <Lock className="h-4 w-4" />
+                  Somente gestão
+                </button>
+              </div>
+            ) : null}
+            {menu === 'add' ? (
+              <div role="menu" aria-label="Adicionar conteúdo">
+                <MenuAction icon={ImagePlus} label="Foto" onClick={() => { setMenu(null); photoRef.current?.click(); }} />
+                <MenuAction icon={Video} label="Vídeo" onClick={() => { setMenu(null); videoRef.current?.click(); }} />
+                <MenuAction icon={AudioLines} label="Áudio" onClick={() => { setMenu(null); audioRef.current?.click(); }} />
+                <MenuAction icon={FileText} label="Documento" onClick={() => { setMenu(null); fileRef.current?.click(); }} />
+                <MenuAction icon={ListChecks} label="Enquete" onClick={() => { setMenu(null); setPollOpen(true); }} />
+              </div>
+            ) : null}
+          </div>,
+        document.body,
+      ) : null}
       {editing ? <ImageAdjust file={editing} onCancel={() => { setEditing(null); setQueue([]); }} onConfirm={(file) => void confirmImage(file)} /> : null}
       {audioFile ? <AudioTrim file={audioFile} onCancel={() => setAudioFile(null)} onConfirm={(clipFile, clip) => { setAudioFile(null); void uploadAttachment(clipFile, 'audio', clip); }} /> : null}
     </form>
   );
 };
 
-const ComposerAction: FC<{ icon: FC<{ className?: string }>; label: string; onClick: () => void }> = ({ icon: Icon, label, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className="inline-flex h-9 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-medium text-[#6A228C] hover:bg-[#F8EAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-  >
-    <Icon className="h-[18px] w-[18px]" />
+const MenuAction: FC<{ icon: FC<{ className?: string }>; label: string; onClick: () => void }> = ({ icon: Icon, label, onClick }) => (
+  <button type="button" role="menuitem" onClick={onClick} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[13px] text-[#3C3952] hover:bg-[#F8F7FC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8E35B8]/40">
+    <Icon className="h-4 w-4 text-[#8E35B8]" />
     {label}
   </button>
-);
-
-const PrivacyMenu: FC<{ noun: string; label: string; options: { id: string; label: string }[]; value: string; onChange: (value: string) => void }> = ({ noun, label, options, value, onChange }) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <button type="button" aria-label={`${noun}: ${label}`} className="inline-flex h-8 max-w-full items-center gap-1.5 rounded-full px-2 text-[12px] text-[#6A228C] hover:bg-[#F8EAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
-        <Lock className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate">{noun}: {label}</span>
-      </button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="start">
-      {options.map((option) => (
-        <DropdownMenuItem key={option.id} onClick={() => onChange(option.id)}>
-          <span className={option.id === value ? 'font-semibold text-[#6A228C]' : ''}>{option.label}</span>
-        </DropdownMenuItem>
-      ))}
-    </DropdownMenuContent>
-  </DropdownMenu>
 );
