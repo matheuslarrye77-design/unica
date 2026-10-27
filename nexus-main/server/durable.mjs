@@ -38,78 +38,33 @@ function blobHeaders(token, storeId, extra = {}) {
   };
 }
 
-function blobBearers() {
-  const tokens = [];
-  const oidc = String(process.env.VERCEL_OIDC_TOKEN || '').trim();
-  const rw = blobToken();
-  if (oidc) tokens.push(oidc);
-  if (rw && rw !== oidc) tokens.push(rw);
-  return tokens;
-}
-
-function blobStoreIds() {
-  const ids = [];
-  const fromEnv = String(process.env.BLOB_STORE_ID || '').trim().replace(/^store_/, '');
-  const fromToken = storeIdFromToken(blobToken());
-  if (fromEnv) ids.push(fromEnv);
-  if (fromToken && !ids.includes(fromToken)) ids.push(fromToken);
-  return ids;
-}
-
-let lastBlobRead = { status: 0, hasStore: false, hasOidc: false, hasToken: false };
-
-export function blobReadState() {
-  return lastBlobRead;
+function activeStoreId() {
+  return String(process.env.BLOB_STORE_ID || '').trim().replace(/^store_/, '') || storeIdFromToken(blobToken());
 }
 
 async function fetchBlob(pathname) {
-  const ids = blobStoreIds();
-  const tokens = blobBearers();
-  lastBlobRead = {
-    status: 0,
-    hasStore: ids.length > 0,
-    hasOidc: Boolean(String(process.env.VERCEL_OIDC_TOKEN || '').trim()),
-    hasToken: Boolean(blobToken()),
-  };
-  if (!ids.length || !tokens.length) return { ok: false, status: 0, bytes: null, type: '' };
-  let saw404 = false;
-  let sawDenied = false;
-  for (const id of ids) {
-    for (const host of [`${id}.private.blob.vercel-storage.com`, `store_${id}.private.blob.vercel-storage.com`]) {
-      for (const token of tokens) {
-        for (const headers of [{ authorization: `Bearer ${token}` }, blobHeaders(token, id)]) {
-          try {
-            const response = await fetch(`https://${host}/${pathname}`, { headers });
-            if (response.status === 404) {
-              saw404 = true;
-              continue;
-            }
-            if (response.status === 401 || response.status === 403) {
-              sawDenied = true;
-              continue;
-            }
-            if (!response.ok) continue;
-            return {
-              ok: true,
-              status: 200,
-              bytes: Buffer.from(await response.arrayBuffer()),
-              type: response.headers.get('content-type') || '',
-            };
-          } catch {
-            /* tenta outro endereço ou credencial do armazenamento */
-          }
-        }
-      }
+  const token = blobToken();
+  const storeId = activeStoreId();
+  if (!token || !storeId) return { ok: false, status: 0, bytes: null, type: '' };
+  try {
+    const response = await fetch(`https://${storeId}.private.blob.vercel-storage.com/${pathname}`, {
+      headers: blobHeaders(token, storeId),
+    });
+    if (response.status === 404) return { ok: true, status: 404, bytes: null, type: '' };
+    if (!response.ok) {
+      console.error('[unica] document read', response.status);
+      return { ok: false, status: response.status, bytes: null, type: '' };
     }
+    return {
+      ok: true,
+      status: 200,
+      bytes: Buffer.from(await response.arrayBuffer()),
+      type: response.headers.get('content-type') || '',
+    };
+  } catch {
+    console.error('[unica] document read', 'network');
+    return { ok: false, status: 0, bytes: null, type: '' };
   }
-  if (saw404 && !sawDenied) {
-    lastBlobRead = { ...lastBlobRead, status: 404 };
-    return { ok: true, status: 404, bytes: null, type: '' };
-  }
-  const status = sawDenied ? 403 : 0;
-  lastBlobRead = { ...lastBlobRead, status };
-  console.error('[unica] document read', status || 'network');
-  return { ok: false, status, bytes: null, type: '' };
 }
 
 function readJson(file) {
@@ -197,7 +152,7 @@ async function readDocument(id) {
 }
 
 async function readBlob(id) {
-  if (!blobStoreIds().length || !blobBearers().length) return { ok: false, payload: null };
+  if (!blobToken() || !activeStoreId()) return { ok: false, payload: null };
   const result = await fetchBlob(`unica/${id}.json`);
   if (!result.ok) return { ok: false, payload: null };
   if (result.status === 404) return { ok: true, payload: null };
@@ -220,32 +175,29 @@ async function writeDocument(id, payload) {
 }
 
 async function writeRaw(pathname, body, contentType) {
-  const ids = blobStoreIds();
-  const tokens = blobBearers();
-  if (!ids.length || !tokens.length) return false;
-  let status = 0;
-  for (const storeId of ids) {
-    for (const token of tokens) {
-      try {
-        const response = await fetch(`https://vercel.com/api/blob/?pathname=${pathname}`, {
-          method: 'PUT',
-          headers: blobHeaders(token, storeId, {
-            'x-vercel-blob-access': 'private',
-            'x-content-type': contentType,
-            'x-add-random-suffix': '0',
-            'x-allow-overwrite': '1',
-          }),
-          body,
-        });
-        if (response.ok) return true;
-        status = response.status;
-      } catch {
-        status = 0;
-      }
+  const token = blobToken();
+  const storeId = activeStoreId();
+  if (!token || !storeId) return false;
+  try {
+    const response = await fetch(`https://vercel.com/api/blob/?pathname=${pathname}`, {
+      method: 'PUT',
+      headers: blobHeaders(token, storeId, {
+        'x-vercel-blob-access': 'private',
+        'x-content-type': contentType,
+        'x-add-random-suffix': '0',
+        'x-allow-overwrite': '1',
+      }),
+      body,
+    });
+    if (!response.ok) {
+      console.error('[unica] document write', response.status);
+      return false;
     }
+    return true;
+  } catch {
+    console.error('[unica] document write', 'network');
+    return false;
   }
-  console.error('[unica] document write', status || 'network');
-  return false;
 }
 
 async function writeBlob(id, payload) {
