@@ -17,6 +17,7 @@ import { gifMediaUrl, searchGifs } from './giphy.mjs';
 import { handleStickerRequest, stickerMediaUrl } from './stickers.mjs';
 import { dataDir } from './dataDir.mjs';
 import { handleUpload } from './uploads.js';
+import { canSeeMood, canSeePost, cleanAudience, cleanMood, cleanMoodAudience } from './postPrivacy.mjs';
 
 type Account = {
   id: string;
@@ -68,6 +69,10 @@ type FeedPost = {
   votes?: Record<string, string>;
   eventWhen?: string;
   eventWhere?: string;
+  audience?: 'team' | 'management';
+  mood?: string;
+  moodAudience?: 'team' | 'management' | 'self';
+  shareMood?: boolean;
   createdAt: string;
   updatedAt?: string;
 };
@@ -373,7 +378,41 @@ export function extraApi(): Connect.NextHandleFunction {
     return localUserFromRequest(req, authFile, accounts) ?? (LOGIN_REQUIRED ? null : accounts[0]);
   }
 
-  function publicPost(post: FeedPost, userId: string, savedIds: string[]) {
+  function openPost(feed: FeedStore, id: string, user: Account) {
+    const post = feed.posts.find((item) => item.id === id);
+    return post && canSeePost(post, user) ? post : null;
+  }
+
+  function applySharedMood(userId: string, emoji: string, visibility: 'team' | 'management' | 'self', postId: string) {
+    const file = path.join(dir, 'institution.json');
+    let store: { moods?: Record<string, unknown> } = {};
+    try {
+      store = JSON.parse(fs.readFileSync(file, 'utf8')) as { moods?: Record<string, unknown> };
+    } catch {
+      store = {};
+    }
+    const moods = store.moods ?? {};
+    const current = moods[userId];
+    if (current && typeof current === 'object' && (current as { postId?: string }).postId === postId) return;
+    const previous = current && typeof current === 'object' ? current as { emoji?: string; visibility?: string; shared?: string } : null;
+    const shared = typeof current === 'string'
+      ? current
+      : previous?.visibility === 'team'
+        ? String(previous.emoji ?? previous.shared ?? '')
+        : String(previous?.shared ?? '');
+    moods[userId] = {
+      emoji,
+      visibility,
+      shared: visibility === 'team' ? emoji : shared,
+      postId,
+    };
+    store.moods = moods;
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(store, null, 2));
+  }
+
+  function publicPost(post: FeedPost, user: Account, savedIds: string[]) {
+    const userId = user.id;
     const reactions = reactionsOf(post);
     const mine = reactions.find((item) => item.userId === userId);
     const images = post.images?.length ? post.images : post.kind === 'image' && post.image ? [post.image] : [];
@@ -419,6 +458,8 @@ export function extraApi(): Connect.NextHandleFunction {
       eventWhere: post.eventWhere,
       saved: savedIds.includes(post.id),
       createdAt: post.createdAt,
+      audience: post.audience === 'management' ? 'management' : undefined,
+      mood: canSeeMood(post, user) ? post.mood : undefined,
     };
   }
 
@@ -490,10 +531,12 @@ export function extraApi(): Connect.NextHandleFunction {
 
       if (req.method === 'GET' && url === '/api/feed') {
         const feed = loadFeed();
-        const saved = feed.saved?.[user.id] ?? [];
+        const visible = feed.posts.filter((post) => canSeePost(post, user));
+        const visibleIds = new Set(visible.map((post) => post.id));
+        const saved = (feed.saved?.[user.id] ?? []).filter((id) => visibleIds.has(id));
         send(res, 200, {
-          posts: feed.posts.map((post) => publicPost(post, user.id, saved)),
-          reposts: feed.reposts,
+          posts: visible.map((post) => publicPost(post, user, saved)),
+          reposts: feed.reposts.filter((item) => visibleIds.has(item.originalId)),
           saved,
         });
         return;
@@ -513,6 +556,10 @@ export function extraApi(): Connect.NextHandleFunction {
         if (labels.length > 0 && (labels.length < 2 || unique.size !== labels.length)) return send(res, 400, { error: 'poll' });
         const poll = labels.length ? labels.map((label, index) => ({ id: `opt-${index + 1}`, label, votes: 0 })) : undefined;
         if (!text && images.length === 0 && !attachment && !poll) return send(res, 400, { error: 'body' });
+        const mood = cleanMood(body.mood);
+        const audience = cleanAudience(body.audience);
+        const moodAudience = mood ? cleanMoodAudience(body.moodAudience) : undefined;
+        const shareMood = Boolean(mood) && body.shareMood !== false;
         const recognition = body.kind === 'recognition';
         if (recognition && !canRecognize(user, dir)) return send(res, 403, { error: 'forbidden' });
         const recognizedName = String(body.recognizedName ?? '').trim();
@@ -520,7 +567,7 @@ export function extraApi(): Connect.NextHandleFunction {
         const feed = loadFeed();
         const recent = feed.posts.find((item) => item.authorId === user.id && item.body === text && Date.now() - Date.parse(item.createdAt) < 5000);
         if (recent && recent.images?.join() === images.join()) {
-          send(res, 200, { post: publicPost(recent, user.id, feed.saved?.[user.id] ?? []) });
+          send(res, 200, { post: publicPost(recent, user, feed.saved?.[user.id] ?? []) });
           return;
         }
         const post: FeedPost = {
@@ -546,11 +593,22 @@ export function extraApi(): Connect.NextHandleFunction {
           votes: {},
           recognizedName: recognition ? recognizedName : undefined,
           tag: recognition ? String(body.tag ?? '').trim() : undefined,
+          audience,
+          mood,
+          moodAudience,
+          shareMood,
           createdAt: new Date().toISOString(),
         };
         feed.posts.unshift(post);
         remember(feed, post);
-        send(res, 201, { post: publicPost(post, user.id, feed.saved?.[user.id] ?? []) });
+        if (mood && shareMood) {
+          try {
+            applySharedMood(user.id, mood, moodAudience ?? 'team', post.id);
+          } catch {
+            /* a publicação já foi gravada; o humor fica como estava */
+          }
+        }
+        send(res, 201, { post: publicPost(post, user, feed.saved?.[user.id] ?? []) });
         } catch {
           if (!res.headersSent) send(res, 500, { error: 'publish' });
         }
@@ -563,7 +621,7 @@ export function extraApi(): Connect.NextHandleFunction {
         const kind: Reaction['kind'] | '' = body.kind === 'love' ? 'love' : body.kind === 'like' ? 'like' : '';
         if (!kind) return send(res, 400, { error: 'kind' });
         const feed = loadFeed();
-        const post = feed.posts.find((item) => item.id === likeMatch[1]);
+        const post = openPost(feed, likeMatch[1], user);
         if (!post) return send(res, 404, { error: 'missing' });
         const before = reactionsOf(post);
         const mine = before.filter((item) => item.userId === user.id);
@@ -575,7 +633,7 @@ export function extraApi(): Connect.NextHandleFunction {
         post.likedBy = [...new Set(next.map((item) => item.userId))];
         post.likes = Math.max(0, (typeof post.likes === 'number' ? post.likes : before.length) + next.length - before.length);
         remember(feed, post);
-        send(res, 200, { post: publicPost(post, user.id, feed.saved?.[user.id] ?? []) });
+        send(res, 200, { post: publicPost(post, user, feed.saved?.[user.id] ?? []) });
         return;
       }
 
@@ -583,7 +641,7 @@ export function extraApi(): Connect.NextHandleFunction {
       if (req.method === 'POST' && voteMatch) {
         const body = JSON.parse((await readBody(req)).toString('utf8')) as { optionId?: string };
         const feed = loadFeed();
-        const post = feed.posts.find((item) => item.id === voteMatch[1]);
+        const post = openPost(feed, voteMatch[1], user);
         if (!post?.poll) return send(res, 404, { error: 'missing' });
         const optionId = String(body.optionId ?? '');
         if (!post.poll.some((item) => item.id === optionId)) return send(res, 400, { error: 'option' });
@@ -603,14 +661,14 @@ export function extraApi(): Connect.NextHandleFunction {
           if (next) next.votes += 1;
         }
         remember(feed, post);
-        send(res, 200, { post: publicPost(post, user.id, feed.saved?.[user.id] ?? []) });
+        send(res, 200, { post: publicPost(post, user, feed.saved?.[user.id] ?? []) });
         return;
       }
 
       const saveMatch = /^\/api\/feed\/([^/]+)\/save$/.exec(url);
       if (req.method === 'POST' && saveMatch) {
         const feed = loadFeed();
-        const post = feed.posts.find((item) => item.id === saveMatch[1]);
+        const post = openPost(feed, saveMatch[1], user);
         if (!post) return send(res, 404, { error: 'missing' });
         feed.saved = feed.saved ?? {};
         const list = new Set(feed.saved[user.id] ?? []);
@@ -618,18 +676,18 @@ export function extraApi(): Connect.NextHandleFunction {
         else list.add(post.id);
         feed.saved[user.id] = [...list];
         remember(feed);
-        send(res, 200, { post: publicPost(post, user.id, feed.saved[user.id]), saved: feed.saved[user.id] });
+        send(res, 200, { post: publicPost(post, user, feed.saved[user.id]), saved: feed.saved[user.id] });
         return;
       }
 
       const shareMatch = /^\/api\/feed\/([^/]+)\/share$/.exec(url);
       if (req.method === 'POST' && shareMatch) {
         const feed = loadFeed();
-        const post = feed.posts.find((item) => item.id === shareMatch[1]);
+        const post = openPost(feed, shareMatch[1], user);
         if (!post) return send(res, 404, { error: 'missing' });
         post.shares += 1;
         remember(feed, post);
-        send(res, 200, { post: publicPost(post, user.id, feed.saved?.[user.id] ?? []) });
+        send(res, 200, { post: publicPost(post, user, feed.saved?.[user.id] ?? []) });
         return;
       }
 
@@ -641,7 +699,7 @@ export function extraApi(): Connect.NextHandleFunction {
         if (!text && !media) return send(res, 400, { error: 'body' });
         if (text.length > 2000) return send(res, 400, { error: 'body' });
         const feed = loadFeed();
-        const post = feed.posts.find((item) => item.id === commentMatch[1]);
+        const post = openPost(feed, commentMatch[1], user);
         if (!post) return send(res, 404, { error: 'missing' });
         post.comments.push({
           id: `c-${Date.now()}`,
@@ -656,14 +714,14 @@ export function extraApi(): Connect.NextHandleFunction {
           createdAt: new Date().toISOString(),
         });
         remember(feed, post);
-        send(res, 201, { post: publicPost(post, user.id, feed.saved?.[user.id] ?? []) });
+        send(res, 201, { post: publicPost(post, user, feed.saved?.[user.id] ?? []) });
         return;
       }
 
       const commentLike = /^\/api\/feed\/([^/]+)\/comments\/([^/]+)\/like$/.exec(url);
       if (req.method === 'POST' && commentLike) {
         const feed = loadFeed();
-        const post = feed.posts.find((item) => item.id === commentLike[1]);
+        const post = openPost(feed, commentLike[1], user);
         const comment = post?.comments.find((item) => item.id === commentLike[2]);
         if (!post || !comment) return send(res, 404, { error: 'missing' });
         comment.likedBy = comment.likedBy ?? [];
@@ -671,14 +729,14 @@ export function extraApi(): Connect.NextHandleFunction {
         comment.likedBy = already ? comment.likedBy.filter((id) => id !== user.id) : [...comment.likedBy, user.id];
         comment.likes = comment.likedBy.length;
         remember(feed, post);
-        send(res, 200, { post: publicPost(post, user.id, feed.saved?.[user.id] ?? []) });
+        send(res, 200, { post: publicPost(post, user, feed.saved?.[user.id] ?? []) });
         return;
       }
 
       const deleteComment = /^\/api\/feed\/([^/]+)\/comments\/([^/]+)$/.exec(url);
       if (req.method === 'DELETE' && deleteComment) {
         const feed = loadFeed();
-        const post = feed.posts.find((item) => item.id === deleteComment[1]);
+        const post = openPost(feed, deleteComment[1], user);
         if (!post) return send(res, 404, { error: 'missing' });
         const comment = post.comments.find((item) => item.id === deleteComment[2]);
         if (!comment) return send(res, 404, { error: 'missing' });
@@ -686,7 +744,7 @@ export function extraApi(): Connect.NextHandleFunction {
         if (!allowed) return send(res, 403, { error: 'forbidden' });
         post.comments = post.comments.filter((item) => item.id !== comment.id);
         remember(feed, post);
-        send(res, 200, { post: publicPost(post, user.id, feed.saved?.[user.id] ?? []) });
+        send(res, 200, { post: publicPost(post, user, feed.saved?.[user.id] ?? []) });
         return;
       }
 
@@ -696,6 +754,7 @@ export function extraApi(): Connect.NextHandleFunction {
         const index = feed.posts.findIndex((item) => item.id === deletePost[1]);
         if (index < 0) return send(res, 404, { error: 'missing' });
         const post = feed.posts[index];
+        if (!canSeePost(post, user)) return send(res, 404, { error: 'missing' });
         const allowed = post.authorId === user.id || post.author === user.name;
         if (!allowed) return send(res, 403, { error: 'forbidden' });
         const removedReposts = feed.reposts.filter((item) => item.originalId === post.id).map((item) => item.id);
@@ -712,7 +771,7 @@ export function extraApi(): Connect.NextHandleFunction {
       if (req.method === 'POST' && repostMatch) {
         const body = JSON.parse((await readBody(req)).toString('utf8')) as { note?: string };
         const feed = loadFeed();
-        const original = feed.posts.find((item) => item.id === repostMatch[1]);
+        const original = openPost(feed, repostMatch[1], user);
         if (!original) return send(res, 404, { error: 'missing' });
         if (feed.reposts.some((item) => item.userId === user.id && item.originalId === original.id)) {
           return send(res, 409, { error: 'duplicate' });

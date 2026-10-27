@@ -7,6 +7,7 @@ import { extraApi } from './extraApi.js';
 import { builtinAccounts } from './auth/accounts.js';
 import { localUserFromRequest } from './auth/localStore.mjs';
 import { isLeader } from './auth/permissions.mjs';
+import { moodForViewer } from './postPrivacy.mjs';
 import { currentUser, employees } from '../src/data/mockData.js';
 import { LOGIN_REQUIRED } from '../src/lib/loginGate.js';
 
@@ -46,7 +47,7 @@ type Feedback = {
 type Store = {
   settings: Settings;
   feedback: Feedback[];
-  moods: Record<string, string>;
+  moods: Record<string, string | { emoji?: string; visibility?: string; shared?: string; postId?: string }>;
   people: Record<string, { ramal?: string; birthDate?: string }>;
 };
 
@@ -431,8 +432,20 @@ export function institutionMiddleware(): Connect.NextHandleFunction {
         return;
       }
 
+      function presentMoods(moods: Store['moods'], user: { id: string; role: string; department?: string }) {
+        const leader = isLeader(user);
+        const visible: Record<string, string> = {};
+        for (const [id, record] of Object.entries(moods)) {
+          const emoji = moodForViewer(record, user.id, id, leader);
+          if (emoji) visible[id] = emoji;
+        }
+        return visible;
+      }
+
       if (req.method === 'GET' && url === '/api/moods') {
-        send(res, 200, { moods: load().moods });
+        const user = userFrom(req);
+        if (!user) return send(res, 401, { error: 'unknown' });
+        send(res, 200, { moods: presentMoods(load().moods, user) });
         return;
       }
 
@@ -445,9 +458,9 @@ export function institutionMiddleware(): Connect.NextHandleFunction {
         const emoji = allowed.find((item) => item === body.emoji || plain(item) === plain(body.emoji ?? ''));
         if (!emoji) return send(res, 400, { error: 'emoji' });
         const store = load();
-        store.moods[user.id] = emoji;
+        store.moods[user.id] = { emoji, visibility: 'team', shared: emoji };
         save(store);
-        send(res, 200, { moods: store.moods });
+        send(res, 200, { moods: presentMoods(store.moods, user) });
         return;
       }
 

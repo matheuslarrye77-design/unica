@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { getTimeBasedGreeting } from '@/lib/utils';
 import { cancelRepost, commentFeedPost, createFeedPost, deleteFeedComment, deleteFeedPost, likeFeedComment, likeFeedPost, loadFeed, republishPost, saveFeedPost, shareFeedPost, uploadMedia, voteFeedPost, type Repost } from '@/lib/feed';
 import { actor, useDemoProfile } from '@/lib/session';
-import { isLeader, useInstitution } from '@/lib/institution';
+import { isLeader, refreshMoods, useInstitution } from '@/lib/institution';
 import { CreatePost, type NewPostDraft } from './CreatePost';
 import { ExpandProvider } from './ReadMore';
 import { FeedPreview } from './FeedPreview';
@@ -63,7 +63,19 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
 
   async function publish(draft: NewPostDraft) {
     try {
-      const result = await createFeedPost({ body: draft.body, images: draft.images, image: draft.images?.[0], blocks: draft.blocks, attachment: draft.attachment, poll: draft.poll });
+      const result = await createFeedPost({
+        body: draft.body,
+        images: draft.images,
+        image: draft.images?.[0],
+        blocks: draft.blocks,
+        attachment: draft.attachment,
+        poll: draft.poll,
+        audience: draft.audience,
+        mood: draft.mood,
+        moodAudience: draft.moodAudience,
+        shareMood: draft.shareMood,
+      });
+      if (draft.mood && draft.shareMood !== false) await refreshMoods().catch(() => undefined);
       holdFeed();
       setPosts((current) => [result.post, ...current]);
       toast.success('Publicação enviada.');

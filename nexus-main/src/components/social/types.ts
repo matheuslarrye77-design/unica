@@ -61,4 +61,6 @@ export type SocialPost = {
   votedId?: string | null;
   eventWhen?: string;
   eventWhere?: string;
+  audience?: 'team' | 'management';
+  mood?: string;
 };

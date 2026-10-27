@@ -1,6 +1,9 @@
-import { AudioLines, FileText, ImagePlus, ListChecks, Send, Video, X } from 'lucide-react';
-import { type ChangeEvent, type ClipboardEvent, type FC, type FormEvent, type KeyboardEvent, useRef, useState } from 'react';
+import { AudioLines, FileText, ImagePlus, ListChecks, Lock, Plus, Send, Smile, Video, X } from 'lucide-react';
+import { type ChangeEvent, type ClipboardEvent, type DragEvent, type FC, type FormEvent, type KeyboardEvent, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { Emoji } from '@/components/Emoji';
+import { MOODS } from '@/components/shell/TeamMood';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatClip } from '@/lib/audioClip';
 import { uploadMedia } from '@/lib/feed';
 import { actor } from '@/lib/session';
@@ -21,6 +24,10 @@ export type NewPostDraft = {
   blocks?: PostBlock[];
   attachment?: Attachment;
   poll?: PollOption[];
+  audience?: 'team' | 'management';
+  mood?: string;
+  moodAudience?: 'team' | 'management' | 'self';
+  shareMood?: boolean;
 };
 
 function clipboardFile(data: DataTransfer | null) {
@@ -45,6 +52,12 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
   const [sending, setSending] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
   const [options, setOptions] = useState(['', '']);
+  const [over, setOver] = useState(false);
+  const [moodId, setMoodId] = useState<string | null>(null);
+  const [moodOpen, setMoodOpen] = useState(false);
+  const [audience, setAudience] = useState<'team' | 'management'>('team');
+  const [moodAudience, setMoodAudience] = useState<'team' | 'management' | 'self'>('team');
+  const [shareMood, setShareMood] = useState(true);
   const focusId = useRef('texto');
   const fields = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const photoRef = useRef<HTMLInputElement>(null);
@@ -80,9 +93,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     requestAnimationFrame(() => fields.current[focus]?.focus());
   }
 
-  function readImage(event: ChangeEvent<HTMLInputElement>) {
-    const files = [...(event.target.files ?? [])].filter((file) => file.type.startsWith('image/'));
-    event.target.value = '';
+  function addImages(files: File[]) {
     const photos = files.filter((file) => file.type !== 'image/gif');
     const gifs = files.filter((file) => file.type === 'image/gif');
     const count = blocks.filter((block) => block.type === 'image').length;
@@ -92,6 +103,13 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     }
     gifs.forEach((file) => void uploadImage(file));
     if (photos.length > 0) openEditor(photos);
+    setWriting(true);
+  }
+
+  function readImage(event: ChangeEvent<HTMLInputElement>) {
+    const files = [...(event.target.files ?? [])].filter((file) => file.type.startsWith('image/'));
+    event.target.value = '';
+    addImages(files);
   }
 
   async function uploadImage(file: File) {
@@ -141,10 +159,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     setAttachment((current) => current?.type === 'video' ? undefined : current);
   }
 
-  function readVideo(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
+  function takeVideo(file: File) {
     if (file.size > VIDEO_MAX) {
       toast.error('O vídeo passa de 200 MB.');
       return;
@@ -160,17 +175,53 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
         setVideoPreview((current) => current === local ? '' : current);
       }
     });
+    setWriting(true);
   }
 
-  function readAudio(event: ChangeEvent<HTMLInputElement>) {
+  function readVideo(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file) return;
+    if (file) takeVideo(file);
+  }
+
+  function takeAudio(file: File) {
     if (file.size > AUDIO_MAX) {
       toast.error('O áudio passa de 80 MB.');
       return;
     }
     setAudioFile(file);
+    setWriting(true);
+  }
+
+  function readAudio(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (file) takeAudio(file);
+  }
+
+  function fileKind(file: File) {
+    if (file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(file.name)) return 'image';
+    if (file.type.startsWith('video/') || /\.(mp4|mov|webm|mkv)$/i.test(file.name)) return 'video';
+    if (file.type.startsWith('audio/') || /\.(mp3|wav|m4a|ogg|aac)$/i.test(file.name)) return 'audio';
+    return 'document';
+  }
+
+  function receiveFiles(files: File[]) {
+    const images = files.filter((file) => fileKind(file) === 'image');
+    const video = files.find((file) => fileKind(file) === 'video');
+    const audio = files.find((file) => fileKind(file) === 'audio');
+    const document = files.find((file) => fileKind(file) === 'document');
+    if (images.length > 0) addImages(images);
+    if (video) takeVideo(video);
+    if (audio) takeAudio(audio);
+    if (document) void uploadAttachment(document, 'document');
+    if (files.length > 0) setWriting(true);
+  }
+
+  function onDropFiles(event: DragEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setOver(false);
+    receiveFiles([...event.dataTransfer.files]);
   }
 
   function readFile(event: ChangeEvent<HTMLInputElement>) {
@@ -228,7 +279,18 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     if ((!body && !hasMedia) || (pollOpen && labels.length < 2)) return;
     setSending(true);
     try {
-      await onPublish({ body, images, blocks: content, attachment, poll: pollOpen ? poll : undefined });
+      const feeling = MOODS.find((item) => item.id === moodId);
+      await onPublish({
+        body,
+        images,
+        blocks: content,
+        attachment,
+        poll: pollOpen ? poll : undefined,
+        audience,
+        mood: feeling?.emoji,
+        moodAudience: feeling ? moodAudience : undefined,
+        shareMood: Boolean(feeling) && shareMood,
+      });
     } catch {
       setSending(false);
       return;
@@ -241,6 +303,11 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     setAttachment(undefined);
     setPollOpen(false);
     setOptions(['', '']);
+    setMoodId(null);
+    setMoodOpen(false);
+    setAudience('team');
+    setMoodAudience('team');
+    setShareMood(true);
   }
 
   function insertEmoji(emoji: string) {
@@ -300,13 +367,26 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
   const ready = !sending && progress === null && (textReady || imageReady || Boolean(attachment)) && (!pollOpen || options.filter((item) => item.trim()).length >= 2);
   const user = actor();
   const expanded = writing || textReady || imageReady;
+  const feeling = MOODS.find((item) => item.id === moodId);
+  const audienceLabel = audience === 'management' ? 'Somente a gestão' : 'Todos da equipe';
+  const moodLabel = moodAudience === 'self' ? 'Somente eu' : moodAudience === 'management' ? 'Somente a gestão' : 'Todos da equipe';
 
   return (
-    <form onSubmit={publish} className="unica-surface px-4 py-3">
+    <form
+      onSubmit={publish}
+      onDragOver={(event) => {
+        if (![...event.dataTransfer.types].includes('Files')) return;
+        event.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={onDropFiles}
+      className="unica-surface relative px-4 py-3"
+    >
       <div className={expanded ? 'flex items-start gap-3' : 'flex items-center gap-3'}>
         <img src={user.avatar} alt="" className="h-10 w-10 rounded-full bg-muted object-cover" />
         <div className="min-w-0 flex-1">
-          <div className="rounded-[10px] border border-border bg-[#F8F7FC] px-3 py-2 focus-within:border-primary focus-within:ring-2 focus-within:ring-ring/30">
+          <div className={`rounded-2xl border bg-white px-3 py-2 focus-within:border-[#E4C8EE] focus-within:ring-2 focus-within:ring-[#F3E4FA] ${over ? 'border-[#8E35B8] ring-2 ring-[#F3E4FA]' : 'border-[#EDE7F3]'}`}>
             {blocks.map((block, index) => block.type === 'text' ? (
               <textarea
                 key={block.id}
@@ -395,25 +475,84 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
         </div>
       ) : null}
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple className="hidden" onChange={readImage} />
-          <input ref={videoRef} type="file" accept="video/*" className="hidden" onChange={readVideo} />
-          <input ref={audioRef} type="file" accept="audio/*" className="hidden" onChange={readAudio} />
-          <input ref={fileRef} type="file" className="hidden" onChange={readFile} />
-          <ComposerAction icon={ImagePlus} label="Foto" onClick={() => photoRef.current?.click()} />
-          <ComposerAction icon={Video} label="Vídeo" onClick={() => videoRef.current?.click()} />
-          <ComposerAction icon={AudioLines} label="Áudio" onClick={() => audioRef.current?.click()} />
-          <ComposerAction icon={FileText} label="Documento" onClick={() => fileRef.current?.click()} />
-          <ComposerAction icon={ListChecks} label="Enquete" pressed={pollOpen} onClick={() => setPollOpen((open) => !open)} />
-          <ComposerExtras onEmoji={insertEmoji} onGif={(url) => { if (blocks.filter((block) => block.type === 'image').length < 10) placeImage(url); }} />
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {feeling ? (
+          <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[#F8EAFB] px-2.5 py-1 text-[13px] text-[#6A228C]">
+            <Emoji emoji={feeling.emoji} className="h-4 w-4" />
+            <span>{feeling.label}</span>
+            <button type="button" className="rounded-full px-1 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40" onClick={() => setMoodOpen(true)}>Alterar</button>
+            <button type="button" aria-label="Remover sentimento" className="rounded-full p-0.5 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40" onClick={() => { setMoodId(null); setMoodOpen(false); }}>
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </span>
+        ) : (
+          <button type="button" aria-expanded={moodOpen} className="inline-flex h-8 items-center gap-1.5 rounded-full px-2 text-[13px] text-[#6A228C] hover:bg-[#F8EAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40" onClick={() => setMoodOpen((open) => !open)}>
+            <Smile className="h-4 w-4" />
+            Como você está?
+          </button>
+        )}
+        <PrivacyMenu noun="Publicação" label={audienceLabel} options={[{ id: 'team', label: 'Todos da equipe' }, { id: 'management', label: 'Somente a gestão' }]} value={audience} onChange={(value) => setAudience(value as 'team' | 'management')} />
+        {feeling ? <PrivacyMenu noun="Sentimento" label={moodLabel} options={[{ id: 'team', label: 'Todos da equipe' }, { id: 'management', label: 'Somente a gestão' }, { id: 'self', label: 'Somente eu' }]} value={moodAudience} onChange={(value) => setMoodAudience(value as 'team' | 'management' | 'self')} /> : null}
+        {feeling ? (
+          <label className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
+            <input type="checkbox" checked={shareMood} onChange={(event) => setShareMood(event.target.checked)} className="accent-[#8E35B8]" />
+            Atualizar humor da equipe
+          </label>
+        ) : null}
+      </div>
+      {moodOpen ? (
+        <div className="relative">
+          <button type="button" aria-label="Fechar sentimentos" className="fixed inset-0 z-[70] cursor-default" onClick={() => setMoodOpen(false)} />
+          <div role="listbox" aria-label="Como você está?" className="absolute z-[80] mt-1 w-48 rounded-xl border border-[#EDE7F3] bg-white p-1 shadow-sm" onKeyDown={(event) => { if (event.key === 'Escape') setMoodOpen(false); }}>
+            {MOODS.map((mood) => (
+              <button
+                key={mood.id}
+                type="button"
+                role="option"
+                aria-selected={moodId === mood.id}
+                onClick={() => { setMoodId(mood.id); setMoodOpen(false); }}
+                className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${moodId === mood.id ? 'bg-[#F3E4FA] text-[#6A228C]' : 'text-[#3C3952] hover:bg-[#F8F7FC]'}`}
+              >
+                <Emoji emoji={mood.emoji} className="h-4 w-4" />
+                {mood.label}
+              </button>
+            ))}
+          </div>
         </div>
+      ) : null}
+
+      <div className="mt-2 flex flex-wrap items-center gap-1">
+        <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple className="hidden" onChange={readImage} />
+        <input ref={videoRef} type="file" accept="video/*" className="hidden" onChange={readVideo} />
+        <input ref={audioRef} type="file" accept="audio/*" className="hidden" onChange={readAudio} />
+        <input ref={fileRef} type="file" className="hidden" onChange={readFile} />
+        <ComposerAction icon={ImagePlus} label="Foto" onClick={() => photoRef.current?.click()} />
+        <ComposerAction icon={Video} label="Vídeo" onClick={() => videoRef.current?.click()} />
+        <ComposerAction icon={AudioLines} label="Áudio" onClick={() => audioRef.current?.click()} />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" aria-label="Adicionar conteúdo" className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#6A228C] hover:bg-[#F8EAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
+              <Plus className="h-[18px] w-[18px]" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => fileRef.current?.click()}>
+              <FileText className="h-4 w-4" />
+              Documento
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setPollOpen((open) => !open)}>
+              <ListChecks className="h-4 w-4" />
+              {pollOpen ? 'Fechar enquete' : 'Enquete'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <ComposerExtras onEmoji={insertEmoji} onGif={(url) => { if (blocks.filter((block) => block.type === 'image').length < 10) placeImage(url); }} />
         <button
           type="submit"
           disabled={!ready}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-[#7A2498] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-45"
+          className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-full bg-[#8E35B8] px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-[#7A2498] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-45"
         >
-          <Send className="h-[18px] w-[18px]" />
+          <Send className="h-3.5 w-3.5" />
           {sending ? 'Publicando...' : 'Publicar'}
         </button>
       </div>
@@ -423,14 +562,31 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
   );
 };
 
-const ComposerAction: FC<{ icon: FC<{ className?: string }>; label: string; pressed?: boolean; onClick: () => void }> = ({ icon: Icon, label, pressed, onClick }) => (
+const ComposerAction: FC<{ icon: FC<{ className?: string }>; label: string; onClick: () => void }> = ({ icon: Icon, label, onClick }) => (
   <button
     type="button"
-    aria-pressed={pressed}
     onClick={onClick}
-    className={`inline-flex h-9 items-center gap-1.5 rounded-[10px] border px-2.5 text-[13px] font-medium text-[#25233A] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${pressed ? 'border-primary/40 bg-accent' : 'border-border bg-card hover:bg-[#F8EAFB] dark:text-foreground'}`}
+    className="inline-flex h-9 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-medium text-[#6A228C] hover:bg-[#F8EAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
   >
-    <Icon className="h-[18px] w-[18px] text-primary" />
+    <Icon className="h-[18px] w-[18px]" />
     {label}
   </button>
+);
+
+const PrivacyMenu: FC<{ noun: string; label: string; options: { id: string; label: string }[]; value: string; onChange: (value: string) => void }> = ({ noun, label, options, value, onChange }) => (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <button type="button" aria-label={`${noun}: ${label}`} className="inline-flex h-8 max-w-full items-center gap-1.5 rounded-full px-2 text-[12px] text-[#6A228C] hover:bg-[#F8EAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
+        <Lock className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate">{noun}: {label}</span>
+      </button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="start">
+      {options.map((option) => (
+        <DropdownMenuItem key={option.id} onClick={() => onChange(option.id)}>
+          <span className={option.id === value ? 'font-semibold text-[#6A228C]' : ''}>{option.label}</span>
+        </DropdownMenuItem>
+      ))}
+    </DropdownMenuContent>
+  </DropdownMenu>
 );

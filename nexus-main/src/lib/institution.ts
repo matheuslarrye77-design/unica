@@ -185,6 +185,11 @@ export async function replyToFeedback(id: string, text: string) {
   return request<{ feedback: FeedbackItem }>(`/api/feedback/${id}/replies`, { method: 'POST', body: JSON.stringify({ text }) });
 }
 
+export async function refreshMoods() {
+  const saved = await request<{ moods: Record<string, string> }>('/api/moods');
+  emit({ ...snapshot, moods: saved.moods });
+}
+
 export async function saveMood(emoji: string) {
   const saved = await request<{ moods: Record<string, string> }>('/api/moods', { method: 'PUT', body: JSON.stringify({ emoji }) });
   emit({ ...snapshot, moods: saved.moods });
