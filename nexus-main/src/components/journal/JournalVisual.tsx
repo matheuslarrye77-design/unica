@@ -62,7 +62,7 @@ export const JournalCover: FC<{ article: Pick<JournalArticle, 'title' | 'content
   const art = cardArt[article.category];
   if (photo && art) {
     return (
-      <div className="relative overflow-hidden rounded-full">
+      <div className="relative overflow-hidden rounded-[18px]">
         <img src={photo} alt="" className="block aspect-[1400/320] h-auto w-full object-cover" />
         <span className={cn('absolute flex items-center justify-center rounded-full bg-white text-center font-semibold leading-none', art.label, tone.badgeText, compact ? 'text-[8px]' : 'text-[13px]')}>
           {categoryLabel(article.category)}

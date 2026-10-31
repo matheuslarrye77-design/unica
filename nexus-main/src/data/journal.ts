@@ -1,5 +1,6 @@
 import { generateId } from '@/lib/utils';
 
+
 export type JournalCategory = 'processos' | 'urgente' | 'social' | 'treinamentos';
 export type JournalStatus = 'published' | 'draft';
 export type JournalMediaKind = 'image' | 'audio' | 'video' | 'document';
@@ -9,6 +10,8 @@ export type JournalMedia = {
   name: string;
   kind: JournalMediaKind;
   url: string;
+  start?: number;
+  duration?: number;
 };
 
 export type JournalComment = {
@@ -80,9 +83,16 @@ const LEGACY_COVERS: Record<string, string> = {
 };
 
 export const PIN_LIMIT = 3;
+export const TITLE_LIMIT = 150;
+export const CONTENT_LIMIT = 2000;
 const STORAGE_KEY = 'unica-journal';
 const SAVED_KEY = 'unica-journal-saved';
+const COVERS_KEY = 'unica-journal-covers';
 const JOURNAL_VERSION = 'foto-2026-10-15';
+
+export function categoryLocksDate(category: JournalCategory) {
+  return category === 'processos' || category === 'urgente';
+}
 
 export function canManageJournal(user: { role: string; department?: string }) {
   return /admin|líder|lider|coordena|diret|vp\b|chief|head|gerente/i.test(user.role)
@@ -96,15 +106,46 @@ export function categoryLabel(category: JournalCategory) {
 // Capas antigas da biblioteca não entram como foto enviada.
 const LIBRARY_COVER = /^\/jornal\/(?:capas\/|[^/]+\.svg$)/i;
 
+export type JournalCoverAsset = { id: string; url: string; createdAt: string };
+
+export function journalCovers(): JournalCoverAsset[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(COVERS_KEY) ?? '[]') as JournalCoverAsset[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function resolveJournalAsset(value: string) {
+  if (!value.startsWith('lib:')) return value;
+  return journalCovers().find((item) => item.id === value.slice(4))?.url ?? '';
+}
+
+export function saveJournalCover(url: string) {
+  const asset: JournalCoverAsset = { id: generateId(), url, createdAt: new Date().toISOString() };
+  const next = [asset, ...journalCovers().filter((item) => item.url !== url)].slice(0, 40);
+  localStorage.setItem(COVERS_KEY, JSON.stringify(next));
+  notify();
+  return asset;
+}
+
+export function deleteJournalCover(id: string) {
+  localStorage.setItem(COVERS_KEY, JSON.stringify(journalCovers().filter((item) => item.id !== id)));
+  notify();
+}
+
 export function isUserCover(cover: string) {
-  const value = cover.trim();
+  const value = resolveJournalAsset(cover.trim());
   if (!value || LIBRARY_COVER.test(value)) return false;
   return value.startsWith('data:image/') || value.startsWith('blob:') || value.startsWith('/api/') || value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/');
 }
 
 export function articleCover(article: Pick<JournalArticle, 'cover' | 'media'>) {
-  if (isUserCover(article.cover)) return article.cover;
-  return article.media.find((item) => item.kind === 'image' && isUserCover(item.url))?.url ?? '';
+  const cover = resolveJournalAsset(article.cover);
+  if (isUserCover(cover)) return cover;
+  const image = article.media.find((item) => item.kind === 'image' && isUserCover(item.url));
+  return image ? resolveJournalAsset(image.url) : '';
 }
 
 export function readingMinutes(content: string) {
@@ -416,6 +457,7 @@ function commit(next: JournalArticle[]) {
 }
 
 function notify() {
+  articles = articles.slice();
   listeners.forEach((listener) => listener());
 }
 
@@ -458,16 +500,25 @@ function withPin(list: JournalArticle[], id: string, pinned: boolean, stamp?: st
   return { list: next, replacedId };
 }
 
+function publicationDate(category: JournalCategory, value: string) {
+  if (categoryLocksDate(category)) {
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    return `${local.toISOString().slice(0, 10)}T12:00:00`;
+  }
+  return value.includes('T') ? value : `${value}T12:00:00`;
+}
+
 export function saveJournalArticle(draft: JournalDraft, id?: string) {
   const current = id ? articles.find((article) => article.id === id) : undefined;
   const articleId = id ?? generateId();
   const next: JournalArticle = {
     id: articleId,
-    title: draft.title.trim(),
-    content: draft.content.trim(),
+    title: draft.title.trim().slice(0, TITLE_LIMIT),
+    content: draft.content.trim().slice(0, CONTENT_LIMIT),
     category: draft.category,
     cover: draft.cover,
-    date: new Date(draft.date.includes('T') ? draft.date : `${draft.date}T12:00:00`).toISOString(),
+    date: new Date(publicationDate(draft.category, draft.date)).toISOString(),
     author: draft.author.trim(),
     status: draft.status,
     pinned: false,
@@ -481,6 +532,15 @@ export function saveJournalArticle(draft: JournalDraft, id?: string) {
   const pinned = withPin(listed, articleId, draft.pinned && draft.status === 'published', current?.pinned ? current.pinnedAt : undefined);
   commit(pinned.list);
   return { article: pinned.list.find((article) => article.id === articleId) ?? next, replacedId: pinned.replacedId };
+}
+
+export function deleteJournalArticle(id: string) {
+  const current = articles.find((article) => article.id === id);
+  if (!current || current.status !== 'draft') return false;
+  commit(articles.filter((article) => article.id !== id));
+  const saved = savedJournalIds().filter((item) => item !== id);
+  localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+  return true;
 }
 
 export function toggleJournalPin(id: string) {

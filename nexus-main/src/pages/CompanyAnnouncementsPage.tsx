@@ -4,10 +4,10 @@ import { JournalCover, categoryTone } from '@/components/journal/JournalVisual';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles, useJournalSaved } from '@/components/journal/useJournal';
 import { Input } from '@/components/ui/input';
-import { articleSummary, canManageJournal, readingMinutes, toggleJournalSave, type JournalArticle, type JournalCategory } from '@/data/journal';
+import { articleSummary, canManageJournal, deleteJournalArticle, readingMinutes, toggleJournalSave, type JournalArticle, type JournalCategory } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { Bookmark, Calendar, ChevronRight, ClipboardList, Clock, Newspaper, Plus, Search } from 'lucide-react';
+import { Bookmark, Calendar, ChevronRight, ClipboardList, Clock, Newspaper, Plus, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState, type FC } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -123,10 +123,15 @@ export const CompanyAnnouncementsPage: FC = () => {
               </h2>
               <div className="mt-3 flex flex-col gap-2">
                 {drafts.map((article) => (
-                  <button key={article.id} type="button" onClick={() => openDraft(article)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-[#E7E0F0] px-3 py-2.5 text-left text-[13.5px] hover:bg-[#FBF8FC]">
-                    <span className="truncate">{article.title}</span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  </button>
+                  <div key={article.id} className="flex items-center gap-2">
+                    <button type="button" onClick={() => openDraft(article)} className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl border border-[#E7E0F0] px-3 py-2.5 text-left text-[13.5px] hover:bg-[#FBF8FC]">
+                      <span className="truncate">{article.title}</span>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </button>
+                    <button type="button" aria-label={`Excluir rascunho ${article.title}`} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#E7E0F0] text-[#9D174D] hover:bg-[#FDE7EE]" onClick={() => { if (window.confirm('Excluir este rascunho?')) deleteJournalArticle(article.id); }}>
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 ))}
               </div>
             </section>

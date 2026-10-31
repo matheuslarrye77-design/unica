@@ -1,4 +1,4 @@
-import { getJournalArticles, savedJournalIds, subscribeJournal } from '@/data/journal';
+import { getJournalArticles, journalCovers, savedJournalIds, subscribeJournal } from '@/data/journal';
 import { useEffect, useState } from 'react';
 
 export function useJournalArticles() {
@@ -15,4 +15,12 @@ export function useJournalSaved() {
     return subscribeJournal(() => setIds(savedJournalIds()));
   }, []);
   return ids;
+}
+
+export function useJournalCovers() {
+  const [covers, setCovers] = useState(journalCovers);
+  useEffect(() => {
+    return subscribeJournal(() => setCovers(journalCovers()));
+  }, []);
+  return covers;
 }

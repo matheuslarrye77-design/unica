@@ -14,14 +14,44 @@ import {
   readingMinutes,
   toggleJournalPin,
   toggleJournalReaction,
+  resolveJournalAsset,
   toggleJournalSave,
 } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { ArrowLeft, Bookmark, Heart, MessageCircle, Pin } from 'lucide-react';
-import { useState, type FC } from 'react';
+import { useEffect, useRef, useState, type FC } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+
+const JournalAudio: FC<{ name: string; url: string; start?: number; duration?: number }> = ({ name, url, start = 0, duration }) => {
+  const ref = useRef<HTMLAudioElement>(null);
+  useEffect(() => {
+    const audio = ref.current;
+    if (!audio) return;
+    const place = () => {
+      if (audio.currentTime < start || (duration && audio.currentTime >= start + duration)) audio.currentTime = start;
+    };
+    const tick = () => {
+      if (duration && audio.currentTime >= start + duration) {
+        audio.pause();
+        audio.currentTime = start;
+      }
+    };
+    audio.addEventListener('play', place);
+    audio.addEventListener('timeupdate', tick);
+    return () => {
+      audio.removeEventListener('play', place);
+      audio.removeEventListener('timeupdate', tick);
+    };
+  }, [start, duration]);
+  return (
+    <div>
+      <p className="mb-1 text-sm font-medium">{name}</p>
+      <audio ref={ref} controls src={url} preload="metadata" className="w-full" />
+    </div>
+  );
+};
 
 export const JournalArticlePage: FC = () => {
   const { id } = useParams();
@@ -89,25 +119,22 @@ export const JournalArticlePage: FC = () => {
           {article.media.length > 0 ? (
             <div className="mt-8 space-y-4">
               {article.media.filter((item) => item.kind === 'image').map((item) => (
-                <img key={item.id} src={item.url} alt={item.name} className="w-full rounded-2xl border" />
+                <img key={item.id} src={resolveJournalAsset(item.url)} alt={item.name} className="w-full rounded-2xl border" />
               ))}
               {article.media.filter((item) => item.kind === 'audio').map((item) => (
-                <div key={item.id}>
-                  <p className="mb-1 text-sm font-medium">{item.name}</p>
-                  <audio controls src={item.url} className="w-full" />
-                </div>
+                <JournalAudio key={item.id} name={item.name} url={resolveJournalAsset(item.url)} start={item.start} duration={item.duration} />
               ))}
               {article.media.filter((item) => item.kind === 'video').map((item) => (
                 <div key={item.id}>
                   <p className="mb-1 text-sm font-medium">{item.name}</p>
-                  <video controls src={item.url} className="w-full rounded-2xl border" />
+                  <video controls src={resolveJournalAsset(item.url)} className="w-full rounded-2xl border" />
                 </div>
               ))}
               {article.media.filter((item) => item.kind === 'document').length > 0 ? (
                 <ul className="space-y-2">
                   {article.media.filter((item) => item.kind === 'document').map((item) => (
                     <li key={item.id}>
-                      <a href={item.url} download={item.name} className="text-sm font-medium text-primary">{item.name}</a>
+                      <a href={resolveJournalAsset(item.url)} download={item.name} className="text-sm font-medium text-primary">{item.name}</a>
                     </li>
                   ))}
                 </ul>
