@@ -1,6 +1,6 @@
 import { JournalCover } from '@/components/journal/JournalVisual';
 import type { JournalArticle } from '@/data/journal';
-import { ChevronRight, ClipboardList } from 'lucide-react';
+import { Bookmark, ChevronRight } from 'lucide-react';
 import type { FC } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -9,21 +9,22 @@ function formatDate(iso: string) {
 }
 
 export const JournalRail: FC<{
-  recent: JournalArticle[];
-}> = ({ recent }) => (
+  articles: JournalArticle[];
+  empty?: string;
+}> = ({ articles, empty = 'Nenhuma publicação salva.' }) => (
   <div className="rounded-2xl border border-[#E7E0F0] bg-white p-3 shadow-[0_8px_24px_rgba(70,30,110,0.04)]">
     <div className="mb-3 flex items-center justify-between gap-2">
       <h2 className="flex min-w-0 items-center gap-2 text-[14px] font-semibold">
         <span className="unica-icon">
-          <ClipboardList className="h-3.5 w-3.5" strokeWidth={1.75} />
+          <Bookmark className="h-3.5 w-3.5" strokeWidth={1.75} />
         </span>
-        Publicações recentes
+        Salvas
       </h2>
       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
     </div>
-    {recent.length === 0 ? <p className="px-1 py-2 text-sm text-muted-foreground">Nenhuma publicação recente.</p> : null}
+    {articles.length === 0 ? <p className="px-1 py-2 text-sm text-muted-foreground">{empty}</p> : null}
     <div className="grid grid-cols-2 gap-2.5">
-      {recent.map((article) => (
+      {articles.map((article) => (
         <Link key={article.id} to={`/announcements/${article.id}`} className="flex h-full flex-col rounded-xl border border-[#EFE7F4] bg-white p-1.5 hover:border-primary/30">
           <JournalCover article={article} compact />
           <div className="flex flex-1 flex-col px-1.5 pt-2 pb-1">

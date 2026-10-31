@@ -2,7 +2,7 @@ import { JournalEditor } from '@/components/journal/JournalEditor';
 import { JournalRail } from '@/components/journal/JournalRail';
 import { JournalBadge } from '@/components/journal/JournalVisual';
 import { PageFrame } from '@/components/shell/PageFrame';
-import { useJournalArticles } from '@/components/journal/useJournal';
+import { useJournalArticles, useJournalSaved } from '@/components/journal/useJournal';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/Header';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,10 +14,11 @@ import {
   readingMinutes,
   toggleJournalPin,
   toggleJournalReaction,
+  toggleJournalSave,
 } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { ArrowLeft, Heart, MessageCircle, Pin } from 'lucide-react';
+import { ArrowLeft, Bookmark, Heart, MessageCircle, Pin } from 'lucide-react';
 import { useState, type FC } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -25,11 +26,11 @@ import { toast } from 'sonner';
 export const JournalArticlePage: FC = () => {
   const { id } = useParams();
   const articles = useJournalArticles();
+  const savedIds = useJournalSaved();
   const article = articles.find((item) => item.id === id);
   const [comment, setComment] = useState('');
   const [editing, setEditing] = useState(false);
   const canManage = canManageJournal(currentUser);
-  const published = articles.filter((item) => item.status === 'published').sort((a, b) => b.date.localeCompare(a.date));
 
   if (!article || (article.status === 'draft' && !canManage)) {
     return (
@@ -53,13 +54,13 @@ export const JournalArticlePage: FC = () => {
 
   function pin() {
     if (!article) return;
-    const ok = toggleJournalPin(article.id);
-    if (!ok) toast.error('O destaque aceita no máximo 3 publicações.');
+    const result = toggleJournalPin(article.id);
+    if (result.replacedId) toast.success('A publicação mais antiga saiu do destaque.');
   }
 
   return (
     <>
-    <PageFrame rail={<JournalRail recent={published.slice(0, 6)} />}>
+    <PageFrame rail={<JournalRail articles={savedIds.map((savedId) => articles.find((item) => item.id === savedId)).filter((item): item is NonNullable<typeof item> => Boolean(item))} />}>
         <article className="min-w-0 flex-1">
           <Link to="/announcements" className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
@@ -119,6 +120,10 @@ export const JournalArticlePage: FC = () => {
               <Heart className={cn('h-4 w-4', reacted && 'fill-current')} />
               {article.reactions}
             </button>
+            <button type="button" aria-pressed={savedIds.includes(article.id)} onClick={() => toggleJournalSave(article.id)} className={cn('inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm', savedIds.includes(article.id) && 'border-primary text-primary')}>
+              <Bookmark className={cn('h-4 w-4', savedIds.includes(article.id) && 'fill-current')} />
+              {savedIds.includes(article.id) ? 'Salva' : 'Salvar'}
+            </button>
             <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
               <MessageCircle className="h-4 w-4" />
               {article.comments.length}
@@ -161,7 +166,6 @@ export const JournalArticlePage: FC = () => {
           open={editing}
           article={article}
           author={currentUser.name}
-          pinnedCount={published.filter((item) => item.pinned).length}
           onOpenChange={setEditing}
         />
       ) : null}

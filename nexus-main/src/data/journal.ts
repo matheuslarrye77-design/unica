@@ -28,6 +28,7 @@ export type JournalArticle = {
   author: string;
   status: JournalStatus;
   pinned: boolean;
+  pinnedAt?: string;
   media: JournalMedia[];
   comments: JournalComment[];
   reactions: number;
@@ -80,6 +81,7 @@ const LEGACY_COVERS: Record<string, string> = {
 
 export const PIN_LIMIT = 3;
 const STORAGE_KEY = 'unica-journal';
+const SAVED_KEY = 'unica-journal-saved';
 const JOURNAL_VERSION = 'foto-2026-10-15';
 
 export function canManageJournal(user: { role: string; department?: string }) {
@@ -145,6 +147,7 @@ const seed: JournalArticle[] = [
     author: 'Helena Duarte',
     status: 'published',
     pinned: true,
+    pinnedAt: '2026-10-14T09:00:00.000Z',
     media: [],
     comments: thread('roteiro', 24),
     reactions: 1,
@@ -160,6 +163,7 @@ const seed: JournalArticle[] = [
     author: 'João Ferreira',
     status: 'published',
     pinned: true,
+    pinnedAt: '2026-10-13T18:00:00.000Z',
     media: [],
     comments: thread('atualizacao', 11),
     reactions: 0,
@@ -175,6 +179,7 @@ const seed: JournalArticle[] = [
     author: 'Helena Duarte',
     status: 'published',
     pinned: true,
+    pinnedAt: '2026-10-13T16:00:00.000Z',
     media: [],
     comments: thread('manutencao', 18),
     reactions: 1,
@@ -378,6 +383,7 @@ function readStored(): JournalArticle[] {
     if (!Array.isArray(parsed) || parsed.length === 0) return seed;
     let changed = false;
     const migrated = parsed.map((article) => {
+      let next = article;
       const cover = article.id === 'j-atualizacao' && article.cover === '/jornal/fotos/processos.jpg'
         ? '/jornal/capas/teclado.jpg'
         : article.cover === '/jornal/capas/evento.jpg'
@@ -385,9 +391,10 @@ function readStored(): JournalArticle[] {
           : article.id === 'j-matricula' && article.cover === '/jornal/capas/processos.jpg'
             ? '/jornal/fotos/processos.jpg'
             : LEGACY_COVERS[article.cover];
-      if (!cover || cover === article.cover) return article;
-      changed = true;
-      return { ...article, cover };
+      if (cover && cover !== article.cover) next = { ...next, cover };
+      if (next.pinned && !next.pinnedAt) next = { ...next, pinnedAt: next.date };
+      if (next !== article) changed = true;
+      return next;
     });
     if (changed) localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
     return migrated;
@@ -397,8 +404,18 @@ function readStored(): JournalArticle[] {
 }
 
 function commit(next: JournalArticle[]) {
+  const previous = articles;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    articles = previous;
+    throw new Error('storage');
+  }
   articles = next;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  listeners.forEach((listener) => listener());
+}
+
+function notify() {
   listeners.forEach((listener) => listener());
 }
 
@@ -416,16 +433,36 @@ export function subscribeJournal(listener: () => void) {
 export function pinnedArticles(list = articles) {
   return list
     .filter((article) => article.status === 'published' && article.pinned)
-    .sort((a, b) => b.date.localeCompare(a.date))
+    .sort((a, b) => (b.pinnedAt ?? b.date).localeCompare(a.pinnedAt ?? a.date))
     .slice(0, PIN_LIMIT);
+}
+
+function withPin(list: JournalArticle[], id: string, pinned: boolean, stamp?: string) {
+  if (!pinned) {
+    return { list: list.map((article) => (article.id === id ? { ...article, pinned: false, pinnedAt: undefined } : article)), replacedId: undefined as string | undefined };
+  }
+  let next = list;
+  const current = next.find((article) => article.id === id);
+  const already = Boolean(current?.pinned && stamp);
+  let replacedId: string | undefined;
+  if (!already) {
+    const pinnedOnes = next.filter((article) => article.pinned && article.status === 'published' && article.id !== id);
+    if (pinnedOnes.length >= PIN_LIMIT) {
+      const oldest = [...pinnedOnes].sort((a, b) => (a.pinnedAt ?? a.date).localeCompare(b.pinnedAt ?? b.date))[0];
+      replacedId = oldest?.id;
+      if (oldest) next = next.map((article) => (article.id === oldest.id ? { ...article, pinned: false, pinnedAt: undefined } : article));
+    }
+  }
+  const pinnedAt = stamp ?? new Date().toISOString();
+  next = next.map((article) => (article.id === id ? { ...article, pinned: true, pinnedAt } : article));
+  return { list: next, replacedId };
 }
 
 export function saveJournalArticle(draft: JournalDraft, id?: string) {
   const current = id ? articles.find((article) => article.id === id) : undefined;
-  const othersPinned = articles.filter((article) => article.pinned && article.id !== id).length;
-  const pinned = draft.pinned && (draft.status === 'draft' ? false : othersPinned < PIN_LIMIT || Boolean(current?.pinned));
+  const articleId = id ?? generateId();
   const next: JournalArticle = {
-    id: id ?? generateId(),
+    id: articleId,
     title: draft.title.trim(),
     content: draft.content.trim(),
     category: draft.category,
@@ -433,22 +470,42 @@ export function saveJournalArticle(draft: JournalDraft, id?: string) {
     date: new Date(draft.date.includes('T') ? draft.date : `${draft.date}T12:00:00`).toISOString(),
     author: draft.author.trim(),
     status: draft.status,
-    pinned: draft.status === 'published' ? pinned : false,
+    pinned: false,
+    pinnedAt: current?.pinnedAt,
     media: draft.media,
     comments: current?.comments ?? [],
     reactions: current?.reactions ?? 0,
     reactedBy: current?.reactedBy ?? [],
   };
-  commit(id ? articles.map((article) => (article.id === id ? next : article)) : [next, ...articles]);
-  return { article: next, pinBlocked: draft.pinned && draft.status === 'published' && !pinned };
+  const listed = id ? articles.map((article) => (article.id === id ? next : article)) : [next, ...articles];
+  const pinned = withPin(listed, articleId, draft.pinned && draft.status === 'published', current?.pinned ? current.pinnedAt : undefined);
+  commit(pinned.list);
+  return { article: pinned.list.find((article) => article.id === articleId) ?? next, replacedId: pinned.replacedId };
 }
 
 export function toggleJournalPin(id: string) {
   const article = articles.find((item) => item.id === id);
-  if (!article || article.status !== 'published') return false;
-  if (!article.pinned && pinnedArticles().length >= PIN_LIMIT) return false;
-  commit(articles.map((item) => (item.id === id ? { ...item, pinned: !item.pinned } : item)));
-  return true;
+  if (!article || article.status !== 'published') return { ok: false as const };
+  const pinned = withPin(articles, id, !article.pinned, article.pinned ? article.pinnedAt : undefined);
+  commit(pinned.list);
+  return { ok: true as const, pinned: !article.pinned, replacedId: pinned.replacedId };
+}
+
+export function savedJournalIds() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SAVED_KEY) ?? '[]') as string[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function toggleJournalSave(id: string) {
+  const current = savedJournalIds();
+  const next = current.includes(id) ? current.filter((item) => item !== id) : [id, ...current];
+  localStorage.setItem(SAVED_KEY, JSON.stringify(next));
+  notify();
+  return next.includes(id);
 }
 
 export function toggleJournalReaction(id: string, name: string) {

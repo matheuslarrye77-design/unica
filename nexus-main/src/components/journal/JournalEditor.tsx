@@ -7,7 +7,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { JournalCover } from '@/components/journal/JournalVisual';
 import {
   JOURNAL_CATEGORIES,
-  PIN_LIMIT,
   isUserCover,
   mediaKind,
   saveJournalArticle,
@@ -23,7 +22,6 @@ type Props = {
   open: boolean;
   article?: JournalArticle | null;
   author: string;
-  pinnedCount: number;
   onOpenChange: (open: boolean) => void;
 };
 
@@ -48,7 +46,35 @@ function readFile(file: File) {
   });
 }
 
-export const JournalEditor: FC<Props> = ({ open, article, author, pinnedCount, onOpenChange }) => {
+function compressImage(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      const max = 1400;
+      const scale = Math.min(1, max / Math.max(image.width, image.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext('2d');
+      if (!context) {
+        URL.revokeObjectURL(url);
+        reject(new Error('canvas'));
+        return;
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('image'));
+    };
+    image.src = url;
+  });
+}
+
+export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState<JournalCategory>('social');
@@ -70,11 +96,9 @@ export const JournalEditor: FC<Props> = ({ open, article, author, pinnedCount, o
     setPinned(article?.pinned ?? false);
   }, [open, article, author]);
 
-  const pinAvailable = pinned || Boolean(article?.pinned) || pinnedCount < PIN_LIMIT;
-
   async function onCoverFile(file?: File) {
     if (!file) return;
-    setCover(await readFile(file));
+    setCover(file.type.startsWith('image/') ? await compressImage(file) : await readFile(file));
   }
 
   async function onAttachments(files: FileList | null) {
@@ -83,7 +107,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, pinnedCount, o
       id: `${file.name}-${file.size}-${file.lastModified}`,
       name: file.name,
       kind: mediaKind(file),
-      url: await readFile(file),
+      url: file.type.startsWith('image/') ? await compressImage(file) : await readFile(file),
     })));
     setMedia((current) => [...current, ...next].slice(0, 6));
   }
@@ -93,20 +117,24 @@ export const JournalEditor: FC<Props> = ({ open, article, author, pinnedCount, o
       toast.error('Preencha título, conteúdo, categoria, data e autor.');
       return;
     }
-    const result = saveJournalArticle({
-      title,
-      content,
-      category,
-      cover,
-      date,
-      author: authorName,
-      status,
-      pinned,
-      media,
-    }, article?.id);
-    if (result.pinBlocked) toast.error('Já existem 3 publicações fixadas. Esta foi salva sem destaque.');
-    else toast.success(status === 'draft' ? 'Rascunho salvo.' : 'Publicação salva.');
-    onOpenChange(false);
+    try {
+      const result = saveJournalArticle({
+        title,
+        content,
+        category,
+        cover,
+        date,
+        author: authorName,
+        status,
+        pinned,
+        media,
+      }, article?.id);
+      if (result.replacedId) toast.success('Publicação salva. A mais antiga saiu do destaque.');
+      else toast.success(status === 'draft' ? 'Rascunho salvo.' : 'Publicação salva.');
+      onOpenChange(false);
+    } catch {
+      toast.error('Não foi possível salvar. A imagem pode ter ficado grande demais.');
+    }
   }
 
   return (
@@ -175,8 +203,8 @@ export const JournalEditor: FC<Props> = ({ open, article, author, pinnedCount, o
             ) : null}
           </div>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={pinned} disabled={!pinAvailable} onChange={(event) => setPinned(event.target.checked)} />
-            Fixar em destaque {pinAvailable ? '' : `(limite de ${PIN_LIMIT})`}
+            <input type="checkbox" checked={pinned} onChange={(event) => setPinned(event.target.checked)} />
+            Fixar em destaque. Se já houver três, a mais antiga sai.
           </label>
         </div>
         <DialogFooter>

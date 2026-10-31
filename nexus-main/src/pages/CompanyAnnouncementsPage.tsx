@@ -2,12 +2,12 @@ import { JournalEditor } from '@/components/journal/JournalEditor';
 import { JournalRail } from '@/components/journal/JournalRail';
 import { JournalCover, categoryTone } from '@/components/journal/JournalVisual';
 import { PageFrame } from '@/components/shell/PageFrame';
-import { useJournalArticles } from '@/components/journal/useJournal';
+import { useJournalArticles, useJournalSaved } from '@/components/journal/useJournal';
 import { Input } from '@/components/ui/input';
-import { articleSummary, canManageJournal, readingMinutes, type JournalArticle, type JournalCategory } from '@/data/journal';
+import { articleSummary, canManageJournal, readingMinutes, toggleJournalSave, type JournalArticle, type JournalCategory } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { Calendar, ChevronRight, ClipboardList, Clock, Newspaper, Plus, Search } from 'lucide-react';
+import { Bookmark, Calendar, ChevronRight, ClipboardList, Clock, Newspaper, Plus, Search } from 'lucide-react';
 import { useMemo, useState, type FC } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -15,7 +15,7 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-const FeaturedCard: FC<{ article: JournalArticle }> = ({ article }) => {
+const FeaturedCard: FC<{ article: JournalArticle; saved: boolean }> = ({ article, saved }) => {
   const minutes = readingMinutes(article.content);
   return (
     <Link to={`/announcements/${article.id}`} className="group flex flex-col rounded-[22px] border border-[#EFE8F4] bg-white p-3.5 shadow-[0_10px_28px_rgba(80,40,120,0.06)]">
@@ -29,6 +29,15 @@ const FeaturedCard: FC<{ article: JournalArticle }> = ({ article }) => {
       <div className="mt-auto flex items-center gap-2 pt-3.5">
         <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#7A2498] text-[10px] font-bold tracking-tight text-white">U1</span>
         <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-[#6A228C]">{article.author}</span>
+        <button
+          type="button"
+          aria-label={saved ? 'Remover dos salvos' : 'Salvar'}
+          aria-pressed={saved}
+          onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleJournalSave(article.id); }}
+          className={cn('grid h-7 w-7 place-items-center rounded-full', saved ? 'text-[#7A2498]' : 'text-[#C9BED6] hover:text-[#8E35B8]')}
+        >
+          <Bookmark className="h-4 w-4" fill={saved ? 'currentColor' : 'none'} />
+        </button>
         <ChevronRight className="h-4 w-4 shrink-0 text-[#C9BED6] transition-colors group-hover:text-[#8E35B8]" />
       </div>
     </Link>
@@ -37,6 +46,7 @@ const FeaturedCard: FC<{ article: JournalArticle }> = ({ article }) => {
 
 export const CompanyAnnouncementsPage: FC = () => {
   const articles = useJournalArticles();
+  const savedIds = useJournalSaved();
   const [params, setParams] = useSearchParams();
   const category = params.get('categoria') ?? 'todos';
   const [search, setSearch] = useState('');
@@ -55,10 +65,12 @@ export const CompanyAnnouncementsPage: FC = () => {
     const matchesSearch = `${article.title} ${article.content} ${article.author}`.toLowerCase().includes(query);
     return matchesCategory && matchesSearch;
   });
-  const featured = visible.filter((article) => article.pinned).slice(0, 3);
+  const featured = [...visible.filter((article) => article.pinned)].sort((a, b) => (b.pinnedAt ?? b.date).localeCompare(a.pinnedAt ?? a.date)).slice(0, 3);
+  const featuredIds = new Set(featured.map((article) => article.id));
   const cards = showingDefault ? featured : visible;
+  const recent = showingDefault ? published.filter((article) => !featuredIds.has(article.id)) : [];
   const drafts = articles.filter((article) => article.status === 'draft');
-  const railRecent = published.filter((article) => !article.pinned).slice(0, 6);
+  const savedArticles = savedIds.map((id) => published.find((article) => article.id === id)).filter((article): article is JournalArticle => Boolean(article));
 
   function selectCategory(next: string) {
     if (next === 'todos') setParams({}, { replace: true });
@@ -77,7 +89,7 @@ export const CompanyAnnouncementsPage: FC = () => {
 
   return (
     <>
-    <PageFrame rail={<JournalRail recent={railRecent} />}>
+    <PageFrame rail={<JournalRail articles={savedArticles} />}>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]">
@@ -145,17 +157,24 @@ export const CompanyAnnouncementsPage: FC = () => {
               <p className="rounded-2xl border border-[#E7E0F0] bg-white px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma publicação encontrada.</p>
             ) : (
               <div className="grid items-stretch gap-3 md:grid-cols-3">
-                {cards.map((article) => <FeaturedCard key={article.id} article={article} />)}
+                {cards.map((article) => <FeaturedCard key={article.id} article={article} saved={savedIds.includes(article.id)} />)}
               </div>
             )}
           </section>
+          {recent.length > 0 ? (
+            <section className="mt-8">
+              <h2 className="mb-3 text-[18px] font-semibold">Publicações recentes</h2>
+              <div className="grid items-stretch gap-3 md:grid-cols-3">
+                {recent.map((article) => <FeaturedCard key={article.id} article={article} saved={savedIds.includes(article.id)} />)}
+              </div>
+            </section>
+          ) : null}
     </PageFrame>
       {canManage ? (
         <JournalEditor
           open={editorOpen}
           article={editing}
           author={currentUser.name}
-          pinnedCount={published.filter((article) => article.pinned).length}
           onOpenChange={setEditorOpen}
         />
       ) : null}
