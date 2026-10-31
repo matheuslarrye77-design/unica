@@ -27,7 +27,7 @@ import { useEffect, useRef, useState, type FC } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
-const JournalAudio: FC<{ name: string; url: string; start?: number; duration?: number }> = ({ name, url, start = 0, duration }) => {
+const JournalAudio: FC<{ url: string; start?: number; duration?: number }> = ({ url, start = 0, duration }) => {
   const ref = useRef<HTMLAudioElement>(null);
   useEffect(() => {
     const audio = ref.current;
@@ -48,12 +48,7 @@ const JournalAudio: FC<{ name: string; url: string; start?: number; duration?: n
       audio.removeEventListener('timeupdate', tick);
     };
   }, [start, duration]);
-  return (
-    <div>
-      <p className="mb-1 text-sm font-medium">{name}</p>
-      <audio ref={ref} controls src={url} preload="metadata" className="w-full" />
-    </div>
-  );
+  return <audio ref={ref} controls src={url} preload="metadata" className="w-full" />;
 };
 
 export const JournalArticlePage: FC = () => {
@@ -139,13 +134,10 @@ export const JournalArticlePage: FC = () => {
                 <img key={item.id} src={resolveJournalAsset(item.url)} alt={item.name} className="w-full rounded-2xl border" />
               ))}
               {article.media.filter((item) => item.kind === 'audio').map((item) => (
-                <JournalAudio key={item.id} name={item.name} url={resolveJournalAsset(item.url)} start={item.start} duration={item.duration} />
+                <JournalAudio key={item.id} url={resolveJournalAsset(item.url)} start={item.start} duration={item.duration} />
               ))}
               {article.media.filter((item) => item.kind === 'video').map((item) => (
-                <div key={item.id}>
-                  <p className="mb-1 text-sm font-medium">{item.name}</p>
-                  <video controls src={resolveJournalAsset(item.url)} className="w-full rounded-2xl border" />
-                </div>
+                <video key={item.id} controls src={resolveJournalAsset(item.url)} className="w-full rounded-2xl border" />
               ))}
               {article.media.filter((item) => item.kind === 'document').length > 0 ? (
                 <ul className="space-y-2">

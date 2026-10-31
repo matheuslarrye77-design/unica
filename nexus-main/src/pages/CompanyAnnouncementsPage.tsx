@@ -118,9 +118,8 @@ export const CompanyAnnouncementsPage: FC = () => {
                   <Trash2 className="h-4 w-4" />
                   {removed.length > 0 ? <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#9D174D] px-1 text-[10px] font-semibold text-white">{removed.length}</span> : null}
                 </button>
-                <button type="button" onClick={openCreate} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
+                <button type="button" aria-label="Nova publicação" onClick={openCreate} className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90">
                   <Plus className="h-4 w-4" />
-                  Nova publicação
                 </button>
               </div>
             ) : null}
@@ -142,13 +141,18 @@ export const CompanyAnnouncementsPage: FC = () => {
               {removed.length === 0 ? (
                 <p className="mt-3 text-sm text-muted-foreground">Nenhuma publicação removida.</p>
               ) : (
-                <div className="mt-3 flex flex-col gap-2">
+                <div className="mt-3 grid items-stretch gap-3 md:grid-cols-2">
                   {removed.map((article) => (
-                    <div key={article.id} className="flex items-center gap-2 rounded-xl border border-[#E7E0F0] px-3 py-2.5">
-                      <span className="min-w-0 flex-1 truncate text-[13.5px]">{article.title}</span>
-                      <button type="button" className="shrink-0 text-[13px] font-semibold text-[#6A228C]" onClick={() => restoreJournalArticle(article.id)}>Restaurar</button>
-                      <button type="button" className="shrink-0 text-[13px] font-semibold text-[#9D174D]" onClick={() => { if (window.confirm('Excluir esta publicação de vez?')) purgeJournalArticle(article.id); }}>Excluir</button>
-                    </div>
+                    <article key={article.id} className="flex flex-col rounded-[22px] border border-[#EFE8F4] bg-white p-3.5 shadow-[0_10px_28px_rgba(80,40,120,0.06)]">
+                      <JournalCover article={article} />
+                      <h3 className="mt-3 line-clamp-2 text-[16px] font-semibold leading-snug text-[#1A1428]">{article.title}</h3>
+                      <p className="mt-2 line-clamp-3 text-[13px] leading-5 text-[#625C70]">{articleSummary(article.content)}</p>
+                      <p className="mt-2 text-[12px] text-[#948D9E]">{formatDate(article.date)}</p>
+                      <div className="mt-3 flex items-center gap-3">
+                        <button type="button" className="text-[13px] font-semibold text-[#6A228C]" onClick={() => restoreJournalArticle(article.id)}>Restaurar</button>
+                        <button type="button" className="text-[13px] font-semibold text-[#9D174D]" onClick={() => { if (window.confirm('Excluir esta publicação de vez?')) purgeJournalArticle(article.id); }}>Excluir</button>
+                      </div>
+                    </article>
                   ))}
                 </div>
               )}

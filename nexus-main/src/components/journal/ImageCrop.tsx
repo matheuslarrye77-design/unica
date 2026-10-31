@@ -1,7 +1,7 @@
-import { Minus, Plus } from 'lucide-react';
+import { Scissors, Search } from 'lucide-react';
 import { useEffect, useRef, useState, type FC, type PointerEvent as ReactPointerEvent } from 'react';
 
-type FormatId = 'livre' | 'retangular' | 'quadrado' | 'faixa';
+type FormatId = 'livre' | 'retangular' | 'quadrado' | 'circular' | 'triangular' | 'faixa';
 type Corner = 'nw' | 'ne' | 'sw' | 'se';
 type Box = { x: number; y: number; w: number; h: number };
 
@@ -9,6 +9,8 @@ const FORMATS: { id: FormatId; label: string; ratio: number | null }[] = [
   { id: 'livre', label: 'Livre', ratio: null },
   { id: 'retangular', label: 'Retangular', ratio: 3 / 2 },
   { id: 'quadrado', label: 'Quadrado', ratio: 1 },
+  { id: 'circular', label: 'Circular', ratio: 1 },
+  { id: 'triangular', label: 'Triangular', ratio: 1 },
   { id: 'faixa', label: 'Faixa', ratio: 1400 / 320 },
 ];
 
@@ -81,10 +83,12 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
   const [stage, setStage] = useState({ w: 520, h: 280 });
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [format, setFormat] = useState<FormatId>(banner ? 'faixa' : 'livre');
+  const [format, setFormat] = useState<FormatId | null>(null);
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const [shapesOpen, setShapesOpen] = useState(false);
   const [crop, setCrop] = useState<Box>({ x: 40, y: 40, w: 200, h: 120 });
   const [opacity, setOpacity] = useState(1);
-  const ratio = FORMATS.find((item) => item.id === format)?.ratio ?? null;
+  const ratio = format ? FORMATS.find((item) => item.id === format)?.ratio ?? null : null;
   const frame = imageFrame(stage, zoom, pan);
 
   useEffect(() => {
@@ -94,22 +98,24 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
     image.onload = () => {
       imageRef.current = image;
       const nextStage = stageFor({ w: image.width, h: image.height });
-      const nextFormat: FormatId = banner ? 'faixa' : 'livre';
       setStage(nextStage);
       setZoom(1);
       setPan({ x: 0, y: 0 });
-      setFormat(nextFormat);
-      setCrop(fitCrop(nextStage, FORMATS.find((item) => item.id === nextFormat)?.ratio ?? null));
+      setFormat(null);
+      setZoomOpen(false);
+      setShapesOpen(false);
+      setCrop(fitCrop(nextStage, null));
     };
     image.src = url;
     return () => URL.revokeObjectURL(url);
   }, [file, banner]);
 
-  function chooseFormat(next: FormatId) {
+  function chooseFormat(next: FormatId | null) {
     setFormat(next);
+    setShapesOpen(false);
     setZoom(1);
     setPan({ x: 0, y: 0 });
-    setCrop(fitCrop(stage, FORMATS.find((item) => item.id === next)?.ratio ?? null));
+    setCrop(fitCrop(stage, next ? FORMATS.find((item) => item.id === next)?.ratio ?? null : null));
   }
 
   function changeZoom(next: number) {
@@ -166,6 +172,25 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
   function confirm() {
     const image = imageRef.current;
     if (!image) return;
+    if (!format) {
+      if (!darken || opacity >= 1) {
+        onConfirm(file);
+        return;
+      }
+      const full = document.createElement('canvas');
+      full.width = image.width;
+      full.height = image.height;
+      const fullContext = full.getContext('2d');
+      if (!fullContext) return;
+      fullContext.drawImage(image, 0, 0);
+      fullContext.fillStyle = `rgba(0,0,0,${1 - opacity})`;
+      fullContext.fillRect(0, 0, full.width, full.height);
+      full.toBlob((blob) => {
+        if (!blob) return;
+        onConfirm(new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }));
+      }, 'image/jpeg', 0.92);
+      return;
+    }
     const sx = Math.max(0, ((crop.x - frame.x) / frame.w) * image.width);
     const sy = Math.max(0, ((crop.y - frame.y) / frame.h) * image.height);
     const sw = Math.min(image.width - sx, (crop.w / frame.w) * image.width);
@@ -177,12 +202,28 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
     output.height = Math.max(1, Math.round(sh * scale));
     const context = output.getContext('2d');
     if (!context) return;
+    const shaped = format === 'circular' || format === 'triangular';
+    context.save();
+    if (format === 'circular') {
+      context.beginPath();
+      context.arc(output.width / 2, output.height / 2, Math.min(output.width, output.height) / 2, 0, Math.PI * 2);
+      context.clip();
+    }
+    if (format === 'triangular') {
+      context.beginPath();
+      context.moveTo(output.width / 2, 0);
+      context.lineTo(output.width, output.height);
+      context.lineTo(0, output.height);
+      context.closePath();
+      context.clip();
+    }
     context.drawImage(image, sx, sy, sw, sh, 0, 0, output.width, output.height);
     if (darken && opacity < 1) {
       context.fillStyle = `rgba(0,0,0,${1 - opacity})`;
       context.fillRect(0, 0, output.width, output.height);
     }
-    const type = file.type === 'image/png' || file.type === 'image/webp' ? file.type : 'image/jpeg';
+    context.restore();
+    const type = shaped ? 'image/png' : file.type === 'image/png' || file.type === 'image/webp' ? file.type : 'image/jpeg';
     output.toBlob((blob) => {
       if (!blob) return;
       const extension = type === 'image/png' ? '.png' : type === 'image/webp' ? '.webp' : '.jpg';
@@ -196,14 +237,7 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
     <div data-journal-overlay className="pointer-events-auto fixed inset-0 z-[80] grid place-items-center bg-black/60 p-4" style={{ pointerEvents: 'auto' }}>
       <div className="pointer-events-auto w-full max-w-xl rounded-3xl bg-card p-4 shadow-xl" style={{ pointerEvents: 'auto' }} role="dialog" aria-label={banner ? 'Ajustar capa' : 'Ajustar foto'}>
         <p className="text-sm font-medium text-foreground">{banner ? 'Ajustar capa' : 'Ajustar foto'}</p>
-        <p className="mt-1 text-xs text-muted-foreground">Arraste a área e escolha o formato. A grade mostra o enquadramento.</p>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {formats.map((item) => (
-            <button key={item.id} type="button" aria-pressed={format === item.id} onClick={() => chooseFormat(item.id)} className={`rounded-full px-3 py-1 text-[12px] font-semibold ${format === item.id ? 'bg-[#8E35B8] text-white' : 'bg-[#F3E4FA] text-[#6A228C]'}`}>
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <p className="mt-1 text-xs text-muted-foreground">A imagem entra inteira. A tesoura só recorta se você escolher um formato.</p>
         <div
           ref={stageRef}
           className="relative mx-auto mt-3 touch-none overflow-hidden rounded-2xl bg-[#F6F3FA]"
@@ -221,39 +255,56 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
               style={{ left: `${(frame.x / stage.w) * 100}%`, top: `${(frame.y / stage.h) * 100}%`, width: `${(frame.w / stage.w) * 100}%`, height: `${(frame.h / stage.h) * 100}%` }}
             />
           ) : null}
-          <div className="pointer-events-none absolute inset-x-0 top-0 bg-[#1A1428]/40" style={{ height: `${(crop.y / stage.h) * 100}%` }} />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-[#1A1428]/40" style={{ height: `${((stage.h - crop.y - crop.h) / stage.h) * 100}%` }} />
-          <div className="pointer-events-none absolute bg-[#1A1428]/40" style={{ top: `${(crop.y / stage.h) * 100}%`, height: `${(crop.h / stage.h) * 100}%`, left: 0, width: `${(crop.x / stage.w) * 100}%` }} />
-          <div className="pointer-events-none absolute bg-[#1A1428]/40" style={{ top: `${(crop.y / stage.h) * 100}%`, height: `${(crop.h / stage.h) * 100}%`, right: 0, width: `${((stage.w - crop.x - crop.w) / stage.w) * 100}%` }} />
-          <div
-            className="absolute cursor-move border border-white"
-            style={{ left: `${(crop.x / stage.w) * 100}%`, top: `${(crop.y / stage.h) * 100}%`, width: `${(crop.w / stage.w) * 100}%`, height: `${(crop.h / stage.h) * 100}%` }}
-            onPointerDown={(event) => onPointerDown(event, 'move')}
-          >
-            <div className="pointer-events-none absolute inset-y-0 left-1/3 w-px bg-white/80" />
-            <div className="pointer-events-none absolute inset-y-0 left-2/3 w-px bg-white/80" />
-            <div className="pointer-events-none absolute inset-x-0 top-1/3 h-px bg-white/80" />
-            <div className="pointer-events-none absolute inset-x-0 top-2/3 h-px bg-white/80" />
-            {darken && opacity < 1 ? <div className="pointer-events-none absolute inset-0 bg-black" style={{ opacity: 1 - opacity }} /> : null}
-            {(['nw', 'ne', 'sw', 'se'] as Corner[]).map((corner) => (
-              <button
-                key={corner}
-                type="button"
-                aria-label="Ajustar recorte"
-                className={`absolute z-10 h-3.5 w-3.5 rounded-full border border-white bg-[#8E35B8] ${corner.includes('n') ? '-top-1.5' : '-bottom-1.5'} ${corner.includes('w') ? '-left-1.5' : '-right-1.5'}`}
-                onPointerDown={(event) => onPointerDown(event, corner)}
-              />
-            ))}
-          </div>
+          {darken && opacity < 1 && !format ? <div className="pointer-events-none absolute inset-0 bg-black" style={{ opacity: 1 - opacity }} /> : null}
+          {format ? (
+            <>
+              <div className="pointer-events-none absolute inset-x-0 top-0 bg-[#1A1428]/40" style={{ height: `${(crop.y / stage.h) * 100}%` }} />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-[#1A1428]/40" style={{ height: `${((stage.h - crop.y - crop.h) / stage.h) * 100}%` }} />
+              <div className="pointer-events-none absolute bg-[#1A1428]/40" style={{ top: `${(crop.y / stage.h) * 100}%`, height: `${(crop.h / stage.h) * 100}%`, left: 0, width: `${(crop.x / stage.w) * 100}%` }} />
+              <div className="pointer-events-none absolute bg-[#1A1428]/40" style={{ top: `${(crop.y / stage.h) * 100}%`, height: `${(crop.h / stage.h) * 100}%`, right: 0, width: `${((stage.w - crop.x - crop.w) / stage.w) * 100}%` }} />
+              <div
+                className={`absolute cursor-move border border-white ${format === 'circular' ? 'rounded-full' : ''}`}
+                style={{ left: `${(crop.x / stage.w) * 100}%`, top: `${(crop.y / stage.h) * 100}%`, width: `${(crop.w / stage.w) * 100}%`, height: `${(crop.h / stage.h) * 100}%`, clipPath: format === 'triangular' ? 'polygon(50% 0, 100% 100%, 0 100%)' : undefined }}
+                onPointerDown={(event) => onPointerDown(event, 'move')}
+              >
+                <div className="pointer-events-none absolute inset-y-0 left-1/3 w-px bg-white/80" />
+                <div className="pointer-events-none absolute inset-y-0 left-2/3 w-px bg-white/80" />
+                <div className="pointer-events-none absolute inset-x-0 top-1/3 h-px bg-white/80" />
+                <div className="pointer-events-none absolute inset-x-0 top-2/3 h-px bg-white/80" />
+                {darken && opacity < 1 ? <div className="pointer-events-none absolute inset-0 bg-black" style={{ opacity: 1 - opacity }} /> : null}
+                {(['nw', 'ne', 'sw', 'se'] as Corner[]).map((corner) => (
+                  <button
+                    key={corner}
+                    type="button"
+                    aria-label="Ajustar recorte"
+                    className={`absolute z-10 h-3.5 w-3.5 rounded-full border border-white bg-[#8E35B8] ${corner.includes('n') ? '-top-1.5' : '-bottom-1.5'} ${corner.includes('w') ? '-left-1.5' : '-right-1.5'}`}
+                    onPointerDown={(event) => onPointerDown(event, corner)}
+                  />
+                ))}
+              </div>
+            </>
+          ) : null}
         </div>
-        <div className="mt-4 flex items-center gap-3">
-          <button type="button" aria-label="Diminuir zoom" className="grid h-9 w-9 place-items-center rounded-full bg-[#F8EAFB] text-[#6A228C]" onClick={() => changeZoom(zoom - 0.15)}>
-            <Minus className="h-4 w-4" />
+        <div className="relative mt-3 flex items-center gap-2">
+          <button type="button" aria-expanded={zoomOpen} aria-label="Zoom" onClick={() => { setZoomOpen((current) => !current); setShapesOpen(false); }} className={`grid h-8 w-8 place-items-center rounded-full ${zoomOpen ? 'bg-[#8E35B8] text-white' : 'bg-[#F3E4FA] text-[#6A228C]'}`}>
+            <Search className="h-3.5 w-3.5" />
           </button>
-          <input aria-label="Zoom" type="range" min={1} max={3} step={0.01} value={zoom} onChange={(event) => changeZoom(Number(event.target.value))} className="h-1.5 flex-1 accent-[#8E35B8]" />
-          <button type="button" aria-label="Aumentar zoom" className="grid h-9 w-9 place-items-center rounded-full bg-[#F8EAFB] text-[#6A228C]" onClick={() => changeZoom(zoom + 0.15)}>
-            <Plus className="h-4 w-4" />
+          <button type="button" aria-expanded={shapesOpen} aria-label="Recortar" onClick={() => { setShapesOpen((current) => !current); setZoomOpen(false); }} className={`grid h-8 w-8 place-items-center rounded-full ${shapesOpen || format ? 'bg-[#8E35B8] text-white' : 'bg-[#F3E4FA] text-[#6A228C]'}`}>
+            <Scissors className="h-3.5 w-3.5" />
           </button>
+          {zoomOpen ? (
+            <input aria-label="Zoom" type="range" min={1} max={3} step={0.01} value={zoom} onChange={(event) => changeZoom(Number(event.target.value))} className="h-1.5 min-w-0 flex-1 accent-[#8E35B8]" />
+          ) : null}
+          {shapesOpen ? (
+            <div className="absolute bottom-10 left-0 z-20 w-44 rounded-2xl border border-[#E6DEEF] bg-white p-1.5 shadow-[0_12px_32px_rgba(70,30,110,0.14)]">
+              <button type="button" className="block w-full rounded-xl px-3 py-1.5 text-left text-[13px] text-[#6A228C] hover:bg-[#F8F4FB]" onClick={() => chooseFormat(null)}>Sem corte</button>
+              {formats.map((item) => (
+                <button key={item.id} type="button" aria-pressed={format === item.id} className={`block w-full rounded-xl px-3 py-1.5 text-left text-[13px] ${format === item.id ? 'bg-[#F3E4FA] font-semibold text-[#6A228C]' : 'text-[#3C3952] hover:bg-[#F8F4FB]'}`} onClick={() => chooseFormat(item.id)}>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
         {darken ? (
           <label className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">

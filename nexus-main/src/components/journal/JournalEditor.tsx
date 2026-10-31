@@ -96,11 +96,128 @@ function imageFile(file: File) {
 }
 
 function growField(node: HTMLTextAreaElement, expanded: boolean) {
-  const cap = expanded ? 420 : 168;
-  const floor = expanded ? 120 : 40;
+  const cap = expanded ? 640 : 168;
+  const floor = expanded ? 160 : 40;
   node.style.height = '0px';
   node.style.height = `${Math.min(Math.max(node.scrollHeight, floor), cap)}px`;
 }
+
+function pieceVisible(piece: JournalPiece, index: number, pieces: JournalPiece[]) {
+  if (piece.kind === 'image') return true;
+  if (index === 0 || index === pieces.length - 1) return true;
+  return piece.text.length > 0;
+}
+
+const AttachedMedia: FC<{ items: JournalMedia[]; onRemove?: (id: string) => void }> = ({ items, onRemove }) => (
+  <ul className="space-y-2">
+    {items.map((item) => (
+      <li key={item.id} className="flex items-center gap-2 rounded-xl bg-[#FBF9FD] px-3 py-2" onPointerDown={(event) => event.stopPropagation()}>
+        <span className="min-w-0 flex-1">
+          {item.kind === 'audio' ? <ClipAudio url={resolveJournalAsset(item.url)} start={item.start} duration={item.duration} /> : null}
+          {item.kind === 'video' ? <video controls src={resolveJournalAsset(item.url)} className="max-h-36 w-full rounded-lg" /> : null}
+          {item.kind === 'image' ? <img src={resolveJournalAsset(item.url)} alt="" className="max-h-28 rounded-lg object-contain" /> : null}
+          {item.kind === 'document' ? <a href={resolveJournalAsset(item.url)} target="_blank" rel="noreferrer" className="block truncate text-[13px] font-medium text-[#6A228C] underline">{item.name}</a> : null}
+        </span>
+        {onRemove ? <button type="button" className="shrink-0 text-[12px] font-semibold text-[#9D174D]" onClick={() => onRemove(item.id)}>Remover</button> : null}
+      </li>
+    ))}
+  </ul>
+);
+
+const ClipAudio: FC<{ url: string; start?: number; duration?: number }> = ({ url, start = 0, duration }) => {
+  const ref = useRef<HTMLAudioElement>(null);
+  useEffect(() => {
+    const audio = ref.current;
+    if (!audio) return;
+    const place = () => {
+      if (audio.currentTime < start || (duration && audio.currentTime >= start + duration)) audio.currentTime = start;
+    };
+    const tick = () => {
+      if (duration && audio.currentTime >= start + duration) {
+        audio.pause();
+        audio.currentTime = start;
+      }
+    };
+    audio.addEventListener('play', place);
+    audio.addEventListener('timeupdate', tick);
+    return () => {
+      audio.removeEventListener('play', place);
+      audio.removeEventListener('timeupdate', tick);
+    };
+  }, [start, duration, url]);
+  return <audio ref={ref} controls src={url} preload="metadata" className="h-8 w-full" />;
+};
+
+const DescriptionBalloon: FC<{
+  pieces: JournalPiece[];
+  expanded?: boolean;
+  plainLength: number;
+  onWrite: (id: string, value: string) => void;
+  onRemoveImage: (id: string) => void;
+  onFocusPiece: (id: string) => void;
+  onPasteImage: (file: File, pieceId: string) => void;
+  onDropImage: (file: File) => void;
+}> = ({ pieces, expanded, plainLength, onWrite, onRemoveImage, onFocusPiece, onPasteImage, onDropImage }) => {
+  const fields = useRef<Record<string, HTMLTextAreaElement | null>>({});
+  useEffect(() => {
+    Object.values(fields.current).forEach((node) => {
+      if (node) growField(node, Boolean(expanded));
+    });
+  }, [pieces, expanded]);
+  return (
+    <div
+      className={cn('rounded-2xl border border-[#E6DEEF] bg-[#FBF9FD] px-3 py-2 focus-within:border-[#E4C8EE] focus-within:ring-2 focus-within:ring-[#F3E4FA]', expanded && 'min-h-[52vh]')}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault();
+        const file = [...event.dataTransfer.files].find((item) => imageFile(item));
+        if (file) onDropImage(file);
+      }}
+    >
+      {pieces.map((piece, index) => {
+        if (!pieceVisible(piece, index, pieces)) return null;
+        if (piece.kind === 'image') {
+          return (
+            <span key={piece.id} className="group relative my-2 block">
+              <img src={resolveJournalAsset(piece.ref)} alt="" className="max-h-72 w-full rounded-xl bg-[#F8F4FB] object-contain" />
+              <button type="button" aria-label="Remover imagem da descrição" className="absolute top-2 right-2 grid h-6 w-6 place-items-center rounded-full bg-white text-[#9D174D] opacity-0 shadow transition-opacity group-hover:opacity-100 focus-visible:opacity-100" onClick={() => onRemoveImage(piece.id)}>
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          );
+        }
+        return (
+          <textarea
+            key={piece.id}
+            ref={(node) => {
+              fields.current[piece.id] = node;
+              if (node) growField(node, Boolean(expanded));
+            }}
+            value={piece.text}
+            rows={1}
+            onFocus={(event) => {
+              onFocusPiece(piece.id);
+              growField(event.currentTarget, Boolean(expanded));
+            }}
+            onChange={(event) => {
+              onWrite(piece.id, event.target.value);
+              growField(event.currentTarget, Boolean(expanded));
+            }}
+            onPaste={(event) => {
+              const file = [...event.clipboardData.files].find((item) => imageFile(item));
+              if (!file) return;
+              event.preventDefault();
+              onPasteImage(file, piece.id);
+            }}
+            placeholder={index === 0 ? 'Escreva uma descrição sobre a publicação...' : ''}
+            className="w-full resize-none overflow-y-auto bg-transparent text-[13.5px] leading-5 outline-none placeholder:text-[#B0A8BA]"
+          />
+        );
+      })}
+      <p className="pt-1 text-right text-[12px] leading-4 text-[#B0A8BA]">{plainLength}/{CONTENT_LIMIT}</p>
+    </div>
+  );
+};
 
 export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }) => {
   const covers = useJournalCovers();
@@ -111,7 +228,6 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   const imageInput = useRef<HTMLInputElement>(null);
   const documentInput = useRef<HTMLInputElement>(null);
   const focusPiece = useRef('texto');
-  const fields = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const savedOnClose = useRef(false);
   const [title, setTitle] = useState('');
   const [pieces, setPieces] = useState<JournalPiece[]>([{ id: 'texto', kind: 'text', text: '' }]);
@@ -126,7 +242,6 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   const [pinned, setPinned] = useState(false);
   const [pinHint, setPinHint] = useState(false);
   const [writing, setWriting] = useState(false);
-  const [composing, setComposing] = useState(false);
   const [preview, setPreview] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -147,13 +262,13 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
     focusPiece.current = 'texto';
     setCategory(article?.category ?? 'social');
     setCover(article && (article.cover.startsWith('lib:') || isUserCover(article.cover)) ? article.cover : '');
-    setDate(article && !categoryLocksDate(article.category) ? toInputDate(article.date) : todayInput());
+    const loadedDate = article && !categoryLocksDate(article.category) ? toInputDate(article.date) : todayInput();
+    setDate(loadedDate < todayInput() ? todayInput() : loadedDate);
     setAuthorName(article?.author ?? author);
     setMedia(article?.media ?? []);
     setPinned(article?.pinned ?? false);
     setPinHint(false);
     setWriting(false);
-    setComposing(false);
     setPreview(false);
     setLibrary(false);
     setAudioFile(null);
@@ -165,13 +280,6 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   useEffect(() => {
     if (dateLocked) setDate(todayInput());
   }, [dateLocked]);
-
-  useEffect(() => {
-    if (!open) return;
-    Object.values(fields.current).forEach((node) => {
-      if (node) growField(node, writing);
-    });
-  }, [open, pieces, writing]);
 
   async function storeImage(file: File) {
     if (!imageFile(file)) {
@@ -230,8 +338,15 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
     const textId = generateId();
     setPieces((current) => {
       const index = Math.max(0, current.findIndex((piece) => piece.id === focusPiece.current));
+      const focus = current[index];
+      const image: JournalPiece = { id: imageId, kind: 'image', ref: stored };
+      if (focus?.kind === 'text' && focus.text.trim() === '') {
+        const next = [...current];
+        next.splice(index, 0, image);
+        return next;
+      }
       const next = [...current];
-      next.splice(index + 1, 0, { id: imageId, kind: 'image', ref: stored }, { id: textId, kind: 'text', text: '' });
+      next.splice(index + 1, 0, image, { id: textId, kind: 'text', text: '' });
       focusPiece.current = textId;
       return next;
     });
@@ -267,17 +382,6 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
     event.preventDefault();
     const file = event.dataTransfer.files?.[0];
     if (file) onCoverFile(file);
-  }
-
-  function onDescriptionDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    const file = [...event.dataTransfer.files].find((item) => imageFile(item));
-    if (!file) return;
-    if (file.size > COVER_MAX) {
-      toast.error('A imagem passa de 5 MB.');
-      return;
-    }
-    setInlineFile(file);
   }
 
   function chooseCategory(next: JournalCategory) {
@@ -346,6 +450,11 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
           if (pinHint && !target?.closest('[data-pin-hint]')) setPinHint(false);
         }}
         onEscapeKeyDown={(event) => {
+          if (writing) {
+            event.preventDefault();
+            setWriting(false);
+            return;
+          }
           if (coverFile || inlineFile || audioFile) event.preventDefault();
         }}
         onPointerDownOutside={(event) => {
@@ -380,11 +489,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
               <p className="mt-3 text-[12.5px] text-[#948D9E]">{new Date(`${date}T12:00:00`).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' })} · {readingMinutes(content || 'texto')} min</p>
               <p className="mt-3 text-[13.5px] font-semibold text-[#6A228C]">{authorName}</p>
             </div>
-            {media.length > 0 ? (
-              <ul className="mt-3 space-y-1 text-sm text-[#625C70]">
-                {media.map((item) => <li key={item.id}>{item.kind === 'audio' ? 'Áudio' : item.kind === 'video' ? 'Vídeo' : item.kind === 'image' ? 'Imagem' : 'Documento'}: {item.name}</li>)}
-              </ul>
-            ) : null}
+            {media.length > 0 ? <div className="mt-3 space-y-2"><AttachedMedia items={media} /></div> : null}
             <button type="button" onClick={() => setPreview(false)} className="mt-4 h-10 rounded-full px-4 text-sm font-semibold text-[#6A228C] hover:bg-[#F3E4FA]">Voltar à edição</button>
           </div>
         ) : (
@@ -401,49 +506,12 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
                 <span className="flex items-center gap-2"><FileText className="h-3.5 w-3.5 text-[#8E35B8]" /> Descrição</span>
                 <span className="flex items-center gap-0.5">
                   <button type="button" aria-label="Inserir imagem na descrição" onClick={() => inlineInput.current?.click()} className="grid h-7 w-7 place-items-center rounded-full text-[#8E35B8] hover:bg-[#F3E4FA]"><ImagePlus className="h-3.5 w-3.5" /></button>
-                  <button type="button" aria-pressed={writing} aria-label={writing ? 'Reduzir descrição' : 'Ampliar descrição'} onClick={() => setWriting((current) => !current)} className="grid h-7 w-7 place-items-center rounded-full text-[#B0A8BA] hover:bg-[#F3E4FA] hover:text-[#6A228C]">
-                    {writing ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                  <button type="button" aria-pressed={writing} aria-label="Ampliar descrição" onClick={() => setWriting(true)} className="grid h-7 w-7 place-items-center rounded-full text-[#B0A8BA] hover:bg-[#F3E4FA] hover:text-[#6A228C]">
+                    <Maximize2 className="h-3.5 w-3.5" />
                   </button>
                 </span>
               </span>
-              <div className={cn('overflow-y-auto rounded-2xl border border-[#E6DEEF] bg-[#FBF9FD] px-3 py-2 focus-within:border-[#E4C8EE] focus-within:ring-2 focus-within:ring-[#F3E4FA]', writing ? 'min-h-[320px]' : composing ? 'min-h-[140px]' : '')} onDragOver={(event) => event.preventDefault()} onDrop={onDescriptionDrop}>
-                {pieces.map((piece, index) => piece.kind === 'image' ? (
-                  <span key={piece.id} className="relative mt-2 block">
-                    <img src={resolveJournalAsset(piece.ref)} alt="" className="max-h-72 w-full rounded-xl bg-[#F8F4FB] object-contain" />
-                    <button type="button" aria-label="Remover imagem da descrição" className="absolute top-1 right-1 grid h-6 w-6 place-items-center rounded-full bg-white text-[#9D174D] shadow" onClick={() => setPieces((current) => current.filter((item) => item.id !== piece.id))}><X className="h-3.5 w-3.5" /></button>
-                  </span>
-                ) : (
-                  <textarea
-                    key={piece.id}
-                    ref={(node) => {
-                      fields.current[piece.id] = node;
-                      if (node) growField(node, writing);
-                    }}
-                    value={piece.text}
-                    rows={1}
-                    onFocus={(event) => {
-                      focusPiece.current = piece.id;
-                      setComposing(true);
-                      growField(event.currentTarget, writing);
-                    }}
-                    onBlur={() => setComposing(false)}
-                    onChange={(event) => {
-                      writePiece(piece.id, event.target.value);
-                      growField(event.currentTarget, writing);
-                    }}
-                    onPaste={(event) => {
-                      const file = [...event.clipboardData.files].find((item) => imageFile(item));
-                      if (!file) return;
-                      event.preventDefault();
-                      focusPiece.current = piece.id;
-                      setInlineFile(file);
-                    }}
-                    placeholder={index === 0 ? 'Escreva uma descrição sobre a publicação...' : ''}
-                    className={`w-full resize-none overflow-y-auto bg-transparent text-[13.5px] leading-5 outline-none placeholder:text-[#B0A8BA] ${index === 0 ? '' : 'mt-2 min-h-8'}`}
-                  />
-                ))}
-                <span className="block pb-1 text-right text-[12px] text-[#B0A8BA]">{plainLength}/{CONTENT_LIMIT}</span>
-              </div>
+              <DescriptionBalloon pieces={pieces} plainLength={plainLength} onWrite={writePiece} onRemoveImage={(id) => setPieces((current) => current.filter((item) => item.id !== id))} onFocusPiece={(id) => { focusPiece.current = id; }} onPasteImage={(file, pieceId) => { focusPiece.current = pieceId; if (file.size > COVER_MAX) { toast.error('A imagem passa de 5 MB.'); return; } setInlineFile(file); }} onDropImage={(file) => { if (file.size > COVER_MAX) { toast.error('A imagem passa de 5 MB.'); return; } setInlineFile(file); }} />
               <input ref={inlineInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) setInlineFile(file); }} />
             </div>
             <div className="grid gap-2 sm:grid-cols-[1fr_190px]">
@@ -466,7 +534,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
               </div>
               <label className={cn('relative flex h-10 items-center rounded-2xl border border-[#E6DEEF] bg-white px-3', dateLocked && 'bg-[#F7F4FA] text-[#8A7C98]')}>
                 <Calendar className="pointer-events-none absolute right-3 h-4 w-4 text-[#8A7C98]" />
-                <input type="date" value={date} disabled={dateLocked} onChange={(event) => setDate(event.target.value)} aria-label="Data" title={dateLocked ? 'Nesta categoria a data fica no dia de hoje.' : 'Data da publicação'} className="h-full w-full bg-transparent pr-7 text-[14px] outline-none disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-2 [&::-webkit-calendar-picker-indicator]:h-4 [&::-webkit-calendar-picker-indicator]:w-4 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0" />
+                <input type="date" value={date} min={todayInput()} disabled={dateLocked} onChange={(event) => { const next = event.target.value; if (next && next < todayInput()) { setDate(todayInput()); return; } setDate(next); }} aria-label="Data" title={dateLocked ? 'Nesta categoria a data fica no dia de hoje.' : 'A data não pode ser anterior a hoje.'} className="h-full w-full bg-transparent pr-7 text-[14px] outline-none disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-2 [&::-webkit-calendar-picker-indicator]:h-4 [&::-webkit-calendar-picker-indicator]:w-4 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0" />
               </label>
             </div>
             <div className="grid gap-1.5">
@@ -514,30 +582,23 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
               ) : null}
               <input ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; void onCoverFile(file); }} />
             </div>
-            {media.length > 0 ? (
-              <ul className="space-y-1">
-                {media.map((item) => (
-                  <li key={item.id} className="flex items-center justify-between gap-2 rounded-xl bg-[#FBF9FD] px-3 py-2 text-[13px]">
-                    <span className="truncate">{item.name}</span>
-                    <button type="button" className="text-[12px] font-semibold text-[#9D174D]" onClick={() => setMedia((current) => current.filter((file) => file.id !== item.id))}>Remover</button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
+            {media.length > 0 ? <AttachedMedia items={media} onRemove={(id) => setMedia((current) => current.filter((file) => file.id !== id))} /> : null}
             {sending ? <p className="text-[12px] text-[#8A7C98]">Enviando {sending === 'audio' ? 'áudio' : sending === 'video' ? 'vídeo' : 'arquivo'}...</p> : null}
             <div className="relative flex items-center gap-2 pb-1 text-[14px] text-[#241B33]">
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={pinned} onChange={(event) => setPinned(event.target.checked)} className="h-4 w-4 accent-[#7A2498]" />
                 Fixar como destaque
               </label>
-              <button type="button" data-pin-hint aria-expanded={pinHint} aria-label="Como funciona o destaque" onClick={() => setPinHint((current) => !current)} className="grid h-4 w-4 place-items-center rounded-full text-[#8A7C98]">
-                <Info className="h-3.5 w-3.5" />
-              </button>
-              {pinHint ? (
-                <p data-pin-hint className="absolute bottom-7 left-0 z-30 w-[min(360px,80vw)] rounded-2xl border border-[#E6DEEF] bg-white p-3 text-[12.5px] leading-5 text-[#3C3952] shadow-[0_12px_32px_rgba(70,30,110,0.14)]">
-                  É possível manter até três publicações fixadas. Ao atingir esse limite, a publicação fixada há mais tempo será desafixada automaticamente. Para escolher qual será removida, desafixe-a manualmente antes de fixar uma nova.
-                </p>
-              ) : null}
+              <span className="relative" data-pin-hint onMouseEnter={() => setPinHint(true)} onMouseLeave={() => setPinHint(false)}>
+                <button type="button" data-pin-hint aria-expanded={pinHint} aria-label="Como funciona o destaque" onClick={() => setPinHint((current) => !current)} className="grid h-4 w-4 place-items-center rounded-full text-[#8A7C98]">
+                  <Info className="h-3.5 w-3.5" />
+                </button>
+                {pinHint ? (
+                  <p data-pin-hint className="absolute bottom-7 left-0 z-30 w-[min(360px,80vw)] rounded-2xl border border-[#E6DEEF] bg-white p-3 text-[12.5px] leading-5 text-[#3C3952] shadow-[0_12px_32px_rgba(70,30,110,0.14)]">
+                    É possível manter até três publicações fixadas. Ao atingir esse limite, a publicação fixada há mais tempo será desafixada automaticamente. Para escolher qual será removida, desafixe-a manualmente antes de fixar uma nova.
+                  </p>
+                ) : null}
+              </span>
             </div>
           </div>
         )}
@@ -581,7 +642,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
               setAudioFile(null);
               setSending('audio');
               void uploadMedia(file).then((uploaded) => {
-                const item: JournalMedia = { id: generateId(), name: 'Áudio', kind: 'audio', url: uploaded.url, start: clip.start, duration: clip.duration };
+                const item: JournalMedia = { id: generateId(), name: file.name || 'audio', kind: 'audio', url: uploaded.url, start: clip.start, duration: clip.duration };
                 setMedia((current) => [...current, item].slice(0, 8));
               }).catch(() => {
                 toast.error('Não foi possível enviar o áudio. Tente novamente.');
@@ -596,6 +657,23 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
         ) : null}
         {inlineFile ? createPortal(
           <ImageCrop file={inlineFile} onCancel={() => setInlineFile(null)} onConfirm={(file) => void confirmInline(file)} />,
+          document.body,
+        ) : null}
+        {writing ? createPortal(
+          <div data-journal-overlay className="pointer-events-auto fixed inset-0 z-[70] grid place-items-center bg-black/50 p-4" style={{ pointerEvents: 'auto' }}>
+            <div className="pointer-events-auto flex max-h-[min(860px,calc(100dvh-2rem))] w-[min(840px,calc(100%-2rem))] flex-col rounded-[28px] bg-white p-4 shadow-[0_24px_80px_rgba(70,30,110,0.2)]" style={{ pointerEvents: 'auto' }} role="dialog" aria-label="Descrição ampliada">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-[15px] font-semibold text-[#241B33]">Descrição</p>
+                <span className="flex items-center gap-0.5">
+                  <button type="button" aria-label="Inserir imagem na descrição" onClick={() => inlineInput.current?.click()} className="grid h-8 w-8 place-items-center rounded-full text-[#8E35B8] hover:bg-[#F3E4FA]"><ImagePlus className="h-4 w-4" /></button>
+                  <button type="button" aria-label="Reduzir descrição" onClick={() => setWriting(false)} className="grid h-8 w-8 place-items-center rounded-full text-[#6A228C] hover:bg-[#F3E4FA]"><Minimize2 className="h-4 w-4" /></button>
+                </span>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <DescriptionBalloon expanded pieces={pieces} plainLength={plainLength} onWrite={writePiece} onRemoveImage={(id) => setPieces((current) => current.filter((item) => item.id !== id))} onFocusPiece={(id) => { focusPiece.current = id; }} onPasteImage={(file, pieceId) => { focusPiece.current = pieceId; if (file.size > COVER_MAX) { toast.error('A imagem passa de 5 MB.'); return; } setInlineFile(file); }} onDropImage={(file) => { if (file.size > COVER_MAX) { toast.error('A imagem passa de 5 MB.'); return; } setInlineFile(file); }} />
+              </div>
+            </div>
+          </div>,
           document.body,
         ) : null}
       </DialogContent>

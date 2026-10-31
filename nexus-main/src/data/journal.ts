@@ -84,7 +84,7 @@ const LEGACY_COVERS: Record<string, string> = {
 
 export const PIN_LIMIT = 3;
 export const TITLE_LIMIT = 150;
-export const CONTENT_LIMIT = 2000;
+export const CONTENT_LIMIT = 10000;
 const STORAGE_KEY = 'unica-journal';
 const SAVED_KEY = 'unica-journal-saved';
 const COVERS_KEY = 'unica-journal-covers';
@@ -533,15 +533,26 @@ function withPin(list: JournalArticle[], id: string, pinned: boolean, stamp?: st
 function fitJournalContent(content: string) {
   const trimmed = content.trim();
   if (journalPlainText(trimmed).length <= CONTENT_LIMIT) return trimmed;
-  return trimmed.slice(0, CONTENT_LIMIT);
+  let used = 0;
+  const pieces = parseJournalPieces(trimmed).map((piece) => {
+    if (piece.kind !== 'text') return piece;
+    const text = piece.text.slice(0, Math.max(0, CONTENT_LIMIT - used));
+    used += text.length;
+    return { ...piece, text };
+  });
+  return serializeJournalPieces(pieces);
+}
+
+function localToday() {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
 }
 
 function publicationDate(category: JournalCategory, value: string) {
-  if (categoryLocksDate(category)) {
-    const now = new Date();
-    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-    return `${local.toISOString().slice(0, 10)}T12:00:00`;
-  }
+  const today = localToday();
+  const day = value.slice(0, 10);
+  if (categoryLocksDate(category) || day < today) return `${today}T12:00:00`;
   return value.includes('T') ? value : `${value}T12:00:00`;
 }
 
