@@ -91,9 +91,12 @@ export function categoryLabel(category: JournalCategory) {
   return JOURNAL_CATEGORIES.find((item) => item.id === category)?.label ?? category;
 }
 
+// Capas antigas da biblioteca não entram como foto enviada.
+const LIBRARY_COVER = /^\/jornal\/(?:capas\/|[^/]+\.svg$)/i;
+
 export function isUserCover(cover: string) {
   const value = cover.trim();
-  if (!value || value.startsWith('/jornal/')) return false;
+  if (!value || LIBRARY_COVER.test(value)) return false;
   return value.startsWith('data:image/') || value.startsWith('blob:') || value.startsWith('/api/') || value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/');
 }
 
@@ -152,7 +155,7 @@ const seed: JournalArticle[] = [
     title: 'Atualização dos processos internos',
     content: 'Os processos internos foram revisados para deixar cada etapa com um responsável e um prazo visível.\n\nA planilha de acompanhamento passa a ser a referência única. A orientação anterior deixa de valer.',
     category: 'processos',
-    cover: '/jornal/capas/teclado.jpg',
+    cover: '/jornal/fotos/processos.jpg',
     date: '2026-10-13T18:00:00.000Z',
     author: 'João Ferreira',
     status: 'published',
@@ -182,7 +185,7 @@ const seed: JournalArticle[] = [
     title: 'Campanha de Endomarketing — Juntos somos mais fortes',
     content: 'A campanha de endomarketing começa nesta semana. A ideia é celebrar o que a equipe já construiu e deixar visível o que vem pela frente.\n\nParticipe das ações no auditório, acompanhe os comunicados e compartilhe um registro do seu time. As peças oficiais ficam disponíveis para quem for publicar nos canais internos.\n\nQuem quiser sugerir uma história da própria área pode falar com a Comunicação.',
     category: 'social',
-    cover: '/jornal/capas/evento.jpg',
+    cover: '/jornal/fotos/equipe.jpg',
     date: '2026-10-14T12:00:00.000Z',
     author: 'Helena Duarte',
     status: 'published',
@@ -375,7 +378,11 @@ function readStored(): JournalArticle[] {
     if (!Array.isArray(parsed) || parsed.length === 0) return seed;
     let changed = false;
     const migrated = parsed.map((article) => {
-      const cover = LEGACY_COVERS[article.cover];
+      const cover = article.cover === '/jornal/capas/teclado.jpg'
+        ? '/jornal/fotos/processos.jpg'
+        : article.cover === '/jornal/capas/evento.jpg'
+          ? '/jornal/fotos/equipe.jpg'
+          : LEGACY_COVERS[article.cover];
       if (!cover) return article;
       changed = true;
       return { ...article, cover };

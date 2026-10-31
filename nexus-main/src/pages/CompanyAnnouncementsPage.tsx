@@ -1,13 +1,13 @@
 import { JournalEditor } from '@/components/journal/JournalEditor';
 import { JournalRail } from '@/components/journal/JournalRail';
-import { JournalBadge, JournalCover, categoryTone } from '@/components/journal/JournalVisual';
+import { JournalCover, categoryTone } from '@/components/journal/JournalVisual';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles } from '@/components/journal/useJournal';
 import { Input } from '@/components/ui/input';
-import { articleCover, articleSummary, canManageJournal, readingMinutes, type JournalArticle, type JournalCategory } from '@/data/journal';
+import { articleSummary, canManageJournal, readingMinutes, type JournalArticle, type JournalCategory } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { ChevronRight, ClipboardList, Newspaper, Plus, Search } from 'lucide-react';
+import { Calendar, ChevronRight, ClipboardList, Clock, Newspaper, Plus, Search } from 'lucide-react';
 import { useMemo, useState, type FC } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -15,33 +15,21 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function authorAvatar(name: string) {
-  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
-}
-
 const FeaturedCard: FC<{ article: JournalArticle }> = ({ article }) => {
   const minutes = readingMinutes(article.content);
-  const image = articleCover(article);
   return (
-    <Link to={`/announcements/${article.id}`} className="group flex flex-col overflow-hidden rounded-2xl border border-[#E7E0F0] bg-white p-3 shadow-[0_8px_24px_rgba(70,30,110,0.05)]">
-      <JournalBadge category={article.category} />
-      {image ? (
-        <>
-          <div className="mt-2.5 h-[148px] overflow-hidden rounded-xl">
-            <JournalCover article={article} />
-          </div>
-          <h3 className="mt-3 line-clamp-2 min-h-10 text-[15px] font-semibold leading-5 text-[#241B33] group-hover:text-primary">{article.title}</h3>
-          <p className="mt-1.5 line-clamp-2 min-h-10 text-[13px] leading-5 text-[#6E657C]">{articleSummary(article.content)}</p>
-        </>
-      ) : (
-        <div className="mt-2.5 flex-1">
-          <JournalCover article={article} />
-        </div>
-      )}
-      <p className="mt-3 text-[12px] text-[#8A7C98]">{formatDate(article.date)} · {minutes} min de leitura</p>
+    <Link to={`/announcements/${article.id}`} className="group flex flex-col rounded-[20px] border border-[#E7E0F0] bg-white p-3 shadow-[0_8px_24px_rgba(70,30,110,0.05)]">
+      <JournalCover article={article} />
+      <h3 className="mt-3 line-clamp-2 min-h-11 text-[16.5px] font-semibold leading-snug tracking-tight text-[#1E1630] group-hover:text-[#6A228C]">{article.title}</h3>
+      <p className="mt-1.5 line-clamp-3 min-h-[60px] text-[13px] leading-5 text-[#6E687C]">{articleSummary(article.content)}</p>
+      <div className="mt-3 flex items-center gap-4 text-[12px] text-[#8B8498]">
+        <span className="inline-flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" strokeWidth={1.75} />{formatDate(article.date)}</span>
+        <span className="inline-flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" strokeWidth={1.75} />{minutes} min</span>
+      </div>
       <div className="mt-auto flex items-center gap-2 pt-3">
-        <img src={authorAvatar(article.author)} alt="" className="h-6 w-6 rounded-full bg-[#F3E4FA]" />
-        <span className="truncate text-[12.5px] text-[#3C3952]">{article.author}</span>
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#7A2498] text-[10px] font-bold tracking-tight text-white">U1</span>
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[#5C2A86]">{article.author}</span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-[#C9BED6] transition-colors group-hover:text-[#8E35B8]" />
       </div>
     </Link>
   );

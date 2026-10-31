@@ -1,4 +1,4 @@
-import { JournalBadge, JournalCover } from '@/components/journal/JournalVisual';
+import { JournalCover } from '@/components/journal/JournalVisual';
 import type { JournalArticle } from '@/data/journal';
 import { ChevronRight, ClipboardList } from 'lucide-react';
 import type { FC } from 'react';
@@ -24,13 +24,10 @@ export const JournalRail: FC<{
     {recent.length === 0 ? <p className="px-1 py-2 text-sm text-muted-foreground">Nenhuma publicação recente.</p> : null}
     <div className="grid grid-cols-2 gap-2.5">
       {recent.map((article) => (
-        <Link key={article.id} to={`/announcements/${article.id}`} className="flex h-full flex-col overflow-hidden rounded-xl border border-[#EFE7F4] bg-white hover:border-primary/30">
-          <div className="h-[72px] overflow-hidden">
-            <JournalCover article={article} compact />
-          </div>
-          <div className="flex flex-1 flex-col p-2">
-            <JournalBadge category={article.category} className="w-fit px-2 py-1 text-[11px]" />
-            <p className="mt-1.5 line-clamp-2 min-h-8 text-[12px] font-semibold leading-4">{article.title}</p>
+        <Link key={article.id} to={`/announcements/${article.id}`} className="flex h-full flex-col rounded-xl border border-[#EFE7F4] bg-white p-1.5 hover:border-primary/30">
+          <JournalCover article={article} compact />
+          <div className="flex flex-1 flex-col px-1.5 pt-2 pb-1">
+            <p className="line-clamp-2 min-h-8 text-[12px] font-semibold leading-4">{article.title}</p>
             <p className="mt-auto pt-1.5 text-[11px] leading-4 text-[#8A7C98]">{formatDate(article.date)}</p>
           </div>
         </Link>
