@@ -155,7 +155,7 @@ const seed: JournalArticle[] = [
     title: 'Atualização dos processos internos',
     content: 'Os processos internos foram revisados para deixar cada etapa com um responsável e um prazo visível.\n\nA planilha de acompanhamento passa a ser a referência única. A orientação anterior deixa de valer.',
     category: 'processos',
-    cover: '/jornal/fotos/processos.jpg',
+    cover: '/jornal/capas/teclado.jpg',
     date: '2026-10-13T18:00:00.000Z',
     author: 'João Ferreira',
     status: 'published',
@@ -200,7 +200,7 @@ const seed: JournalArticle[] = [
     title: 'Novo procedimento de matrícula',
     content: 'O fluxo de matrícula muda a partir desta segunda. O registro da aluna ou do aluno passa a ser conferido em duas etapas antes da confirmação.\n\nA primeira etapa continua na secretaria. A segunda é a validação acadêmica, que precisa estar concluída no mesmo dia.\n\nO passo a passo completo está descrito abaixo e substitui a orientação anterior.',
     category: 'processos',
-    cover: '/jornal/capas/processos.jpg',
+    cover: '/jornal/fotos/processos.jpg',
     date: '2026-10-13T14:00:00.000Z',
     author: 'João Ferreira',
     status: 'published',
@@ -378,12 +378,14 @@ function readStored(): JournalArticle[] {
     if (!Array.isArray(parsed) || parsed.length === 0) return seed;
     let changed = false;
     const migrated = parsed.map((article) => {
-      const cover = article.cover === '/jornal/capas/teclado.jpg'
-        ? '/jornal/fotos/processos.jpg'
+      const cover = article.id === 'j-atualizacao' && article.cover === '/jornal/fotos/processos.jpg'
+        ? '/jornal/capas/teclado.jpg'
         : article.cover === '/jornal/capas/evento.jpg'
           ? '/jornal/fotos/equipe.jpg'
-          : LEGACY_COVERS[article.cover];
-      if (!cover) return article;
+          : article.id === 'j-matricula' && article.cover === '/jornal/capas/processos.jpg'
+            ? '/jornal/fotos/processos.jpg'
+            : LEGACY_COVERS[article.cover];
+      if (!cover || cover === article.cover) return article;
       changed = true;
       return { ...article, cover };
     });

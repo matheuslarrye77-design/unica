@@ -18,17 +18,17 @@ function formatDate(iso: string) {
 const FeaturedCard: FC<{ article: JournalArticle }> = ({ article }) => {
   const minutes = readingMinutes(article.content);
   return (
-    <Link to={`/announcements/${article.id}`} className="group flex flex-col rounded-[20px] border border-[#E7E0F0] bg-white p-3 shadow-[0_8px_24px_rgba(70,30,110,0.05)]">
+    <Link to={`/announcements/${article.id}`} className="group flex flex-col rounded-[22px] border border-[#EFE8F4] bg-white p-3.5 shadow-[0_10px_28px_rgba(80,40,120,0.06)]">
       <JournalCover article={article} />
-      <h3 className="mt-3 line-clamp-2 min-h-11 text-[16.5px] font-semibold leading-snug tracking-tight text-[#1E1630] group-hover:text-[#6A228C]">{article.title}</h3>
-      <p className="mt-1.5 line-clamp-3 min-h-[60px] text-[13px] leading-5 text-[#6E687C]">{articleSummary(article.content)}</p>
-      <div className="mt-3 flex items-center gap-4 text-[12px] text-[#8B8498]">
+      <h3 className="mt-3.5 line-clamp-2 min-h-[46px] text-[17px] font-semibold leading-[1.28] tracking-tight text-[#1A1428] group-hover:text-[#6A228C]">{article.title}</h3>
+      <p className="mt-2 line-clamp-3 min-h-[60px] text-[13px] leading-5 text-[#625C70]">{articleSummary(article.content)}</p>
+      <div className="mt-3.5 flex items-center gap-4 text-[12.5px] text-[#948D9E]">
         <span className="inline-flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" strokeWidth={1.75} />{formatDate(article.date)}</span>
         <span className="inline-flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" strokeWidth={1.75} />{minutes} min</span>
       </div>
-      <div className="mt-auto flex items-center gap-2 pt-3">
+      <div className="mt-auto flex items-center gap-2 pt-3.5">
         <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#7A2498] text-[10px] font-bold tracking-tight text-white">U1</span>
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[#5C2A86]">{article.author}</span>
+        <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-[#6A228C]">{article.author}</span>
         <ChevronRight className="h-4 w-4 shrink-0 text-[#C9BED6] transition-colors group-hover:text-[#8E35B8]" />
       </div>
     </Link>

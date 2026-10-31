@@ -7,25 +7,25 @@ export const categoryTone: Record<JournalCategory, { badge: string; badgeText: s
   social: {
     badge: 'bg-[#F3E4FA] text-[#6A228C]',
     badgeText: 'text-[#6A228C]',
-    header: 'bg-gradient-to-r from-[#F7EEFB] to-[#E6D2F6]',
+    header: 'bg-[linear-gradient(105deg,#F7EDFC_0%,#E9D2F7_100%)]',
     icon: 'text-[#8E35B8]',
   },
   processos: {
     badge: 'bg-[#E4EEF9] text-[#1E4E8C]',
     badgeText: 'text-[#1E4E8C]',
-    header: 'bg-gradient-to-r from-[#F2F7FD] to-[#D7E6F8]',
-    icon: 'text-[#2E5F9E]',
+    header: 'bg-[linear-gradient(105deg,#EEF4FD_0%,#D5E5F8_100%)]',
+    icon: 'text-[#3A6AAD]',
   },
   urgente: {
     badge: 'bg-[#FDE7EE] text-[#9D174D]',
-    badgeText: 'text-[#9D174D]',
-    header: 'bg-gradient-to-r from-[#FEF1F4] to-[#F8D5DE]',
+    badgeText: 'text-[#BE123C]',
+    header: 'bg-[linear-gradient(105deg,#FDECEF_0%,#F6D0D9_100%)]',
     icon: 'text-[#E11D48]',
   },
   treinamentos: {
     badge: 'bg-[#E5F6EC] text-[#166534]',
     badgeText: 'text-[#166534]',
-    header: 'bg-gradient-to-r from-[#F1FAF4] to-[#D5F0E0]',
+    header: 'bg-[linear-gradient(105deg,#F1FAF4_0%,#D4F0E0_100%)]',
     icon: 'text-[#15803D]',
   },
 };
@@ -41,7 +41,7 @@ export const JournalBadge: FC<{ category: JournalCategory; onHeader?: boolean; c
   <span className={cn(
     'inline-flex items-center rounded-full font-semibold leading-none',
     onHeader
-      ? cn('bg-white px-3 py-1.5 text-[13px] shadow-[0_1px_2px_rgba(70,30,110,0.08)]', categoryTone[category].badgeText)
+      ? cn('bg-white px-3.5 py-[7px] text-[13px]', categoryTone[category].badgeText)
       : cn('px-2.5 py-1 text-[12px]', categoryTone[category].badge),
     className,
   )}>
@@ -53,19 +53,19 @@ export const JournalCover: FC<{ article: Pick<JournalArticle, 'title' | 'content
   const image = articleCover(article);
   const tone = categoryTone[article.category];
   const Icon = categoryIcon[article.category];
-  const height = compact ? 'h-16' : 'h-[112px]';
+  const height = compact ? 'h-[58px]' : 'h-[74px]';
   if (image) {
     return (
-      <div className={cn('relative overflow-hidden rounded-xl', height)}>
+      <div className={cn('relative overflow-hidden rounded-[18px]', height)}>
         <img src={image} alt="" className="h-full w-full object-cover" />
-        <JournalBadge category={article.category} onHeader className={cn('absolute top-2.5 left-2.5', compact && 'top-2 left-2 px-2 py-1 text-[11px]')} />
+        <JournalBadge category={article.category} onHeader className={cn('absolute top-3 left-3', compact && 'top-2 left-2 px-2 py-1 text-[11px]')} />
       </div>
     );
   }
   return (
-    <div className={cn('flex items-center justify-between rounded-xl px-3.5', height, tone.header)}>
+    <div className={cn('flex items-center justify-between rounded-[18px] px-4', height, tone.header)}>
       <JournalBadge category={article.category} onHeader className={compact ? 'px-2 py-1 text-[11px]' : undefined} />
-      <Icon className={cn(compact ? 'h-5 w-5' : 'h-8 w-8', tone.icon)} strokeWidth={1.75} />
+      <Icon className={cn(compact ? 'h-5 w-5' : 'h-7 w-7', tone.icon)} strokeWidth={1.75} />
     </div>
   );
 };
