@@ -1,13 +1,26 @@
 import { Minus, Plus } from 'lucide-react';
 import { type FC, useEffect, useRef, useState } from 'react';
 
-export const ImageAdjust: FC<{ file: File; onCancel: () => void; onConfirm: (file: File) => void }> = ({ file, onCancel, onConfirm }) => {
+function coverStyle(frame: { w: number; h: number }, natural: { w: number; h: number }, zoom: number, pan: { x: number; y: number }) {
+  const base = Math.max(frame.w / natural.w, frame.h / natural.h);
+  const shownWidth = natural.w * base * zoom;
+  const shownHeight = natural.h * base * zoom;
+  return {
+    width: `${(shownWidth / frame.w) * 100}%`,
+    height: `${(shownHeight / frame.h) * 100}%`,
+    left: `${(((frame.w - shownWidth) / 2 + pan.x) / frame.w) * 100}%`,
+    top: `${(((frame.h - shownHeight) / 2 + pan.y) / frame.h) * 100}%`,
+  };
+}
+
+export const ImageAdjust: FC<{ file: File; onCancel: () => void; onConfirm: (file: File) => void; aspect?: number }> = ({ file, onCancel, onConfirm, aspect }) => {
   const frameRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const drag = useRef<{ x: number; y: number; panX: number; panY: number; width: number } | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [frame, setFrame] = useState({ w: 320, h: 320 });
+  const [natural, setNatural] = useState({ w: 1, h: 1 });
   const [src, setSrc] = useState('');
 
   useEffect(() => {
@@ -16,6 +29,12 @@ export const ImageAdjust: FC<{ file: File; onCancel: () => void; onConfirm: (fil
     const image = new Image();
     image.onload = () => {
       imageRef.current = image;
+      setNatural({ w: image.width, h: image.height });
+      if (aspect) {
+        const width = 480;
+        setFrame({ w: width, h: Math.max(108, Math.round(width / aspect)) });
+        return;
+      }
       const ratio = image.width / image.height || 1;
       let width = 420;
       let height = width / ratio;
@@ -27,7 +46,7 @@ export const ImageAdjust: FC<{ file: File; onCancel: () => void; onConfirm: (fil
     };
     image.src = url;
     return () => URL.revokeObjectURL(url);
-  }, [file]);
+  }, [file, aspect]);
 
   function changeZoom(next: number) {
     const value = Math.min(3, Math.max(1, next));
@@ -37,13 +56,14 @@ export const ImageAdjust: FC<{ file: File; onCancel: () => void; onConfirm: (fil
 
   function confirm() {
     const image = imageRef.current;
-    const untouched = zoom === 1 && Math.abs(pan.x) < 1 && Math.abs(pan.y) < 1;
+    const untouched = !aspect && zoom === 1 && Math.abs(pan.x) < 1 && Math.abs(pan.y) < 1;
     if (!image || untouched) {
       onConfirm(file);
       return;
     }
-    const shownWidth = frame.w * zoom;
-    const shownHeight = frame.h * zoom;
+    const coverScale = aspect ? Math.max(frame.w / image.width, frame.h / image.height) : 1;
+    const shownWidth = aspect ? image.width * coverScale * zoom : frame.w * zoom;
+    const shownHeight = aspect ? image.height * coverScale * zoom : frame.h * zoom;
     const left = (frame.w - shownWidth) / 2 + pan.x;
     const top = (frame.h - shownHeight) / 2 + pan.y;
     const sx = Math.max(0, ((0 - left) / shownWidth) * image.width);
@@ -65,12 +85,13 @@ export const ImageAdjust: FC<{ file: File; onCancel: () => void; onConfirm: (fil
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
+    <div data-journal-overlay className="fixed inset-0 z-[80] grid place-items-center bg-black/60 p-4">
       <div className="w-full max-w-md rounded-3xl bg-card p-4 shadow-xl">
-        <p className="text-sm font-medium text-foreground">Ajustar foto</p>
+        <p className="text-sm font-medium text-foreground">{aspect ? 'Ajustar capa' : 'Ajustar foto'}</p>
+        {aspect ? <p className="mt-1 text-xs text-muted-foreground">Arraste para enquadrar e use o zoom antes de guardar.</p> : null}
         <div
           ref={frameRef}
-          className="mx-auto mt-3 overflow-hidden rounded-2xl bg-[#16141F]"
+          className="relative mx-auto mt-3 overflow-hidden rounded-2xl bg-[#16141F]"
           style={{ width: frame.w, maxWidth: '100%', aspectRatio: `${frame.w} / ${frame.h}` }}
           onPointerDown={(event) => {
             const bounds = frameRef.current?.getBoundingClientRect();
@@ -78,7 +99,7 @@ export const ImageAdjust: FC<{ file: File; onCancel: () => void; onConfirm: (fil
             event.currentTarget.setPointerCapture(event.pointerId);
           }}
           onPointerMove={(event) => {
-            if (!drag.current || zoom === 1) return;
+            if (!drag.current || (!aspect && zoom === 1)) return;
             const scale = frame.w / drag.current.width;
             setPan({
               x: drag.current.panX + (event.clientX - drag.current.x) * scale,
@@ -88,13 +109,23 @@ export const ImageAdjust: FC<{ file: File; onCancel: () => void; onConfirm: (fil
           onPointerUp={() => { drag.current = null; }}
         >
           {src ? (
-            <img
-              src={src}
-              alt=""
-              draggable={false}
-              className="h-full w-full select-none object-contain"
-              style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
-            />
+            aspect ? (
+              <img
+                src={src}
+                alt=""
+                draggable={false}
+                className="absolute max-w-none select-none"
+                style={coverStyle(frame, natural, zoom, pan)}
+              />
+            ) : (
+              <img
+                src={src}
+                alt=""
+                draggable={false}
+                className="h-full w-full select-none object-contain"
+                style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
+              />
+            )
           ) : null}
         </div>
         <div className="mt-4 flex items-center gap-3">

@@ -1,4 +1,4 @@
-import { articleCover, categoryLabel, type JournalArticle, type JournalCategory } from '@/data/journal';
+import { articleCover, categoryLabel, parseJournalPieces, resolveJournalAsset, type JournalArticle, type JournalCategory } from '@/data/journal';
 import { cn } from '@/lib/utils';
 import { FileText, GraduationCap, TriangleAlert, Users, type LucideIcon } from 'lucide-react';
 import type { FC } from 'react';
@@ -54,6 +54,21 @@ const cardArt: Partial<Record<JournalCategory, { src: string; label: string }>> 
   processos: { src: '/jornal/cards/processos.png?v=2', label: 'left-[4%] top-[26%] h-[46%] w-[38%]' },
   urgente: { src: '/jornal/cards/urgente.png?v=2', label: 'left-[7%] top-[26%] h-[48%] w-[37%]' },
   treinamentos: { src: '/jornal/cards/treinamentos.png?v=3', label: 'left-[4%] top-[24%] h-[52%] w-[56%]' },
+};
+
+export const JournalRichText: FC<{ content: string; className?: string }> = ({ content, className }) => {
+  const pieces = parseJournalPieces(content);
+  return (
+    <div className={className}>
+      {pieces.map((piece) => {
+        if (piece.kind === 'image') {
+          return <img key={piece.id} src={resolveJournalAsset(piece.ref)} alt="" className="my-3 w-full rounded-2xl object-cover" />;
+        }
+        if (!piece.text) return null;
+        return <p key={piece.id} className="whitespace-pre-wrap">{piece.text}</p>;
+      })}
+    </div>
+  );
 };
 
 export const JournalCover: FC<{ article: Pick<JournalArticle, 'title' | 'content' | 'category' | 'cover' | 'media'>; compact?: boolean }> = ({ article, compact }) => {

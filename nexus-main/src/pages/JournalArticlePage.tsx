@@ -1,6 +1,6 @@
 import { JournalEditor } from '@/components/journal/JournalEditor';
 import { JournalRail } from '@/components/journal/JournalRail';
-import { JournalBadge } from '@/components/journal/JournalVisual';
+import { JournalBadge, JournalRichText } from '@/components/journal/JournalVisual';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles, useJournalSaved } from '@/components/journal/useJournal';
 import { Button } from '@/components/ui/button';
@@ -114,7 +114,7 @@ export const JournalArticlePage: FC = () => {
             </div>
           ) : null}
           {articleCover(article) ? <img src={articleCover(article)} alt="" className="mt-6 aspect-[16/8] w-full rounded-2xl border object-cover" /> : null}
-          <div className="mt-6 space-y-4 text-base leading-7 whitespace-pre-wrap">{article.content}</div>
+          <JournalRichText content={article.content} className="mt-6 space-y-4 text-base leading-7" />
 
           {article.media.length > 0 ? (
             <div className="mt-8 space-y-4">

@@ -148,13 +148,43 @@ export function articleCover(article: Pick<JournalArticle, 'cover' | 'media'>) {
   return image ? resolveJournalAsset(image.url) : '';
 }
 
+const IMAGE_MARK = /\{\{img:lib:[a-z0-9]+\}\}/g;
+
+export function journalPlainText(content: string) {
+  return content.replace(IMAGE_MARK, ' ').replace(/\s+/g, ' ').trim();
+}
+
+export type JournalPiece =
+  | { id: string; kind: 'text'; text: string }
+  | { id: string; kind: 'image'; ref: string };
+
+export function parseJournalPieces(content: string): JournalPiece[] {
+  const parts = content.split(/(\{\{img:lib:[a-z0-9]+\}\})/g).filter((part) => part !== '');
+  if (parts.length === 0) return [{ id: 'texto', kind: 'text', text: '' }];
+  const pieces: JournalPiece[] = parts.map((part, index) => {
+    const mark = part.match(/^\{\{img:(lib:[a-z0-9]+)\}\}$/);
+    if (mark?.[1]) return { id: `img-${index}`, kind: 'image', ref: mark[1] };
+    return { id: `texto-${index}`, kind: 'text', text: part.replace(/^\n/, '').replace(/\n$/, '') };
+  });
+  if (pieces[0]?.kind !== 'text') pieces.unshift({ id: 'texto-inicio', kind: 'text', text: '' });
+  if (pieces[pieces.length - 1]?.kind !== 'text') pieces.push({ id: 'texto-fim', kind: 'text', text: '' });
+  return pieces;
+}
+
+export function serializeJournalPieces(pieces: JournalPiece[]) {
+  return pieces
+    .map((piece) => (piece.kind === 'text' ? piece.text.replace(/^\s+|\s+$/g, '') : `{{img:${piece.ref}}}`))
+    .filter((part) => part !== '')
+    .join('\n');
+}
+
 export function readingMinutes(content: string) {
-  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  const words = journalPlainText(content).split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.ceil(words / 180));
 }
 
 export function articleSummary(content: string) {
-  const clean = content.replace(/\s+/g, ' ').trim();
+  const clean = journalPlainText(content);
   return clean.length > 160 ? `${clean.slice(0, 157)}…` : clean;
 }
 
@@ -500,6 +530,12 @@ function withPin(list: JournalArticle[], id: string, pinned: boolean, stamp?: st
   return { list: next, replacedId };
 }
 
+function fitJournalContent(content: string) {
+  const trimmed = content.trim();
+  if (journalPlainText(trimmed).length <= CONTENT_LIMIT) return trimmed;
+  return trimmed.slice(0, CONTENT_LIMIT);
+}
+
 function publicationDate(category: JournalCategory, value: string) {
   if (categoryLocksDate(category)) {
     const now = new Date();
@@ -515,7 +551,7 @@ export function saveJournalArticle(draft: JournalDraft, id?: string) {
   const next: JournalArticle = {
     id: articleId,
     title: draft.title.trim().slice(0, TITLE_LIMIT),
-    content: draft.content.trim().slice(0, CONTENT_LIMIT),
+    content: fitJournalContent(draft.content),
     category: draft.category,
     cover: draft.cover,
     date: new Date(publicationDate(draft.category, draft.date)).toISOString(),

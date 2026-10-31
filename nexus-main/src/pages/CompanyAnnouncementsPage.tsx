@@ -4,7 +4,7 @@ import { JournalCover, categoryTone } from '@/components/journal/JournalVisual';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles, useJournalSaved } from '@/components/journal/useJournal';
 import { Input } from '@/components/ui/input';
-import { articleSummary, canManageJournal, deleteJournalArticle, readingMinutes, toggleJournalSave, type JournalArticle, type JournalCategory } from '@/data/journal';
+import { articleSummary, canManageJournal, deleteJournalArticle, journalPlainText, readingMinutes, toggleJournalSave, type JournalArticle, type JournalCategory } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { Bookmark, Calendar, ChevronRight, ClipboardList, Clock, Newspaper, Plus, Search, Trash2 } from 'lucide-react';
@@ -62,7 +62,7 @@ export const CompanyAnnouncementsPage: FC = () => {
   const showingDefault = category === 'todos' && !query;
   const visible = published.filter((article) => {
     const matchesCategory = category === 'todos' || article.category === category;
-    const matchesSearch = `${article.title} ${article.content} ${article.author}`.toLowerCase().includes(query);
+    const matchesSearch = `${article.title} ${journalPlainText(article.content)} ${article.author}`.toLowerCase().includes(query);
     return matchesCategory && matchesSearch;
   });
   const featured = [...visible.filter((article) => article.pinned)].sort((a, b) => (b.pinnedAt ?? b.date).localeCompare(a.pinnedAt ?? a.date)).slice(0, 3);
