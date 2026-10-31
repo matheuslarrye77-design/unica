@@ -4,10 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { JournalCover } from '@/components/journal/JournalVisual';
 import {
-  COVER_LIBRARY,
   JOURNAL_CATEGORIES,
   PIN_LIMIT,
+  isUserCover,
   mediaKind,
   saveJournalArticle,
   type JournalArticle,
@@ -15,7 +16,6 @@ import {
   type JournalMedia,
   type JournalStatus,
 } from '@/data/journal';
-import { cn } from '@/lib/utils';
 import { useEffect, useState, type FC } from 'react';
 import { toast } from 'sonner';
 
@@ -63,7 +63,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, pinnedCount, o
     setTitle(article?.title ?? '');
     setContent(article?.content ?? '');
     setCategory(article?.category ?? 'social');
-    setCover(article?.cover ?? '');
+    setCover(article && isUserCover(article.cover) ? article.cover : '');
     setDate(article ? toInputDate(article.date) : todayInput());
     setAuthorName(article?.author ?? author);
     setMedia(article?.media ?? []);
@@ -93,10 +93,6 @@ export const JournalEditor: FC<Props> = ({ open, article, author, pinnedCount, o
       toast.error('Preencha título, conteúdo, categoria, data e autor.');
       return;
     }
-    if (status === 'published' && !cover) {
-      toast.error('Selecione ou envie uma imagem de capa antes de publicar.');
-      return;
-    }
     const result = saveJournalArticle({
       title,
       content,
@@ -118,7 +114,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, pinnedCount, o
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{article ? 'Editar publicação' : 'Nova publicação'}</DialogTitle>
-          <DialogDescription>Título, conteúdo, categoria, capa e materiais da notícia.</DialogDescription>
+          <DialogDescription>Título, conteúdo, categoria e materiais da notícia. A imagem de capa é opcional.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <div className="grid gap-2">
@@ -150,13 +146,6 @@ export const JournalEditor: FC<Props> = ({ open, article, author, pinnedCount, o
           </div>
           <div className="grid gap-2">
             <Label>Imagem de capa</Label>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-              {COVER_LIBRARY.map((item) => (
-                <button key={item.id} type="button" onClick={() => setCover(item.src)} className={cn('overflow-hidden rounded-lg border', cover === item.src ? 'ring-2 ring-primary' : '')} title={item.label}>
-                  <img src={item.src} alt={item.label} className="aspect-[16/9] w-full object-cover" />
-                </button>
-              ))}
-            </div>
             <div className="flex flex-wrap gap-2">
               <Label htmlFor="jornal-capa" className="inline-flex h-9 cursor-pointer items-center rounded-lg border px-3 text-sm font-medium">
                 {cover ? 'Substituir imagem' : 'Enviar imagem'}
@@ -164,7 +153,12 @@ export const JournalEditor: FC<Props> = ({ open, article, author, pinnedCount, o
               {cover ? <Button type="button" variant="outline" onClick={() => setCover('')}>Remover imagem</Button> : null}
             </div>
             <input id="jornal-capa" type="file" accept="image/*" className="sr-only" onChange={(event) => void onCoverFile(event.target.files?.[0])} />
-            {cover ? <img src={cover} alt="Pré-visualização da capa" className="h-36 w-full rounded-xl object-cover" /> : <p className="text-sm text-muted-foreground">Nenhuma capa selecionada. Escolha uma foto da biblioteca ou envie a sua.</p>}
+            {cover ? <img src={cover} alt="Pré-visualização da capa" className="h-36 w-full rounded-xl object-cover" /> : (
+              <>
+                <p className="text-sm text-muted-foreground">Sem imagem, a publicação usa a capa da categoria.</p>
+                <JournalCover article={{ title, content, category, cover: '', media: [] }} />
+              </>
+            )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="jornal-anexos">Áudio, vídeo, imagens e documentos</Label>

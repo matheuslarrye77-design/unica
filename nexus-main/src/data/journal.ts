@@ -91,6 +91,22 @@ export function categoryLabel(category: JournalCategory) {
   return JOURNAL_CATEGORIES.find((item) => item.id === category)?.label ?? category;
 }
 
+export function isUserCover(cover: string) {
+  const value = cover.trim();
+  if (!value || value.startsWith('/jornal/')) return false;
+  return value.startsWith('data:image/') || value.startsWith('blob:') || value.startsWith('/api/') || value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/');
+}
+
+export function articleCover(article: Pick<JournalArticle, 'cover' | 'media'>) {
+  if (isUserCover(article.cover)) return article.cover;
+  return article.media.find((item) => item.kind === 'image' && isUserCover(item.url))?.url ?? '';
+}
+
+export function readingMinutes(content: string) {
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 180));
+}
+
 export function articleSummary(content: string) {
   const clean = content.replace(/\s+/g, ' ').trim();
   return clean.length > 160 ? `${clean.slice(0, 157)}…` : clean;

@@ -1,5 +1,6 @@
 import { JournalEditor } from '@/components/journal/JournalEditor';
 import { JournalRail } from '@/components/journal/JournalRail';
+import { JournalBadge } from '@/components/journal/JournalVisual';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles } from '@/components/journal/useJournal';
 import { Button } from '@/components/ui/button';
@@ -8,11 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   addJournalComment,
   deleteJournalComment,
+  articleCover,
   canManageJournal,
-  categoryLabel,
+  readingMinutes,
   toggleJournalPin,
   toggleJournalReaction,
-  type JournalCategory,
 } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
@@ -20,13 +21,6 @@ import { ArrowLeft, Heart, MessageCircle, Pin } from 'lucide-react';
 import { useState, type FC } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-
-const tone: Record<JournalCategory, string> = {
-  processos: 'bg-violet-100 text-violet-800',
-  urgente: 'bg-rose-100 text-rose-800',
-  social: 'bg-amber-100 text-amber-800',
-  treinamentos: 'bg-emerald-100 text-emerald-800',
-};
 
 export const JournalArticlePage: FC = () => {
   const { id } = useParams();
@@ -71,10 +65,10 @@ export const JournalArticlePage: FC = () => {
             <ArrowLeft className="h-4 w-4" />
             Jornal
           </Link>
-          <p className={cn('mb-3 inline-flex rounded-full px-2.5 py-1 text-xs font-medium', tone[article.category])}>{categoryLabel(article.category)}</p>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{article.title}</h1>
+          <JournalBadge category={article.category} />
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{article.title}</h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            {article.author} · {new Date(article.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+            {article.author} · {new Date(article.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })} · {readingMinutes(article.content)} min de leitura
             {article.status === 'draft' ? ' · Rascunho' : ''}
           </p>
           {canManage ? (
@@ -88,7 +82,7 @@ export const JournalArticlePage: FC = () => {
               ) : null}
             </div>
           ) : null}
-          {article.cover ? <img src={article.cover} alt="" className="mt-6 aspect-[16/8] w-full rounded-2xl border object-cover" /> : null}
+          {articleCover(article) ? <img src={articleCover(article)} alt="" className="mt-6 aspect-[16/8] w-full rounded-2xl border object-cover" /> : null}
           <div className="mt-6 space-y-4 text-base leading-7 whitespace-pre-wrap">{article.content}</div>
 
           {article.media.length > 0 ? (
