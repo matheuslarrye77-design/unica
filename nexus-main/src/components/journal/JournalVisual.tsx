@@ -50,9 +50,9 @@ export const JournalBadge: FC<{ category: JournalCategory; onHeader?: boolean; c
 );
 
 const cardArt: Partial<Record<JournalCategory, { src: string; label: string }>> = {
-  social: { src: '/jornal/cards/social.png', label: 'left-[4%] top-[27%] h-[46%] w-[40%]' },
-  processos: { src: '/jornal/cards/processos.png', label: 'left-[4%] top-[26%] h-[46%] w-[38%]' },
-  urgente: { src: '/jornal/cards/urgente.png', label: 'left-[7%] top-[26%] h-[48%] w-[37%]' },
+  social: { src: '/jornal/cards/social.png?v=2', label: 'left-[4%] top-[27%] h-[46%] w-[40%]' },
+  processos: { src: '/jornal/cards/processos.png?v=2', label: 'left-[4%] top-[26%] h-[46%] w-[38%]' },
+  urgente: { src: '/jornal/cards/urgente.png?v=2', label: 'left-[7%] top-[26%] h-[48%] w-[37%]' },
 };
 
 export const JournalCover: FC<{ article: Pick<JournalArticle, 'title' | 'content' | 'category' | 'cover' | 'media'>; compact?: boolean }> = ({ article, compact }) => {
