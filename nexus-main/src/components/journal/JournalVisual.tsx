@@ -49,9 +49,26 @@ export const JournalBadge: FC<{ category: JournalCategory; onHeader?: boolean; c
   </span>
 );
 
+const cardArt: Partial<Record<JournalCategory, { src: string; label: string }>> = {
+  social: { src: '/jornal/cards/social.png', label: 'left-[4%] top-[27%] h-[46%] w-[40%]' },
+  processos: { src: '/jornal/cards/processos.png', label: 'left-[4%] top-[26%] h-[46%] w-[38%]' },
+  urgente: { src: '/jornal/cards/urgente.png', label: 'left-[7%] top-[26%] h-[48%] w-[37%]' },
+};
+
 export const JournalCover: FC<{ article: Pick<JournalArticle, 'title' | 'content' | 'category' | 'cover' | 'media'>; compact?: boolean }> = ({ article, compact }) => {
-  const image = articleCover(article);
+  const art = cardArt[article.category];
   const tone = categoryTone[article.category];
+  if (art) {
+    return (
+      <div className="relative">
+        <img src={art.src} alt="" className="block h-auto w-full" />
+        <span className={cn('absolute flex items-center justify-center text-center font-semibold leading-none', art.label, tone.badgeText, compact ? 'text-[8px]' : 'text-[13px]')}>
+          {categoryLabel(article.category)}
+        </span>
+      </div>
+    );
+  }
+  const image = articleCover(article);
   const Icon = categoryIcon[article.category];
   const height = compact ? 'h-[58px]' : 'h-[74px]';
   if (image) {
@@ -63,7 +80,7 @@ export const JournalCover: FC<{ article: Pick<JournalArticle, 'title' | 'content
     );
   }
   return (
-    <div className={cn('flex items-center justify-between rounded-[18px] px-4', height, tone.header)}>
+    <div className={cn('flex aspect-[4.76/1] items-center justify-between rounded-[18px] px-4', tone.header)}>
       <JournalBadge category={article.category} onHeader className={compact ? 'px-2 py-1 text-[11px]' : undefined} />
       <Icon className={cn(compact ? 'h-5 w-5' : 'h-7 w-7', tone.icon)} strokeWidth={1.75} />
     </div>
