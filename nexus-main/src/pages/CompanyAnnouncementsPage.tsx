@@ -4,7 +4,7 @@ import { JournalCover, categoryTone } from '@/components/journal/JournalVisual';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles, useJournalSaved } from '@/components/journal/useJournal';
 import { Input } from '@/components/ui/input';
-import { articleSummary, canManageJournal, deleteJournalArticle, journalPlainText, readingMinutes, toggleJournalSave, type JournalArticle, type JournalCategory } from '@/data/journal';
+import { archiveJournalArticle, articleSummary, canManageJournal, deleteJournalArticle, journalPlainText, purgeJournalArticle, readingMinutes, restoreJournalArticle, toggleJournalSave, type JournalArticle, type JournalCategory } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { Bookmark, Calendar, ChevronRight, ClipboardList, Clock, Newspaper, Plus, Search, Trash2 } from 'lucide-react';
@@ -15,7 +15,7 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-const FeaturedCard: FC<{ article: JournalArticle; saved: boolean }> = ({ article, saved }) => {
+const FeaturedCard: FC<{ article: JournalArticle; saved: boolean; onRemove?: () => void }> = ({ article, saved, onRemove }) => {
   const minutes = readingMinutes(article.content);
   return (
     <Link to={`/announcements/${article.id}`} className="group flex flex-col rounded-[22px] border border-[#EFE8F4] bg-white p-3.5 shadow-[0_10px_28px_rgba(80,40,120,0.06)]">
@@ -38,6 +38,16 @@ const FeaturedCard: FC<{ article: JournalArticle; saved: boolean }> = ({ article
         >
           <Bookmark className="h-4 w-4" fill={saved ? 'currentColor' : 'none'} />
         </button>
+        {onRemove ? (
+          <button
+            type="button"
+            aria-label={`Mover ${article.title} para a lixeira`}
+            onClick={(event) => { event.preventDefault(); event.stopPropagation(); onRemove(); }}
+            className="grid h-7 w-7 place-items-center rounded-full text-[#C9BED6] hover:text-[#9D174D]"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        ) : null}
         <ChevronRight className="h-4 w-4 shrink-0 text-[#C9BED6] transition-colors group-hover:text-[#8E35B8]" />
       </div>
     </Link>
@@ -52,6 +62,7 @@ export const CompanyAnnouncementsPage: FC = () => {
   const [search, setSearch] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<JournalArticle | null>(null);
+  const [trashOpen, setTrashOpen] = useState(false);
   const canManage = canManageJournal(currentUser);
 
   const published = useMemo(
@@ -70,6 +81,7 @@ export const CompanyAnnouncementsPage: FC = () => {
   const cards = showingDefault ? featured : visible;
   const recent = showingDefault ? published.filter((article) => !featuredIds.has(article.id)) : [];
   const drafts = articles.filter((article) => article.status === 'draft');
+  const removed = articles.filter((article) => article.status === 'removed').sort((a, b) => b.date.localeCompare(a.date));
   const savedArticles = savedIds.map((id) => published.find((article) => article.id === id)).filter((article): article is JournalArticle => Boolean(article));
 
   function selectCategory(next: string) {
@@ -101,10 +113,16 @@ export const CompanyAnnouncementsPage: FC = () => {
               </div>
             </div>
             {canManage ? (
-              <button type="button" onClick={openCreate} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
-                <Plus className="h-4 w-4" />
-                Nova publicação
-              </button>
+              <div className="flex items-center gap-2">
+                <button type="button" aria-pressed={trashOpen} aria-label="Lixeira" onClick={() => setTrashOpen((current) => !current)} className={cn('relative grid h-9 w-9 place-items-center rounded-full border border-[#E6DEEF] bg-white text-[#6A228C] hover:bg-[#F3E4FA]', trashOpen && 'bg-[#F3E4FA]')}>
+                  <Trash2 className="h-4 w-4" />
+                  {removed.length > 0 ? <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#9D174D] px-1 text-[10px] font-semibold text-white">{removed.length}</span> : null}
+                </button>
+                <button type="button" onClick={openCreate} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
+                  <Plus className="h-4 w-4" />
+                  Nova publicação
+                </button>
+              </div>
             ) : null}
           </div>
 
@@ -112,6 +130,30 @@ export const CompanyAnnouncementsPage: FC = () => {
             <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por título ou conteúdo..." className="h-11 rounded-xl border-[#E6DEEF] bg-white pl-10 shadow-[0_1px_2px_rgba(40,20,70,0.04)]" />
           </label>
+
+          {canManage && trashOpen ? (
+            <section className="mb-4 rounded-2xl border border-[#E7E0F0] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(40,20,70,0.04)]">
+              <h2 className="flex items-center gap-2 text-[14px] font-semibold">
+                <span className="unica-icon">
+                  <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+                </span>
+                Lixeira
+              </h2>
+              {removed.length === 0 ? (
+                <p className="mt-3 text-sm text-muted-foreground">Nenhuma publicação removida.</p>
+              ) : (
+                <div className="mt-3 flex flex-col gap-2">
+                  {removed.map((article) => (
+                    <div key={article.id} className="flex items-center gap-2 rounded-xl border border-[#E7E0F0] px-3 py-2.5">
+                      <span className="min-w-0 flex-1 truncate text-[13.5px]">{article.title}</span>
+                      <button type="button" className="shrink-0 text-[13px] font-semibold text-[#6A228C]" onClick={() => restoreJournalArticle(article.id)}>Restaurar</button>
+                      <button type="button" className="shrink-0 text-[13px] font-semibold text-[#9D174D]" onClick={() => { if (window.confirm('Excluir esta publicação de vez?')) purgeJournalArticle(article.id); }}>Excluir</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          ) : null}
 
           {canManage && drafts.length > 0 && showingDefault ? (
             <section className="mb-4 rounded-2xl border border-[#E7E0F0] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(40,20,70,0.04)]">
@@ -162,7 +204,7 @@ export const CompanyAnnouncementsPage: FC = () => {
               <p className="rounded-2xl border border-[#E7E0F0] bg-white px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma publicação encontrada.</p>
             ) : (
               <div className="grid items-stretch gap-3 md:grid-cols-3">
-                {cards.map((article) => <FeaturedCard key={article.id} article={article} saved={savedIds.includes(article.id)} />)}
+                {cards.map((article) => <FeaturedCard key={article.id} article={article} saved={savedIds.includes(article.id)} onRemove={canManage ? () => { if (window.confirm('Mover esta publicação para a lixeira?')) archiveJournalArticle(article.id); } : undefined} />)}
               </div>
             )}
           </section>
@@ -170,7 +212,7 @@ export const CompanyAnnouncementsPage: FC = () => {
             <section className="mt-8">
               <h2 className="mb-3 text-[18px] font-semibold">Publicações recentes</h2>
               <div className="grid items-stretch gap-3 md:grid-cols-3">
-                {recent.map((article) => <FeaturedCard key={article.id} article={article} saved={savedIds.includes(article.id)} />)}
+                {recent.map((article) => <FeaturedCard key={article.id} article={article} saved={savedIds.includes(article.id)} onRemove={canManage ? () => { if (window.confirm('Mover esta publicação para a lixeira?')) archiveJournalArticle(article.id); } : undefined} />)}
               </div>
             </section>
           ) : null}

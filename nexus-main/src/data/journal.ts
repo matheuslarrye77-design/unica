@@ -2,7 +2,7 @@ import { generateId } from '@/lib/utils';
 
 
 export type JournalCategory = 'processos' | 'urgente' | 'social' | 'treinamentos';
-export type JournalStatus = 'published' | 'draft';
+export type JournalStatus = 'published' | 'draft' | 'removed';
 export type JournalMediaKind = 'image' | 'audio' | 'video' | 'document';
 
 export type JournalMedia = {
@@ -570,12 +570,38 @@ export function saveJournalArticle(draft: JournalDraft, id?: string) {
   return { article: pinned.list.find((article) => article.id === articleId) ?? next, replacedId: pinned.replacedId };
 }
 
+function dropSaved(id: string) {
+  const saved = savedJournalIds().filter((item) => item !== id);
+  localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+}
+
 export function deleteJournalArticle(id: string) {
   const current = articles.find((article) => article.id === id);
   if (!current || current.status !== 'draft') return false;
   commit(articles.filter((article) => article.id !== id));
-  const saved = savedJournalIds().filter((item) => item !== id);
-  localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+  dropSaved(id);
+  return true;
+}
+
+export function archiveJournalArticle(id: string) {
+  const current = articles.find((article) => article.id === id);
+  if (!current || current.status !== 'published') return false;
+  commit(articles.map((article) => (article.id === id ? { ...article, status: 'removed' as const, pinned: false, pinnedAt: undefined } : article)));
+  return true;
+}
+
+export function restoreJournalArticle(id: string) {
+  const current = articles.find((article) => article.id === id);
+  if (!current || current.status !== 'removed') return false;
+  commit(articles.map((article) => (article.id === id ? { ...article, status: 'published' as const, pinned: false, pinnedAt: undefined } : article)));
+  return true;
+}
+
+export function purgeJournalArticle(id: string) {
+  const current = articles.find((article) => article.id === id);
+  if (!current || current.status !== 'removed') return false;
+  commit(articles.filter((article) => article.id !== id));
+  dropSaved(id);
   return true;
 }
 

@@ -8,9 +8,12 @@ import { Header } from '@/components/Header';
 import { Textarea } from '@/components/ui/textarea';
 import {
   addJournalComment,
+  archiveJournalArticle,
   deleteJournalComment,
   articleCover,
   canManageJournal,
+  purgeJournalArticle,
+  restoreJournalArticle,
   readingMinutes,
   toggleJournalPin,
   toggleJournalReaction,
@@ -19,9 +22,9 @@ import {
 } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { ArrowLeft, Bookmark, Heart, MessageCircle, Pin } from 'lucide-react';
+import { ArrowLeft, Bookmark, Heart, MessageCircle, Pin, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const JournalAudio: FC<{ name: string; url: string; start?: number; duration?: number }> = ({ name, url, start = 0, duration }) => {
@@ -55,6 +58,7 @@ const JournalAudio: FC<{ name: string; url: string; start?: number; duration?: n
 
 export const JournalArticlePage: FC = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const articles = useJournalArticles();
   const savedIds = useJournalSaved();
   const article = articles.find((item) => item.id === id);
@@ -62,7 +66,7 @@ export const JournalArticlePage: FC = () => {
   const [editing, setEditing] = useState(false);
   const canManage = canManageJournal(currentUser);
 
-  if (!article || (article.status === 'draft' && !canManage)) {
+  if (!article || ((article.status === 'draft' || article.status === 'removed') && !canManage)) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -90,7 +94,7 @@ export const JournalArticlePage: FC = () => {
 
   return (
     <>
-    <PageFrame rail={<JournalRail articles={savedIds.map((savedId) => articles.find((item) => item.id === savedId)).filter((item): item is NonNullable<typeof item> => Boolean(item))} />}>
+    <PageFrame rail={<JournalRail articles={savedIds.map((savedId) => articles.find((item) => item.id === savedId && item.status === 'published')).filter((item): item is NonNullable<typeof item> => Boolean(item))} />}>
         <article className="min-w-0 flex-1">
           <Link to="/announcements" className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
@@ -101,15 +105,28 @@ export const JournalArticlePage: FC = () => {
           <p className="mt-3 text-sm text-muted-foreground">
             {article.author} · {new Date(article.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })} · {readingMinutes(article.content)} min de leitura
             {article.status === 'draft' ? ' · Rascunho' : ''}
+            {article.status === 'removed' ? ' · Na lixeira' : ''}
           </p>
           {canManage ? (
-            <div className="mt-4 flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>Editar</Button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {article.status !== 'removed' ? <Button variant="outline" size="sm" onClick={() => setEditing(true)}>Editar</Button> : null}
               {article.status === 'published' ? (
                 <Button variant="outline" size="sm" className="gap-2" onClick={pin}>
                   <Pin className="h-4 w-4" />
                   {article.pinned ? 'Desafixar' : 'Fixar'}
                 </Button>
+              ) : null}
+              {article.status === 'published' ? (
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => { if (!window.confirm('Mover esta publicação para a lixeira?')) return; archiveJournalArticle(article.id); navigate('/announcements'); }}>
+                  <Trash2 className="h-4 w-4" />
+                  Lixeira
+                </Button>
+              ) : null}
+              {article.status === 'removed' ? (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => restoreJournalArticle(article.id)}>Restaurar</Button>
+                  <Button variant="outline" size="sm" onClick={() => { if (!window.confirm('Excluir esta publicação de vez?')) return; purgeJournalArticle(article.id); navigate('/announcements'); }}>Excluir de vez</Button>
+                </>
               ) : null}
             </div>
           ) : null}

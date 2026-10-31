@@ -1,5 +1,5 @@
+import { ImageCrop } from '@/components/journal/ImageCrop';
 import { AudioTrim } from '@/components/social/AudioTrim';
-import { ImageAdjust } from '@/components/social/ImageAdjust';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { JournalCover, JournalRichText, categoryTone } from '@/components/journal/JournalVisual';
@@ -27,7 +27,7 @@ import {
 } from '@/data/journal';
 import { uploadMedia } from '@/lib/feed';
 import { cn, generateId } from '@/lib/utils';
-import { Calendar, ChevronDown, Eye, FileText, Image as ImageIcon, ImagePlus, Info, Megaphone, Paperclip, Send, Trash2, Type, X } from 'lucide-react';
+import { Calendar, ChevronDown, Eye, FileText, Image as ImageIcon, ImagePlus, Info, Maximize2, Megaphone, Minimize2, Paperclip, Send, Trash2, Type, X } from 'lucide-react';
 import { useEffect, useRef, useState, type DragEvent, type FC } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
@@ -95,6 +95,13 @@ function imageFile(file: File) {
   return file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp' || /\.(jpe?g|png|webp)$/i.test(file.name);
 }
 
+function growField(node: HTMLTextAreaElement, expanded: boolean) {
+  const cap = expanded ? 420 : 168;
+  const floor = expanded ? 120 : 40;
+  node.style.height = '0px';
+  node.style.height = `${Math.min(Math.max(node.scrollHeight, floor), cap)}px`;
+}
+
 export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }) => {
   const covers = useJournalCovers();
   const coverInput = useRef<HTMLInputElement>(null);
@@ -104,6 +111,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   const imageInput = useRef<HTMLInputElement>(null);
   const documentInput = useRef<HTMLInputElement>(null);
   const focusPiece = useRef('texto');
+  const fields = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const savedOnClose = useRef(false);
   const [title, setTitle] = useState('');
   const [pieces, setPieces] = useState<JournalPiece[]>([{ id: 'texto', kind: 'text', text: '' }]);
@@ -117,6 +125,8 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   const [media, setMedia] = useState<JournalMedia[]>([]);
   const [pinned, setPinned] = useState(false);
   const [pinHint, setPinHint] = useState(false);
+  const [writing, setWriting] = useState(false);
+  const [composing, setComposing] = useState(false);
   const [preview, setPreview] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -142,6 +152,8 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
     setMedia(article?.media ?? []);
     setPinned(article?.pinned ?? false);
     setPinHint(false);
+    setWriting(false);
+    setComposing(false);
     setPreview(false);
     setLibrary(false);
     setAudioFile(null);
@@ -153,6 +165,13 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   useEffect(() => {
     if (dateLocked) setDate(todayInput());
   }, [dateLocked]);
+
+  useEffect(() => {
+    if (!open) return;
+    Object.values(fields.current).forEach((node) => {
+      if (node) growField(node, writing);
+    });
+  }, [open, pieces, writing]);
 
   async function storeImage(file: File) {
     if (!imageFile(file)) {
@@ -321,7 +340,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex max-h-[calc(100dvh-1rem)] w-[min(960px,calc(100%-2rem))] max-w-none flex-col gap-0 overflow-hidden rounded-[28px] border-[#E7E0F0] bg-white p-4 shadow-[0_24px_80px_rgba(70,30,110,0.16)] sm:max-w-[960px]"
+        className="flex max-h-[calc(100dvh-1rem)] w-[min(840px,calc(100%-2rem))] max-w-none flex-col gap-0 overflow-hidden rounded-[28px] border-[#E7E0F0] bg-white p-4 shadow-[0_24px_80px_rgba(70,30,110,0.16)] sm:max-w-[840px]"
         onPointerDown={(event) => {
           const target = event.target as HTMLElement | null;
           if (pinHint && !target?.closest('[data-pin-hint]')) setPinHint(false);
@@ -380,21 +399,38 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
             <div className="grid gap-1">
               <span className="flex items-center justify-between gap-2 text-[13px] font-semibold text-[#241B33]">
                 <span className="flex items-center gap-2"><FileText className="h-3.5 w-3.5 text-[#8E35B8]" /> Descrição</span>
-                <button type="button" aria-label="Inserir imagem na descrição" onClick={() => inlineInput.current?.click()} className="grid h-7 w-7 place-items-center rounded-full text-[#8E35B8] hover:bg-[#F3E4FA]"><ImagePlus className="h-3.5 w-3.5" /></button>
+                <span className="flex items-center gap-0.5">
+                  <button type="button" aria-label="Inserir imagem na descrição" onClick={() => inlineInput.current?.click()} className="grid h-7 w-7 place-items-center rounded-full text-[#8E35B8] hover:bg-[#F3E4FA]"><ImagePlus className="h-3.5 w-3.5" /></button>
+                  <button type="button" aria-pressed={writing} aria-label={writing ? 'Reduzir descrição' : 'Ampliar descrição'} onClick={() => setWriting((current) => !current)} className="grid h-7 w-7 place-items-center rounded-full text-[#B0A8BA] hover:bg-[#F3E4FA] hover:text-[#6A228C]">
+                    {writing ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                  </button>
+                </span>
               </span>
-              <div className="max-h-32 overflow-y-auto rounded-2xl border border-[#E6DEEF] bg-[#FBF9FD] px-4 py-2" onDragOver={(event) => event.preventDefault()} onDrop={onDescriptionDrop}>
+              <div className={cn('overflow-y-auto rounded-2xl border border-[#E6DEEF] bg-[#FBF9FD] px-3 py-2 focus-within:border-[#E4C8EE] focus-within:ring-2 focus-within:ring-[#F3E4FA]', writing ? 'min-h-[320px]' : composing ? 'min-h-[140px]' : '')} onDragOver={(event) => event.preventDefault()} onDrop={onDescriptionDrop}>
                 {pieces.map((piece, index) => piece.kind === 'image' ? (
-                  <span key={piece.id} className="relative my-2 block">
-                    <img src={resolveJournalAsset(piece.ref)} alt="" className="max-h-24 w-full rounded-xl object-cover" />
+                  <span key={piece.id} className="relative mt-2 block">
+                    <img src={resolveJournalAsset(piece.ref)} alt="" className="max-h-72 w-full rounded-xl bg-[#F8F4FB] object-contain" />
                     <button type="button" aria-label="Remover imagem da descrição" className="absolute top-1 right-1 grid h-6 w-6 place-items-center rounded-full bg-white text-[#9D174D] shadow" onClick={() => setPieces((current) => current.filter((item) => item.id !== piece.id))}><X className="h-3.5 w-3.5" /></button>
                   </span>
                 ) : (
                   <textarea
                     key={piece.id}
+                    ref={(node) => {
+                      fields.current[piece.id] = node;
+                      if (node) growField(node, writing);
+                    }}
                     value={piece.text}
-                    rows={index === 0 ? 2 : 1}
-                    onFocus={() => { focusPiece.current = piece.id; }}
-                    onChange={(event) => writePiece(piece.id, event.target.value)}
+                    rows={1}
+                    onFocus={(event) => {
+                      focusPiece.current = piece.id;
+                      setComposing(true);
+                      growField(event.currentTarget, writing);
+                    }}
+                    onBlur={() => setComposing(false)}
+                    onChange={(event) => {
+                      writePiece(piece.id, event.target.value);
+                      growField(event.currentTarget, writing);
+                    }}
                     onPaste={(event) => {
                       const file = [...event.clipboardData.files].find((item) => imageFile(item));
                       if (!file) return;
@@ -402,8 +438,8 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
                       focusPiece.current = piece.id;
                       setInlineFile(file);
                     }}
-                    placeholder={index === 0 ? 'Escreva uma descrição sobre a publicação...' : 'Continue o texto...'}
-                    className="w-full resize-none bg-transparent py-1 text-[14px] outline-none placeholder:text-[#B0A8BA]"
+                    placeholder={index === 0 ? 'Escreva uma descrição sobre a publicação...' : ''}
+                    className={`w-full resize-none overflow-y-auto bg-transparent text-[13.5px] leading-5 outline-none placeholder:text-[#B0A8BA] ${index === 0 ? '' : 'mt-2 min-h-8'}`}
                   />
                 ))}
                 <span className="block pb-1 text-right text-[12px] text-[#B0A8BA]">{plainLength}/{CONTENT_LIMIT}</span>
@@ -498,8 +534,8 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
                 <Info className="h-3.5 w-3.5" />
               </button>
               {pinHint ? (
-                <p data-pin-hint className="absolute bottom-7 left-0 z-30 w-[min(320px,80vw)] rounded-2xl border border-[#E6DEEF] bg-white p-3 text-[12.5px] leading-5 text-[#3C3952] shadow-[0_12px_32px_rgba(70,30,110,0.14)]">
-                  Dá para fixar até 3 publicações. Se já houver 3, a que está fixada há mais tempo sai do destaque. Se quiser escolher qual sai, tire o fixado manualmente antes.
+                <p data-pin-hint className="absolute bottom-7 left-0 z-30 w-[min(360px,80vw)] rounded-2xl border border-[#E6DEEF] bg-white p-3 text-[12.5px] leading-5 text-[#3C3952] shadow-[0_12px_32px_rgba(70,30,110,0.14)]">
+                  É possível manter até três publicações fixadas. Ao atingir esse limite, a publicação fixada há mais tempo será desafixada automaticamente. Para escolher qual será removida, desafixe-a manualmente antes de fixar uma nova.
                 </p>
               ) : null}
             </div>
@@ -555,11 +591,11 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
           document.body,
         ) : null}
         {coverFile ? createPortal(
-          <ImageAdjust file={coverFile} aspect={1400 / 320} onCancel={() => setCoverFile(null)} onConfirm={(file) => void confirmCover(file)} />,
+          <ImageCrop file={coverFile} banner darken onCancel={() => setCoverFile(null)} onConfirm={(file) => void confirmCover(file)} />,
           document.body,
         ) : null}
         {inlineFile ? createPortal(
-          <ImageAdjust file={inlineFile} onCancel={() => setInlineFile(null)} onConfirm={(file) => void confirmInline(file)} />,
+          <ImageCrop file={inlineFile} onCancel={() => setInlineFile(null)} onConfirm={(file) => void confirmInline(file)} />,
           document.body,
         ) : null}
       </DialogContent>
