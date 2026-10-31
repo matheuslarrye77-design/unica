@@ -22,6 +22,7 @@ export const ImageAdjust: FC<{ file: File; onCancel: () => void; onConfirm: (fil
   const [frame, setFrame] = useState({ w: 320, h: 320 });
   const [natural, setNatural] = useState({ w: 1, h: 1 });
   const [src, setSrc] = useState('');
+  const [opacity, setOpacity] = useState(1);
 
   useEffect(() => {
     const url = URL.createObjectURL(file);
@@ -75,7 +76,12 @@ export const ImageAdjust: FC<{ file: File; onCancel: () => void; onConfirm: (fil
     const output = document.createElement('canvas');
     output.width = Math.max(1, Math.round(sw * ratio));
     output.height = Math.max(1, Math.round(sh * ratio));
-    output.getContext('2d')?.drawImage(image, sx, sy, sw, sh, 0, 0, output.width, output.height);
+    const context = output.getContext('2d');
+    context?.drawImage(image, sx, sy, sw, sh, 0, 0, output.width, output.height);
+    if (aspect && opacity < 1 && context) {
+      context.fillStyle = `rgba(0,0,0,${1 - opacity})`;
+      context.fillRect(0, 0, output.width, output.height);
+    }
     const type = file.type === 'image/png' || file.type === 'image/webp' ? file.type : 'image/jpeg';
     output.toBlob((blob) => {
       if (!blob) return;
@@ -85,8 +91,8 @@ export const ImageAdjust: FC<{ file: File; onCancel: () => void; onConfirm: (fil
   }
 
   return (
-    <div data-journal-overlay className="fixed inset-0 z-[80] grid place-items-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-3xl bg-card p-4 shadow-xl">
+    <div data-journal-overlay className="pointer-events-auto fixed inset-0 z-[80] grid place-items-center bg-black/60 p-4" style={{ pointerEvents: 'auto' }}>
+      <div className="pointer-events-auto w-full max-w-md rounded-3xl bg-card p-4 shadow-xl" style={{ pointerEvents: 'auto' }}>
         <p className="text-sm font-medium text-foreground">{aspect ? 'Ajustar capa' : 'Ajustar foto'}</p>
         {aspect ? <p className="mt-1 text-xs text-muted-foreground">Arraste para enquadrar e use o zoom antes de guardar.</p> : null}
         <div
@@ -127,6 +133,7 @@ export const ImageAdjust: FC<{ file: File; onCancel: () => void; onConfirm: (fil
               />
             )
           ) : null}
+          {aspect && opacity < 1 ? <div className="pointer-events-none absolute inset-0 bg-black" style={{ opacity: 1 - opacity }} /> : null}
         </div>
         <div className="mt-4 flex items-center gap-3">
           <button type="button" aria-label="Diminuir zoom" className="grid h-9 w-9 place-items-center rounded-full bg-[#F8EAFB] text-[#6A228C]" onClick={() => changeZoom(zoom - 0.15)}>
@@ -137,6 +144,12 @@ export const ImageAdjust: FC<{ file: File; onCancel: () => void; onConfirm: (fil
             <Plus className="h-4 w-4" />
           </button>
         </div>
+        {aspect ? (
+          <label className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+            Opacidade
+            <input aria-label="Opacidade" type="range" min={0.2} max={1} step={0.01} value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} className="h-1.5 flex-1 accent-[#8E35B8]" />
+          </label>
+        ) : null}
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" className="rounded-full px-4 py-2 text-sm text-[#6A228C]" onClick={onCancel}>Cancelar</button>
           <button type="button" className="rounded-full bg-[#8E35B8] px-4 py-2 text-sm font-medium text-white" onClick={confirm}>Confirmar</button>

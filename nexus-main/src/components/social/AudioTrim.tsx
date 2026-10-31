@@ -210,8 +210,8 @@ export const AudioTrim: FC<{ file: File; onCancel: () => void; onConfirm: (file:
   const ready = length > 0 && selected > 0 && Boolean(bufferRef.current);
 
   return (
-    <div data-journal-overlay className="fixed inset-0 z-[80] grid place-items-center overflow-hidden bg-black/55 p-4">
-      <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-[#2E2E2E] px-4 py-4 text-white" role="dialog" aria-label="Escolher trecho do áudio" onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
+    <div data-journal-overlay className="pointer-events-auto fixed inset-0 z-[80] grid place-items-center overflow-hidden bg-black/55 p-4" style={{ pointerEvents: 'auto' }}>
+      <div className="pointer-events-auto w-full max-w-lg overflow-hidden rounded-2xl bg-[#2E2E2E] px-4 py-4 text-white" style={{ pointerEvents: 'auto' }} role="dialog" aria-label="Escolher trecho do áudio" onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
         <audio
           ref={audioRef}
           src={src || undefined}

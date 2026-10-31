@@ -116,6 +116,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   const [authorName, setAuthorName] = useState(author);
   const [media, setMedia] = useState<JournalMedia[]>([]);
   const [pinned, setPinned] = useState(false);
+  const [pinHint, setPinHint] = useState(false);
   const [preview, setPreview] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -140,6 +141,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
     setAuthorName(article?.author ?? author);
     setMedia(article?.media ?? []);
     setPinned(article?.pinned ?? false);
+    setPinHint(false);
     setPreview(false);
     setLibrary(false);
     setAudioFile(null);
@@ -245,7 +247,18 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   function onDrop(event: DragEvent<HTMLButtonElement>) {
     event.preventDefault();
     const file = event.dataTransfer.files?.[0];
-    if (file) void onCoverFile(file);
+    if (file) onCoverFile(file);
+  }
+
+  function onDescriptionDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const file = [...event.dataTransfer.files].find((item) => imageFile(item));
+    if (!file) return;
+    if (file.size > COVER_MAX) {
+      toast.error('A imagem passa de 5 MB.');
+      return;
+    }
+    setInlineFile(file);
   }
 
   function chooseCategory(next: JournalCategory) {
@@ -308,9 +321,17 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex max-h-[calc(100dvh-1rem)] flex-col gap-0 overflow-hidden rounded-[28px] border-[#E7E0F0] bg-white p-4 shadow-[0_24px_80px_rgba(70,30,110,0.16)] sm:max-w-[640px]"
+        className="flex max-h-[calc(100dvh-1rem)] w-[min(960px,calc(100%-2rem))] max-w-none flex-col gap-0 overflow-hidden rounded-[28px] border-[#E7E0F0] bg-white p-4 shadow-[0_24px_80px_rgba(70,30,110,0.16)] sm:max-w-[960px]"
+        onPointerDown={(event) => {
+          const target = event.target as HTMLElement | null;
+          if (pinHint && !target?.closest('[data-pin-hint]')) setPinHint(false);
+        }}
         onEscapeKeyDown={(event) => {
           if (coverFile || inlineFile || audioFile) event.preventDefault();
+        }}
+        onPointerDownOutside={(event) => {
+          const target = event.target as HTMLElement | null;
+          if (target?.closest('[data-journal-overlay]')) event.preventDefault();
         }}
         onInteractOutside={(event) => {
           const target = event.target as HTMLElement | null;
@@ -361,7 +382,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
                 <span className="flex items-center gap-2"><FileText className="h-3.5 w-3.5 text-[#8E35B8]" /> Descrição</span>
                 <button type="button" aria-label="Inserir imagem na descrição" onClick={() => inlineInput.current?.click()} className="grid h-7 w-7 place-items-center rounded-full text-[#8E35B8] hover:bg-[#F3E4FA]"><ImagePlus className="h-3.5 w-3.5" /></button>
               </span>
-              <div className="max-h-32 overflow-y-auto rounded-2xl border border-[#E6DEEF] bg-[#FBF9FD] px-4 py-2">
+              <div className="max-h-32 overflow-y-auto rounded-2xl border border-[#E6DEEF] bg-[#FBF9FD] px-4 py-2" onDragOver={(event) => event.preventDefault()} onDrop={onDescriptionDrop}>
                 {pieces.map((piece, index) => piece.kind === 'image' ? (
                   <span key={piece.id} className="relative my-2 block">
                     <img src={resolveJournalAsset(piece.ref)} alt="" className="max-h-24 w-full rounded-xl object-cover" />
@@ -468,11 +489,20 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
               </ul>
             ) : null}
             {sending ? <p className="text-[12px] text-[#8A7C98]">Enviando {sending === 'audio' ? 'áudio' : sending === 'video' ? 'vídeo' : 'arquivo'}...</p> : null}
-            <label className="flex items-center gap-2 pb-1 text-[14px] text-[#241B33]">
-              <input type="checkbox" checked={pinned} onChange={(event) => setPinned(event.target.checked)} className="h-4 w-4 accent-[#7A2498]" />
-              Fixar como destaque
-              <span title="Se já houver três publicações fixadas, a mais antiga sai do destaque." className="grid h-4 w-4 place-items-center rounded-full text-[#8A7C98]"><Info className="h-3.5 w-3.5" /></span>
-            </label>
+            <div className="relative flex items-center gap-2 pb-1 text-[14px] text-[#241B33]">
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={pinned} onChange={(event) => setPinned(event.target.checked)} className="h-4 w-4 accent-[#7A2498]" />
+                Fixar como destaque
+              </label>
+              <button type="button" data-pin-hint aria-expanded={pinHint} aria-label="Como funciona o destaque" onClick={() => setPinHint((current) => !current)} className="grid h-4 w-4 place-items-center rounded-full text-[#8A7C98]">
+                <Info className="h-3.5 w-3.5" />
+              </button>
+              {pinHint ? (
+                <p data-pin-hint className="absolute bottom-7 left-0 z-30 w-[min(320px,80vw)] rounded-2xl border border-[#E6DEEF] bg-white p-3 text-[12.5px] leading-5 text-[#3C3952] shadow-[0_12px_32px_rgba(70,30,110,0.14)]">
+                  Dá para fixar até 3 publicações. Se já houver 3, a que está fixada há mais tempo sai do destaque. Se quiser escolher qual sai, tire o fixado manualmente antes.
+                </p>
+              ) : null}
+            </div>
           </div>
         )}
         {preview ? null : (
