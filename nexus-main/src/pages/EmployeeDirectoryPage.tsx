@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { TEAM_FUNCOES, UNIQUE_FUNCOES, teamRoster, type TeamFuncao, type TeamMember } from '@/data/team';
 import { cn } from '@/lib/utils';
 import { isLeader } from '@/lib/institution';
-import { actor, authHeaders } from '@/lib/session';
+import { actor, authHeaders, getDemoId } from '@/lib/session';
+import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { ChevronRight, Filter, LayoutGrid, List, Mail, MessageCircle, MoreHorizontal, Phone, Plus, Search, User, UserRound, Users } from 'lucide-react';
 import { useEffect, useMemo, useState, type FC, type FormEvent } from 'react';
 import { toast } from 'sonner';
@@ -39,7 +40,17 @@ export const EmployeeDirectoryPage: FC = () => {
   const [colleagues, setColleagues] = useState<TeamMember[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [aliasFor, setAliasFor] = useState<TeamMember | null>(null);
+  const [aliasText, setAliasText] = useState('');
   const leader = isLeader(actor());
+  const [canAliases, setCanAliases] = useState(leader);
+  useEffect(() => {
+    if (leader) return;
+    void fetch('/api/goals', { credentials: 'include', headers: { ...authHeaders(), ...(LOGIN_REQUIRED ? {} : { 'x-unica-demo': getDemoId() }) } })
+      .then((response) => response.ok ? response.json() as Promise<{ canManage?: boolean }> : null)
+      .then((data) => { if (data?.canManage) setCanAliases(true); })
+      .catch(() => undefined);
+  }, [leader]);
 
   useEffect(() => {
     void fetch('/api/colleagues', { credentials: 'include', headers: authHeaders() })
@@ -89,6 +100,37 @@ export const EmployeeDirectoryPage: FC = () => {
     setOpen(false);
     setForm(emptyForm);
     toast.success('Colaborador adicionado.');
+  }
+
+  async function openAliases(person: TeamMember) {
+    setAliasFor(person);
+    setAliasText('');
+    try {
+      const response = await fetch('/api/goals', { credentials: 'include', headers: { ...authHeaders(), ...(LOGIN_REQUIRED ? {} : { 'x-unica-demo': getDemoId() }) } });
+      const data = await response.json() as { people?: { id: string; aliases: string[] }[] };
+      const found = data.people?.find((item) => item.id === person.id);
+      setAliasText((found?.aliases ?? []).join('\n'));
+    } catch {
+      setAliasText('');
+    }
+  }
+
+  async function saveAliases(event: FormEvent) {
+    event.preventDefault();
+    if (!aliasFor) return;
+    const names = aliasText.split('\n').map((item) => item.trim()).filter(Boolean);
+    const response = await fetch('/api/goals/aliases', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { ...authHeaders(), ...(LOGIN_REQUIRED ? {} : { 'x-unica-demo': getDemoId() }) },
+      body: JSON.stringify({ userId: aliasFor.id, names }),
+    });
+    if (!response.ok) {
+      toast.error('Não foi possível salvar os nomes.');
+      return;
+    }
+    setAliasFor(null);
+    toast.success('Nomes dos relatórios salvos.');
   }
 
   return (
@@ -181,6 +223,7 @@ export const EmployeeDirectoryPage: FC = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => window.open(`mailto:${person.email}`)}>Enviar e-mail</DropdownMenuItem>
+                            {canAliases ? <DropdownMenuItem onClick={() => void openAliases(person)}>Nomes nos relatórios</DropdownMenuItem> : null}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -226,6 +269,20 @@ export const EmployeeDirectoryPage: FC = () => {
           </form>
           <DialogFooter>
             <Button type="submit" form="novo-colaborador">Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(aliasFor)} onOpenChange={(open) => { if (!open) setAliasFor(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nomes reconhecidos nos relatórios</DialogTitle>
+          </DialogHeader>
+          <form id="nomes-relatorio" className="grid gap-2" onSubmit={(event) => void saveAliases(event)}>
+            <p className="text-sm text-muted-foreground">Um nome por linha. O nome oficial de {aliasFor?.name} continua valendo.</p>
+            <textarea value={aliasText} onChange={(event) => setAliasText(event.target.value)} className="min-h-28 rounded-xl border px-3 py-2 text-sm" placeholder={'Matheus\nMatheus Larrye'} />
+          </form>
+          <DialogFooter>
+            <Button type="submit" form="nomes-relatorio">Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

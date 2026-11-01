@@ -17,6 +17,7 @@ import { gifMediaUrl, searchGifs } from './giphy.mjs';
 import { handleStickerRequest, stickerMediaUrl } from './stickers.mjs';
 import { dataDir } from './dataDir.mjs';
 import { handleUpload } from './uploads.js';
+import { handleGoals } from './goalsApi.mjs';
 import { canSeeMood, canSeePost, cleanAudience, cleanMood, cleanMoodAudience } from './postPrivacy.mjs';
 
 type Account = {
@@ -480,7 +481,8 @@ export function extraApi(): Connect.NextHandleFunction {
     const celebrationRoute = url === '/api/celebrations' || url.startsWith('/api/celebrations/');
     const gifRoute = url === '/api/gifs';
     const stickerRoute = url === '/api/stickers' || url.startsWith('/api/stickers/');
-    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && !feedRoute && !uploadRoute && !celebrationRoute && !gifRoute && !stickerRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
+    const goalsRoute = url === '/api/goals' || url.startsWith('/api/goals/');
+    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && !feedRoute && !uploadRoute && !celebrationRoute && !gifRoute && !stickerRoute && !goalsRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
       return next();
     }
     try {
@@ -512,7 +514,12 @@ export function extraApi(): Connect.NextHandleFunction {
         return;
       }
 
-      const user = (feedRoute || uploadRoute || celebrationRoute || gifRoute) ? muralUser(req) : accountFrom(req);
+      const user = (feedRoute || uploadRoute || celebrationRoute || gifRoute || goalsRoute) ? muralUser(req) : accountFrom(req);
+      if (goalsRoute) {
+        if (!user) return send(res, 401, { error: 'unauthorized' });
+        await handleGoals(req, res, user, dir, loadAuth().colleagues, teamRoster, send, readBody);
+        return;
+      }
       if (!user) return send(res, 401, { error: 'unauthorized' });
       if (req.method === 'GET' && gifRoute) {
         const params = new URL(req.url ?? '', 'http://internal').searchParams;

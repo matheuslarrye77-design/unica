@@ -4,6 +4,7 @@ import { JournalBadge, JournalRichText } from '@/components/journal/JournalVisua
 import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles, useJournalSaved } from '@/components/journal/useJournal';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Header } from '@/components/Header';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -11,6 +12,7 @@ import {
   archiveJournalArticle,
   deleteJournalComment,
   articleCover,
+  articleSummary,
   canManageJournal,
   purgeJournalArticle,
   restoreJournalArticle,
@@ -20,9 +22,10 @@ import {
   resolveJournalAsset,
   toggleJournalSave,
 } from '@/data/journal';
+import { createFeedPost } from '@/lib/feed';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { ArrowLeft, Bookmark, Heart, MessageCircle, Pencil, Pin, RotateCcw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Bookmark, Heart, Megaphone, MessageCircle, Pencil, Pin, RotateCcw, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -59,6 +62,9 @@ export const JournalArticlePage: FC = () => {
   const article = articles.find((item) => item.id === id);
   const [comment, setComment] = useState('');
   const [editing, setEditing] = useState(false);
+  const [muralOpen, setMuralOpen] = useState(false);
+  const [caption, setCaption] = useState('');
+  const [posting, setPosting] = useState(false);
   const canManage = canManageJournal(currentUser);
 
   if (!article || ((article.status === 'draft' || article.status === 'removed') && !canManage)) {
@@ -87,6 +93,34 @@ export const JournalArticlePage: FC = () => {
     if (result.replacedId) toast.success('A publicação mais antiga saiu do destaque.');
   }
 
+  async function postOnMural() {
+    if (!article || posting) return;
+    const note = caption.trim();
+    const summary = articleSummary(article.content);
+    const link = `${window.location.origin}/announcements/${article.id}`;
+    const text = [note, article.title, summary, `Leia no jornal: ${link}`].filter(Boolean).join('\n\n');
+    const image = articleCover(article) || resolveJournalAsset(article.cover);
+    const cover = image && !image.startsWith('blob:') && !image.startsWith('data:') && !image.startsWith('lib:') ? image : '';
+    setPosting(true);
+    try {
+      await createFeedPost({
+        body: text,
+        blocks: cover
+          ? [{ type: 'text', text }, { type: 'image', url: cover }]
+          : [{ type: 'text', text }],
+        images: cover ? [cover] : undefined,
+        image: cover || undefined,
+      });
+      setMuralOpen(false);
+      setCaption('');
+      toast.success('Notícia publicada no mural.');
+    } catch {
+      toast.error('Não foi possível publicar no mural.');
+    } finally {
+      setPosting(false);
+    }
+  }
+
   return (
     <>
     <PageFrame rail={<JournalRail articles={savedIds.map((savedId) => articles.find((item) => item.id === savedId && item.status === 'published')).filter((item): item is NonNullable<typeof item> => Boolean(item))} />}>
@@ -112,6 +146,11 @@ export const JournalArticlePage: FC = () => {
               {article.status === 'published' ? (
                 <button type="button" aria-label={article.pinned ? 'Desafixar' : 'Fixar'} title={article.pinned ? 'Desafixar' : 'Fixar'} onClick={pin} className={cn('grid h-9 w-9 place-items-center rounded-full border', article.pinned ? 'border-primary bg-[#F3E4FA] text-primary' : 'border-[#E6DEEF] text-[#6A228C] hover:bg-[#F3E4FA]')}>
                   <Pin className="h-4 w-4" fill={article.pinned ? 'currentColor' : 'none'} />
+                </button>
+              ) : null}
+              {article.status === 'published' ? (
+                <button type="button" aria-label="Publicar no mural" title="Publicar no mural" onClick={() => setMuralOpen(true)} className="grid h-9 w-9 place-items-center rounded-full border border-[#E6DEEF] text-[#6A228C] hover:bg-[#F3E4FA]">
+                  <Megaphone className="h-4 w-4" />
                 </button>
               ) : null}
               {article.status === 'published' ? (
@@ -210,6 +249,19 @@ export const JournalArticlePage: FC = () => {
           onOpenChange={setEditing}
         />
       ) : null}
+      <Dialog open={muralOpen} onOpenChange={setMuralOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Publicar no mural</DialogTitle>
+          </DialogHeader>
+          <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); void postOnMural(); }}>
+            <label className="text-sm font-medium" htmlFor="legenda-mural">Legenda</label>
+            <Textarea id="legenda-mural" value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Escreva uma legenda para acompanhar a notícia" maxLength={280} />
+            <p className="text-sm text-muted-foreground">A notícia entra no mural com o título, um resumo e o link do jornal.</p>
+            <Button type="submit" className="w-fit" disabled={posting}>{posting ? 'Publicando...' : 'Publicar no mural'}</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

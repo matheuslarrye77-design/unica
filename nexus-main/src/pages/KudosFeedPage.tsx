@@ -8,10 +8,12 @@ import { PageFrame } from '@/components/shell/PageFrame';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { teamRoster } from '@/data/team';
 import { useInstitution } from '@/lib/institution';
-import { actor } from '@/lib/session';
+import { actor, authHeaders, getDemoId } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { createFeedPost } from '@/lib/feed';
-import { Calendar, ChevronDown, Crown, Heart, Megaphone, Trophy } from 'lucide-react';
+import { GoalsCenter, type GoalsPayload } from '@/components/recognition/GoalsCenter';
+import { LOGIN_REQUIRED } from '@/lib/loginGate';
+import { Calendar, ChevronDown, ChevronLeft, ChevronRight, Crown, Heart, Megaphone, Trophy } from 'lucide-react';
 import { useEffect, useState, type FC } from 'react';
 import { toast } from 'sonner';
 
@@ -67,6 +69,19 @@ export const KudosFeedPage: FC = () => {
   });
   useEffect(() => { sessionStorage.setItem('unica-recognition-mural', JSON.stringify(posted)); }, [posted]);
   const [sending, setSending] = useState<string | null>(null);
+  const [goals, setGoals] = useState<GoalsPayload | null>(null);
+  const [week, setWeek] = useState('');
+  useEffect(() => {
+    void fetch('/api/goals', { credentials: 'include', headers: { ...authHeaders(), ...(LOGIN_REQUIRED ? {} : { 'x-unica-demo': getDemoId() }) } })
+      .then((response) => response.ok ? response.json() as Promise<GoalsPayload> : null)
+      .then((data) => { if (data) setGoals(data); })
+      .catch(() => undefined);
+  }, []);
+  const approved = goals?.imports ?? [];
+  const activeKey = week || goals?.currentKey || '';
+  const activeImport = approved.find((item) => item.periodKey === activeKey);
+  const weekOrder = [...approved].sort((left, right) => left.periodKey.localeCompare(right.periodKey));
+  const weekIndex = weekOrder.findIndex((item) => item.periodKey === activeKey);
   const items = [...extra, ...RECENT].filter((item) => filter === 'Todos' || item.area === filter);
 
   async function postOnMural(item: Recognition) {
@@ -119,21 +134,34 @@ export const KudosFeedPage: FC = () => {
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#F3E4FA] text-[#8E35B8]"><Trophy className="h-4 w-4" /></span>
                   <div>
                     <h2 className="text-[16px] font-semibold text-[#241B33]">Pódio do mês</h2>
-                    <p className="text-[12.5px] text-[#8A7C98]">Os 3 colaboradores com mais reconhecimentos</p>
+                    <p className="text-[12.5px] text-[#8A7C98]">{activeImport ? 'Pódio aprovado da semana selecionada' : 'Os 3 colaboradores com mais reconhecimentos'}</p>
                   </div>
                 </div>
-                <p className="inline-flex items-center gap-1.5 rounded-full border border-[#E7DFF0] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#5C5168]">
-                  <Calendar className="h-3.5 w-3.5 text-[#8E35B8]" /> {monthLabel()}
-                </p>
+                {weekOrder.length > 0 ? (
+                  <div className="inline-flex items-center gap-1 rounded-full border border-[#E7DFF0] bg-white px-1.5 py-1 text-[12.5px] font-medium text-[#5C5168]">
+                    <button type="button" aria-label="Semana anterior" disabled={weekIndex <= 0} onClick={() => setWeek(weekOrder[weekIndex - 1].periodKey)} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button>
+                    <span className="inline-flex items-center gap-1.5 px-1"><Calendar className="h-3.5 w-3.5 text-[#8E35B8]" /> {activeImport?.label || monthLabel()}</span>
+                    <button type="button" aria-label="Semana seguinte" disabled={weekIndex < 0 || weekIndex >= weekOrder.length - 1} onClick={() => setWeek(weekOrder[weekIndex + 1].periodKey)} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button>
+                  </div>
+                ) : (
+                  <p className="inline-flex items-center gap-1.5 rounded-full border border-[#E7DFF0] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#5C5168]">
+                    <Calendar className="h-3.5 w-3.5 text-[#8E35B8]" /> {monthLabel()}
+                  </p>
+                )}
               </div>
               <div className="mx-auto mt-5 max-w-xl">
                 <div className="grid grid-cols-3 items-end gap-4">
-                  {PODIUM.map((person) => {
-                    const tone = STEP[person.place];
+                  {(activeImport?.ranking.length ? [activeImport.ranking[1], activeImport.ranking[0], activeImport.ranking[2]] : PODIUM).map((person, index) => {
+                    if (!person) return <div key={`vazio-${index}`} />;
+                    const place = (person.place === 2 || person.place === 3 ? person.place : 1) as 1 | 2 | 3;
+                    const name = person.name;
+                    const role = 'role' in person ? person.role : person.subsetor;
+                    const count = 'count' in person ? person.count : (person.overall ?? person.values.resolvidos ?? '');
+                    const tone = STEP[place];
                     return (
                       <div key={person.name} className="flex min-w-0 flex-col items-center text-center">
                         <div className="relative">
-                          {person.place === 1 ? <Crown className="absolute -top-4 left-1/2 h-5 w-5 -translate-x-1/2 text-[#7C3AED]" /> : null}
+                          {place === 1 ? <Crown className="absolute -top-4 left-1/2 h-5 w-5 -translate-x-1/2 text-[#7C3AED]" /> : null}
                           <img
                             src={face(person.name)}
                             alt=""
@@ -141,18 +169,18 @@ export const KudosFeedPage: FC = () => {
                             style={{ boxShadow: `0 0 0 3px #fff, 0 0 0 5px ${tone.strong}` }}
                           />
                         </div>
-                        <p className="mt-2 max-w-full truncate text-[13px] font-semibold text-[#241B33]">{person.name}</p>
-                        <p className="max-w-full truncate text-[11px] text-[#8A7C98]">{person.role}</p>
+                        <p className="mt-2 max-w-full truncate text-[13px] font-semibold text-[#241B33]">{name}</p>
+                        <p className="max-w-full truncate text-[11px] text-[#8A7C98]">{role}</p>
                         <div className={cn('relative mt-4 w-full max-w-[104px]', tone.height)}>
                           <span
                             className="absolute -top-3 left-1/2 z-10 grid h-7 w-7 -translate-x-1/2 place-items-center rounded-full text-[13px] font-semibold text-white"
                             style={{ background: tone.strong, boxShadow: `0 8px 16px ${tone.strong}55` }}
                           >
-                            {person.place}
+                            {place}
                           </span>
                           <div className="flex h-full flex-col overflow-hidden rounded-[20px] border" style={{ borderColor: tone.line, boxShadow: `0 10px 22px ${tone.strong}22` }}>
                             <div className="flex-1" style={{ background: `linear-gradient(180deg, #ffffff 0%, ${tone.wash} 100%)` }} />
-                            <div className="flex h-9 items-center justify-center text-[16px] font-semibold text-white" style={{ background: tone.strong }}>{person.count}</div>
+                            <div className="flex h-9 items-center justify-center text-[16px] font-semibold text-white" style={{ background: tone.strong }}>{count}</div>
                           </div>
                         </div>
                       </div>
@@ -162,6 +190,8 @@ export const KudosFeedPage: FC = () => {
                 <div className="mx-6 mt-2 h-1.5 rounded-full bg-gradient-to-r from-[#F9A8D4] via-[#C4B5FD] to-[#A5B4FC]" />
               </div>
             </section>
+
+            {goals ? <GoalsCenter goals={goals} week={activeKey} onWeek={setWeek} onChange={setGoals} /> : null}
 
             <section className="rounded-[22px] border border-[#F0E7F6] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
               <div className="flex items-center justify-between gap-3">
