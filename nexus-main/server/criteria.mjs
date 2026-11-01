@@ -1,5 +1,5 @@
 import { CHANNELS, looksLikeReport } from './goals.mjs';
-import { classifyGeminiError, completeJson } from './gemini.mjs';
+import { classifyGeminiError, completeJson, describeGeminiError } from './gemini.mjs';
 
 const INDICATORS = ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao'];
 const OPS = ['gt', 'gte', 'lt', 'lte', 'eq', 'between'];
@@ -215,9 +215,9 @@ export async function interpretCriteria(text, options = {}) {
       ? await options.generate(prompt)
       : await completeJson(prompt, { schema: CRITERIA_SCHEMA, env: options.env });
   } catch (error) {
-    return failure(classifyGeminiError(error));
+    return { ...failure(classifyGeminiError(error)), google: describeGeminiError(error) };
   }
-  if (generated?.error) return failure(generated.error);
+  if (generated?.error) return { ...failure(generated.error), ...(generated.detail ? { google: generated.detail } : {}) };
   return normalizeProposal(generated?.text ?? generated);
 }
 

@@ -77,8 +77,8 @@ export async function completeJson(prompt, options = {}) {
         temperature: 0,
         responseMimeType: 'application/json',
         responseJsonSchema: payload.schema,
-        ...(payload.model.startsWith('gemini-2.5') ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
-        httpOptions: { timeout: 20000 },
+        ...(payload.model.startsWith('gemini-2.5') ? { thinkingConfig: { thinkingBudget: 0 } } : { thinkingConfig: { thinkingLevel: 'MINIMAL' } }),
+        httpOptions: { timeout: 55000 },
       },
     });
     const parts = response.candidates?.[0]?.content?.parts ?? [];
@@ -96,8 +96,9 @@ export async function completeJson(prompt, options = {}) {
     const text = typeof result === 'string' ? result : String(result?.text ?? '');
     if (!text.trim()) {
       const meta = typeof result === 'object' && result ? result.meta ?? {} : {};
-      logGemini({ httpStatus: 200, code: 'EMPTY_RESPONSE', message: `finish=${meta.finishReason || ''} block=${meta.blockReason || ''} parts=${(meta.parts || []).join(',')}` });
-      return { error: 'unavailable' };
+      const detail = { httpStatus: 200, code: 'EMPTY_RESPONSE', message: `finish=${meta.finishReason || ''} block=${meta.blockReason || ''} parts=${(meta.parts || []).join(',')}` };
+      logGemini(detail);
+      return { error: 'unavailable', detail };
     }
     return { text };
   } catch (error) {
