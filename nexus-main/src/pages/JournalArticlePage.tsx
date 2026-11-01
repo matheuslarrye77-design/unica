@@ -121,7 +121,7 @@ export const JournalArticlePage: FC = () => {
               ) : null}
               {article.status === 'removed' ? (
                 <>
-                  <button type="button" aria-label="Restaurar" title="Restaurar" onClick={() => restoreJournalArticle(article.id)} className="grid h-9 w-9 place-items-center rounded-full border border-[#E6DEEF] text-[#6A228C] hover:bg-[#F3E4FA]">
+                  <button type="button" aria-label="Restaurar" title="Restaurar" onClick={() => { if (!window.confirm('Restaurar esta publicação?')) return; restoreJournalArticle(article.id); }} className="grid h-9 w-9 place-items-center rounded-full border border-[#E6DEEF] text-[#6A228C] hover:bg-[#F3E4FA]">
                     <RotateCcw className="h-4 w-4" />
                   </button>
                   <button type="button" aria-label="Excluir de vez" title="Excluir de vez" onClick={() => { if (!window.confirm('Excluir esta publicação de vez?')) return; purgeJournalArticle(article.id); navigate('/announcements'); }} className="grid h-9 w-9 place-items-center rounded-full border border-[#E6DEEF] text-[#9D174D] hover:bg-[#FDE7EE]">

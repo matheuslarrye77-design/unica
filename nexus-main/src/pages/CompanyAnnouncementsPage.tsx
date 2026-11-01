@@ -152,7 +152,7 @@ export const CompanyAnnouncementsPage: FC = () => {
                         <p className="mt-2 text-[12px] text-[#948D9E]">{formatDate(article.date)}</p>
                       </Link>
                       <div className="mt-3 flex items-center gap-2">
-                        <button type="button" aria-label="Restaurar" title="Restaurar" className="grid h-8 w-8 place-items-center rounded-full text-[#6A228C] hover:bg-[#F3E4FA]" onClick={() => restoreJournalArticle(article.id)}>
+                        <button type="button" aria-label="Restaurar" title="Restaurar" className="grid h-8 w-8 place-items-center rounded-full text-[#6A228C] hover:bg-[#F3E4FA]" onClick={() => { if (!window.confirm('Restaurar esta publicação?')) return; restoreJournalArticle(article.id); }}>
                           <RotateCcw className="h-4 w-4" />
                         </button>
                         <button type="button" aria-label="Excluir de vez" title="Excluir de vez" className="grid h-8 w-8 place-items-center rounded-full text-[#9D174D] hover:bg-[#FDE7EE]" onClick={() => { if (window.confirm('Excluir esta publicação de vez?')) purgeJournalArticle(article.id); }}>
