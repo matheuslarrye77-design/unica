@@ -1,6 +1,6 @@
 import { currentUser, employees, type Employee } from '@/data/mockData';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
-import { getDemoId } from '@/lib/session';
+import { actor, getDemoId } from '@/lib/session';
 import { useSyncExternalStore } from 'react';
 
 export type PolicyMode = 'leadership' | 'selected' | 'everyone';
@@ -141,12 +141,13 @@ export async function loadInstitution() {
 
 export function useInstitution() {
   const value = useSyncExternalStore(subscribe, () => snapshot, () => snapshot);
+  const user = actor();
   return {
     ...value,
-    isLeader: isLeader(currentUser),
-    canRecognize: value.ready ? allows(currentUser, value.settings.recognition) : true,
-    canUploadDocuments: value.ready ? allows(currentUser, value.settings.documents) : isLeader(currentUser),
-    muralAvailable: !value.ready || value.settings.muralEnabled || isLeader(currentUser),
+    isLeader: isLeader(user),
+    canRecognize: value.ready ? allows(user, value.settings.recognition) : true,
+    canUploadDocuments: value.ready ? allows(user, value.settings.documents) : isLeader(user),
+    muralAvailable: !value.ready || value.settings.muralEnabled || isLeader(user),
   };
 }
 

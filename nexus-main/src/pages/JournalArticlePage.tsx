@@ -11,6 +11,7 @@ import {
   archiveJournalArticle,
   deleteJournalComment,
   articleCover,
+  articleSummary,
   canManageJournal,
   purgeJournalArticle,
   restoreJournalArticle,
@@ -20,6 +21,7 @@ import {
   resolveJournalAsset,
   toggleJournalSave,
 } from '@/data/journal';
+import { createFeedPost } from '@/lib/feed';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { ArrowLeft, Bookmark, Heart, Megaphone, MessageCircle, Pencil, Pin, RotateCcw, Trash2 } from 'lucide-react';
@@ -59,6 +61,7 @@ export const JournalArticlePage: FC = () => {
   const article = articles.find((item) => item.id === id);
   const [comment, setComment] = useState('');
   const [editing, setEditing] = useState(false);
+  const [posting, setPosting] = useState(false);
   const canManage = canManageJournal(currentUser);
 
   if (!article || ((article.status === 'draft' || article.status === 'removed') && !canManage)) {
@@ -87,9 +90,27 @@ export const JournalArticlePage: FC = () => {
     if (result.replacedId) toast.success('A publicação mais antiga saiu do destaque.');
   }
 
-  function postOnMural() {
-    if (!article) return;
-    navigate(`/?noticia=${encodeURIComponent(article.id)}`);
+  async function postOnMural() {
+    if (!article || posting) return;
+    const image = articleCover(article) || resolveJournalAsset(article.cover);
+    const cover = image && (image.startsWith('https://') || image.startsWith('/')) ? image : '';
+    setPosting(true);
+    try {
+      await createFeedPost({
+        body: articleSummary(article.content),
+        kind: 'announcement',
+        bannerTitle: article.title,
+        journalHref: `/announcements/${article.id}`,
+        image: cover || undefined,
+        images: cover ? [cover] : undefined,
+      });
+      toast.success('Notícia publicada no mural.');
+      navigate('/');
+    } catch {
+      toast.error('Não foi possível publicar no mural.');
+    } finally {
+      setPosting(false);
+    }
   }
 
   return (
@@ -120,7 +141,7 @@ export const JournalArticlePage: FC = () => {
                 </button>
               ) : null}
               {article.status === 'published' ? (
-                <button type="button" aria-label="Publicar no mural" title="Publicar no mural" onClick={postOnMural} className="grid h-9 w-9 place-items-center rounded-full border border-[#E6DEEF] text-[#6A228C] hover:bg-[#F3E4FA]">
+                <button type="button" aria-label="Publicar no mural" title="Publicar no mural" disabled={posting} onClick={() => void postOnMural()} className="grid h-9 w-9 place-items-center rounded-full border border-[#E6DEEF] text-[#6A228C] hover:bg-[#F3E4FA] disabled:opacity-50">
                   <Megaphone className="h-4 w-4" />
                 </button>
               ) : null}

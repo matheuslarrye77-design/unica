@@ -132,7 +132,7 @@ export const PostCard: FC<{
       ) : (
         <>
           {plain && post.body ? <div className="mt-2"><ReadMore id={`${domId}-texto`} text={post.body} className="text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90" /></div> : null}
-          {post.images && post.images.length > 0 ? <PhotoGallery images={post.images} /> : post.kind === 'image' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-contain bg-[#F8F7FC]" /> : null}
+          {post.kind !== 'announcement' && post.kind !== 'recognition' && post.images && post.images.length > 0 ? <PhotoGallery images={post.images} /> : post.kind === 'image' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-contain bg-[#F8F7FC]" /> : null}
         </>
       )}
       {post.kind === 'leadership' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
@@ -156,7 +156,7 @@ export const PostCard: FC<{
         )
       ) : null}
 
-      {post.kind === 'announcement' ? <AnnouncementPost post={post} /> : null}
+      {post.kind === 'announcement' ? <AnnouncementPost post={post} expandId={`${domId}-noticia`} /> : null}
       {post.kind === 'recognition' ? <RecognitionPost post={post} expandId={`${domId}-reconhecimento`} /> : null}
       {post.kind === 'poll' ? <PollPost post={post} onVote={onVote} expandId={`${domId}-enquete`} /> : null}
       {post.kind === 'event' ? <EventPost post={post} expandId={`${domId}-evento`} /> : null}

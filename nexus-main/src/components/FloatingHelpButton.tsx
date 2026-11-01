@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Headphones, Minus } from 'lucide-react';
 import { useEffect, useRef, useState, type FC, type PointerEvent } from 'react';
-import { useLocation } from 'react-router-dom';
 
 const POS_KEY = 'unica-support-pos';
 const MIN_KEY = 'unica-support-min';
@@ -19,7 +18,6 @@ function readPos() {
 }
 
 export const FloatingHelpButton: FC = () => {
-  const home = useLocation().pathname === '/';
   const [open, setOpen] = useState(false);
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const [minimized, setMinimized] = useState(() => localStorage.getItem(MIN_KEY) === '1');
@@ -85,8 +83,8 @@ export const FloatingHelpButton: FC = () => {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={() => { onPointerUp(); }}
-        className={home ? 'fixed z-30 hidden' : 'fixed z-30 touch-none'}
-        style={placed ? { left: pos.x, top: pos.y, right: 'auto', bottom: 'auto' } : { right: 24, bottom: 96 }}
+        className="fixed z-30 touch-none"
+        style={placed ? { left: pos.x, top: pos.y, right: 'auto', bottom: 'auto' } : { right: 24, bottom: 24 }}
       >
         {minimized ? (
           <button

@@ -22,11 +22,17 @@ export const RecognitionComposer: FC<{ onCreated: (created?: { name: string; mes
     setSending(true);
     try {
       await assertPermission('recognition');
-      await createFeedPost({ body: text, kind: 'recognition', recognizedName: person.name, tag });
+      await createFeedPost({
+        body: text,
+        kind: 'recognition',
+        recognizedName: person.name,
+        tag,
+        bannerTitle: `Reconhecimento especial para ${person.name.split(' ')[0]}!`,
+      });
       setMessage('');
       setPersonId('');
-      onCreated();
-      toast.success('Reconhecimento publicado.');
+      onCreated({ name: person.name, message: text, tag });
+      toast.success('Reconhecimento publicado no mural.');
     } catch (error) {
       toast.error(error instanceof Error && error.message === '403' ? 'Você não tem permissão para reconhecer.' : 'Não foi possível publicar o reconhecimento.');
     } finally {

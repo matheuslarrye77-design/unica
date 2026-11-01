@@ -604,7 +604,11 @@ export function extraApi(): Connect.NextHandleFunction {
           comments: [],
           poll,
           votes: {},
-          bannerTitle: announcement ? (bannerTitle || 'Jornal') : undefined,
+          bannerTitle: announcement
+            ? (bannerTitle || 'Jornal')
+            : recognition
+              ? (bannerTitle || `Reconhecimento especial para ${recognizedName.split(' ')[0]}!`)
+              : undefined,
           journalHref,
           recognizedName: recognition ? recognizedName : undefined,
           tag: recognition ? String(body.tag ?? '').trim() : undefined,
