@@ -91,11 +91,11 @@ export const JournalArticlePage: FC = () => {
     <>
     <PageFrame rail={<JournalRail articles={savedIds.map((savedId) => articles.find((item) => item.id === savedId && item.status === 'published')).filter((item): item is NonNullable<typeof item> => Boolean(item))} />}>
         <article className="min-w-0 flex-1">
-          <Link to="/announcements" className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <Link to="/announcements" className="mb-4 flex w-fit items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
             Jornal
           </Link>
-          <JournalBadge category={article.category} />
+          <JournalBadge category={article.category} className="w-fit" />
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{article.title}</h1>
           <p className="mt-3 text-sm text-muted-foreground">
             {article.author} · {new Date(article.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })} · {readingMinutes(article.content)} min de leitura

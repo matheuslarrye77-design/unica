@@ -63,6 +63,7 @@ export const CompanyAnnouncementsPage: FC = () => {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<JournalArticle | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
+  const [seenTrash, setSeenTrash] = useState(0);
   const canManage = canManageJournal(currentUser);
 
   const published = useMemo(
@@ -114,9 +115,9 @@ export const CompanyAnnouncementsPage: FC = () => {
             </div>
             {canManage ? (
               <div className="flex items-center gap-2">
-                <button type="button" aria-pressed={trashOpen} aria-label="Lixeira" onClick={() => setTrashOpen((current) => !current)} className={cn('relative grid h-9 w-9 place-items-center rounded-full border border-[#E6DEEF] bg-white text-[#6A228C] hover:bg-[#F3E4FA]', trashOpen && 'bg-[#F3E4FA]')}>
+                <button type="button" aria-pressed={trashOpen} aria-label="Lixeira" onClick={() => { setTrashOpen((current) => !current); setSeenTrash(removed.length); }} className={cn('relative grid h-9 w-9 place-items-center rounded-full border border-[#E6DEEF] bg-white text-[#6A228C] hover:bg-[#F3E4FA]', trashOpen && 'bg-[#F3E4FA]')}>
                   <Trash2 className="h-4 w-4" />
-                  {removed.length > 0 ? <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#9D174D] px-1 text-[10px] font-semibold text-white">{removed.length}</span> : null}
+                  {removed.length > seenTrash ? <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#9D174D] px-1 text-[10px] font-semibold text-white">{removed.length}</span> : null}
                 </button>
                 <button type="button" aria-label="Nova publicação" onClick={openCreate} className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90">
                   <Plus className="h-4 w-4" />
@@ -141,13 +142,15 @@ export const CompanyAnnouncementsPage: FC = () => {
               {removed.length === 0 ? (
                 <p className="mt-3 text-sm text-muted-foreground">Nenhuma publicação removida.</p>
               ) : (
-                <div className="mt-3 grid items-stretch gap-3 md:grid-cols-2">
+                <div className="mt-3 grid items-stretch gap-3 md:grid-cols-3">
                   {removed.map((article) => (
                     <article key={article.id} className="flex flex-col rounded-[22px] border border-[#EFE8F4] bg-white p-3.5 shadow-[0_10px_28px_rgba(80,40,120,0.06)]">
-                      <JournalCover article={article} />
-                      <h3 className="mt-3 line-clamp-2 text-[16px] font-semibold leading-snug text-[#1A1428]">{article.title}</h3>
-                      <p className="mt-2 line-clamp-3 text-[13px] leading-5 text-[#625C70]">{articleSummary(article.content)}</p>
-                      <p className="mt-2 text-[12px] text-[#948D9E]">{formatDate(article.date)}</p>
+                      <Link to={`/announcements/${article.id}`} className="flex flex-col">
+                        <JournalCover article={article} />
+                        <h3 className="mt-3 line-clamp-2 text-[16px] font-semibold leading-snug text-[#1A1428] hover:text-[#6A228C]">{article.title}</h3>
+                        <p className="mt-2 line-clamp-3 text-[13px] leading-5 text-[#625C70]">{articleSummary(article.content)}</p>
+                        <p className="mt-2 text-[12px] text-[#948D9E]">{formatDate(article.date)}</p>
+                      </Link>
                       <div className="mt-3 flex items-center gap-3">
                         <button type="button" className="text-[13px] font-semibold text-[#6A228C]" onClick={() => restoreJournalArticle(article.id)}>Restaurar</button>
                         <button type="button" className="text-[13px] font-semibold text-[#9D174D]" onClick={() => { if (window.confirm('Excluir esta publicação de vez?')) purgeJournalArticle(article.id); }}>Excluir</button>
