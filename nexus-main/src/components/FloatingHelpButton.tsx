@@ -9,7 +9,7 @@ function readPos() {
   try {
     const parsed = JSON.parse(localStorage.getItem(POS_KEY) ?? 'null') as { x: number; y: number } | null;
     if (!parsed || !Number.isFinite(parsed.x) || !Number.isFinite(parsed.y)) return null;
-    if (parsed.x < 0 || parsed.y < 0 || parsed.x > window.innerWidth - 40 || parsed.y > window.innerHeight - 40) return null;
+    if (parsed.x < 0 || parsed.y < 0 || parsed.x > window.innerWidth - 48 || parsed.y > window.innerHeight - 48) return null;
     return parsed;
   } catch {
     return null;
@@ -20,9 +20,8 @@ export const FloatingHelpButton: FC = () => {
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(readPos);
-  const drag = useRef<{ x: number; y: number; left: number; top: number; moved: boolean } | null>(null);
-  const dragged = useRef(false);
   const node = useRef<HTMLDivElement>(null);
+  const skipClick = useRef(false);
 
   useEffect(() => {
     const openFeedback = () => {
@@ -33,97 +32,92 @@ export const FloatingHelpButton: FC = () => {
     return () => window.removeEventListener('unica-open-feedback', openFeedback);
   }, []);
 
-  function place() {
-    const rect = node.current?.getBoundingClientRect();
-    return { left: rect?.left ?? pos?.x ?? window.innerWidth - 80, top: rect?.top ?? pos?.y ?? window.innerHeight - 80 };
-  }
+  function grab(event: ReactPointerEvent<HTMLButtonElement>, openOnClick: boolean) {
+    if (event.button !== 0 || !node.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = node.current.getBoundingClientRect();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const width = rect.width;
+    const height = rect.height;
+    let moved = false;
+    let latest = { x: rect.left, y: rect.top };
 
-  function clamp(next: { x: number; y: number }) {
-    const width = node.current?.offsetWidth ?? 56;
-    const height = node.current?.offsetHeight ?? 56;
-    return {
-      x: Math.max(8, Math.min(window.innerWidth - width - 8, next.x)),
-      y: Math.max(8, Math.min(window.innerHeight - height - 8, next.y)),
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (Math.hypot(dx, dy) < 3) return;
+      moved = true;
+      latest = {
+        x: Math.max(8, Math.min(window.innerWidth - width - 8, rect.left + dx)),
+        y: Math.max(8, Math.min(window.innerHeight - height - 8, rect.top + dy)),
+      };
+      const el = node.current;
+      if (!el) return;
+      el.style.left = `${latest.x}px`;
+      el.style.top = `${latest.y}px`;
+      el.style.right = 'auto';
+      el.style.bottom = 'auto';
     };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      skipClick.current = moved;
+      if (moved) {
+        setPos(latest);
+        localStorage.setItem(POS_KEY, JSON.stringify(latest));
+        return;
+      }
+      if (openOnClick) setOpen(true);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
   }
 
-  function onPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
-    if (event.button !== 0) return;
-    const current = place();
-    drag.current = { x: event.clientX, y: event.clientY, left: current.left, top: current.top, moved: false };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function onPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
-    if (!drag.current) return;
-    const dx = event.clientX - drag.current.x;
-    const dy = event.clientY - drag.current.y;
-    if (Math.hypot(dx, dy) < 4) return;
-    drag.current.moved = true;
-    const next = clamp({ x: drag.current.left + dx, y: drag.current.top + dy });
-    setPos(next);
-  }
-
-  function onPointerUp(openAfter: boolean) {
-    const moved = Boolean(drag.current?.moved);
-    dragged.current = moved;
-    if (moved && node.current) {
-      const rect = node.current.getBoundingClientRect();
-      const next = clamp({ x: rect.left, y: rect.top });
-      setPos(next);
-      localStorage.setItem(POS_KEY, JSON.stringify(next));
-    }
-    drag.current = null;
-    if (!moved && openAfter) setOpen(true);
-  }
-
-  const placed = Boolean(pos);
   const button = (
     <div
       ref={node}
-      className="fixed z-[90] touch-none select-none"
-      style={placed ? { left: pos.x, top: pos.y } : { right: 20, bottom: 20 }}
+      className="fixed z-[200] touch-none select-none"
+      style={pos ? { left: pos.x, top: pos.y } : { right: 20, bottom: 20 }}
     >
       {minimized ? (
         <button
           type="button"
           aria-label="Mostrar suporte"
-          className="inline-flex h-9 cursor-grab items-center gap-1.5 rounded-full border border-[#8E35B8] bg-white px-3 text-[12px] font-semibold text-[#6A228C] shadow-lg active:cursor-grabbing"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={() => onPointerUp(false)}
+          className="inline-flex h-10 cursor-grab items-center gap-1.5 rounded-full border-2 border-[#8E35B8] bg-white px-3 text-[13px] font-semibold text-[#6A228C] shadow-lg active:cursor-grabbing"
+          onPointerDown={(event) => grab(event, false)}
           onClick={() => {
-            if (dragged.current) {
-              dragged.current = false;
+            if (skipClick.current) {
+              skipClick.current = false;
               return;
             }
             setMinimized(false);
           }}
         >
-          <Headphones className="h-3.5 w-3.5" />
+          <Headphones className="pointer-events-none h-4 w-4" />
           Suporte
         </button>
       ) : (
-        <div className="relative">
+        <div className="flex items-start gap-1">
           <button
             type="button"
             aria-label="Suporte"
-            title="Arraste para mover"
-            className="grid h-14 w-14 cursor-grab place-items-center rounded-full border border-[#8E35B8] bg-white text-[#6A228C] shadow-lg active:cursor-grabbing"
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={() => onPointerUp(true)}
+            title="Segure e arraste"
+            className="grid h-14 w-14 cursor-grab place-items-center rounded-full border-2 border-[#8E35B8] bg-white text-[#6A228C] shadow-lg active:cursor-grabbing"
+            onPointerDown={(event) => grab(event, true)}
           >
-            <Headphones className="h-6 w-6" />
+            <Headphones className="pointer-events-none h-6 w-6" />
           </button>
           <button
             type="button"
             aria-label="Minimizar suporte"
-            className="absolute -top-1 -right-1 grid h-6 w-6 place-items-center rounded-full border border-[#E7DFF0] bg-white text-[#6A228C] shadow-sm"
+            title="Minimizar"
+            className="grid h-8 w-8 place-items-center rounded-full border-2 border-[#8E35B8] bg-white text-[#6A228C] shadow-md"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={() => setMinimized(true)}
           >
-            <Minus className="h-3.5 w-3.5" />
+            <Minus className="pointer-events-none h-4 w-4" />
           </button>
         </div>
       )}
