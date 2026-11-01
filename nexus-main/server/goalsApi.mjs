@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { isLeader } from './auth/permissions.mjs';
-import { applyCriterion, buildApproval, emptyStore, goalState, INDICATORS, overallScore, parseCustomRequest, parseReport, publicStore, readCriterion, runAssistant } from './goals.mjs';
+import { commitTemplate, interpretCriteria, normalizeProposal } from './criteria.mjs';
+import { applyCriterion, buildApproval, emptyStore, goalState, INDICATORS, looksLikeReport, overallScore, parseReport, publicStore, readCriterion, runAssistant } from './goals.mjs';
 
 function readStore(file) {
   try {
@@ -15,6 +16,27 @@ function readStore(file) {
 function writeStore(file, store) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(store));
+}
+
+function redactLabels(colleagues, aliases, teamRoster) {
+  const skip = new Set(['de', 'da', 'do', 'dos', 'das', 'e', 'del']);
+  const labels = [];
+  const add = (value) => {
+    const text = String(value ?? '').trim();
+    if (text.length < 3 || text.includes('@')) return;
+    if (/^\d+$/.test(text) && text.length < 8) return;
+    labels.push(text);
+    const first = text.split(/\s+/)[0];
+    if (first && first.length >= 3 && first !== text && !skip.has(first.toLowerCase())) labels.push(first);
+  };
+  for (const person of [...(Array.isArray(colleagues) ? colleagues : []), ...teamRoster]) {
+    add(person.name);
+    add(person.email);
+    add(person.phone);
+    for (const name of person.reportNames ?? []) add(name);
+    for (const name of aliases[person.id] ?? []) add(name);
+  }
+  return labels;
 }
 
 function directory(colleagues, aliases, teamRoster) {
@@ -51,6 +73,7 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
   const file = path.join(dir, 'goals.json');
   const store = readStore(file);
   const people = directory(colleagues, store.aliases, teamRoster);
+  const labels = redactLabels(colleagues, store.aliases, teamRoster);
   if (req.method === 'GET' && url === '/api/goals') {
     send(res, 200, { ...publicStore(store), canManage: isLeader(user), people: people.map((person) => ({ id: person.id, name: person.name, funcao: person.funcao, role: person.role, aliases: store.aliases[person.id] ?? [] })) });
     return true;
@@ -108,14 +131,29 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
       return true;
     }
     if (req.method === 'POST' && url === '/api/goals/assistant') {
+      const text = String(body.text ?? '');
+      const intent = String(body.intent ?? '');
+      const history = Array.isArray(body.history) ? body.history : [];
+      if (intent === 'custom' && !looksLikeReport(text)) {
+        send(res, 200, await interpretCriteria(text, { history, labels }));
+        return true;
+      }
       const result = runAssistant({
-        text: String(body.text ?? ''),
+        text,
         store,
         people,
         preview: body.preview,
         periodKey: String(body.periodKey ?? ''),
-        intent: String(body.intent ?? ''),
+        intent,
       });
+      if (result.kind === 'defer') {
+        if (looksLikeReport(text)) {
+          send(res, 200, result);
+          return true;
+        }
+        send(res, 200, await interpretCriteria(text, { history, labels }));
+        return true;
+      }
       send(res, 200, result);
       return true;
     }
@@ -136,25 +174,28 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
       return true;
     }
     if (req.method === 'POST' && url === '/api/goals/templates') {
-      const supplied = Array.isArray(body.rules) ? body.rules.filter((rule) => ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao'].includes(rule.indicator) && ['gt', 'gte', 'lt', 'lte', 'eq', 'between'].includes(rule.op) && Number.isFinite(Number(rule.value))) : [];
-      const parsed = body.rules ? { ok: supplied.length === body.rules.length && supplied.length > 0, rules: supplied.map((rule) => ({ indicator: rule.indicator, op: rule.op, value: Number(rule.value), valueTo: rule.op === 'between' ? Number(rule.valueTo) : undefined })), period: body.period === 'month' ? 'month' : 'week', message: 'Não consegui transformar esse pedido em regras. Diga o indicador, o número e se ele deve ser maior ou menor.' } : parseCustomRequest(String(body.description ?? ''));
-      if (!parsed.ok) {
-        send(res, 422, parsed);
+      const period = body.period === 'month' || body.period === 'mixed' ? body.period : 'week';
+      const proposal = normalizeProposal({
+        status: 'ready',
+        explanation: String(body.description ?? ''),
+        questions: [],
+        period: period === 'mixed' ? '' : period,
+        combine: body.combine === 'any' ? 'any' : 'all',
+        subsetor: body.subsetor ?? '',
+        weights: body.weights ?? null,
+        criteria: Array.isArray(body.rules) ? body.rules.map((rule) => ({ ...rule, valueTo: rule.valueTo ?? null, period: rule.period || (period === 'month' ? 'month' : 'week') })) : [],
+      });
+      if (!proposal.ok) {
+        send(res, 422, proposal);
         return true;
       }
-      if (!body.confirm) {
-        send(res, 200, parsed);
+      const saved = commitTemplate(store, proposal, { name: body.name, confirm: Boolean(body.confirm), description: body.description });
+      if (!saved.saved) {
+        send(res, 200, proposal);
         return true;
       }
-      const name = String(body.name ?? '').trim();
-      if (!name) {
-        send(res, 400, { error: 'name' });
-        return true;
-      }
-      const template = { id: `modelo-${Date.now()}`, name, description: String(body.description ?? ''), period: parsed.period, rules: parsed.rules };
-      const next = { ...store, templates: [...store.templates, template] };
-      writeStore(file, next);
-      send(res, 201, publicStore(next));
+      writeStore(file, saved.store);
+      send(res, 201, publicStore(saved.store));
       return true;
     }
     if (req.method === 'PUT' && url === '/api/goals/aliases') {

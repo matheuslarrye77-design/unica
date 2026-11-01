@@ -67,12 +67,35 @@ function wordsInOrder(query, name) {
   return true;
 }
 
+function tokenFits(token, word) {
+  if (token === word) return true;
+  if (/^\d+$/.test(token) || /^\d+$/.test(word)) return false;
+  if (token.length === 1 && word.startsWith(token)) return true;
+  return token.length >= 3 && token.length < word.length && word.startsWith(token);
+}
+
+function abbreviated(query, name) {
+  const wanted = fold(query).split(' ').filter(Boolean);
+  const owned = fold(name).split(' ').filter(Boolean);
+  if (wanted.length === 0 || wanted.length > owned.length) return false;
+  if (wanted.length < 2 && wanted.every((token) => token.length <= 2)) return false;
+  let cursor = 0;
+  for (const token of wanted) {
+    const found = owned.findIndex((item, index) => index >= cursor && tokenFits(token, item));
+    if (found < 0) return false;
+    cursor = found + 1;
+  }
+  return true;
+}
+
+function personLabels(person) {
+  return [person.name, ...(person.aliases ?? [])].filter(Boolean);
+}
+
 export function matchPeople(query, people) {
   const text = fold(query);
   if (!text) return [];
-  const exact = people.filter((person) => fold(person.name) === text || (person.aliases ?? []).some((alias) => fold(alias) === text));
-  if (exact.length > 0) return exact;
-  return people.filter((person) => wordsInOrder(text, person.name) || (person.aliases ?? []).some((alias) => wordsInOrder(text, alias)));
+  return people.filter((person) => personLabels(person).some((label) => fold(label) === text || wordsInOrder(text, label) || abbreviated(text, label)));
 }
 
 function numberFrom(raw) {
@@ -599,29 +622,53 @@ export function latestPeriod(store) {
   return [...store.imports].filter((item) => item.rows?.length).sort((left, right) => right.periodKey.localeCompare(left.periodKey))[0]?.periodKey ?? '';
 }
 
+function rankCustom(store, item, template) {
+  const range = weekRange(item.periodKey);
+  const monthKey = range ? `${range.start.getUTCFullYear()}-${String(range.start.getUTCMonth() + 1).padStart(2, '0')}` : '';
+  const needsMonth = template.period === 'month' || template.rules.some((rule) => rule.period === 'month');
+  const monthRows = needsMonth && monthKey ? aggregateMonth(store.imports, monthKey) : [];
+  const combine = template.combine === 'any' ? 'any' : 'all';
+  const selected = (template.period === 'month' && !template.rules.some((rule) => rule.period && rule.period !== 'month') ? monthRows : item.rows).filter((row) => {
+    if (template.subsetor && row.subsetor !== template.subsetor) return false;
+    const checks = template.rules.map((rule) => {
+      const period = rule.period || template.period || 'week';
+      const source = period === 'month' ? monthRows.find((entry) => entry.userId === row.userId) ?? (template.period === 'month' ? row : null) : row;
+      return source ? passesRules(source.values, [rule]) : false;
+    });
+    return combine === 'any' ? checks.some(Boolean) : checks.every(Boolean);
+  });
+  const rule = template.rules[0];
+  const lower = rule && (rule.op === 'lt' || rule.op === 'lte');
+  const metric = rule?.indicator === 'resolvidosCount' ? 'resolvidosCount' : rule?.indicator;
+  const weights = template.weights && template.weights.resolvidos + template.weights.primeira + template.weights.resolucao === 100
+    ? { ...template.weights, floor: 0 }
+    : null;
+  return selected.sort((left, right) => {
+    if (weights) {
+      const a = overallScore(left.values, left.goal, weights);
+      const b = overallScore(right.values, right.goal, weights);
+      if (a === null && b === null) return 0;
+      if (a === null) return 1;
+      if (b === null) return -1;
+      if (a !== b) return b - a;
+    }
+    if (!metric) return 0;
+    const a = left.values[metric];
+    const b = right.values[metric];
+    if (a === null || a === undefined) return 1;
+    if (b === null || b === undefined) return -1;
+    return lower ? a - b : b - a;
+  }).map((row, index) => ({ ...row, place: index + 1 }));
+}
+
 export function podiumFor(store, periodKey, display, people) {
   const item = store.imports.find((entry) => entry.periodKey === periodKey);
   if (!item) return [];
   const mode = display?.mode ?? item.display?.mode ?? 'overall';
   if (mode === 'custom') {
     const template = store.templates.find((entry) => entry.id === display?.templateId);
-    if (!template) return [];
-    const range = weekRange(periodKey);
-    const monthKey = display?.month || (range ? `${range.start.getUTCFullYear()}-${String(range.start.getUTCMonth() + 1).padStart(2, '0')}` : '');
-    const source = template.period === 'month'
-      ? aggregateMonth(store.imports, monthKey)
-      : item.rows;
-    const rule = template.rules[0];
-    const lower = rule && (rule.op === 'lt' || rule.op === 'lte');
-    const metric = rule?.indicator === 'resolvidosCount' ? 'resolvidosCount' : rule?.indicator;
-    return source.filter((row) => passesRules(row.values, template.rules)).sort((left, right) => {
-      if (!metric) return 0;
-      const a = left.values[metric];
-      const b = right.values[metric];
-      if (a === null || a === undefined) return 1;
-      if (b === null || b === undefined) return -1;
-      return lower ? a - b : b - a;
-    }).map((row, index) => ({ ...row, place: index + 1 }));
+    if (!template?.rules?.length) return [];
+    return rankCustom(store, item, template);
   }
   return rankRows(item.rows, {
     mode: mode === 'preset' ? 'preset' : 'overall',
@@ -682,15 +729,6 @@ function currentImport(store, periodKey) {
   return store.imports.find((item) => item.periodKey === periodKey) ?? store.imports.find((item) => item.periodKey === latestPeriod(store));
 }
 
-function describeRules(rules, period) {
-  const ops = { gt: 'maior que', gte: 'maior ou igual a', lt: 'menor que', lte: 'menor ou igual a', eq: 'igual a', between: 'entre' };
-  const names = { resolvidos: 'tickets resolvidos (%)', resolvidosCount: 'tickets resolvidos', primeira: 'primeira resposta', resolucao: 'tempo médio de resolução', transferidos: 'tickets transferidos' };
-  const lines = rules.map((rule) => rule.op === 'between'
-    ? `${names[rule.indicator] ?? rule.indicator} entre ${rule.value} e ${rule.valueTo}`
-    : `${names[rule.indicator] ?? rule.indicator} ${ops[rule.op] ?? rule.op} ${rule.value}`);
-  return `${period === 'month' ? 'Período mensal' : 'Período semanal'}. ${lines.join('; ')}.`;
-}
-
 export function runAssistant({ text, store, people, preview, periodKey, intent }) {
   const source = String(text ?? '').trim();
   if (!source) return { kind: 'ask', reply: 'Cole o relatório ou escreva o que precisa. Não invento números que não vieram no texto.' };
@@ -698,7 +736,9 @@ export function runAssistant({ text, store, people, preview, periodKey, intent }
   const folded = fold(source);
   const item = currentImport(store, periodKey);
   const rows = preview?.rows ?? item?.rows ?? [];
-  const customFirst = intent === 'custom' || (/pelo menos|abaixo de|maior que|menor que|entre /.test(folded) && !/[A-Za-zÀ-ÿ]{2,}\s*:/.test(source) && !/ola |resultados|metas da semana/.test(folded));
+  if (intent === 'custom' && !looksLikeReport(source)) {
+    return { kind: 'defer', reply: 'Esse pedido precisa da interpretação da IA e só entra no pódio depois da sua confirmação.' };
+  }
 
   if (/^(aprovar|confirmar|salvar)( a | a importacao| importacao| os resultados| esta importacao)?$/.test(folded) || folded.includes('aprovar importacao') || folded.includes('confirmar importacao')) {
     if (!preview?.rows?.length) return { kind: 'ask', reply: 'Ainda não há conferência aberta. Cole o relatório primeiro.' };
@@ -709,12 +749,7 @@ export function runAssistant({ text, store, people, preview, periodKey, intent }
     return { kind: 'cancel', reply: 'Descartei a conferência. Nada foi salvo no histórico.' };
   }
 
-  if (customFirst) {
-    const parsed = parseCustomRequest(source);
-    if (parsed.ok) return { kind: 'custom', period: parsed.period, rules: parsed.rules, reply: `Entendi as regras: ${describeRules(parsed.rules, parsed.period)} Dê um nome a esse pódio no campo abaixo para salvar.` };
-  }
-
-  if (looksLikeReport(source) && intent !== 'custom') {
+  if (looksLikeReport(source)) {
     const next = assistantPreview(store, source, people);
     if (next.rows.length === 0) return { kind: 'ask', reply: 'Li o texto, mas não encontrei colaboradores cadastrados. Confira os nomes ou os nomes reconhecidos na Equipe.' };
     const pending = next.rows.filter((row) => !row.userId).length;
@@ -745,10 +780,8 @@ export function runAssistant({ text, store, people, preview, periodKey, intent }
     };
   }
 
-  if (/podio|reconhecer os colaboradores|criterio personalizado|criar um podio/.test(folded) && !/predefinid|desempenho geral/.test(folded)) {
-    const parsed = parseCustomRequest(source);
-    if (!parsed.ok) return { kind: 'ask', reply: parsed.message };
-    return { kind: 'custom', period: parsed.period, rules: parsed.rules, reply: `Entendi as regras: ${describeRules(parsed.rules, parsed.period)} Confirme com o nome do pódio para salvar o modelo.` };
+  if (/podio personalizado|criterio personalizado|criar um podio/.test(folded) && !/predefinid|desempenho geral/.test(folded)) {
+    return { kind: 'defer', reply: 'Esse pedido precisa da interpretação da IA e só entra no pódio depois da sua confirmação.' };
   }
 
   if (/desempenho geral|melhor desempenho|pontuacao geral/.test(folded)) {

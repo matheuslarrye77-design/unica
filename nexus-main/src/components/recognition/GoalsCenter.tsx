@@ -5,7 +5,16 @@ import { BarChart3, Bot, Check, Info, Paperclip, Pencil, Send, Settings2, Sparkl
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type FC, type FormEvent, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
-type Rule = { indicator: string; op: string; value: number; valueTo?: number };
+type Rule = { indicator: string; op: string; value: number; valueTo?: number; period?: string };
+type PendingRules = {
+  period: string;
+  rules: Rule[];
+  name: string;
+  explanation: string;
+  combine: 'all' | 'any';
+  subsetor: string;
+  weights: { resolvidos: number; primeira: number; resolucao: number } | null;
+};
 type Values = { resolvidos: number | null; resolvidosCount: number | null; transferidos: number | null; primeira: number | null; resolucao: number | null };
 type Row = {
   sourceName: string;
@@ -49,6 +58,21 @@ const METRICS = [
   ['primeira', 'Tempo de primeira resposta'],
   ['resolucao', 'Tempo médio de resolução'],
 ] as const;
+
+const RULE_NAMES: Record<string, string> = {
+  resolvidos: 'Tickets resolvidos (%)',
+  resolvidosCount: 'Tickets resolvidos',
+  primeira: 'Primeira resposta',
+  resolucao: 'Tempo médio de resolução',
+  transferidos: 'Tickets transferidos',
+};
+const RULE_OPS: Record<string, string> = { gt: 'maior que', gte: 'pelo menos', lt: 'menor que', lte: 'no máximo', eq: 'igual a', between: 'entre' };
+
+function ruleLabel(rule: Rule) {
+  const name = RULE_NAMES[rule.indicator] ?? rule.indicator;
+  if (rule.op === 'between') return `${name} entre ${rule.value} e ${rule.valueTo ?? ''}`;
+  return `${name} ${RULE_OPS[rule.op] ?? rule.op} ${rule.value}`;
+}
 
 type ChatMessage = { id: string; from: 'bot' | 'user'; text: string };
 type Phase = 'idle' | 'preset' | 'custom';
@@ -96,8 +120,9 @@ type Board = {
   replace: boolean;
   setPeriodKey: (value: string) => void;
   setReplace: (value: boolean) => void;
-  pendingRules: { period: string; rules: Rule[]; name: string } | null;
-  setPendingRules: (value: { period: string; rules: Rule[]; name: string } | null) => void;
+  pendingRules: PendingRules | null;
+  setPendingRules: (value: PendingRules | null) => void;
+  cancelProposal: () => void;
   messages: ChatMessage[];
   draft: string;
   setDraft: (value: string) => void;
@@ -135,7 +160,7 @@ export const GoalsProvider: FC<{
   const [replace, setReplace] = useState(false);
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState<Phase>('idle');
-  const [pendingRules, setPendingRules] = useState<{ period: string; rules: Rule[]; name: string } | null>(null);
+  const [pendingRules, setPendingRules] = useState<PendingRules | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: 'hello',
     from: 'bot',
@@ -171,7 +196,12 @@ export const GoalsProvider: FC<{
 
   function startCustom() {
     setPhase('custom');
-    say('bot', 'Descreva a regra do pódio, com números. Exemplo: reconhecer quem resolveu pelo menos 250 tickets no mês, com tempo médio abaixo de 18 minutos.');
+    say('bot', 'Escreva com suas palavras como o pódio deve funcionar. Eu interpreto o pedido e só aplico depois que você confirmar.');
+  }
+
+  function cancelProposal() {
+    setPendingRules(null);
+    say('bot', 'Cancelei este critério. O pódio não foi alterado.');
   }
 
   async function pickPreset(indicator: string) {
@@ -183,11 +213,26 @@ export const GoalsProvider: FC<{
   async function talk(text: string) {
     const source = text.trim();
     if (!source || busy) return;
-    setDraft('');
+    const normalized = source.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (pendingRules && /^(confirmar|aprovar|aprovar regra|aprovar criterio)$/.test(normalized)) {
+      say('user', source);
+      setDraft('');
+      await saveTemplate();
+      return;
+    }
+    if (pendingRules && /^(cancelar|descartar)$/.test(normalized)) {
+      say('user', source);
+      setDraft('');
+      cancelProposal();
+      return;
+    }
     say('user', source);
     setBusy(true);
     try {
-      const data = await send('/api/goals/assistant', 'POST', { text: source, preview, periodKey: periodKey || week || goals.currentKey, intent: phase });
+      const history = phase === 'custom' ? messages.slice(-6).map((message) => ({ text: message.text })) : [];
+      const data = await send('/api/goals/assistant', 'POST', { text: source, preview: phase === 'custom' ? undefined : preview, periodKey: periodKey || week || goals.currentKey, intent: phase, history });
+      if (data.kind === 'unavailable' || data.kind === 'quota') setDraft(source);
+      else setDraft('');
       say('bot', String(data.reply ?? ''));
       if (data.kind === 'preview') {
         lastReport.current = source;
@@ -198,10 +243,19 @@ export const GoalsProvider: FC<{
       if (data.kind === 'cancel') setPreview(null);
       if (data.kind === 'approve') await approveWith(source);
       if (data.kind === 'criterion') await choose(data.criterion);
-      if (data.kind === 'custom') {
-        setPendingRules({ period: data.period, rules: data.rules, name: '' });
+      if (data.kind === 'proposal') {
+        setPendingRules({
+          period: data.period,
+          rules: data.rules,
+          name: '',
+          explanation: String(data.explanation ?? ''),
+          combine: data.combine === 'any' ? 'any' : 'all',
+          subsetor: String(data.subsetor ?? ''),
+          weights: data.weights ?? null,
+        });
         setPhase('custom');
       }
+      if (data.kind === 'clarify') setPendingRules(null);
       if (data.kind === 'goal' && preview) {
         setPreview({
           ...preview,
@@ -212,7 +266,8 @@ export const GoalsProvider: FC<{
         });
       }
     } catch {
-      say('bot', 'Não foi possível processar essa mensagem agora.');
+      setDraft(source);
+      say('bot', 'Não consegui falar com a IA agora. Nada foi alterado e o seu texto continua no campo.');
     } finally {
       setBusy(false);
     }
@@ -259,13 +314,29 @@ export const GoalsProvider: FC<{
   async function saveTemplate() {
     if (!pendingRules) return;
     const name = pendingRules.name.trim() || 'Pódio personalizado';
-    const data = await send('/api/goals/templates', 'POST', { confirm: true, name, description: name, rules: pendingRules.rules, period: pendingRules.period });
-    onChange({ ...data, canManage: goals.canManage, people: goals.people });
-    const template = data.templates?.at(-1);
-    if (template?.id) await choose({ mode: 'custom', indicator: selected.indicator, templateId: template.id });
-    setPendingRules(null);
-    setPhase('idle');
-    say('bot', 'Modelo salvo. O pódio personalizado fica disponível para esta e as próximas semanas.');
+    setBusy(true);
+    try {
+      const data = await send('/api/goals/templates', 'POST', {
+        confirm: true,
+        name,
+        description: pendingRules.explanation,
+        rules: pendingRules.rules,
+        period: pendingRules.period,
+        combine: pendingRules.combine,
+        subsetor: pendingRules.subsetor,
+        weights: pendingRules.weights,
+      });
+      onChange({ ...data, canManage: goals.canManage, people: goals.people });
+      const template = data.templates?.at(-1);
+      if (template?.id) await choose({ mode: 'custom', indicator: selected.indicator, templateId: template.id });
+      setPendingRules(null);
+      setPhase('idle');
+      say('bot', 'Critério confirmado. O pódio passa a usar esta regra.');
+    } catch {
+      say('bot', 'Não consegui salvar. O pódio continua como estava.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   function onFile(file: File) {
@@ -301,6 +372,7 @@ export const GoalsProvider: FC<{
     approveWith,
     patchRow,
     saveTemplate,
+    cancelProposal,
     onFile,
     lastReport: lastReport.current,
   }), [goals, selected, phase, preview, periodKey, replace, pendingRules, messages, draft, busy]);
@@ -476,7 +548,7 @@ export const GoalsCenter: FC = () => {
 
 export const GoalsAssistant: FC = () => {
   const board = useBoard();
-  const { messages, draft, setDraft, busy, talk, phase, pickPreset, pendingRules, setPendingRules, saveTemplate } = board;
+  const { messages, draft, setDraft, busy, talk, phase, pickPreset, pendingRules, setPendingRules, saveTemplate, cancelProposal } = board;
   const thread = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -494,14 +566,14 @@ export const GoalsAssistant: FC = () => {
       <div className="flex shrink-0 items-center justify-between border-b border-[#F3EAF8] px-3 py-3 pr-10">
         <h3 className="flex items-center gap-2 text-[14px] font-semibold text-[#241B33]">
           <Sparkles className="h-4 w-4 text-[#8E35B8]" /> Fale com o assistente de metas
-          <Hint text="Cole os relatórios recebidos. O sistema identifica colaboradores e métricas por regras, sem serviço pago de IA." />
+          <Hint text="Critérios personalizados são interpretados pela IA gratuita. Relatórios e nomes continuam conferidos aqui, e o pódio só muda quando você confirma." />
         </h3>
       </div>
       <div ref={thread} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
         {messages.map((message) => (
           <div key={message.id} className={cn('flex gap-2', message.from === 'user' ? 'justify-end' : 'items-start')}>
             {message.from === 'bot' ? <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8]"><Bot className="h-4 w-4" /></span> : null}
-            <p className={cn('max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-5', message.from === 'bot' ? 'bg-[#F7F0FB] text-[#3C3148]' : 'bg-[#8E35B8] text-white')}>{message.text}</p>
+            <p className={cn('max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-[13px] leading-5', message.from === 'bot' ? 'bg-[#F7F0FB] text-[#3C3148]' : 'bg-[#8E35B8] text-white')}>{message.text}</p>
           </div>
         ))}
         {phase === 'preset' ? (
@@ -526,10 +598,19 @@ export const GoalsAssistant: FC = () => {
           </div>
         ) : null}
         {pendingRules ? (
-          <div className="rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
-            <p className="text-[12px] text-[#5C5168]">Dê um nome a essa regra para salvar.</p>
-            <input value={pendingRules.name} onChange={(event) => setPendingRules({ ...pendingRules, name: event.target.value })} placeholder="Nome do pódio" className="mt-1 h-9 w-full rounded-lg border border-[#E7DFF0] bg-white px-2 text-[13px]" />
-            <button type="button" onClick={() => void saveTemplate()} className="mt-1 text-[12.5px] font-semibold text-[#6A228C]">Salvar regra</button>
+          <div className="grid gap-2 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
+            <p className="text-[12px] font-semibold text-[#4A1C73]">Confira antes de aplicar</p>
+            <ul className="grid gap-1 text-[12.5px] leading-5 break-words text-[#5C5168]">
+              {pendingRules.rules.map((rule, index) => (
+                <li key={`${rule.indicator}-${index}`}>{ruleLabel(rule)}{rule.period === 'month' ? ' no mês' : rule.period === 'week' ? ' na semana' : ''}</li>
+              ))}
+            </ul>
+            <p className="text-[12px] text-[#8A7C98]">{pendingRules.combine === 'any' ? 'Basta uma condição.' : 'Todas as condições são obrigatórias.'}{pendingRules.subsetor ? ` Subsetor ${pendingRules.subsetor}.` : ''}</p>
+            <input value={pendingRules.name} onChange={(event) => setPendingRules({ ...pendingRules, name: event.target.value })} placeholder="Nome do pódio" className="h-9 w-full rounded-lg border border-[#E7DFF0] bg-white px-2 text-[13px]" />
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" disabled={busy} onClick={() => void saveTemplate()} className="h-9 rounded-full bg-[#8E35B8] text-[12.5px] font-semibold text-white disabled:bg-[#C9A6DC]">Confirmar</button>
+              <button type="button" disabled={busy} onClick={cancelProposal} className="h-9 rounded-full border border-[#E7DFF0] text-[12.5px] font-semibold text-[#6A228C]">Cancelar</button>
+            </div>
           </div>
         ) : null}
       </div>
