@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { archiveJournalArticle, articleSummary, canManageJournal, deleteJournalArticle, journalPlainText, purgeJournalArticle, readingMinutes, restoreJournalArticle, toggleJournalSave, type JournalArticle, type JournalCategory } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { Bookmark, Calendar, ChevronRight, ClipboardList, Clock, Newspaper, Plus, Search, Trash2 } from 'lucide-react';
+import { Bookmark, Calendar, ChevronRight, ClipboardList, Clock, Newspaper, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState, type FC } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -151,9 +151,13 @@ export const CompanyAnnouncementsPage: FC = () => {
                         <p className="mt-2 line-clamp-3 text-[13px] leading-5 text-[#625C70]">{articleSummary(article.content)}</p>
                         <p className="mt-2 text-[12px] text-[#948D9E]">{formatDate(article.date)}</p>
                       </Link>
-                      <div className="mt-3 flex items-center gap-3">
-                        <button type="button" className="text-[13px] font-semibold text-[#6A228C]" onClick={() => restoreJournalArticle(article.id)}>Restaurar</button>
-                        <button type="button" className="text-[13px] font-semibold text-[#9D174D]" onClick={() => { if (window.confirm('Excluir esta publicação de vez?')) purgeJournalArticle(article.id); }}>Excluir</button>
+                      <div className="mt-3 flex items-center gap-2">
+                        <button type="button" aria-label="Restaurar" title="Restaurar" className="grid h-8 w-8 place-items-center rounded-full text-[#6A228C] hover:bg-[#F3E4FA]" onClick={() => restoreJournalArticle(article.id)}>
+                          <RotateCcw className="h-4 w-4" />
+                        </button>
+                        <button type="button" aria-label="Excluir de vez" title="Excluir de vez" className="grid h-8 w-8 place-items-center rounded-full text-[#9D174D] hover:bg-[#FDE7EE]" onClick={() => { if (window.confirm('Excluir esta publicação de vez?')) purgeJournalArticle(article.id); }}>
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </article>
                   ))}

@@ -444,7 +444,7 @@ const seed: JournalArticle[] = [
   },
   {
     id: 'j-rascunho',
-    title: 'Roteiro da integração de novos colaboradores',
+    title: 'Rascunho do roteiro de boas-vindas',
     content: 'Rascunho do roteiro de boas-vindas. Ainda falta a ordem das visitas e o material de apoio.',
     category: 'treinamentos',
     cover: '/jornal/capas/treinamento.jpg',
@@ -507,6 +507,7 @@ function readStored(): JournalArticle[] {
             : LEGACY_COVERS[article.cover];
       if (cover && cover !== article.cover) next = { ...next, cover };
       if (next.pinned && !next.pinnedAt) next = { ...next, pinnedAt: next.date };
+      if (next.id === 'j-rascunho' && next.title === 'Roteiro da integração de novos colaboradores') next = { ...next, title: 'Rascunho do roteiro de boas-vindas' };
       if (next !== article) changed = true;
       return next;
     });
@@ -591,10 +592,22 @@ function localToday() {
   return local.toISOString().slice(0, 10);
 }
 
-function publicationDate(category: JournalCategory, value: string) {
+function localDay(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function publicationDate(category: JournalCategory, value: string, previous?: string) {
   const today = localToday();
-  const day = value.slice(0, 10);
-  if (categoryLocksDate(category) || day < today) return `${today}T12:00:00`;
+  const day = localDay(value);
+  if (categoryLocksDate(category)) return `${today}T12:00:00`;
+  if (day < today) {
+    if (previous && localDay(previous) === day) return previous.includes('T') ? previous : `${day}T12:00:00`;
+    return `${today}T12:00:00`;
+  }
   return value.includes('T') ? value : `${value}T12:00:00`;
 }
 
@@ -607,7 +620,7 @@ export function saveJournalArticle(draft: JournalDraft, id?: string) {
     content: fitJournalContent(draft.content),
     category: draft.category,
     cover: draft.cover,
-    date: new Date(publicationDate(draft.category, draft.date)).toISOString(),
+    date: new Date(publicationDate(draft.category, draft.date, current?.date)).toISOString(),
     author: draft.author.trim(),
     status: draft.status,
     pinned: false,

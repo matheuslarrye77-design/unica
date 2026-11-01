@@ -567,7 +567,8 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   const content = serializeJournalPieces(pieces);
   const plainLength = pieces.reduce((sum, piece) => sum + (piece.kind === 'text' ? piece.text.length : 0), 0);
   const canAutosave = !article || article.status === 'draft';
-  const dirty = Boolean(title.trim() || journalPlainText(content) || cover || media.length);
+  const hasBody = Boolean(journalPlainText(content).trim() || pieces.some((piece) => piece.kind === 'image'));
+  const dirty = Boolean(title.trim() || hasBody || cover || media.length);
 
   useEffect(() => {
     if (!open) return;
@@ -577,7 +578,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
     setCategory(article?.category ?? 'social');
     setCover(article && (article.cover.startsWith('lib:') || isUserCover(article.cover)) ? article.cover : '');
     const loadedDate = article && !categoryLocksDate(article.category) ? toInputDate(article.date) : todayInput();
-    setDate(loadedDate < todayInput() ? todayInput() : loadedDate);
+    setDate(loadedDate);
     setAuthorName(article?.author ?? author);
     setMedia(article?.media ?? []);
     setPinned(article?.pinned ?? false);
@@ -720,7 +721,8 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   }
 
   function publish(status: JournalStatus) {
-    if (!title.trim() || !journalPlainText(content).trim() || !authorName.trim() || !date) {
+    if (status === 'draft' && !canAutosave) return;
+    if (!title.trim() || !hasBody || !authorName.trim() || !date) {
       toast.error('Preencha título, descrição e categoria.');
       return;
     }
@@ -751,6 +753,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
         onPointerDown={(event) => {
           const target = event.target as HTMLElement | null;
           if (pinHint && !target?.closest('[data-pin-hint]')) setPinHint(false);
+          if (categoryOpen && !target?.closest('[data-category-menu]')) setCategoryOpen(false);
         }}
         onEscapeKeyDown={(event) => {
           if (writing) {
@@ -818,7 +821,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
               <input ref={inlineInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) setInlineFile(file); }} />
             </div>
             <div className="grid gap-2 sm:grid-cols-[1fr_190px]">
-              <div className="relative">
+              <div className="relative" data-category-menu>
                 <button type="button" aria-expanded={categoryOpen} onClick={() => setCategoryOpen((current) => !current)} className="flex h-10 w-full items-center gap-2 rounded-2xl border border-[#E6DEEF] bg-white px-3 text-left text-[14px] font-medium">
                   <span className={cn('h-2.5 w-2.5 rounded-full', dot[category])} />
                   <span className="min-w-0 flex-1 truncate">{categoryLabel(category)}</span>
@@ -837,7 +840,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
               </div>
               <label className={cn('relative flex h-10 items-center rounded-2xl border border-[#E6DEEF] bg-white px-3', dateLocked && 'bg-[#F7F4FA] text-[#8A7C98]')}>
                 <Calendar className="pointer-events-none absolute right-3 h-4 w-4 text-[#8A7C98]" />
-                <input type="date" value={date} min={todayInput()} disabled={dateLocked} onChange={(event) => { const next = event.target.value; if (next && next < todayInput()) { setDate(todayInput()); return; } setDate(next); }} aria-label="Data" title={dateLocked ? 'Nesta categoria a data fica no dia de hoje.' : 'A data não pode ser anterior a hoje.'} className="h-full w-full bg-transparent pr-7 text-[14px] outline-none disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-2 [&::-webkit-calendar-picker-indicator]:h-4 [&::-webkit-calendar-picker-indicator]:w-4 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0" />
+                <input type="date" value={date} min={date < todayInput() ? date : todayInput()} disabled={dateLocked} onChange={(event) => { const next = event.target.value; const kept = article && !categoryLocksDate(article.category) ? toInputDate(article.date) : ''; const fallback = kept && kept < todayInput() ? kept : todayInput(); if (!next || (next < todayInput() && next !== kept)) { setDate(fallback); return; } setDate(next); }} aria-label="Data" title={dateLocked ? 'Nesta categoria a data fica no dia de hoje.' : 'A data não pode ser anterior a hoje.'} className="h-full w-full bg-transparent pr-7 text-[14px] outline-none disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-2 [&::-webkit-calendar-picker-indicator]:h-4 [&::-webkit-calendar-picker-indicator]:w-4 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0" />
               </label>
             </div>
             <div className="grid gap-1.5">
@@ -916,7 +919,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
                     <DropdownMenuItem onSelect={() => documentInput.current?.click()}>Enviar documentos</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <button type="button" onClick={() => publish('draft')} className="h-10 rounded-full px-3 text-[13px] font-semibold text-[#6A228C] hover:bg-[#F3E4FA]">Rascunho</button>
+                {canAutosave ? <button type="button" onClick={() => publish('draft')} className="h-10 rounded-full px-3 text-[13px] font-semibold text-[#6A228C] hover:bg-[#F3E4FA]">Rascunho</button> : null}
               </div>
               <div className="flex items-center gap-2">
                 <button type="button" aria-label="Pré-visualizar" onClick={() => setPreview(true)} className="grid h-11 w-11 place-items-center rounded-full border border-[#E6DEEF] bg-white text-[#6A228C] hover:bg-[#F3E4FA]">

@@ -22,7 +22,7 @@ import {
 } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { ArrowLeft, Bookmark, Heart, MessageCircle, Pin, Trash2 } from 'lucide-react';
+import { ArrowLeft, Bookmark, Heart, MessageCircle, Pencil, Pin, RotateCcw, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -104,23 +104,29 @@ export const JournalArticlePage: FC = () => {
           </p>
           {canManage ? (
             <div className="mt-4 flex flex-wrap gap-2">
-              {article.status !== 'removed' ? <Button variant="outline" size="sm" onClick={() => setEditing(true)}>Editar</Button> : null}
-              {article.status === 'published' ? (
-                <Button variant="outline" size="sm" className="gap-2" onClick={pin}>
-                  <Pin className="h-4 w-4" />
-                  {article.pinned ? 'Desafixar' : 'Fixar'}
-                </Button>
+              {article.status !== 'removed' ? (
+                <button type="button" aria-label="Editar" title="Editar" onClick={() => setEditing(true)} className="grid h-9 w-9 place-items-center rounded-full border border-[#E6DEEF] text-[#6A228C] hover:bg-[#F3E4FA]">
+                  <Pencil className="h-4 w-4" />
+                </button>
               ) : null}
               {article.status === 'published' ? (
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => { if (!window.confirm('Mover esta publicação para a lixeira?')) return; archiveJournalArticle(article.id); navigate('/announcements'); }}>
+                <button type="button" aria-label={article.pinned ? 'Desafixar' : 'Fixar'} title={article.pinned ? 'Desafixar' : 'Fixar'} onClick={pin} className={cn('grid h-9 w-9 place-items-center rounded-full border', article.pinned ? 'border-primary bg-[#F3E4FA] text-primary' : 'border-[#E6DEEF] text-[#6A228C] hover:bg-[#F3E4FA]')}>
+                  <Pin className="h-4 w-4" fill={article.pinned ? 'currentColor' : 'none'} />
+                </button>
+              ) : null}
+              {article.status === 'published' ? (
+                <button type="button" aria-label="Lixeira" title="Lixeira" onClick={() => { if (!window.confirm('Mover esta publicação para a lixeira?')) return; archiveJournalArticle(article.id); navigate('/announcements'); }} className="grid h-9 w-9 place-items-center rounded-full border border-[#E6DEEF] text-[#9D174D] hover:bg-[#FDE7EE]">
                   <Trash2 className="h-4 w-4" />
-                  Lixeira
-                </Button>
+                </button>
               ) : null}
               {article.status === 'removed' ? (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => restoreJournalArticle(article.id)}>Restaurar</Button>
-                  <Button variant="outline" size="sm" onClick={() => { if (!window.confirm('Excluir esta publicação de vez?')) return; purgeJournalArticle(article.id); navigate('/announcements'); }}>Excluir de vez</Button>
+                  <button type="button" aria-label="Restaurar" title="Restaurar" onClick={() => restoreJournalArticle(article.id)} className="grid h-9 w-9 place-items-center rounded-full border border-[#E6DEEF] text-[#6A228C] hover:bg-[#F3E4FA]">
+                    <RotateCcw className="h-4 w-4" />
+                  </button>
+                  <button type="button" aria-label="Excluir de vez" title="Excluir de vez" onClick={() => { if (!window.confirm('Excluir esta publicação de vez?')) return; purgeJournalArticle(article.id); navigate('/announcements'); }} className="grid h-9 w-9 place-items-center rounded-full border border-[#E6DEEF] text-[#9D174D] hover:bg-[#FDE7EE]">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </>
               ) : null}
             </div>
@@ -156,9 +162,8 @@ export const JournalArticlePage: FC = () => {
               <Heart className={cn('h-4 w-4', reacted && 'fill-current')} />
               {article.reactions}
             </button>
-            <button type="button" aria-pressed={savedIds.includes(article.id)} onClick={() => toggleJournalSave(article.id)} className={cn('inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm', savedIds.includes(article.id) && 'border-primary text-primary')}>
-              <Bookmark className={cn('h-4 w-4', savedIds.includes(article.id) && 'fill-current')} />
-              {savedIds.includes(article.id) ? 'Salva' : 'Salvar'}
+            <button type="button" aria-label={savedIds.includes(article.id) ? 'Salva' : 'Salvar'} title={savedIds.includes(article.id) ? 'Salva' : 'Salvar'} aria-pressed={savedIds.includes(article.id)} onClick={() => toggleJournalSave(article.id)} className={cn('grid h-9 w-9 place-items-center rounded-full border', savedIds.includes(article.id) ? 'border-primary text-primary' : 'text-[#6A228C]')}>
+              <Bookmark className="h-4 w-4" fill={savedIds.includes(article.id) ? 'currentColor' : 'none'} />
             </button>
             <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
               <MessageCircle className="h-4 w-4" />
