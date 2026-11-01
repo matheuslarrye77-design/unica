@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import { commitTemplate, criteriaPrompt, interpretCriteria, normalizeProposal } from './criteria.mjs';
-import { allowGeminiCall, classifyGeminiError, flashModel, resetGeminiBudget } from './gemini.mjs';
+import { allowGeminiCall, classifyGeminiError, describeGeminiError, flashModel, redactGeminiDetail, resetGeminiBudget } from './gemini.mjs';
 import { applyCriterion, buildApproval, emptyStore, matchPeople, parseReport, podiumFor } from './goals.mjs';
 
 const people = [
@@ -129,6 +129,15 @@ test('limite gratuito excedido é informado sem chamar de novo', async () => {
   assert.equal(result.kind, 'quota');
   assert.match(result.reply, /limite gratuito/i);
   assert.equal(classifyGeminiError({ status: 429, message: 'RESOURCE_EXHAUSTED' }), 'quota');
+  assert.equal(classifyGeminiError({ status: 401, message: JSON.stringify({ error: { status: 'UNAUTHENTICATED', message: 'API key not valid' } }) }), 'auth');
+  assert.equal(classifyGeminiError({ status: 403, message: JSON.stringify({ error: { status: 'PERMISSION_DENIED', message: 'blocked' } }) }), 'permission');
+  assert.equal(classifyGeminiError({ status: 404, message: JSON.stringify({ error: { status: 'NOT_FOUND', message: 'models/gemini-2.5-flash is not found' } }) }), 'model');
+  assert.equal(classifyGeminiError({ status: 400, message: JSON.stringify({ error: { status: 'INVALID_ARGUMENT', message: 'Invalid JSON payload' } }) }), 'invalid');
+  const secret = describeGeminiError({ status: 400, message: JSON.stringify({ error: { status: 'INVALID_ARGUMENT', message: 'bad key=AIzaSyDUMMYKEY1234567890' } }) });
+  assert.equal(secret.httpStatus, 400);
+  assert.equal(secret.code, 'INVALID_ARGUMENT');
+  assert.equal(secret.message.includes('AIza'), false);
+  assert.equal(redactGeminiDetail('ana@empresa.com 11999998888').includes('ana@'), false);
   resetGeminiBudget();
 });
 

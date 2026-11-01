@@ -191,13 +191,14 @@ export function criteriaPrompt(text, history = [], labels = []) {
 }
 
 function failure(kind) {
-  if (kind === 'quota') {
-    return { ok: false, kind: 'quota', reply: 'O limite gratuito da IA foi atingido agora. Nada foi alterado. O texto que você escreveu continua no campo.' };
-  }
-  if (kind === 'model' || kind === 'unconfigured') {
-    return { ok: false, kind: 'unavailable', reply: 'A inteligência artificial não está disponível com um modelo gratuito agora. Nada foi alterado. O texto que você escreveu continua no campo.' };
-  }
-  return { ok: false, kind: 'unavailable', reply: 'A IA não respondeu. Nada foi alterado. O texto que você escreveu continua no campo.' };
+  const kept = 'Nada foi alterado. O texto que você escreveu continua no campo.';
+  if (kind === 'quota') return { ok: false, kind: 'quota', reply: `O limite gratuito da IA foi atingido agora. ${kept}` };
+  if (kind === 'auth') return { ok: false, kind: 'auth', reply: `A chave da IA foi recusada pelo Google. ${kept}` };
+  if (kind === 'permission') return { ok: false, kind: 'permission', reply: `O Google recusou a permissão desta chave. ${kept}` };
+  if (kind === 'model') return { ok: false, kind: 'model', reply: `O modelo gratuito configurado não existe para esta chave. ${kept}` };
+  if (kind === 'invalid') return { ok: false, kind: 'invalid', reply: `O Google recusou o formato do pedido. ${kept}` };
+  if (kind === 'unconfigured') return { ok: false, kind: 'unavailable', reply: `A inteligência artificial não está disponível com um modelo gratuito agora. ${kept}` };
+  return { ok: false, kind: 'unavailable', reply: `A IA não respondeu. ${kept}` };
 }
 
 export async function interpretCriteria(text, options = {}) {
