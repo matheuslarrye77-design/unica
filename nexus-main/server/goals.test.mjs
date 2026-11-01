@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { aggregateMonth, buildApproval, emptyStore, isoWeekKey, latestPeriod, matchPeople, overallScore, parseCustomRequest, parseReport, podiumFor, rankRows, subsetorOf } from './goals.mjs';
+import { aggregateMonth, applyCriterion, buildApproval, emptyStore, isoWeekKey, latestPeriod, matchPeople, overallScore, parseCustomRequest, parseReport, podiumFor, rankRows, runAssistant, subsetorOf } from './goals.mjs';
 
 const people = [
   { id: 'matheus', name: 'Matheus Larrye Lopes Batista', funcao: 'Chat', role: 'Atendimento', aliases: ['Matheus', 'Matheus Larrye', 'Matheus Lopes'] },
@@ -159,4 +159,29 @@ test('mês junta as semanas sem inventar valor que não veio', () => {
 test('subsetor oficial vem da função da equipe', () => {
   assert.equal(subsetorOf(people[0]), 'Chat');
   assert.equal(subsetorOf({ funcao: 'Líder', role: 'Líder' }), '');
+});
+
+test('critério escolhido fica gravado e não apaga semana anterior', () => {
+  const first = buildApproval(emptyStore(), { text: consolidated, periodKey: '2026-W10' }, people, { id: 'helena', name: 'Helena' });
+  const next = applyCriterion(first.store, { mode: 'preset', indicator: 'primeira' }, '2026-W10');
+  assert.equal(next.criterion.mode, 'preset');
+  assert.equal(next.criterion.indicator, 'primeira');
+  assert.equal(next.imports[0].display.indicator, 'primeira');
+  const later = buildApproval(next, { text: consolidated.replace('mínimo de 87%', 'mínimo de 90%'), periodKey: '2026-W11', replace: false }, people, { id: 'helena', name: 'Helena' });
+  assert.equal(later.store.imports.find((item) => item.periodKey === '2026-W10').display.indicator, 'primeira');
+  assert.equal(later.store.imports.find((item) => item.periodKey === '2026-W11').display.indicator, 'primeira');
+});
+
+test('assistente lê relatório, pede nomes duvidosos e não inventa pedido solto', () => {
+  const store = emptyStore();
+  const preview = runAssistant({ text: consolidated, store, people });
+  assert.equal(preview.kind, 'preview');
+  assert.equal(preview.preview.rows.length, 3);
+  const similar = runAssistant({ text: 'Ana: 90%, 10, 2 min, 10 min.\nTickets resolvidos: mínimo de 87%.\nTempo de primeira resposta: até 5 minutos.\nTempo médio até resolução: até 18 minutos.', store, people });
+  assert.equal(similar.preview.rows[0].userId, '');
+  assert.equal(similar.preview.rows[0].ambiguous.length, 2);
+  const lost = runAssistant({ text: 'oi, tudo bem?', store, people });
+  assert.equal(lost.kind, 'ask');
+  const approve = runAssistant({ text: 'Aprovar', store, people, preview: preview.preview });
+  assert.equal(approve.kind, 'approve');
 });

@@ -1,12 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { isLeader } from './auth/permissions.mjs';
-import { buildApproval, emptyStore, goalState, INDICATORS, overallScore, parseCustomRequest, parseReport, publicStore } from './goals.mjs';
+import { applyCriterion, buildApproval, emptyStore, goalState, INDICATORS, overallScore, parseCustomRequest, parseReport, publicStore, readCriterion, runAssistant } from './goals.mjs';
 
 function readStore(file) {
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
-    return { ...emptyStore(), ...parsed, weights: { ...emptyStore().weights, ...(parsed.weights ?? {}) } };
+    return { ...emptyStore(), ...parsed, weights: { ...emptyStore().weights, ...(parsed.weights ?? {}) }, criterion: readCriterion(parsed.criterion) };
   } catch {
     return emptyStore();
   }
@@ -94,11 +94,28 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
         send(res, 404, { error: 'missing' });
         return true;
       }
-      const mode = body.display?.mode === 'preset' || body.display?.mode === 'custom' ? body.display.mode : 'overall';
-      const indicator = INDICATORS.includes(body.display?.indicator) ? body.display.indicator : 'resolvidos';
-      item.display = { mode, indicator, templateId: String(body.display?.templateId ?? '') };
-      writeStore(file, store);
-      send(res, 200, publicStore(store));
+      const criterion = readCriterion(body.display ?? body);
+      item.display = criterion;
+      const next = { ...store, criterion };
+      writeStore(file, next);
+      send(res, 200, publicStore(next));
+      return true;
+    }
+    if (req.method === 'POST' && url === '/api/goals/criterion') {
+      const next = applyCriterion(store, body, String(body.periodKey ?? ''));
+      writeStore(file, next);
+      send(res, 200, publicStore(next));
+      return true;
+    }
+    if (req.method === 'POST' && url === '/api/goals/assistant') {
+      const result = runAssistant({
+        text: String(body.text ?? ''),
+        store,
+        people,
+        preview: body.preview,
+        periodKey: String(body.periodKey ?? ''),
+      });
+      send(res, 200, result);
       return true;
     }
     if (req.method === 'PUT' && url === '/api/goals/settings') {

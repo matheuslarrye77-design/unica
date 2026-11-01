@@ -1,7 +1,8 @@
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { authHeaders, getDemoId } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import { useState, type FC } from 'react';
+import { BarChart3, Bot, Check, Info, Paperclip, Pencil, Send, Settings2, Sparkles, Star, Target, Trophy } from 'lucide-react';
+import { useEffect, useRef, useState, type FC, type FormEvent } from 'react';
 import { toast } from 'sonner';
 
 type Rule = { indicator: string; op: string; value: number; valueTo?: number };
@@ -13,7 +14,7 @@ type Row = {
   subsetor: string;
   ambiguous: { id: string; name: string; subsetor: string }[];
   values: Values;
-  goal: { resolvidos?: { target: number | null }; primeira?: { target: number | null }; resolucao?: { target: number | null }; transferidos?: { target: number | null }; transferidosMode?: string };
+  goal: { resolvidos?: { target: number | null; direction?: string }; primeira?: { target: number | null; direction?: string }; resolucao?: { target: number | null; direction?: string }; transferidos?: { target: number | null }; transferidosMode?: string };
   states?: Record<string, string>;
   overall?: number | null;
 };
@@ -30,9 +31,11 @@ export type GoalImport = {
 };
 type Person = { id: string; name: string; funcao: string; role: string; aliases: string[] };
 type Template = { id: string; name: string; description: string; period: string; rules: Rule[] };
+type Criterion = { mode: 'preset' | 'custom' | 'overall'; indicator?: string; templateId?: string };
 export type GoalsPayload = {
   canManage: boolean;
   currentKey: string;
+  criterion?: Criterion;
   weights: { resolvidos: number; primeira: number; resolucao: number; floor: number };
   tieBreak: string[];
   people: Person[];
@@ -43,9 +46,11 @@ export type GoalsPayload = {
 const METRICS = [
   ['resolvidos', 'Tickets resolvidos'],
   ['transferidos', 'Tickets transferidos'],
-  ['primeira', 'Primeira resposta'],
-  ['resolucao', 'Tempo médio'],
+  ['primeira', 'Tempo de primeira resposta'],
+  ['resolucao', 'Tempo médio de resolução'],
 ] as const;
+
+type ChatMessage = { id: string; from: 'bot' | 'user'; text: string };
 
 function headers() {
   return { ...authHeaders(), ...(LOGIN_REQUIRED ? {} : { 'x-unica-demo': getDemoId() }) };
@@ -55,7 +60,9 @@ function Hint({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   return (
     <span className="relative inline-flex align-middle" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
-      <button type="button" aria-label={text} aria-expanded={open} onClick={() => setOpen((value) => !value)} className="grid h-4 w-4 place-items-center rounded-full border border-[#E7DFF0] text-[10px] font-semibold text-[#8A7C98]">i</button>
+      <button type="button" aria-label={text} aria-expanded={open} onClick={() => setOpen((value) => !value)} className="grid h-4 w-4 place-items-center rounded-full border border-white/50 bg-white/40 text-[10px] font-semibold text-[#8A7C98]">
+        <Info className="h-2.5 w-2.5" />
+      </button>
       {open ? <span role="tooltip" className="absolute top-5 left-0 z-20 w-64 rounded-xl border border-[#E7DFF0] bg-white p-2 text-left text-[12px] leading-5 font-normal text-[#5C5168] shadow-md">{text}</span> : null}
     </span>
   );
@@ -75,35 +82,120 @@ async function send(path: string, method: string, body?: unknown) {
   return data;
 }
 
+function sameCriterion(left?: Criterion, right?: Criterion) {
+  return left?.mode === right?.mode && (left?.indicator ?? '') === (right?.indicator ?? '') && (left?.templateId ?? '') === (right?.templateId ?? '');
+}
+
 export const GoalsCenter: FC<{
   goals: GoalsPayload;
   week: string;
   onWeek: (key: string) => void;
   onChange: (goals: GoalsPayload) => void;
 }> = ({ goals, week, onWeek, onChange }) => {
-  const [text, setText] = useState('');
+  const [draft, setDraft] = useState('');
   const [preview, setPreview] = useState<{ periodKey: string; warnings: string[]; rows: Row[] } | null>(null);
-  const [periodKey, setPeriodKey] = useState('');
+  const [periodKey, setPeriodKey] = useState(week || goals.currentKey);
   const [replace, setReplace] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [custom, setCustom] = useState('');
-  const [customName, setCustomName] = useState('');
-  const [draftRules, setDraftRules] = useState<{ period: string; rules: Rule[] } | null>(null);
-  const [weights, setWeights] = useState(goals.weights);
-  const current = goals.imports.find((item) => item.periodKey === (week || goals.currentKey));
+  const [pendingRules, setPendingRules] = useState<{ period: string; rules: Rule[]; name: string } | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([{
+    id: 'hello',
+    from: 'bot',
+    text: 'Olá! Envie aqui os relatórios da sua equipe para que eu possa processar as informações e atualizar os pódios.',
+  }]);
+  const thread = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const selected = goals.criterion ?? { mode: 'preset' as const, indicator: 'resolvidos' };
 
-  async function confer() {
+  useEffect(() => {
+    thread.current?.scrollTo({ top: thread.current.scrollHeight });
+  }, [messages, preview]);
+
+  function say(from: ChatMessage['from'], text: string) {
+    setMessages((current) => [...current, { id: `${Date.now()}-${from}`, from, text }]);
+  }
+
+  async function choose(next: Criterion, silent = false) {
+    if (!goals.canManage) return;
+    if (sameCriterion(selected, next)) return;
+    if (!silent && goals.criterion && !sameCriterion(goals.criterion, next) && !window.confirm('Trocar o critério ativo? Os resultados das semanas anteriores continuam salvos.')) return;
+    try {
+      const data = await send('/api/goals/criterion', 'POST', { ...next, periodKey: week || goals.currentKey });
+      onChange({ ...data, canManage: goals.canManage, people: goals.people });
+      toast.success('Critério salvo para esta configuração.');
+    } catch {
+      toast.error('Não foi possível salvar o critério.');
+    }
+  }
+
+  const lastReport = useRef('');
+
+  async function talk(text: string) {
+    const source = text.trim();
+    if (!source || busy) return;
+    setDraft('');
+    say('user', source);
     setBusy(true);
     try {
-      const data = await send('/api/goals/preview', 'POST', { text });
-      setPreview(data);
-      setPeriodKey(data.periodKey || '');
-      setReplace(false);
-      if (data.rows.length === 0) toast.error('Não encontrei colaboradores nesse texto.');
+      const data = await send('/api/goals/assistant', 'POST', { text: source, preview, periodKey: periodKey || week || goals.currentKey });
+      say('bot', String(data.reply ?? ''));
+      if (data.kind === 'preview') {
+        lastReport.current = source;
+        setPreview(data.preview);
+        setPeriodKey(data.preview.periodKey || periodKey);
+        setReplace(false);
+      }
+      if (data.kind === 'cancel') setPreview(null);
+      if (data.kind === 'approve') await approveWith(source);
+      if (data.kind === 'criterion') await choose(data.criterion, true);
+      if (data.kind === 'custom') setPendingRules({ period: data.period, rules: data.rules, name: '' });
+      if (data.kind === 'goal' && preview) {
+        setPreview({
+          ...preview,
+          rows: preview.rows.map((row) => {
+            if (data.channel && row.subsetor !== data.channel) return row;
+            return { ...row, goal: { ...row.goal, [data.metric]: { ...(row.goal[data.metric as 'resolvidos'] ?? {}), target: data.target, direction: data.metric === 'resolvidos' ? 'higher' : 'lower' } } };
+          }),
+        });
+      }
     } catch {
-      toast.error('Não foi possível ler o relatório.');
+      say('bot', 'Não foi possível processar essa mensagem agora.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function approveWith(reportText: string) {
+    if (!preview) return;
+    const key = periodKey || preview.periodKey;
+    if (!key) {
+      toast.error('Escolha a semana desses resultados.');
+      return;
+    }
+    try {
+      const data = await send('/api/goals/approve', 'POST', {
+        text: lastReport.current || reportText,
+        periodKey: key,
+        replace,
+        display: selected,
+        rows: preview.rows.map((row) => ({ sourceName: row.sourceName, userId: row.userId, values: row.values })),
+      });
+      setPreview(null);
+      setReplace(false);
+      onChange({ ...data, canManage: goals.canManage, people: goals.people });
+      onWeek(key);
+      toast.success('Importação aprovada. O pódio desta semana foi atualizado.');
+    } catch (error) {
+      const code = error instanceof Error ? error.message : '';
+      if (code === 'duplicate') {
+        say('bot', 'Esse relatório já foi importado.');
+        toast.error('Esse relatório já foi importado.');
+      } else if (code === 'period') {
+        say('bot', 'Esta semana já tem um pódio aprovado. Marque substituir só esta semana se for isso mesmo.');
+      } else {
+        say('bot', 'Ainda há nomes ou valores para conferir.');
+        toast.error('Ainda há nomes ou valores para conferir.');
+      }
     }
   }
 
@@ -111,236 +203,229 @@ export const GoalsCenter: FC<{
     setPreview((currentPreview) => currentPreview ? { ...currentPreview, rows: currentPreview.rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row) } : currentPreview);
   }
 
-  async function approve() {
-    if (!preview) return;
-    if (!periodKey) {
-      toast.error('Escolha a semana desses resultados.');
+  async function saveTemplate() {
+    if (!pendingRules || !pendingRules.name.trim()) return;
+    const data = await send('/api/goals/templates', 'POST', { confirm: true, name: pendingRules.name.trim(), description: pendingRules.name, rules: pendingRules.rules, period: pendingRules.period });
+    onChange({ ...data, canManage: goals.canManage, people: goals.people });
+    const template = data.templates?.at(-1);
+    if (template?.id) await choose({ mode: 'custom', indicator: selected.indicator, templateId: template.id });
+    setPendingRules(null);
+    say('bot', 'Modelo salvo. O pódio personalizado fica disponível para esta e as próximas semanas.');
+  }
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    void talk(draft);
+  }
+
+  function onFile(file: File) {
+    if (!file.type.startsWith('text/') && !/\.(txt|csv|md)$/i.test(file.name)) {
+      toast.error('Anexe um arquivo de texto com o relatório.');
       return;
     }
-    setBusy(true);
-    try {
-      const data = await send('/api/goals/approve', 'POST', {
-        text,
-        periodKey,
-        replace,
-        display: { mode: 'overall' },
-        rows: preview.rows.map((row) => ({ sourceName: row.sourceName, userId: row.userId, values: row.values })),
-      });
-      setPreview(null);
-      setText('');
-      onChange({ ...data, canManage: goals.canManage, people: goals.people });
-      onWeek(periodKey);
-      toast.success('Importação aprovada. O pódio desta semana foi atualizado.');
-    } catch (error) {
-      const code = error instanceof Error ? error.message : '';
-      if (code === 'duplicate') toast.error('Esse relatório já foi importado.');
-      else if (code === 'period') toast.error('Esta semana já tem um pódio aprovado. Confirme se quer substituir só esta semana.');
-      else toast.error('Ainda há nomes ou valores para conferir.');
-    } finally {
-      setBusy(false);
-    }
+    const reader = new FileReader();
+    reader.onload = () => void talk(String(reader.result ?? ''));
+    reader.readAsText(file);
   }
 
-  async function showOnPodium(display: { mode: string; indicator?: string; templateId?: string }) {
-    if (!current) return;
-    const data = await send('/api/goals/display', 'POST', { periodKey: current.periodKey, display });
-    onChange({ ...data, canManage: goals.canManage, people: goals.people });
-    toast.success('O pódio passou a usar este critério.');
-  }
-
-  async function interpret() {
-    try {
-      const data = await send('/api/goals/templates', 'POST', { description: custom });
-      setDraftRules({ period: data.period, rules: data.rules });
-    } catch (error) {
-      const message = error instanceof Error && 'data' in error ? String((error as { data?: { message?: string } }).data?.message ?? '') : '';
-      toast.error(message || 'Não consegui transformar esse pedido em regras.');
-    }
-  }
-
-  async function saveTemplate() {
-    if (!draftRules || !customName.trim()) return;
-    const data = await send('/api/goals/templates', 'POST', { confirm: true, name: customName.trim(), description: custom, rules: draftRules.rules, period: draftRules.period });
-    onChange({ ...data, canManage: goals.canManage, people: goals.people });
-    setDraftRules(null);
-    setCustom('');
-    setCustomName('');
-    toast.success('Critério salvo.');
-  }
-
-  async function saveWeights() {
-    try {
-      const data = await send('/api/goals/settings', 'PUT', { weights, tieBreak: goals.tieBreak });
-      onChange({ ...data, canManage: goals.canManage, people: goals.people });
-      toast.success('Pesos atualizados. As semanas antigas continuam com as metas da época.');
-    } catch {
-      toast.error('Os três pesos precisam somar 100.');
-    }
-  }
+  const cards = [
+    {
+      id: 'preset' as const,
+      title: 'Critérios Predefinidos',
+      text: 'Utilize os indicadores já definidos pela empresa.',
+      icon: BarChart3,
+      points: ['Tickets resolvidos', 'Tickets transferidos', 'Tempo de primeira resposta', 'Tempo médio de resolução'],
+      criterion: { mode: 'preset' as const, indicator: selected.mode === 'preset' ? selected.indicator || 'resolvidos' : 'resolvidos' },
+    },
+    {
+      id: 'custom' as const,
+      title: 'Critérios Personalizados',
+      text: 'Crie um pódio com regras livres e específicas para sua necessidade.',
+      icon: Settings2,
+      points: ['Defina indicadores e condições', 'Use modelos prontos', 'Personalize como quiser'],
+      criterion: { mode: 'custom' as const, indicator: selected.indicator, templateId: selected.templateId || goals.templates[0]?.id || '' },
+    },
+    {
+      id: 'overall' as const,
+      title: 'Desempenho Geral',
+      text: 'Avalia o conjunto das métricas com pesos personalizados.',
+      icon: Star,
+      points: ['Pontuação de 0 a 100', 'Equilíbrio entre indicadores', 'Regras de participação'],
+      criterion: { mode: 'overall' as const, indicator: selected.indicator },
+    },
+  ];
 
   return (
-    <section className="rounded-[22px] border border-[#F0E7F6] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
-      <div className="flex items-center gap-2">
-        <h2 className="text-[16px] font-semibold text-[#241B33]">Central Inteligente de Metas</h2>
-        <Hint text="Cole os relatórios da semana para identificar colaboradores, metas e resultados. Nada é salvo antes da conferência." />
-      </div>
-      {goals.canManage ? (
-        <div className="mt-3 grid gap-2">
-          <label className="text-[13px] font-medium text-[#5C5168]" htmlFor="relatorios-metas">Importar resultados <Hint text="Cole os relatórios recebidos para que o sistema identifique automaticamente os colaboradores e suas métricas." /></label>
-          <textarea id="relatorios-metas" value={text} onChange={(event) => setText(event.target.value)} placeholder="Cole aqui um relatório ou vários, do jeito que chegaram." className="min-h-36 w-full rounded-2xl border border-[#E7DFF0] px-3 py-2 text-sm" />
-          <button type="button" disabled={busy || !text.trim()} onClick={() => void confer()} className="w-fit rounded-full bg-[#8E35B8] px-4 py-2 text-[13px] font-semibold text-white disabled:bg-[#C9A6DC]">Conferir importação</button>
-        </div>
-      ) : null}
-
-      {preview ? (
-        <div className="mt-4 grid gap-3">
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="grid gap-1 text-[13px] text-[#5C5168]">Semana
-              <input type="week" value={periodKey} onChange={(event) => setPeriodKey(event.target.value)} className="h-10 rounded-xl border border-[#E7DFF0] px-3" />
-            </label>
-            <label className="flex items-center gap-2 text-[13px] text-[#5C5168]">
-              <input type="checkbox" checked={replace} onChange={(event) => setReplace(event.target.checked)} />
-              Substituir apenas o pódio já aprovado desta semana
-            </label>
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
+      <div className="grid gap-4">
+        <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#F4E4FB] via-[#EED4F8] to-[#E3C2F4] px-5 py-4">
+          <div className="relative flex items-start gap-3">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/70 text-[#8E35B8]"><Target className="h-6 w-6" /></span>
+            <div>
+              <h2 className="flex items-center gap-2 text-[20px] font-semibold text-[#4A1C73]">Central Inteligente de Metas <Hint text="Defina o critério dos pódios e deixe o sistema calcular os resultados automaticamente." /></h2>
+              <p className="mt-0.5 text-[13px] text-[#8A5AA0]">Defina o critério dos pódios e deixe o sistema calcular os resultados automaticamente.</p>
+            </div>
           </div>
-          {preview.warnings.map((warning) => <p key={warning} className="text-[13px] text-[#A16207]">{warning}</p>)}
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-[13px]">
-              <thead className="text-[#8A7C98]">
-                <tr>
-                  <th className="py-2 pr-3 font-medium">Colaborador</th>
-                  <th className="py-2 pr-3 font-medium">Subsetor</th>
-                  {METRICS.map(([id, label]) => <th key={id} className="py-2 pr-3 font-medium">{label}</th>)}
-                  <th className="py-2 font-medium">Geral</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.rows.map((row, index) => (
-                  <tr key={`${row.sourceName}-${index}`} className="border-t border-[#F3E4FA]">
-                    <td className="py-2 pr-3">
-                      {row.userId ? row.name : (
-                        <div className="grid gap-1">
-                          <span className="text-[11px] text-[#A16207]">{row.sourceName}</span>
-                          <select className="h-9 rounded-lg border border-[#E7DFF0] px-2" value={row.userId} onChange={(event) => {
-                            const person = goals.people.find((item) => item.id === event.target.value);
-                            const subsetor = person && ['Chat', 'E-mail', 'Ligação', 'Atendimento'].includes(person.funcao) ? person.funcao : (['Chat', 'E-mail', 'Ligação', 'Atendimento'].includes(person?.role ?? '') ? person?.role ?? '' : '');
-                            patchRow(index, { userId: event.target.value, name: person?.name ?? '', subsetor });
-                          }}>
-                            <option value="">Escolher colaborador</option>
-                            {(row.ambiguous.length > 0 ? row.ambiguous : goals.people).map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
-                          </select>
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-2 pr-3">{row.subsetor || '—'}</td>
-                    {METRICS.map(([id]) => (
-                      <td key={id} className={cn('py-2 pr-3', tone(row.states?.[id]))}>
-                        <input
-                          aria-label={id}
-                          inputMode="decimal"
-                          value={row.values[id] ?? ''}
-                          onChange={(event) => {
-                            const raw = event.target.value.replace(',', '.');
-                            patchRow(index, { values: { ...row.values, [id]: raw === '' ? null : Number(raw) } });
-                          }}
-                          className="h-8 w-20 rounded-lg border border-[#E7DFF0] bg-transparent px-2"
-                        />
-                        {id !== 'transferidos' && row.goal[id]?.target !== null && row.goal[id]?.target !== undefined ? <span className="block text-[11px] text-[#8A7C98]">meta {row.goal[id]?.target}</span> : null}
-                      </td>
+        </section>
+
+        <section>
+          <h3 className="flex items-center gap-2 text-[15px] font-semibold text-[#241B33]">
+            <Trophy className="h-4 w-4 text-[#8E35B8]" /> Escolha o critério de reconhecimento
+          </h3>
+          <p className="mt-0.5 text-[12.5px] text-[#8A7C98]">Selecione como deseja montar os pódios desta semana:</p>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            {cards.map((card) => {
+              const active = selected.mode === card.id;
+              const Icon = card.icon;
+              return (
+                <article key={card.id} className={cn('relative flex flex-col rounded-[22px] border bg-white p-4 shadow-[0_8px_22px_rgba(80,40,120,0.05)]', active ? 'border-[#8E35B8]' : 'border-[#EDE4F5]')}>
+                  {active ? <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-[#8E35B8] text-white"><Check className="h-3.5 w-3.5" /></span> : null}
+                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]"><Icon className="h-5 w-5" /></span>
+                  <h4 className="mt-3 text-[15px] font-semibold text-[#241B33]">{card.title}</h4>
+                  <p className="mt-1 min-h-10 text-[12.5px] leading-5 text-[#8A7C98]">{card.text}</p>
+                  <ul className="mt-3 grid gap-1.5 text-[12.5px] text-[#5C5168]">
+                    {card.points.map((point) => (
+                      <li key={point} className="flex items-start gap-2">
+                        {card.id === 'preset' && active ? (
+                          <button type="button" className={cn('mt-0.5 grid h-4 w-4 place-items-center rounded-full', selected.indicator === METRICS.find((item) => item[1] === point)?.[0] ? 'bg-[#8E35B8] text-white' : 'bg-[#EFE6F8] text-[#8E35B8]')} onClick={() => void choose({ mode: 'preset', indicator: METRICS.find((item) => item[1] === point)?.[0] ?? 'resolvidos' })}>
+                            <Check className="h-2.5 w-2.5" />
+                          </button>
+                        ) : <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#8E35B8]" />}
+                        {point}
+                      </li>
                     ))}
-                    <td className="py-2">{row.overall ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  </ul>
+                  <button
+                    type="button"
+                    disabled={!goals.canManage}
+                    onClick={() => void choose(card.criterion)}
+                    className={cn('mt-4 inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-4 text-[13px] font-semibold', active ? 'bg-[#8E35B8] text-white' : 'border border-[#E7DFF0] text-[#6A228C]')}
+                  >
+                    {active ? <Check className="h-3.5 w-3.5" /> : card.id === 'custom' ? <Pencil className="h-3.5 w-3.5" /> : <BarChart3 className="h-3.5 w-3.5" />}
+                    {active ? 'Selecionado' : 'Selecionar'}
+                  </button>
+                </article>
+              );
+            })}
           </div>
-          <button type="button" disabled={busy} onClick={() => void approve()} className="w-fit rounded-full bg-[#8E35B8] px-4 py-2 text-[13px] font-semibold text-white">Aprovar importação</button>
-        </div>
-      ) : null}
+          <p className="mt-3 flex items-start gap-2 rounded-2xl bg-[#F7F0FB] px-3 py-2 text-[12.5px] text-[#6A228C]">
+            <Info className="mt-0.5 h-4 w-4 shrink-0" /> Após definir o critério, basta enviar os relatórios no chat ao lado para que o sistema faça a análise automaticamente.
+          </p>
+        </section>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
-        <article className="rounded-2xl border border-[#F3E4FA] p-3">
-          <h3 className="flex items-center gap-2 text-[14px] font-semibold">Critérios predefinidos <Hint text="Escolhe um indicador já lido nos relatórios para montar o pódio da semana." /></h3>
-          <div className="mt-2 grid gap-2">
-            {METRICS.map(([id, label]) => (
-              <button key={id} type="button" disabled={!current || !goals.canManage || (id === 'transferidos' && current.rows.every((row) => row.goal.transferidosMode !== 'higher' && row.goal.transferidosMode !== 'lower'))} onClick={() => void showOnPodium({ mode: 'preset', indicator: id })} className="rounded-xl border border-[#E7DFF0] px-3 py-2 text-left text-[13px] disabled:opacity-50">{label}</button>
-            ))}
-          </div>
-        </article>
-        <article className="rounded-2xl border border-[#F3E4FA] p-3">
-          <h3 className="flex items-center gap-2 text-[14px] font-semibold">Critério personalizado <Hint text="Permite criar um reconhecimento com regras próprias. As regras aparecem para aprovação antes de valer." /></h3>
-          {goals.canManage ? (
-            <div className="mt-2 grid gap-2">
-              <input value={customName} onChange={(event) => setCustomName(event.target.value)} placeholder="Nome do pódio" className="h-10 rounded-xl border border-[#E7DFF0] px-3 text-sm" />
-              <textarea value={custom} onChange={(event) => setCustom(event.target.value)} placeholder="Descreva quem deve entrar no pódio" className="min-h-20 rounded-xl border border-[#E7DFF0] px-3 py-2 text-sm" />
-              <button type="button" onClick={() => void interpret()} className="w-fit text-[13px] font-semibold text-[#6A228C]">Interpretar regras</button>
-              {draftRules ? (
-                <div className="rounded-xl bg-[#FBF8FC] p-2 text-[12.5px] text-[#5C5168]">
-                  <p>{draftRules.period === 'month' ? 'Período mensal' : 'Período semanal'}</p>
-                  {draftRules.rules.map((rule) => <p key={`${rule.indicator}-${rule.op}`}>{rule.indicator} {rule.op} {rule.value}{rule.valueTo !== undefined ? ` e ${rule.valueTo}` : ''}</p>)}
-                  <button type="button" onClick={() => void saveTemplate()} className="mt-2 font-semibold text-[#6A228C]">Aprovar e salvar modelo</button>
-                </div>
-              ) : null}
+        {preview ? (
+          <section className="rounded-[22px] border border-[#EDE4F5] bg-white p-4">
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="grid gap-1 text-[13px] text-[#5C5168]">Semana
+                <input type="week" value={periodKey} onChange={(event) => setPeriodKey(event.target.value)} className="h-10 rounded-xl border border-[#E7DFF0] px-3" />
+              </label>
+              <label className="flex items-center gap-2 text-[13px] text-[#5C5168]">
+                <input type="checkbox" checked={replace} onChange={(event) => setReplace(event.target.checked)} />
+                Substituir apenas o pódio já aprovado desta semana
+              </label>
             </div>
-          ) : null}
-          <ul className="mt-2 grid gap-1 text-[13px]">
-            {goals.templates.map((template) => (
-              <li key={template.id}>
-                <button type="button" disabled={!current || !goals.canManage} onClick={() => void showOnPodium({ mode: 'custom', templateId: template.id })} className="text-left text-[#6A228C] disabled:opacity-50">{template.name}</button>
-              </li>
-            ))}
-          </ul>
-        </article>
-        <article className="rounded-2xl border border-[#F3E4FA] p-3">
-          <h3 className="flex items-center gap-2 text-[14px] font-semibold">Desempenho geral <Hint text="Classifica os colaboradores pelo cumprimento conjunto das metas, sem comparar o tempo absoluto de canais diferentes." /></h3>
-          {goals.canManage ? (
-            <div className="mt-2 grid gap-2 text-[13px]">
-              {(['resolvidos', 'primeira', 'resolucao'] as const).map((id) => (
-                <label key={id} className="flex items-center justify-between gap-2">{METRICS.find((item) => item[0] === id)?.[1]}
-                  <input type="number" min={0} max={100} value={weights[id]} onChange={(event) => setWeights({ ...weights, [id]: Number(event.target.value) })} className="h-9 w-16 rounded-lg border border-[#E7DFF0] px-2" />
-                </label>
-              ))}
-              <button type="button" onClick={() => void saveWeights()} className="w-fit font-semibold text-[#6A228C]">Salvar pesos</button>
-              <button type="button" disabled={!current} onClick={() => void showOnPodium({ mode: 'overall' })} className="w-fit rounded-full border border-[#E7DFF0] px-3 py-1.5 disabled:opacity-50">Usar no pódio</button>
+            {preview.warnings.map((warning) => <p key={warning} className="mt-2 text-[13px] text-[#A16207]">{warning}</p>)}
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full min-w-[720px] text-left text-[13px]">
+                <thead className="text-[#8A7C98]">
+                  <tr>
+                    <th className="py-2 pr-3 font-medium">Colaborador</th>
+                    <th className="py-2 pr-3 font-medium">Subsetor</th>
+                    {METRICS.map(([id, label]) => <th key={id} className="py-2 pr-3 font-medium">{label}</th>)}
+                    <th className="py-2 font-medium">Geral</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.rows.map((row, index) => (
+                    <tr key={`${row.sourceName}-${index}`} className="border-t border-[#F3E4FA]">
+                      <td className="py-2 pr-3">
+                        {row.userId ? row.name : (
+                          <div className="grid gap-1">
+                            <span className="text-[11px] text-[#A16207]">{row.sourceName}</span>
+                            <select className="h-9 rounded-lg border border-[#E7DFF0] px-2" value={row.userId} onChange={(event) => {
+                              const person = goals.people.find((item) => item.id === event.target.value);
+                              const subsetor = person && ['Chat', 'E-mail', 'Ligação', 'Atendimento'].includes(person.funcao) ? person.funcao : (['Chat', 'E-mail', 'Ligação', 'Atendimento'].includes(person?.role ?? '') ? person?.role ?? '' : '');
+                              patchRow(index, { userId: event.target.value, name: person?.name ?? '', subsetor });
+                            }}>
+                              <option value="">Escolher colaborador</option>
+                              {(row.ambiguous.length > 0 ? row.ambiguous : goals.people).map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
+                            </select>
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-2 pr-3">{row.subsetor || '—'}</td>
+                      {METRICS.map(([id]) => (
+                        <td key={id} className={cn('py-2 pr-3', tone(row.states?.[id]))}>
+                          <input
+                            aria-label={id}
+                            inputMode="decimal"
+                            value={row.values[id] ?? ''}
+                            onChange={(event) => {
+                              const raw = event.target.value.replace(',', '.');
+                              patchRow(index, { values: { ...row.values, [id]: raw === '' ? null : Number(raw) } });
+                            }}
+                            className="h-8 w-20 rounded-lg border border-[#E7DFF0] bg-transparent px-2"
+                          />
+                          {id !== 'transferidos' && row.goal[id]?.target != null ? <span className="block text-[11px] text-[#8A7C98]">meta {row.goal[id]?.target}</span> : null}
+                        </td>
+                      ))}
+                      <td className="py-2">{row.overall ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ) : <p className="mt-2 text-[13px] text-[#8A7C98]">Pesos: resolvidos {goals.weights.resolvidos}%, primeira resposta {goals.weights.primeira}%, resolução {goals.weights.resolucao}%.</p>}
-        </article>
+            <button type="button" disabled={busy} onClick={() => void approveWith(lastReport.current)} className="mt-3 w-fit rounded-full bg-[#8E35B8] px-4 py-2 text-[13px] font-semibold text-white">Aprovar importação</button>
+          </section>
+        ) : null}
+
+        {pendingRules ? (
+          <section className="rounded-[22px] border border-[#EDE4F5] bg-white p-4">
+            <p className="text-[13px] text-[#5C5168]">Regras interpretadas. Confirme o nome para salvar o modelo, sem ativar um pódio inventado.</p>
+            {pendingRules.rules.map((rule) => <p key={`${rule.indicator}-${rule.op}`} className="text-[13px]">{rule.indicator} {rule.op} {rule.value}{rule.valueTo !== undefined ? ` e ${rule.valueTo}` : ''}</p>)}
+            <input value={pendingRules.name} onChange={(event) => setPendingRules({ ...pendingRules, name: event.target.value })} placeholder="Nome do pódio" className="mt-2 h-10 w-full rounded-xl border border-[#E7DFF0] px-3 text-sm" />
+            <button type="button" onClick={() => void saveTemplate()} className="mt-2 text-[13px] font-semibold text-[#6A228C]">Aprovar e salvar modelo</button>
+          </section>
+        ) : null}
       </div>
 
-      {current ? (
-        <div className="mt-5">
-          <h3 className="flex items-center gap-2 text-[14px] font-semibold">Metas vigentes <Hint text="Apresenta as metas utilizadas para avaliar os resultados do período selecionado." /></h3>
-          <p className="mt-1 text-[12.5px] text-[#8A7C98]">Aprovado por {current.approvedBy} em {new Date(current.approvedAt).toLocaleString('pt-BR')}.</p>
-          <div className="mt-2 overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-[13px]">
-              <thead className="text-[#8A7C98]"><tr><th className="py-2 pr-3 font-medium">Colaborador</th><th className="py-2 pr-3 font-medium">Subsetor</th><th className="py-2 pr-3 font-medium">Resolvidos</th><th className="py-2 pr-3 font-medium">Primeira resposta</th><th className="py-2 pr-3 font-medium">Resolução</th><th className="py-2 font-medium">Geral</th></tr></thead>
-              <tbody>
-                {current.rows.map((row) => (
-                  <tr key={row.userId} className="border-t border-[#F3E4FA]">
-                    <td className="py-2 pr-3">{row.name}</td>
-                    <td className="py-2 pr-3">{row.subsetor}</td>
-                    <td className={cn('py-2 pr-3', tone(row.states?.resolvidos))}>{row.values.resolvidos ?? '—'}{row.goal.resolvidos?.target != null ? ` / ${row.goal.resolvidos.target}%` : ''}</td>
-                    <td className={cn('py-2 pr-3', tone(row.states?.primeira))}>{row.values.primeira ?? '—'}{row.goal.primeira?.target != null ? ` / ${row.goal.primeira.target} min` : ''}</td>
-                    <td className={cn('py-2 pr-3', tone(row.states?.resolucao))}>{row.values.resolucao ?? '—'}{row.goal.resolucao?.target != null ? ` / ${row.goal.resolucao.target} min` : ''}</td>
-                    <td className="py-2">{row.overall ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      <aside className="flex min-h-[540px] flex-col overflow-hidden rounded-[22px] border border-[#EDE4F5] bg-white shadow-[0_8px_22px_rgba(80,40,120,0.05)]">
+        <div className="flex items-center justify-between border-b border-[#F3EAF8] px-4 py-3">
+          <h3 className="flex items-center gap-2 text-[14px] font-semibold text-[#241B33]">
+            <Sparkles className="h-4 w-4 text-[#8E35B8]" /> Fale com o assistente de metas
+            <Hint text="Cole os relatórios recebidos. O sistema identifica colaboradores e métricas por regras, sem serviço pago de IA." />
+          </h3>
         </div>
-      ) : <p className="mt-4 text-[13px] text-[#8A7C98]">Nenhum resultado aprovado para a semana selecionada. O pódio anterior continua no ar.</p>}
-
-      {goals.imports.length > 0 ? (
-        <div className="mt-4">
-          <h3 className="text-[14px] font-semibold">Histórico de importações</h3>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {goals.imports.map((item) => (
-              <button key={item.id} type="button" onClick={() => onWeek(item.periodKey)} className={cn('rounded-full border px-3 py-1 text-[12.5px]', item.periodKey === current?.periodKey ? 'border-[#8E35B8] bg-[#F3E4FA] text-[#6A228C]' : 'border-[#E7DFF0] text-[#5C5168]')}>{item.label}</button>
+        <div ref={thread} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+          {messages.map((message) => (
+            <div key={message.id} className={cn('flex gap-2', message.from === 'user' ? 'justify-end' : 'items-start')}>
+              {message.from === 'bot' ? <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8]"><Bot className="h-4 w-4" /></span> : null}
+              <p className={cn('max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-5', message.from === 'bot' ? 'bg-[#F7F0FB] text-[#3C3148]' : 'bg-[#8E35B8] text-white')}>{message.text}</p>
+            </div>
+          ))}
+          <div className="grid gap-1.5 pt-1">
+            {['Processar relatório da semana', 'Criar um pódio personalizado', 'Ver metas atuais'].map((hint) => (
+              <button key={hint} type="button" onClick={() => void talk(hint === 'Processar relatório da semana' ? 'Analise os relatórios desta semana.' : hint === 'Criar um pódio personalizado' ? 'Quero criar um pódio para quem resolveu mais tickets.' : 'Mostre as metas atuais.')} className="inline-flex items-center gap-2 rounded-xl px-2 py-1.5 text-left text-[12.5px] text-[#6A228C] hover:bg-[#FBF8FC]">
+                <Sparkles className="h-3.5 w-3.5" /> {hint}
+              </button>
             ))}
           </div>
         </div>
-      ) : null}
-    </section>
+        <form onSubmit={onSubmit} className="border-t border-[#F3EAF8] p-3">
+          <div className="flex items-end gap-2 rounded-2xl border border-[#E7DFF0] bg-[#FBF8FC] px-3 py-2">
+            <input ref={fileRef} type="file" accept=".txt,.csv,.md,text/plain" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onFile(file); event.currentTarget.value = ''; }} />
+            <button type="button" aria-label="Anexar relatório" onClick={() => fileRef.current?.click()} className="grid h-8 w-8 place-items-center text-[#8A7C98]"><Paperclip className="h-4 w-4" /></button>
+            <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onPaste={(event) => {
+              const pasted = event.clipboardData.getData('text');
+              if (pasted.length > 180) {
+                event.preventDefault();
+                void talk(pasted);
+              }
+            }} placeholder="Cole ou digite sua mensagem..." rows={2} className="min-h-10 flex-1 resize-none bg-transparent text-[13px] outline-none" />
+            <button type="submit" disabled={busy || !draft.trim()} aria-label="Enviar" className="grid h-8 w-8 place-items-center rounded-full bg-[#8E35B8] text-white disabled:bg-[#C9A6DC]"><Send className="h-3.5 w-3.5" /></button>
+          </div>
+        </form>
+      </aside>
+    </div>
   );
 };

@@ -13,8 +13,9 @@ import { cn } from '@/lib/utils';
 import { createFeedPost } from '@/lib/feed';
 import { GoalsCenter, type GoalsPayload } from '@/components/recognition/GoalsCenter';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
-import { Calendar, ChevronDown, ChevronLeft, ChevronRight, Crown, Heart, Megaphone, Trophy } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronLeft, ChevronRight, Crown, Heart, Megaphone, Target, Trophy } from 'lucide-react';
 import { useEffect, useState, type FC } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 type Area = 'Gestão' | 'Suporte';
@@ -60,6 +61,7 @@ const STEP = {
 export const KudosFeedPage: FC = () => {
   const { canRecognize } = useInstitution();
   const me = actor();
+  const [params, setParams] = useSearchParams();
   const [composer, setComposer] = useState(false);
   const [filter, setFilter] = useState<'Todos' | Area>('Todos');
   const [extra, setExtra] = useState<Recognition[]>([]);
@@ -83,6 +85,13 @@ export const KudosFeedPage: FC = () => {
   const weekOrder = [...approved].sort((left, right) => left.periodKey.localeCompare(right.periodKey));
   const weekIndex = weekOrder.findIndex((item) => item.periodKey === activeKey);
   const items = [...extra, ...RECENT].filter((item) => filter === 'Todos' || item.area === filter);
+  const canManageGoals = Boolean(goals?.canManage);
+  const tab = canManageGoals && params.get('painel') === 'metas' ? 'metas' : 'mural';
+
+  function showTab(next: 'mural' | 'metas') {
+    if (next === 'metas') setParams({ painel: 'metas' }, { replace: true });
+    else setParams({}, { replace: true });
+  }
 
   async function postOnMural(item: Recognition) {
     setSending(item.id);
@@ -110,6 +119,21 @@ export const KudosFeedPage: FC = () => {
         </div>
         <div className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
           <div className="grid gap-4 pb-4">
+            {canManageGoals ? (
+              <div className="flex gap-5 border-b border-[#EDE6F3]">
+                <button type="button" onClick={() => showTab('mural')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'mural' ? 'border-[#8E35B8] text-[#6A228C]' : 'border-transparent text-[#8A7C98]')}>
+                  <Trophy className="h-3.5 w-3.5" /> Mural de reconhecimento
+                </button>
+                <button type="button" onClick={() => showTab('metas')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'metas' ? 'border-[#8E35B8] text-[#6A228C]' : 'border-transparent text-[#8A7C98]')}>
+                  <Target className="h-3.5 w-3.5" /> Central de Metas
+                </button>
+              </div>
+            ) : null}
+
+            {tab === 'metas' && goals ? <GoalsCenter goals={goals} week={activeKey} onWeek={setWeek} onChange={setGoals} /> : null}
+
+            {tab === 'mural' ? (
+            <>
             <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#F8EAFB] via-[#F3DDF8] to-[#E7C4F2] px-5 py-4">
               <div className="pointer-events-none absolute -top-8 right-24 h-24 w-24 rounded-full bg-[#D9A6EE]/70" />
               <div className="pointer-events-none absolute right-6 -bottom-10 h-28 w-28 rounded-full bg-[#C084E0]/45" />
@@ -191,8 +215,6 @@ export const KudosFeedPage: FC = () => {
               </div>
             </section>
 
-            {goals ? <GoalsCenter goals={goals} week={activeKey} onWeek={setWeek} onChange={setGoals} /> : null}
-
             <section className="rounded-[22px] border border-[#F0E7F6] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="flex items-center gap-2 text-[16px] font-semibold text-[#241B33]">
@@ -248,6 +270,8 @@ export const KudosFeedPage: FC = () => {
                 ))}
               </ul>
             </section>
+            </>
+            ) : null}
           </div>
         </div>
       </div>

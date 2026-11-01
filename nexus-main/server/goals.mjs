@@ -6,6 +6,10 @@ export const INDICATORS = ['resolvidos', 'transferidos', 'primeira', 'resolucao'
 const DEFAULT_WEIGHTS = { resolvidos: 40, primeira: 25, resolucao: 35, floor: 70 };
 const DEFAULT_TIE = ['resolvidos', 'primeira', 'resolucao'];
 
+export function defaultCriterion() {
+  return { mode: 'preset', indicator: 'resolvidos', templateId: '' };
+}
+
 export function emptyStore() {
   return {
     version: 1,
@@ -14,6 +18,23 @@ export function emptyStore() {
     tieBreak: [...DEFAULT_TIE],
     templates: [],
     imports: [],
+    criterion: defaultCriterion(),
+  };
+}
+
+export function readCriterion(value) {
+  const mode = value?.mode === 'custom' || value?.mode === 'overall' ? value.mode : 'preset';
+  const indicator = INDICATORS.includes(value?.indicator) ? value.indicator : 'resolvidos';
+  return { mode, indicator, templateId: String(value?.templateId ?? '') };
+}
+
+export function applyCriterion(store, value, periodKey) {
+  const criterion = readCriterion(value);
+  const target = periodKey || latestPeriod(store);
+  return {
+    ...store,
+    criterion,
+    imports: store.imports.map((item) => item.periodKey === target ? { ...item, display: criterion } : item),
   };
 }
 
@@ -561,7 +582,7 @@ export function buildApproval(store, payload, people, actor) {
       values: row.values,
       goal: row.goal,
     })),
-    display: payload.display ?? { mode: 'overall' },
+    display: payload.display ?? store.criterion ?? defaultCriterion(),
     weights: { ...store.weights },
     tieBreak: [...store.tieBreak],
     approvedBy: actor?.name ?? '',
@@ -611,11 +632,13 @@ export function podiumFor(store, periodKey, display, people) {
 }
 
 export function publicStore(store) {
+  const criterion = readCriterion(store.criterion);
   return {
     weights: store.weights,
     tieBreak: store.tieBreak,
     aliases: store.aliases,
     templates: store.templates,
+    criterion,
     currentKey: latestPeriod(store),
     imports: store.imports.map((item) => ({
       id: item.id,
@@ -628,9 +651,134 @@ export function publicStore(store) {
         states: Object.fromEntries(INDICATORS.map((metric) => [metric, goalState(metric, row.values[metric], row.goal)])),
       })),
       display: item.display,
-      ranking: podiumFor(store, item.periodKey, item.display).slice(0, 3),
+      ranking: podiumFor(store, item.periodKey, item.display ?? criterion).slice(0, 3),
       approvedBy: item.approvedBy,
       approvedAt: item.approvedAt,
     })),
   };
+}
+
+export function looksLikeReport(text) {
+  const folded = fold(text);
+  const hasMetric = /tickets?\s+resolvid|tickets?\s+transferid|primeira\s+resposta|tempo medio|ate resolu/.test(folded);
+  const hasPeople = /ola |olá |resultados:|metas da semana|:/.test(folded);
+  return hasMetric && (hasPeople || /%/.test(text) || /min/.test(folded));
+}
+
+function assistantPreview(store, text, people) {
+  const parsed = parseReport(text, people);
+  return {
+    periodKey: parsed.periodKey,
+    warnings: parsed.warnings,
+    rows: parsed.rows.map((row) => ({
+      ...row,
+      states: Object.fromEntries(INDICATORS.map((metric) => [metric, goalState(metric, row.values[metric], row.goal)])),
+      overall: row.userId ? overallScore(row.values, row.goal, store.weights) : null,
+    })),
+  };
+}
+
+function currentImport(store, periodKey) {
+  return store.imports.find((item) => item.periodKey === periodKey) ?? store.imports.find((item) => item.periodKey === latestPeriod(store));
+}
+
+function describeRules(rules, period) {
+  const ops = { gt: 'maior que', gte: 'maior ou igual a', lt: 'menor que', lte: 'menor ou igual a', eq: 'igual a', between: 'entre' };
+  const names = { resolvidos: 'tickets resolvidos (%)', resolvidosCount: 'tickets resolvidos', primeira: 'primeira resposta', resolucao: 'tempo médio de resolução', transferidos: 'tickets transferidos' };
+  const lines = rules.map((rule) => rule.op === 'between'
+    ? `${names[rule.indicator] ?? rule.indicator} entre ${rule.value} e ${rule.valueTo}`
+    : `${names[rule.indicator] ?? rule.indicator} ${ops[rule.op] ?? rule.op} ${rule.value}`);
+  return `${period === 'month' ? 'Período mensal' : 'Período semanal'}. ${lines.join('; ')}.`;
+}
+
+export function runAssistant({ text, store, people, preview, periodKey }) {
+  const source = String(text ?? '').trim();
+  if (!source) return { kind: 'ask', reply: 'Cole o relatório ou escreva o que precisa. Não invento números que não vieram no texto.' };
+
+  const folded = fold(source);
+  const item = currentImport(store, periodKey);
+  const rows = preview?.rows ?? item?.rows ?? [];
+
+  if (/^(aprovar|confirmar|salvar)( a | a importacao| importacao| os resultados| esta importacao)?$/.test(folded) || folded.includes('aprovar importacao') || folded.includes('confirmar importacao')) {
+    if (!preview?.rows?.length) return { kind: 'ask', reply: 'Ainda não há conferência aberta. Cole o relatório primeiro.' };
+    return { kind: 'approve', reply: 'Vou gravar estes resultados e atualizar o pódio desta semana. Semanas anteriores continuam como estão.' };
+  }
+
+  if (/^(cancelar|descartar)( a conferencia| conferencia| importacao)?$/.test(folded)) {
+    return { kind: 'cancel', reply: 'Descartei a conferência. Nada foi salvo no histórico.' };
+  }
+
+  if (looksLikeReport(source)) {
+    const next = assistantPreview(store, source, people);
+    if (next.rows.length === 0) return { kind: 'ask', reply: 'Li o texto, mas não encontrei colaboradores cadastrados. Confira os nomes ou os nomes reconhecidos na Equipe.' };
+    const pending = next.rows.filter((row) => !row.userId).length;
+    const week = next.periodKey ? weekLabel(next.periodKey) : 'semana a confirmar';
+    return {
+      kind: 'preview',
+      preview: next,
+      reply: pending
+        ? `Identifiquei ${next.rows.length} colaborador(es) para ${week}. ${pending} nome(s) precisam da sua escolha antes de aprovar.`
+        : `Identifiquei ${next.rows.length} colaborador(es) para ${week}. Confira a tabela e escreva Aprovar para gravar.`,
+    };
+  }
+
+  const goalMatch = folded.match(/meta de (primeira resposta|tempo medio(?: ate resolucao)?|tickets resolvidos)(?: do | da | de )?(chat|e mail|email|ligacao|atendimento)?[^\d]{0,24}(\d+(?:[.,]\d+)?)/);
+  if (goalMatch) {
+    if (!preview?.rows?.length) return { kind: 'ask', reply: 'Para mudar uma meta, cole primeiro o relatório da semana. Metas de semanas já aprovadas não são alteradas.' };
+    const metric = goalMatch[1].includes('primeira') ? 'primeira' : goalMatch[1].includes('resolvid') ? 'resolvidos' : 'resolucao';
+    const channel = channelOf(goalMatch[2] ?? '');
+    const target = numberFrom(goalMatch[3]);
+    return {
+      kind: 'goal',
+      metric,
+      channel,
+      target,
+      reply: channel
+        ? `Vou usar ${target}${metric === 'resolvidos' ? '%' : ' min'} como meta de ${metric} para ${channel} só nesta conferência.`
+        : `Vou usar ${target}${metric === 'resolvidos' ? '%' : ' min'} como meta de ${metric} nesta conferência, sem mudar semanas anteriores.`,
+    };
+  }
+
+  if (/podio|reconhecer os colaboradores|criterio personalizado|criar um podio/.test(folded) && !/predefinid|desempenho geral/.test(folded)) {
+    const parsed = parseCustomRequest(source);
+    if (!parsed.ok) return { kind: 'ask', reply: parsed.message };
+    return { kind: 'custom', period: parsed.period, rules: parsed.rules, reply: `Entendi as regras: ${describeRules(parsed.rules, parsed.period)} Confirme com o nome do pódio para salvar o modelo.` };
+  }
+
+  if (/desempenho geral|melhor desempenho|pontuacao geral/.test(folded)) {
+    if (!rows.length) return { kind: 'ask', reply: 'Ainda não há resultados aprovados nesta semana. Cole o relatório para eu calcular o desempenho geral.' };
+    const ranking = rankRows(rows, { mode: 'overall', weights: item?.weights ?? store.weights, tieBreak: item?.tieBreak ?? store.tieBreak });
+    if (!ranking.length) return { kind: 'ask', reply: 'Ninguém completou as três metas com valor. Não invento pontuação para indicador ausente.' };
+    const top = ranking.slice(0, 3).map((row) => `${row.place}º ${row.name} (${row.overall})`).join('; ');
+    return { kind: 'ranking', ranking, reply: `Desempenho geral: ${top}.` };
+  }
+
+  if (/atingiu todas|bateu todas as metas|quem atingiu/.test(folded)) {
+    if (!rows.length) return { kind: 'ask', reply: 'Não há resultados para conferir. Cole o relatório da semana.' };
+    const names = rows.filter((row) => ['resolvidos', 'primeira', 'resolucao'].every((metric) => goalState(metric, row.values[metric], row.goal) === 'met')).map((row) => row.name);
+    return { kind: 'met', reply: names.length ? `Atingiram as três metas: ${names.join(', ')}.` : 'Ninguém atingiu as três metas nesta semana.' };
+  }
+
+  if (/metas atuais|ver metas|mostre as metas|quais sao as metas/.test(folded)) {
+    const goals = (preview?.rows ?? item?.rows ?? []).reduce((list, row) => {
+      if (!row.subsetor || list.some((entry) => entry.subsetor === row.subsetor)) return list;
+      return [...list, { subsetor: row.subsetor, goal: row.goal }];
+    }, []);
+    if (!goals.length) return { kind: 'ask', reply: 'Ainda não há metas gravadas para a semana. Elas entram junto com o relatório aprovado.' };
+    const lines = goals.map((entry) => `${entry.subsetor}: resolvidos ${entry.goal.resolvidos?.target ?? '—'}%, primeira ${entry.goal.primeira?.target ?? '—'} min, resolução ${entry.goal.resolucao?.target ?? '—'} min`);
+    return { kind: 'goals', reply: `Metas desta semana: ${lines.join('. ')}.` };
+  }
+
+  if (/identific|colaborador(es)? (foi|foram) identificado/.test(folded)) {
+    if (!preview?.rows?.length) return { kind: 'ask', reply: 'Cole o relatório para eu cruzar os nomes com a Equipe.' };
+    const pending = preview.rows.filter((row) => !row.userId);
+    return { kind: 'ids', reply: pending.length ? `Faltam ${pending.length} identificação(ões): ${pending.map((row) => row.sourceName).join(', ')}.` : 'Todos os nomes desta conferência estão ligados a um cadastro da Equipe.' };
+  }
+
+  if (/tickets resolvid|primeira resposta|tempo medio|transferid/.test(folded) && /podio|usar|criterio predefinid/.test(folded)) {
+    const indicator = /transferid/.test(folded) ? 'transferidos' : /primeira/.test(folded) ? 'primeira' : /resolu/.test(folded) && !/resolvid/.test(folded) ? 'resolucao' : 'resolvidos';
+    return { kind: 'criterion', criterion: { mode: 'preset', indicator, templateId: '' }, reply: `Vou usar ${indicator} como critério predefinido do pódio.` };
+  }
+
+  return { kind: 'ask', reply: 'Não identifiquei esse pedido. Cole um relatório, peça as metas atuais, o desempenho geral ou descreva um pódio personalizado com números.' };
 }
