@@ -103,6 +103,6 @@ export async function completeJson(prompt, options = {}) {
   } catch (error) {
     const detail = describeGeminiError(error);
     logGemini(detail);
-    return { error: classifyGeminiError(error) };
+    return { error: classifyGeminiError(error), detail };
   }
 }
