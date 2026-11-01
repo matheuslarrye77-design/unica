@@ -132,6 +132,7 @@ test('limite gratuito excedido é informado sem chamar de novo', async () => {
   assert.equal(classifyGeminiError({ status: 401, message: JSON.stringify({ error: { status: 'UNAUTHENTICATED', message: 'API key not valid' } }) }), 'auth');
   assert.equal(classifyGeminiError({ status: 403, message: JSON.stringify({ error: { status: 'PERMISSION_DENIED', message: 'blocked' } }) }), 'permission');
   assert.equal(classifyGeminiError({ status: 404, message: JSON.stringify({ error: { status: 'NOT_FOUND', message: 'models/gemini-2.5-flash is not found' } }) }), 'model');
+  assert.equal(classifyGeminiError({ status: 400, message: JSON.stringify({ error: { status: 'INVALID_ARGUMENT', message: 'Thinking level is not supported for this model' } }) }), 'invalid');
   assert.equal(classifyGeminiError({ status: 400, message: JSON.stringify({ error: { status: 'INVALID_ARGUMENT', message: 'Invalid JSON payload' } }) }), 'invalid');
   const secret = describeGeminiError({ status: 400, message: JSON.stringify({ error: { status: 'INVALID_ARGUMENT', message: 'bad key=AIzaSyDUMMYKEY1234567890' } }) });
   assert.equal(secret.httpStatus, 400);

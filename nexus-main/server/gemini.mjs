@@ -47,8 +47,8 @@ export function classifyGeminiError(error) {
   if (info.httpStatus === 429 || /RESOURCE_EXHAUSTED|quota|rate.?limit/i.test(blob)) return 'quota';
   if (info.httpStatus === 401 || /API_KEY_INVALID|UNAUTHENTICATED|invalid api key/i.test(blob)) return 'auth';
   if (info.httpStatus === 403 || /PERMISSION_DENIED|API_KEY_HTTP_REFERRER|API_KEY_SERVICE_BLOCKED/i.test(blob)) return 'permission';
-  if (info.httpStatus === 404 || /NOT_FOUND|is not found|not supported/i.test(blob)) return 'model';
   if (info.httpStatus === 400 || /INVALID_ARGUMENT/i.test(blob)) return 'invalid';
+  if (info.httpStatus === 404 || /NOT_FOUND|is not found/i.test(blob)) return 'model';
   if (/timeout|ECONNRESET|ENOTFOUND|EAI_AGAIN|fetch failed|socket hang up/i.test(blob)) return 'unavailable';
   return 'unavailable';
 }
@@ -77,7 +77,7 @@ export async function completeJson(prompt, options = {}) {
         temperature: 0,
         responseMimeType: 'application/json',
         responseJsonSchema: payload.schema,
-        ...(payload.model.startsWith('gemini-2.5') ? { thinkingConfig: { thinkingBudget: 0 } } : { thinkingConfig: { thinkingLevel: 'MINIMAL' } }),
+        ...(payload.model.startsWith('gemini-2.5') ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
         httpOptions: { timeout: 55000 },
       },
     });
