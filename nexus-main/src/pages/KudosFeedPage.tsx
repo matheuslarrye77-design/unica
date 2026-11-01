@@ -11,7 +11,7 @@ import { useInstitution } from '@/lib/institution';
 import { actor, authHeaders, getDemoId } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { createFeedPost } from '@/lib/feed';
-import { GoalsCenter, type GoalsPayload } from '@/components/recognition/GoalsCenter';
+import { GoalsAssistant, GoalsCenter, GoalsProvider, type GoalsPayload } from '@/components/recognition/GoalsCenter';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight, Crown, Heart, Megaphone, Target, Trophy } from 'lucide-react';
 import { useEffect, useState, type FC } from 'react';
@@ -106,8 +106,8 @@ export const KudosFeedPage: FC = () => {
     }
   }
 
-  return (
-    <PageFrame fitViewport rail={<HomeRail />}>
+  const page = (
+    <PageFrame fitViewport fillRail={tab === 'metas'} rail={tab === 'metas' && goals ? <GoalsAssistant /> : <HomeRail />}>
       <div className="flex flex-col gap-2 xl:min-h-0 xl:flex-1">
         <div className="hidden shrink-0 items-center gap-2 xl:flex">
           <div className="min-w-0 flex-1">
@@ -130,7 +130,7 @@ export const KudosFeedPage: FC = () => {
               </div>
             ) : null}
 
-            {tab === 'metas' && goals ? <GoalsCenter goals={goals} week={activeKey} onWeek={setWeek} onChange={setGoals} /> : null}
+            {tab === 'metas' && goals ? <GoalsCenter /> : null}
 
             {tab === 'mural' ? (
             <>
@@ -299,5 +299,12 @@ export const KudosFeedPage: FC = () => {
         </DialogContent>
       </Dialog>
     </PageFrame>
+  );
+
+  if (!goals) return page;
+  return (
+    <GoalsProvider goals={goals} week={activeKey} onWeek={setWeek} onChange={setGoals}>
+      {page}
+    </GoalsProvider>
   );
 };

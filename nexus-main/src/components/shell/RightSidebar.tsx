@@ -3,14 +3,14 @@ import { ChevronLeft, ChevronRight, PanelRight } from 'lucide-react';
 import { useState, type FC, type ReactNode } from 'react';
 import { useShell } from '@/components/Sidebar';
 
-export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: boolean }> = ({ children, locked = false }) => {
+export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: boolean; fill?: boolean }> = ({ children, locked = false, fill = false }) => {
   const { rightCollapsed, toggleRight } = useShell();
   const [mobileOpen, setMobileOpen] = useState(false);
   const collapsed = rightCollapsed;
 
   const body = locked ? (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto [scrollbar-width:thin]">
-      <div className="my-auto flex flex-col gap-2.5 py-2">
+    <div className={cn('flex h-full min-h-0 flex-col', fill ? 'overflow-hidden' : 'overflow-y-auto [scrollbar-width:thin]')}>
+      <div className={cn(fill ? 'flex h-full min-h-0 flex-1 flex-col' : 'my-auto flex flex-col gap-2.5 py-2')}>
         {children}
       </div>
     </div>
@@ -40,7 +40,7 @@ export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: bo
                 Fechar
               </button>
             </div>
-            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-3 py-3">{children}</div>
+            <div className={cn('flex min-h-0 flex-1 flex-col px-3 py-3', fill ? 'overflow-hidden' : 'gap-2 overflow-y-auto')}>{children}</div>
           </aside>
         </div>
       ) : null}

@@ -184,4 +184,7 @@ test('assistente lê relatório, pede nomes duvidosos e não inventa pedido solt
   assert.equal(lost.kind, 'ask');
   const approve = runAssistant({ text: 'Aprovar', store, people, preview: preview.preview });
   assert.equal(approve.kind, 'approve');
+  const custom = runAssistant({ text: 'reconhecer quem resolveu pelo menos 250 tickets no mês, com tempo médio abaixo de 18 minutos', store, people, intent: 'custom' });
+  assert.equal(custom.kind, 'custom');
+  assert.equal(custom.rules.length, 2);
 });

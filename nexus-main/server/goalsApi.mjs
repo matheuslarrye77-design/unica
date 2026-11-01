@@ -114,6 +114,7 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
         people,
         preview: body.preview,
         periodKey: String(body.periodKey ?? ''),
+        intent: String(body.intent ?? ''),
       });
       send(res, 200, result);
       return true;

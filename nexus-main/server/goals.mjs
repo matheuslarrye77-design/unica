@@ -460,7 +460,7 @@ export function parseCustomRequest(text) {
     { indicator: 'resolvidosCount', re: /(\d[\d.]*)\s+tickets/i, monthly: /m[eê]s|mensal/i },
     { indicator: 'resolvidos', re: /tickets?\s+resolvid[^\d%]{0,40}([\d.,]+)\s*%/i },
     { indicator: 'primeira', re: /primeira\s+resposta[^\d]{0,40}([\d.,]+)\s*min/i },
-    { indicator: 'resolucao', re: /resolu[cç][aã]o[^\d]{0,40}([\d.,]+)\s*min/i },
+    { indicator: 'resolucao', re: /(?:resolu[cç][aã]o|tempo\s+m[eé]dio)[^\d]{0,40}([\d.,]+)\s*min/i },
     { indicator: 'transferidos', re: /transferid[^\d]{0,40}([\d.,]+)/i },
   ];
   for (const pattern of patterns) {
@@ -661,8 +661,8 @@ export function publicStore(store) {
 export function looksLikeReport(text) {
   const folded = fold(text);
   const hasMetric = /tickets?\s+resolvid|tickets?\s+transferid|primeira\s+resposta|tempo medio|ate resolu/.test(folded);
-  const hasPeople = /ola |olá |resultados:|metas da semana|:/.test(folded);
-  return hasMetric && (hasPeople || /%/.test(text) || /min/.test(folded));
+  const hasPeople = /ola |resultados|metas da semana/.test(folded) || /[A-Za-zÀ-ÿ]{2,}\s*:/.test(text);
+  return hasMetric && hasPeople;
 }
 
 function assistantPreview(store, text, people) {
@@ -691,13 +691,14 @@ function describeRules(rules, period) {
   return `${period === 'month' ? 'Período mensal' : 'Período semanal'}. ${lines.join('; ')}.`;
 }
 
-export function runAssistant({ text, store, people, preview, periodKey }) {
+export function runAssistant({ text, store, people, preview, periodKey, intent }) {
   const source = String(text ?? '').trim();
   if (!source) return { kind: 'ask', reply: 'Cole o relatório ou escreva o que precisa. Não invento números que não vieram no texto.' };
 
   const folded = fold(source);
   const item = currentImport(store, periodKey);
   const rows = preview?.rows ?? item?.rows ?? [];
+  const customFirst = intent === 'custom' || (/pelo menos|abaixo de|maior que|menor que|entre /.test(folded) && !/[A-Za-zÀ-ÿ]{2,}\s*:/.test(source) && !/ola |resultados|metas da semana/.test(folded));
 
   if (/^(aprovar|confirmar|salvar)( a | a importacao| importacao| os resultados| esta importacao)?$/.test(folded) || folded.includes('aprovar importacao') || folded.includes('confirmar importacao')) {
     if (!preview?.rows?.length) return { kind: 'ask', reply: 'Ainda não há conferência aberta. Cole o relatório primeiro.' };
@@ -708,7 +709,12 @@ export function runAssistant({ text, store, people, preview, periodKey }) {
     return { kind: 'cancel', reply: 'Descartei a conferência. Nada foi salvo no histórico.' };
   }
 
-  if (looksLikeReport(source)) {
+  if (customFirst) {
+    const parsed = parseCustomRequest(source);
+    if (parsed.ok) return { kind: 'custom', period: parsed.period, rules: parsed.rules, reply: `Entendi as regras: ${describeRules(parsed.rules, parsed.period)} Dê um nome a esse pódio no campo abaixo para salvar.` };
+  }
+
+  if (looksLikeReport(source) && intent !== 'custom') {
     const next = assistantPreview(store, source, people);
     if (next.rows.length === 0) return { kind: 'ask', reply: 'Li o texto, mas não encontrei colaboradores cadastrados. Confira os nomes ou os nomes reconhecidos na Equipe.' };
     const pending = next.rows.filter((row) => !row.userId).length;
