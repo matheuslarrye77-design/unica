@@ -7,6 +7,8 @@ import { cancelRepost, commentFeedPost, createFeedPost, deleteFeedComment, delet
 import { actor, useDemoProfile } from '@/lib/session';
 import { isLeader, refreshMoods, useInstitution } from '@/lib/institution';
 import { CreatePost, type NewPostDraft } from './CreatePost';
+import { articleCover, articleSummary, getJournalArticles } from '@/data/journal';
+import { useSearchParams } from 'react-router-dom';
 import { ExpandProvider } from './ReadMore';
 import { FeedPreview } from './FeedPreview';
 import { PostCard } from './PostCard';
@@ -16,6 +18,7 @@ import type { CommentMedia, SocialPost } from './types';
 export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean }> = ({ mode = 'mural', preview = false }) => {
   const demo = useDemoProfile();
   const user = actor();
+  const [params, setParams] = useSearchParams();
   const { canRecognize } = useInstitution();
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [reposts, setReposts] = useState<Repost[]>([]);
@@ -29,6 +32,16 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   const feedTicket = useRef(0);
   const feedWarned = useRef(false);
   const firstName = user.name.split(' ')[0];
+  const newsId = mode === 'mural' ? params.get('noticia') : null;
+  const news = newsId ? getJournalArticles().find((item) => item.id === newsId && item.status === 'published') : undefined;
+  const journalShare = news
+    ? { id: news.id, title: news.title, summary: articleSummary(news.content), href: `/announcements/${news.id}`, cover: articleCover(news) || undefined }
+    : null;
+
+  useEffect(() => {
+    if (!newsId) return;
+    document.getElementById('novo-post')?.focus();
+  }, [newsId]);
 
   function holdFeed() {
     feedTicket.current += 1;
@@ -79,6 +92,9 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
         mood: draft.mood,
         moodAudience: draft.moodAudience,
         shareMood: draft.shareMood,
+        kind: draft.kind,
+        bannerTitle: draft.bannerTitle,
+        journalHref: draft.journalHref,
       });
       if (draft.mood && draft.shareMood !== false) await refreshMoods().catch(() => undefined);
       holdFeed();
@@ -299,7 +315,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
         </LilacWash>
       )}
 
-      {mode === 'recognition' ? (canRecognize ? <RecognitionComposer onCreated={() => window.dispatchEvent(new Event('unica-feed-refresh'))} /> : null) : <CreatePost onPublish={publish} />}
+      {mode === 'recognition' ? (canRecognize ? <RecognitionComposer onCreated={() => window.dispatchEvent(new Event('unica-feed-refresh'))} /> : null) : <CreatePost onPublish={publish} journal={journalShare} onClearJournal={() => setParams({}, { replace: true })} />}
 
       {mode === 'mural' ? (
         <div className="flex justify-end">

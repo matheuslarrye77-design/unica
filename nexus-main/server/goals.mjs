@@ -457,10 +457,10 @@ export function parseCustomRequest(text) {
   const source = String(text ?? '').trim();
   const rules = [];
   const patterns = [
-    { indicator: 'resolvidosCount', re: /(\d[\d.]*)\s+tickets/i, monthly: /m[eê]s|mensal/i },
-    { indicator: 'resolvidos', re: /tickets?\s+resolvid[^\d%]{0,40}([\d.,]+)\s*%/i },
-    { indicator: 'primeira', re: /primeira\s+resposta[^\d]{0,40}([\d.,]+)\s*min/i },
-    { indicator: 'resolucao', re: /(?:resolu[cç][aã]o|tempo\s+m[eé]dio)[^\d]{0,40}([\d.,]+)\s*min/i },
+    { indicator: 'resolvidosCount', re: /(\d[\d.]*)\s+tickets/i },
+    { indicator: 'resolvidos', re: /(?:tickets?\s+resolvid|resolvid)[^\d%]{0,48}([\d.,]+)\s*%/i },
+    { indicator: 'primeira', re: /primeira\s+resposta[^\d]{0,48}([\d.,]+)\s*(?:min|minuto)/i },
+    { indicator: 'resolucao', re: /(?:tempo\s+m[eé]dio(?:\s+(?:de|at[eé]|ate))?(?:\s+resolu[cç][aã]o)?|resolu[cç][aã]o|tma)[^\d]{0,48}([\d.,]+)\s*(?:min|minuto)/i },
     { indicator: 'transferidos', re: /transferid[^\d]{0,40}([\d.,]+)/i },
   ];
   for (const pattern of patterns) {

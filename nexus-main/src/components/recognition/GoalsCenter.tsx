@@ -148,10 +148,12 @@ export const GoalsProvider: FC<{
     setMessages((current) => [...current, { id: `${Date.now()}-${from}-${current.length}`, from, text }]);
   }
 
-  async function choose(next: Criterion, silent = false) {
+  async function choose(next: Criterion) {
     if (!goals.canManage) return;
-    if (sameCriterion(selected, next)) return;
-    if (!silent && goals.criterion && !sameCriterion(goals.criterion, next) && !window.confirm('Trocar o critério ativo? Os resultados das semanas anteriores continuam salvos.')) return;
+    if (sameCriterion(selected, next)) {
+      setPhase('idle');
+      return;
+    }
     try {
       const data = await send('/api/goals/criterion', 'POST', { ...next, periodKey: week || goals.currentKey });
       onChange({ ...data, canManage: goals.canManage, people: goals.people });
@@ -195,7 +197,7 @@ export const GoalsProvider: FC<{
       }
       if (data.kind === 'cancel') setPreview(null);
       if (data.kind === 'approve') await approveWith(source);
-      if (data.kind === 'criterion') await choose(data.criterion, true);
+      if (data.kind === 'criterion') await choose(data.criterion);
       if (data.kind === 'custom') {
         setPendingRules({ period: data.period, rules: data.rules, name: '' });
         setPhase('custom');
@@ -255,11 +257,12 @@ export const GoalsProvider: FC<{
   }
 
   async function saveTemplate() {
-    if (!pendingRules || !pendingRules.name.trim()) return;
-    const data = await send('/api/goals/templates', 'POST', { confirm: true, name: pendingRules.name.trim(), description: pendingRules.name, rules: pendingRules.rules, period: pendingRules.period });
+    if (!pendingRules) return;
+    const name = pendingRules.name.trim() || 'Pódio personalizado';
+    const data = await send('/api/goals/templates', 'POST', { confirm: true, name, description: name, rules: pendingRules.rules, period: pendingRules.period });
     onChange({ ...data, canManage: goals.canManage, people: goals.people });
     const template = data.templates?.at(-1);
-    if (template?.id) await choose({ mode: 'custom', indicator: selected.indicator, templateId: template.id }, true);
+    if (template?.id) await choose({ mode: 'custom', indicator: selected.indicator, templateId: template.id });
     setPendingRules(null);
     setPhase('idle');
     say('bot', 'Modelo salvo. O pódio personalizado fica disponível para esta e as próximas semanas.');
@@ -364,11 +367,13 @@ export const GoalsCenter: FC = () => {
         <p className="mt-0.5 text-[12.5px] text-[#8A7C98]">Selecione como deseja montar os pódios desta semana:</p>
         <div className="mt-3 grid items-stretch gap-3 md:grid-cols-3">
           {cards.map((card) => {
-            const active = selected.mode === card.id || (card.id === 'preset' && phase === 'preset') || (card.id === 'custom' && phase === 'custom');
+            const committed = phase === 'idle' && selected.mode === card.id;
+            const pending = (card.id === 'preset' && phase === 'preset') || (card.id === 'custom' && phase === 'custom');
+            const active = committed;
             const Icon = card.icon;
             return (
-              <article key={card.id} className={cn('relative flex h-full flex-col rounded-[22px] border bg-white p-4 shadow-[0_8px_22px_rgba(80,40,120,0.05)]', active ? 'border-[#8E35B8]' : 'border-[#EDE4F5]')}>
-                {active ? <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-[#8E35B8] text-white"><Check className="h-3.5 w-3.5" /></span> : null}
+              <article key={card.id} className={cn('relative flex h-full flex-col rounded-[22px] border bg-white p-4 shadow-[0_8px_22px_rgba(80,40,120,0.05)]', committed || pending ? 'border-[#8E35B8]' : 'border-[#EDE4F5]')}>
+                {committed ? <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-[#8E35B8] text-white"><Check className="h-3.5 w-3.5" /></span> : null}
                 <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]"><Icon className="h-5 w-5" /></span>
                 <h4 className="mt-3 text-[15px] font-semibold text-[#241B33]">{card.title}</h4>
                 <p className="mt-1 text-[12.5px] leading-5 text-[#8A7C98]">{card.text}</p>
@@ -387,10 +392,10 @@ export const GoalsCenter: FC = () => {
                   type="button"
                   disabled={!goals.canManage}
                   onClick={() => onSelect(card.id)}
-                  className={cn('mt-4 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full px-4 text-[13px] font-semibold', active ? 'bg-[#8E35B8] text-white' : 'border border-[#E7DFF0] text-[#6A228C]')}
+                  className={cn('mt-4 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full px-4 text-[13px] font-semibold', committed ? 'bg-[#8E35B8] text-white' : pending ? 'bg-[#F3E4FA] text-[#6A228C]' : 'border border-[#E7DFF0] text-[#6A228C]')}
                 >
-                  {active ? <Check className="h-3.5 w-3.5" /> : card.id === 'custom' ? <Pencil className="h-3.5 w-3.5" /> : <BarChart3 className="h-3.5 w-3.5" />}
-                  {active ? 'Selecionado' : 'Selecionar'}
+                  {committed ? <Check className="h-3.5 w-3.5" /> : card.id === 'custom' ? <Pencil className="h-3.5 w-3.5" /> : <BarChart3 className="h-3.5 w-3.5" />}
+                  {committed ? 'Selecionado' : pending ? 'Definindo no chat' : 'Selecionar'}
                 </button>
               </article>
             );
@@ -505,6 +510,18 @@ export const GoalsAssistant: FC = () => {
             {METRICS.map(([id, label]) => (
               <button key={id} type="button" onClick={() => void pickPreset(id)} className="rounded-xl border border-[#E7DFF0] px-3 py-2 text-left text-[12.5px] text-[#6A228C] hover:bg-[#FBF8FC]">
                 {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {phase === 'custom' && !pendingRules ? (
+          <div className="grid gap-1.5">
+            {[
+              'Reconhecer quem resolveu pelo menos 250 tickets no mês, com tempo médio abaixo de 18 minutos.',
+              'Pódio para quem ficou abaixo de 5 minutos na primeira resposta.',
+            ].map((example) => (
+              <button key={example} type="button" onClick={() => void talk(example)} className="rounded-xl border border-[#E7DFF0] px-3 py-2 text-left text-[12.5px] text-[#6A228C] hover:bg-[#FBF8FC]">
+                {example}
               </button>
             ))}
           </div>

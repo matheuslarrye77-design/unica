@@ -164,15 +164,26 @@ async function readBlob(id) {
   }
 }
 
-async function writeDocument(id, payload) {
-  if (blobToken()) return writeBlob(id, payload);
+async function writeSupabaseDocument(id, payload) {
   if (supabaseConfigError()) return false;
-  const { error } = await supabaseClient().from('unica_documents').upsert({ id, payload, updated_at: new Date().toISOString() });
-  if (error) {
-    console.error('[unica] document write', error.code || 'unknown');
+  try {
+    const { error } = await supabaseClient().from('unica_documents').upsert({ id, payload, updated_at: new Date().toISOString() });
+    if (error) {
+      console.error('[unica] document write', error.code || 'unknown');
+      return false;
+    }
+    return true;
+  } catch {
+    console.error('[unica] document write', 'network');
     return false;
   }
-  return true;
+}
+
+async function writeDocument(id, payload) {
+  const blobOk = blobToken() ? await writeBlob(id, payload) : false;
+  const supabaseOk = await writeSupabaseDocument(id, payload);
+  if (blobToken()) return blobOk || supabaseOk;
+  return supabaseOk;
 }
 
 async function writeRaw(pathname, body, contentType) {
@@ -288,7 +299,13 @@ export async function openDocuments(dir) {
       continue;
     }
     const local = readJson(path.join(dir, file));
-    const payload = id === 'feed' ? mergeFeed(local, remote.payload) : remote.payload;
+    const payload = id === 'feed'
+      ? mergeFeed({
+        ...(local && typeof local === 'object' ? local : {}),
+        deletedIds: [],
+        deletedRepostIds: [],
+      }, remote.payload)
+      : remote.payload;
     fs.mkdirSync(dir, { recursive: true });
     const full = path.join(dir, file);
     fs.writeFileSync(full, JSON.stringify(payload));
@@ -309,7 +326,6 @@ export async function openDocuments(dir) {
         if (!local) continue;
         const remote = await readDocument(id);
         if (!remote.ok) continue;
-        if (id === 'feed' && !remote.payload) continue;
         if (id !== 'feed' && remote.payload && !ready.has(id)) continue;
         let payload = id === 'feed' ? mergeFeed(local, remote.payload) : local;
         let saved = await writeDocument(id, payload);

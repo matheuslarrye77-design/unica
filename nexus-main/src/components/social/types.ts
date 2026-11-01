@@ -55,6 +55,7 @@ export type SocialPost = {
   comments: SocialComment[];
   commentsOpen: boolean;
   bannerTitle?: string;
+  journalHref?: string;
   recognizedName?: string;
   tag?: string;
   poll?: PollOption[];

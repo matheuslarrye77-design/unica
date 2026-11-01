@@ -74,6 +74,7 @@ type FeedPost = {
   mood?: string;
   moodAudience?: 'team' | 'management' | 'self';
   shareMood?: boolean;
+  journalHref?: string;
   createdAt: string;
   updatedAt?: string;
 };
@@ -452,6 +453,7 @@ export function extraApi(): Connect.NextHandleFunction {
         media: comment.media,
       })),
       bannerTitle: post.bannerTitle,
+      journalHref: post.journalHref,
       recognizedName: post.recognizedName,
       tag: post.tag,
       poll: post.poll,
@@ -552,7 +554,7 @@ export function extraApi(): Connect.NextHandleFunction {
 
       if (req.method === 'POST' && url === '/api/feed') {
         try {
-        const body = JSON.parse((await readBody(req)).toString('utf8')) as Partial<FeedPost> & { images?: unknown; blocks?: unknown };
+        const body = JSON.parse((await readBody(req)).toString('utf8')) as Partial<FeedPost> & { images?: unknown; blocks?: unknown; journalHref?: string };
         const blocks = cleanBlocks(body.blocks);
         const text = blocks?.length ? blocks.filter((block) => block.type === 'text').map((block) => block.text).join('\n\n') : String(body.body ?? '').trim();
         const images = blocks?.length ? blocks.filter((block) => block.type === 'image').map((block) => block.url) : cleanImages(body.images ?? (body.image ? [body.image] : []));
@@ -563,7 +565,10 @@ export function extraApi(): Connect.NextHandleFunction {
         const unique = new Set(labels.map((label) => label.toLowerCase()));
         if (labels.length > 0 && (labels.length < 2 || unique.size !== labels.length)) return send(res, 400, { error: 'poll' });
         const poll = labels.length ? labels.map((label, index) => ({ id: `opt-${index + 1}`, label, votes: 0 })) : undefined;
-        if (!text && images.length === 0 && !attachment && !poll) return send(res, 400, { error: 'body' });
+        const journalHref = typeof body.journalHref === 'string' && /^\/announcements\/[A-Za-z0-9._-]{1,80}$/.test(body.journalHref) ? body.journalHref : undefined;
+        const bannerTitle = String(body.bannerTitle ?? '').trim().slice(0, 180);
+        const announcement = body.kind === 'announcement' || Boolean(journalHref);
+        if (!text && images.length === 0 && !attachment && !poll && !announcement) return send(res, 400, { error: 'body' });
         const mood = cleanMood(body.mood);
         const audience = cleanAudience(body.audience);
         const moodAudience = mood ? cleanMoodAudience(body.moodAudience) : undefined;
@@ -580,14 +585,14 @@ export function extraApi(): Connect.NextHandleFunction {
         }
         const post: FeedPost = {
           id: `post-${Date.now()}`,
-          kind: recognition ? 'recognition' : poll ? 'poll' : images.length ? 'image' : 'text',
+          kind: recognition ? 'recognition' : announcement ? 'announcement' : poll ? 'poll' : images.length ? 'image' : 'text',
           author: user.name,
           authorId: user.id,
           role: user.role,
           department: user.department,
           avatar: user.avatar,
           time: 'agora',
-          body: text,
+          body: text || bannerTitle,
           image: images[0],
           images,
           blocks: blocks?.length ? blocks : undefined,
@@ -599,6 +604,8 @@ export function extraApi(): Connect.NextHandleFunction {
           comments: [],
           poll,
           votes: {},
+          bannerTitle: announcement ? (bannerTitle || 'Jornal') : undefined,
+          journalHref,
           recognizedName: recognition ? recognizedName : undefined,
           tag: recognition ? String(body.tag ?? '').trim() : undefined,
           audience,

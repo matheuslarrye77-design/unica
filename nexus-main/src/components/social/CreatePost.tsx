@@ -18,6 +18,8 @@ const AUDIO_MAX = 80 * 1024 * 1024;
 
 type DraftBlock = { id: string; type: 'text'; text: string } | { id: string; type: 'image'; url: string; display?: 'sticker' | 'gif' };
 
+export type JournalShare = { id: string; title: string; summary: string; href: string; cover?: string };
+
 export type NewPostDraft = {
   body: string;
   images?: string[];
@@ -28,6 +30,9 @@ export type NewPostDraft = {
   mood?: string;
   moodAudience?: 'team' | 'management' | 'self';
   shareMood?: boolean;
+  kind?: 'announcement';
+  bannerTitle?: string;
+  journalHref?: string;
 };
 
 function clipboardFile(data: DataTransfer | null) {
@@ -40,7 +45,7 @@ function clipboardFile(data: DataTransfer | null) {
   return null;
 }
 
-export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise<void> }> = ({ onPublish }) => {
+export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise<void>; journal?: JournalShare | null; onClearJournal?: () => void }> = ({ onPublish, journal, onClearJournal }) => {
   const [blocks, setBlocks] = useState<DraftBlock[]>([{ id: 'texto', type: 'text', text: '' }]);
   const [videoPreview, setVideoPreview] = useState('');
   const [editing, setEditing] = useState<File | null>(null);
@@ -271,7 +276,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
       toast.error('As opções da enquete não podem se repetir.');
       return;
     }
-    const hasMedia = images.length > 0 || Boolean(attachment);
+    const hasMedia = images.length > 0 || Boolean(attachment) || Boolean(journal);
     if ((!body && !hasMedia) || (pollOpen && labels.length < 2)) return;
     setSending(true);
     try {
@@ -286,6 +291,9 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
         mood: feeling?.emoji,
         moodAudience: feeling ? moodAudience : undefined,
         shareMood: Boolean(feeling) && shareMood,
+        kind: journal ? 'announcement' : undefined,
+        bannerTitle: journal?.title,
+        journalHref: journal?.href,
       });
     } catch {
       setSending(false);
@@ -303,6 +311,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     setAudience('team');
     setMoodAudience('team');
     setShareMood(true);
+    onClearJournal?.();
   }
 
   function insertEmoji(emoji: string) {
@@ -358,7 +367,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
 
   const textReady = blocks.some((block) => block.type === 'text' && block.text.trim());
   const imageReady = blocks.some((block) => block.type === 'image');
-  const ready = !sending && progress === null && (textReady || imageReady || Boolean(attachment)) && (!pollOpen || options.filter((item) => item.trim()).length >= 2);
+  const ready = !sending && progress === null && (textReady || imageReady || Boolean(attachment) || Boolean(journal)) && (!pollOpen || options.filter((item) => item.trim()).length >= 2);
   const user = actor();
   const feeling = MOODS.find((item) => item.id === moodId);
   const moodLabel = moodAudience === 'self' ? 'Somente eu' : moodAudience === 'management' ? 'Somente a gestão' : 'Público';
@@ -432,7 +441,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
                   event.currentTarget.style.height = '0px';
                   event.currentTarget.style.height = `${Math.min(Math.max(event.currentTarget.scrollHeight, index === 0 ? 40 : 32), 180)}px`;
                 }}
-                placeholder={index === 0 ? 'Compartilhe algo com a equipe...' : ''}
+                placeholder={index === 0 ? (journal ? 'Escreva uma legenda se quiser...' : 'Compartilhe algo com a equipe...') : ''}
                 className={`w-full resize-none overflow-y-auto bg-transparent text-[13.5px] leading-5 outline-none placeholder:text-muted-foreground ${index === 0 ? '' : 'mt-2 min-h-8'}`}
               />
             ) : (
@@ -443,6 +452,19 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
                 </button>
               </div>
             ))}
+            {journal ? (
+              <div className="relative mt-2 overflow-hidden rounded-2xl border border-[#EDE4F5] bg-[#FBF8FC]">
+                {journal.cover ? <img src={journal.cover} alt="" className="h-28 w-full object-cover" /> : null}
+                <div className="p-3">
+                  <p className="text-[11px] font-semibold tracking-wide text-[#8E35B8]">NOTÍCIA DO JORNAL</p>
+                  <p className="mt-0.5 text-[14px] font-semibold text-[#241B33]">{journal.title}</p>
+                  {journal.summary ? <p className="mt-1 line-clamp-2 text-[12.5px] text-[#8A7C98]">{journal.summary}</p> : null}
+                </div>
+                <button type="button" aria-label="Remover notícia" onClick={() => onClearJournal?.()} className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-white/90 text-[#6A228C]">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : null}
           </div>
 
       {progress !== null ? (
