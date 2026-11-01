@@ -369,7 +369,6 @@ export const GoalsCenter: FC = () => {
           {cards.map((card) => {
             const committed = phase === 'idle' && selected.mode === card.id;
             const pending = (card.id === 'preset' && phase === 'preset') || (card.id === 'custom' && phase === 'custom');
-            const active = committed;
             const Icon = card.icon;
             return (
               <article key={card.id} className={cn('relative flex h-full flex-col rounded-[22px] border bg-white p-4 shadow-[0_8px_22px_rgba(80,40,120,0.05)]', committed || pending ? 'border-[#8E35B8]' : 'border-[#EDE4F5]')}>

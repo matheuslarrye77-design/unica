@@ -42,6 +42,7 @@ export const FloatingHelpButton: FC = () => {
     const width = rect.width;
     const height = rect.height;
     let moved = false;
+    let ended = false;
     let latest = { x: rect.left, y: rect.top };
 
     const move = (ev: PointerEvent) => {
@@ -61,8 +62,11 @@ export const FloatingHelpButton: FC = () => {
       el.style.bottom = 'auto';
     };
     const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
+      if (ended) return;
+      ended = true;
+      window.removeEventListener('pointermove', move, true);
+      window.removeEventListener('pointerup', up, true);
+      window.removeEventListener('pointercancel', up, true);
       skipClick.current = moved;
       if (moved) {
         setPos(latest);
@@ -71,14 +75,16 @@ export const FloatingHelpButton: FC = () => {
       }
       if (openOnClick) setOpen(true);
     };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
+    window.addEventListener('pointermove', move, true);
+    window.addEventListener('pointerup', up, true);
+    window.addEventListener('pointercancel', up, true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
   }
 
   const button = (
     <div
       ref={node}
-      className="fixed z-[200] touch-none select-none"
+      className="fixed z-[100000] touch-none select-none"
       style={pos ? { left: pos.x, top: pos.y } : { right: 20, bottom: 20 }}
     >
       {minimized ? (
