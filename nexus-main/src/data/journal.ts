@@ -88,6 +88,7 @@ export const CONTENT_LIMIT = 10000;
 const STORAGE_KEY = 'unica-journal';
 const SAVED_KEY = 'unica-journal-saved';
 const COVERS_KEY = 'unica-journal-covers';
+const INLINE_KEY = 'unica-journal-inline';
 const JOURNAL_VERSION = 'foto-2026-10-15';
 
 export function categoryLocksDate(category: JournalCategory) {
@@ -108,24 +109,39 @@ const LIBRARY_COVER = /^\/jornal\/(?:capas\/|[^/]+\.svg$)/i;
 
 export type JournalCoverAsset = { id: string; url: string; createdAt: string };
 
-export function journalCovers(): JournalCoverAsset[] {
+function readAssets(key: string): JournalCoverAsset[] {
   try {
-    const parsed = JSON.parse(localStorage.getItem(COVERS_KEY) ?? '[]') as JournalCoverAsset[];
+    const parsed = JSON.parse(localStorage.getItem(key) ?? '[]') as JournalCoverAsset[];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
+export function journalCovers(): JournalCoverAsset[] {
+  return readAssets(COVERS_KEY);
+}
+
 export function resolveJournalAsset(value: string) {
   if (!value.startsWith('lib:')) return value;
-  return journalCovers().find((item) => item.id === value.slice(4))?.url ?? '';
+  const id = value.slice(4);
+  return journalCovers().find((item) => item.id === id)?.url
+    ?? readAssets(INLINE_KEY).find((item) => item.id === id)?.url
+    ?? '';
 }
 
 export function saveJournalCover(url: string) {
   const asset: JournalCoverAsset = { id: generateId(), url, createdAt: new Date().toISOString() };
-  const next = [asset, ...journalCovers().filter((item) => item.url !== url)].slice(0, 40);
+  const next = [asset, ...journalCovers()].slice(0, 40);
   localStorage.setItem(COVERS_KEY, JSON.stringify(next));
+  notify();
+  return asset;
+}
+
+export function saveJournalInline(url: string) {
+  const asset: JournalCoverAsset = { id: generateId(), url, createdAt: new Date().toISOString() };
+  const next = [asset, ...readAssets(INLINE_KEY)].slice(0, 200);
+  localStorage.setItem(INLINE_KEY, JSON.stringify(next));
   notify();
   return asset;
 }
@@ -161,10 +177,16 @@ export type JournalPiece =
 export function parseJournalPieces(content: string): JournalPiece[] {
   const parts = content.split(/(\{\{img:lib:[a-z0-9]+\}\})/g).filter((part) => part !== '');
   if (parts.length === 0) return [{ id: 'texto', kind: 'text', text: '' }];
-  const pieces: JournalPiece[] = parts.map((part, index) => {
+  const pieces: JournalPiece[] = [];
+  parts.forEach((part, index) => {
     const mark = part.match(/^\{\{img:(lib:[a-z0-9]+)\}\}$/);
-    if (mark?.[1]) return { id: `img-${index}`, kind: 'image', ref: mark[1] };
-    return { id: `texto-${index}`, kind: 'text', text: part.replace(/^\n/, '').replace(/\n$/, '') };
+    if (mark?.[1]) {
+      const previous = pieces[pieces.length - 1];
+      if (!previous || previous.kind === 'image') pieces.push({ id: `gap-${index}`, kind: 'text', text: '' });
+      pieces.push({ id: `img-${index}`, kind: 'image', ref: mark[1] });
+      return;
+    }
+    pieces.push({ id: `texto-${index}`, kind: 'text', text: part });
   });
   if (pieces[0]?.kind !== 'text') pieces.unshift({ id: 'texto-inicio', kind: 'text', text: '' });
   if (pieces[pieces.length - 1]?.kind !== 'text') pieces.push({ id: 'texto-fim', kind: 'text', text: '' });
@@ -173,9 +195,8 @@ export function parseJournalPieces(content: string): JournalPiece[] {
 
 export function serializeJournalPieces(pieces: JournalPiece[]) {
   return pieces
-    .map((piece) => (piece.kind === 'text' ? piece.text.replace(/^\s+|\s+$/g, '') : `{{img:${piece.ref}}}`))
-    .filter((part) => part !== '')
-    .join('\n');
+    .map((piece) => (piece.kind === 'text' ? piece.text.replace(/\u200B/g, '') : `{{img:${piece.ref}}}`))
+    .join('');
 }
 
 export function readingMinutes(content: string) {
@@ -439,6 +460,28 @@ const seed: JournalArticle[] = [
 ];
 
 let articles = readStored();
+
+function parkDescriptionImages() {
+  const covers = readAssets(COVERS_KEY);
+  if (!covers.length) return;
+  const coverIds = new Set(articles.flatMap((article) => (article.cover.startsWith('lib:') ? [article.cover.slice(4)] : [])));
+  const descriptionIds = new Set<string>();
+  articles.forEach((article) => {
+    for (const match of article.content.matchAll(/\{\{img:lib:([a-z0-9]+)\}\}/g)) {
+      if (match[1]) descriptionIds.add(match[1]);
+    }
+  });
+  const moveIds = new Set([...descriptionIds].filter((id) => !coverIds.has(id)));
+  if (!moveIds.size) return;
+  const moving = covers.filter((item) => moveIds.has(item.id));
+  if (!moving.length) return;
+  const inline = readAssets(INLINE_KEY);
+  const known = new Set(inline.map((item) => item.id));
+  localStorage.setItem(COVERS_KEY, JSON.stringify(covers.filter((item) => !moveIds.has(item.id))));
+  localStorage.setItem(INLINE_KEY, JSON.stringify([...moving.filter((item) => !known.has(item.id)), ...inline]));
+}
+
+parkDescriptionImages();
 const listeners = new Set<() => void>();
 
 function readStored(): JournalArticle[] {
@@ -531,10 +574,9 @@ function withPin(list: JournalArticle[], id: string, pinned: boolean, stamp?: st
 }
 
 function fitJournalContent(content: string) {
-  const trimmed = content.trim();
-  if (journalPlainText(trimmed).length <= CONTENT_LIMIT) return trimmed;
+  if (journalPlainText(content).length <= CONTENT_LIMIT) return content;
   let used = 0;
-  const pieces = parseJournalPieces(trimmed).map((piece) => {
+  const pieces = parseJournalPieces(content).map((piece) => {
     if (piece.kind !== 'text') return piece;
     const text = piece.text.slice(0, Math.max(0, CONTENT_LIMIT - used));
     used += text.length;

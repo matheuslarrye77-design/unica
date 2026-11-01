@@ -18,6 +18,7 @@ import {
   resolveJournalAsset,
   saveJournalArticle,
   saveJournalCover,
+  saveJournalInline,
   serializeJournalPieces,
   type JournalArticle,
   type JournalCategory,
@@ -28,7 +29,7 @@ import {
 import { uploadMedia } from '@/lib/feed';
 import { cn, generateId } from '@/lib/utils';
 import { Calendar, ChevronDown, Eye, FileText, Image as ImageIcon, ImagePlus, Info, Maximize2, Megaphone, Minimize2, Paperclip, Send, Trash2, Type, X } from 'lucide-react';
-import { useEffect, useRef, useState, type DragEvent, type FC } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ClipboardEvent, type DragEvent, type FC, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 
@@ -95,17 +96,123 @@ function imageFile(file: File) {
   return file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp' || /\.(jpe?g|png|webp)$/i.test(file.name);
 }
 
-function growField(node: HTMLTextAreaElement, expanded: boolean) {
-  const cap = expanded ? 640 : 168;
-  const floor = expanded ? 160 : 40;
-  node.style.height = '0px';
-  node.style.height = `${Math.min(Math.max(node.scrollHeight, floor), cap)}px`;
+type DescriptionHandle = { insertImage: (ref: string) => void };
+
+function pieceSignature(pieces: JournalPiece[]) {
+  return pieces.map((piece) => (piece.kind === 'text' ? piece.text : `{{img:${piece.ref}}}`)).join('\u0000');
 }
 
-function pieceVisible(piece: JournalPiece, index: number, pieces: JournalPiece[]) {
-  if (piece.kind === 'image') return true;
-  if (index === 0 || index === pieces.length - 1) return true;
-  return piece.text.length > 0;
+function limitPieces(pieces: JournalPiece[]) {
+  let used = 0;
+  return pieces.map((piece) => {
+    if (piece.kind !== 'text') return piece;
+    const text = piece.text.slice(0, Math.max(0, CONTENT_LIMIT - used));
+    used += text.length;
+    return { ...piece, text };
+  });
+}
+
+function ensureTextGaps(root: HTMLElement) {
+  const images = [...root.querySelectorAll<HTMLElement>('[data-journal-image]')];
+  const hold = (node: Node | null, where: 'before' | 'after', span: HTMLElement) => {
+    if (!node || (node instanceof HTMLElement && node.dataset.journalImage)) {
+      const gap = document.createTextNode('\u200B');
+      if (where === 'before') span.before(gap);
+      else span.after(gap);
+      return;
+    }
+    if (node.nodeType === Node.TEXT_NODE && !(node.textContent ?? '').includes('\u200B') && !(node.textContent ?? '').replace(/\u200B/g, '').length) {
+      node.textContent = '\u200B';
+    }
+  };
+  if (!root.firstChild || (root.firstChild instanceof HTMLElement && root.firstChild.dataset.journalImage)) {
+    root.prepend(document.createTextNode('\u200B'));
+  }
+  images.forEach((span) => {
+    hold(span.previousSibling, 'before', span);
+    hold(span.nextSibling, 'after', span);
+  });
+}
+
+function readEditor(root: HTMLElement): JournalPiece[] {
+  const pieces: JournalPiece[] = [];
+  const addText = (value: string) => {
+    const text = value.replace(/\u200B/g, '');
+    const last = pieces[pieces.length - 1];
+    if (last?.kind === 'text') last.text += text;
+    else pieces.push({ id: generateId(), kind: 'text', text });
+  };
+  const walk = (node: Node) => {
+    node.childNodes.forEach((child, index) => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        addText(child.textContent ?? '');
+        return;
+      }
+      if (child instanceof HTMLBRElement) {
+        addText('\n');
+        return;
+      }
+      if (child instanceof HTMLElement && child.dataset.journalImage) {
+        const previous = pieces[pieces.length - 1];
+        if (!previous || previous.kind === 'image') pieces.push({ id: generateId(), kind: 'text', text: '' });
+        pieces.push({ id: child.dataset.pieceId || generateId(), kind: 'image', ref: child.dataset.journalImage });
+        return;
+      }
+      if (child instanceof HTMLElement) {
+        const block = child.tagName === 'DIV' || child.tagName === 'P';
+        if (block && index > 0) addText('\n');
+        walk(child);
+      }
+    });
+  };
+  walk(root);
+  if (!pieces.length || pieces[0]?.kind !== 'text') pieces.unshift({ id: generateId(), kind: 'text', text: '' });
+  if (pieces[pieces.length - 1]?.kind !== 'text') pieces.push({ id: generateId(), kind: 'text', text: '' });
+  return limitPieces(pieces);
+}
+
+function caretPoint(root: HTMLElement) {
+  const selection = window.getSelection();
+  if (!selection?.isCollapsed || !selection.anchorNode || !root.contains(selection.anchorNode)) return null;
+  return { node: selection.anchorNode, offset: selection.anchorOffset };
+}
+
+function imageBeside(root: HTMLElement, direction: 'before' | 'after') {
+  const caret = caretPoint(root);
+  if (!caret) return null;
+  const { node, offset } = caret;
+  if (node === root) {
+    const sibling = direction === 'before' ? root.childNodes[offset - 1] : root.childNodes[offset];
+    return sibling instanceof HTMLElement && sibling.dataset.journalImage ? sibling : null;
+  }
+  if (node.nodeType !== Node.TEXT_NODE) return null;
+  const text = node.textContent ?? '';
+  const before = text.slice(0, offset).replace(/\u200B/g, '');
+  const after = text.slice(offset).replace(/\u200B/g, '');
+  if (direction === 'before' && before.length > 0) return null;
+  if (direction === 'after' && after.length > 0) return null;
+  let sibling: Node | null = direction === 'before' ? node.previousSibling : node.nextSibling;
+  while (sibling && sibling.nodeType === Node.TEXT_NODE && !(sibling.textContent ?? '').replace(/\u200B/g, '').length) {
+    sibling = direction === 'before' ? sibling.previousSibling : sibling.nextSibling;
+  }
+  return sibling instanceof HTMLElement && sibling.dataset.journalImage ? sibling : null;
+}
+
+function placeCaret(node: Node, offset: number) {
+  const range = document.createRange();
+  const max = node.nodeType === Node.TEXT_NODE ? (node.textContent ?? '').length : node.childNodes.length;
+  range.setStart(node, Math.min(offset, max));
+  range.collapse(true);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
+function placeCaretAtEnd(root: HTMLElement) {
+  const last = root.lastChild;
+  if (!last) return;
+  if (last.nodeType === Node.TEXT_NODE) placeCaret(last, (last.textContent ?? '').length);
+  else placeCaret(root, root.childNodes.length);
 }
 
 const AttachedMedia: FC<{ items: JournalMedia[]; onRemove?: (id: string) => void }> = ({ items, onRemove }) => (
@@ -148,76 +255,284 @@ const ClipAudio: FC<{ url: string; start?: number; duration?: number }> = ({ url
   return <audio ref={ref} controls src={url} preload="metadata" className="h-8 w-full" />;
 };
 
-const DescriptionBalloon: FC<{
+const DescriptionBalloon = forwardRef<DescriptionHandle, {
   pieces: JournalPiece[];
   expanded?: boolean;
   plainLength: number;
-  onWrite: (id: string, value: string) => void;
-  onRemoveImage: (id: string) => void;
-  onFocusPiece: (id: string) => void;
-  onPasteImage: (file: File, pieceId: string) => void;
-  onDropImage: (file: File) => void;
-}> = ({ pieces, expanded, plainLength, onWrite, onRemoveImage, onFocusPiece, onPasteImage, onDropImage }) => {
-  const fields = useRef<Record<string, HTMLTextAreaElement | null>>({});
+  onPieces: (pieces: JournalPiece[]) => void;
+  onImageFile: (file: File) => void;
+}>(function DescriptionBalloon({ pieces, expanded, plainLength, onPieces, onImageFile }, ref) {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const localSerial = useRef<string | null>(null);
+  const savedRange = useRef<Range | null>(null);
+  const syncRef = useRef<() => void>(() => {});
+  const empty = !pieces.some((piece) => piece.kind === 'image' || piece.text.length > 0);
+
+  function rememberCaret() {
+    const root = editorRef.current;
+    const selection = window.getSelection();
+    if (!root || !selection?.rangeCount || !selection.anchorNode || !root.contains(selection.anchorNode)) return;
+    savedRange.current = selection.getRangeAt(0).cloneRange();
+  }
+
+  function restoreCaret() {
+    const root = editorRef.current;
+    const range = savedRange.current;
+    if (!root || !range || !root.contains(range.startContainer)) {
+      if (root) placeCaretAtEnd(root);
+      return;
+    }
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  }
+
+  function syncFromDom() {
+    const root = editorRef.current;
+    if (!root) return;
+    ensureTextGaps(root);
+    const next = readEditor(root);
+    const signature = pieceSignature(next);
+    if (signature === localSerial.current) return;
+    localSerial.current = signature;
+    rememberCaret();
+    onPieces(next);
+  }
+
+  syncRef.current = syncFromDom;
+
   useEffect(() => {
-    Object.values(fields.current).forEach((node) => {
-      if (node) growField(node, Boolean(expanded));
-    });
-  }, [pieces, expanded]);
-  return (
-    <div
-      className={cn('rounded-2xl border border-[#E6DEEF] bg-[#FBF9FD] px-3 py-2 focus-within:border-[#E4C8EE] focus-within:ring-2 focus-within:ring-[#F3E4FA]', expanded && 'min-h-[52vh]')}
-      onDragOver={(event) => event.preventDefault()}
-      onDrop={(event) => {
+    const onSelection = () => {
+      const root = editorRef.current;
+      const selection = window.getSelection();
+      if (!root || !selection?.rangeCount || !selection.anchorNode || !root.contains(selection.anchorNode)) return;
+      savedRange.current = selection.getRangeAt(0).cloneRange();
+    };
+    document.addEventListener('selectionchange', onSelection);
+    return () => document.removeEventListener('selectionchange', onSelection);
+  }, []);
+
+  function insertText(value: string) {
+    const root = editorRef.current;
+    if (!root || !value) return;
+    root.focus();
+    restoreCaret();
+    const selection = window.getSelection();
+    if (!selection?.rangeCount || !selection.anchorNode || !root.contains(selection.anchorNode)) return;
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    const node = document.createTextNode(value);
+    range.insertNode(node);
+    placeCaret(node, value.length);
+    rememberCaret();
+    syncFromDom();
+  }
+
+  useImperativeHandle(ref, () => ({
+    insertImage(imageRef: string) {
+      const root = editorRef.current;
+      if (!root) return;
+      root.focus();
+      restoreCaret();
+      const selection = window.getSelection();
+      if (!selection?.rangeCount || !selection.anchorNode || !root.contains(selection.anchorNode)) placeCaretAtEnd(root);
+      const range = window.getSelection()?.getRangeAt(0);
+      if (!range) return;
+      range.deleteContents();
+      const span = document.createElement('span');
+      span.dataset.journalImage = imageRef;
+      span.dataset.pieceId = generateId();
+      span.contentEditable = 'false';
+      span.className = 'group relative my-2 block';
+      span.draggable = false;
+      const image = document.createElement('img');
+      image.src = resolveJournalAsset(imageRef);
+      image.alt = '';
+      image.draggable = false;
+      image.className = 'max-h-72 w-full rounded-xl bg-[#F8F4FB] object-contain';
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.tabIndex = -1;
+      remove.setAttribute('aria-label', 'Remover imagem da descrição');
+      remove.className = 'absolute top-2 right-2 grid h-6 w-6 place-items-center rounded-full bg-white text-[14px] leading-none text-[#9D174D] opacity-0 shadow transition-opacity group-hover:opacity-100';
+      remove.textContent = '×';
+      remove.addEventListener('mousedown', (event) => event.preventDefault());
+      remove.addEventListener('click', (event) => {
         event.preventDefault();
-        const file = [...event.dataTransfer.files].find((item) => imageFile(item));
-        if (file) onDropImage(file);
-      }}
-    >
-      {pieces.map((piece, index) => {
-        if (!pieceVisible(piece, index, pieces)) return null;
-        if (piece.kind === 'image') {
-          return (
-            <span key={piece.id} className="group relative my-2 block">
-              <img src={resolveJournalAsset(piece.ref)} alt="" className="max-h-72 w-full rounded-xl bg-[#F8F4FB] object-contain" />
-              <button type="button" aria-label="Remover imagem da descrição" className="absolute top-2 right-2 grid h-6 w-6 place-items-center rounded-full bg-white text-[#9D174D] opacity-0 shadow transition-opacity group-hover:opacity-100 focus-visible:opacity-100" onClick={() => onRemoveImage(piece.id)}>
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </span>
-          );
-        }
-        return (
-          <textarea
-            key={piece.id}
-            ref={(node) => {
-              fields.current[piece.id] = node;
-              if (node) growField(node, Boolean(expanded));
-            }}
-            value={piece.text}
-            rows={1}
-            onFocus={(event) => {
-              onFocusPiece(piece.id);
-              growField(event.currentTarget, Boolean(expanded));
-            }}
-            onChange={(event) => {
-              onWrite(piece.id, event.target.value);
-              growField(event.currentTarget, Boolean(expanded));
-            }}
-            onPaste={(event) => {
-              const file = [...event.clipboardData.files].find((item) => imageFile(item));
-              if (!file) return;
-              event.preventDefault();
-              onPasteImage(file, piece.id);
-            }}
-            placeholder={index === 0 ? 'Escreva uma descrição sobre a publicação...' : ''}
-            className="w-full resize-none overflow-y-auto bg-transparent text-[13.5px] leading-5 outline-none placeholder:text-[#B0A8BA]"
-          />
-        );
-      })}
+        event.stopPropagation();
+        span.remove();
+        ensureTextGaps(root);
+        syncRef.current();
+      });
+      span.addEventListener('mousedown', (event) => {
+        if (event.target === remove) return;
+        event.preventDefault();
+        const next = document.createRange();
+        next.selectNode(span);
+        const current = window.getSelection();
+        current?.removeAllRanges();
+        current?.addRange(next);
+        savedRange.current = next.cloneRange();
+      });
+      span.append(image, remove);
+      range.insertNode(span);
+      const after = span.nextSibling && span.nextSibling.nodeType === Node.TEXT_NODE ? span.nextSibling : document.createTextNode('\u200B');
+      if (after.parentNode !== root) span.after(after);
+      ensureTextGaps(root);
+      const gap = span.nextSibling;
+      if (gap?.nodeType === Node.TEXT_NODE) placeCaret(gap, Math.min(1, (gap.textContent ?? '').length));
+      else placeCaretAtEnd(root);
+      rememberCaret();
+      syncFromDom();
+    },
+  }));
+
+  useEffect(() => {
+    const root = editorRef.current;
+    if (!root) return;
+    const signature = pieceSignature(pieces);
+    if (localSerial.current === signature && root.childNodes.length > 0) return;
+    root.replaceChildren();
+    if (!pieces.length) root.append(document.createTextNode('\u200B'));
+    pieces.forEach((piece) => {
+      if (piece.kind === 'text') {
+        root.append(document.createTextNode(piece.text.length ? piece.text : '\u200B'));
+        return;
+      }
+      const span = document.createElement('span');
+      span.dataset.journalImage = piece.ref;
+      span.dataset.pieceId = piece.id;
+      span.contentEditable = 'false';
+      span.className = 'group relative my-2 block';
+      span.draggable = false;
+      const image = document.createElement('img');
+      image.src = resolveJournalAsset(piece.ref);
+      image.alt = '';
+      image.draggable = false;
+      image.className = 'max-h-72 w-full rounded-xl bg-[#F8F4FB] object-contain';
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.tabIndex = -1;
+      remove.setAttribute('aria-label', 'Remover imagem da descrição');
+      remove.className = 'absolute top-2 right-2 grid h-6 w-6 place-items-center rounded-full bg-white text-[14px] leading-none text-[#9D174D] opacity-0 shadow transition-opacity group-hover:opacity-100';
+      remove.textContent = '×';
+      remove.addEventListener('mousedown', (event) => event.preventDefault());
+      remove.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        span.remove();
+        ensureTextGaps(root);
+        syncRef.current();
+      });
+      span.addEventListener('mousedown', (event) => {
+        if (event.target === remove) return;
+        event.preventDefault();
+        const next = document.createRange();
+        next.selectNode(span);
+        const current = window.getSelection();
+        current?.removeAllRanges();
+        current?.addRange(next);
+      });
+      span.append(image, remove);
+      root.append(span);
+    });
+    ensureTextGaps(root);
+    localSerial.current = signature;
+    if (document.activeElement === root) restoreCaret();
+  }, [pieces, expanded]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const root = editorRef.current;
+    if (!root) return;
+    root.focus();
+    placeCaretAtEnd(root);
+  }, [expanded]);
+
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const root = editorRef.current;
+    if (!root) return;
+    const emptyGap = () => {
+      const caret = caretPoint(root);
+      return Boolean(caret && caret.node.nodeType === Node.TEXT_NODE && !(caret.node.textContent ?? '').replace(/\u200B/g, '').length);
+    };
+    if (event.key === 'Enter' || (event.key === ' ' && emptyGap())) {
+      event.preventDefault();
+      insertText('\n');
+      return;
+    }
+    if (event.key !== 'Backspace' && event.key !== 'Delete') return;
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) {
+      const selected = [...root.querySelectorAll<HTMLElement>('[data-journal-image]')].filter((node) => selection.containsNode(node, true));
+      if (!selected.length) return;
+      event.preventDefault();
+      const range = selection.getRangeAt(0);
+      selected.forEach((node) => node.remove());
+      range.deleteContents();
+      ensureTextGaps(root);
+      placeCaretAtEnd(root);
+      syncFromDom();
+      return;
+    }
+    const target = event.key === 'Backspace' ? imageBeside(root, 'before') : imageBeside(root, 'after');
+    if (!target) return;
+    event.preventDefault();
+    const next = event.key === 'Backspace' ? target.nextSibling : target.previousSibling;
+    target.remove();
+    ensureTextGaps(root);
+    if (next?.nodeType === Node.TEXT_NODE && root.contains(next)) {
+      placeCaret(next, event.key === 'Backspace' ? 0 : (next.textContent ?? '').length);
+    }
+    syncFromDom();
+  }
+
+  function onPaste(event: ClipboardEvent<HTMLDivElement>) {
+    const file = [...event.clipboardData.files].find((item) => imageFile(item));
+    event.preventDefault();
+    rememberCaret();
+    if (file) {
+      onImageFile(file);
+      return;
+    }
+    const room = CONTENT_LIMIT - plainLength;
+    const text = event.clipboardData.getData('text/plain').slice(0, Math.max(0, room));
+    insertText(text);
+  }
+
+  return (
+    <div className={cn('rounded-2xl border border-[#E6DEEF] bg-[#FBF9FD] px-3 py-2 focus-within:border-[#E4C8EE] focus-within:ring-2 focus-within:ring-[#F3E4FA]', expanded && 'min-h-[52vh]')}>
+      <div
+        ref={editorRef}
+        contentEditable
+        role="textbox"
+        aria-multiline="true"
+        aria-label="Escreva uma descrição sobre a publicação..."
+        data-placeholder="Escreva uma descrição sobre a publicação..."
+        data-empty={empty ? 'true' : 'false'}
+        suppressContentEditableWarning
+        className={cn('relative whitespace-pre-wrap break-words text-[13.5px] leading-5 text-[#241B33] outline-none data-[empty=true]:before:pointer-events-none data-[empty=true]:before:float-left data-[empty=true]:before:h-0 data-[empty=true]:before:text-[#B0A8BA] data-[empty=true]:before:content-[attr(data-placeholder)]', expanded ? 'min-h-[52vh]' : 'min-h-10')}
+        onKeyDown={onKeyDown}
+        onKeyUp={rememberCaret}
+        onMouseUp={rememberCaret}
+        onBlur={rememberCaret}
+        onInput={syncFromDom}
+        onPaste={onPaste}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          const file = [...event.dataTransfer.files].find((item) => imageFile(item));
+          if (!file) return;
+          const point = document.caretRangeFromPoint(event.clientX, event.clientY);
+          if (point && editorRef.current?.contains(point.startContainer)) savedRange.current = point;
+          else rememberCaret();
+          onImageFile(file);
+        }}
+      />
       <p className="pt-1 text-right text-[12px] leading-4 text-[#B0A8BA]">{plainLength}/{CONTENT_LIMIT}</p>
     </div>
   );
-};
+});
 
 export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }) => {
   const covers = useJournalCovers();
@@ -227,7 +542,8 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   const videoInput = useRef<HTMLInputElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
   const documentInput = useRef<HTMLInputElement>(null);
-  const focusPiece = useRef('texto');
+  const fieldEditor = useRef<DescriptionHandle>(null);
+  const modalEditor = useRef<DescriptionHandle>(null);
   const savedOnClose = useRef(false);
   const [title, setTitle] = useState('');
   const [pieces, setPieces] = useState<JournalPiece[]>([{ id: 'texto', kind: 'text', text: '' }]);
@@ -235,7 +551,6 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [cover, setCover] = useState('');
   const [library, setLibrary] = useState(false);
-  const [removingCover, setRemovingCover] = useState<string | null>(null);
   const [date, setDate] = useState(todayInput);
   const [authorName, setAuthorName] = useState(author);
   const [media, setMedia] = useState<JournalMedia[]>([]);
@@ -259,7 +574,6 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
     savedOnClose.current = false;
     setTitle(article?.title ?? '');
     setPieces(parseJournalPieces(article?.content ?? ''));
-    focusPiece.current = 'texto';
     setCategory(article?.category ?? 'social');
     setCover(article && (article.cover.startsWith('lib:') || isUserCover(article.cover)) ? article.cover : '');
     const loadedDate = article && !categoryLocksDate(article.category) ? toInputDate(article.date) : todayInput();
@@ -281,7 +595,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
     if (dateLocked) setDate(todayInput());
   }, [dateLocked]);
 
-  async function storeImage(file: File) {
+  async function storedImage(file: File, save: (url: string) => { id: string }) {
     if (!imageFile(file)) {
       toast.error('Use uma imagem JPG, PNG ou WEBP.');
       return '';
@@ -291,12 +605,25 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
       return '';
     }
     try {
-      const asset = saveJournalCover(await compressImage(file));
+      const asset = save(await compressImage(file));
       return `lib:${asset.id}`;
     } catch {
-      toast.error('Não foi possível guardar a imagem na biblioteca.');
+      toast.error('Não foi possível guardar a imagem.');
       return '';
     }
+  }
+
+  function queueInline(file?: File) {
+    if (!file) return;
+    if (!imageFile(file)) {
+      toast.error('Use uma imagem JPG, PNG ou WEBP.');
+      return;
+    }
+    if (file.size > COVER_MAX) {
+      toast.error('A imagem passa de 5 MB.');
+      return;
+    }
+    setInlineFile(file);
   }
 
   function onCoverFile(file?: File) {
@@ -314,42 +641,18 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
 
   async function confirmCover(file: File) {
     setCoverFile(null);
-    const stored = await storeImage(file);
+    const stored = await storedImage(file, saveJournalCover);
     if (stored) {
       setCover(stored);
       setLibrary(false);
     }
   }
 
-  function writePiece(id: string, text: string) {
-    const next = text.slice(0, CONTENT_LIMIT);
-    setPieces((current) => {
-      const others = current.reduce((sum, piece) => sum + (piece.kind === 'text' && piece.id !== id ? piece.text.length : 0), 0);
-      const room = Math.max(0, CONTENT_LIMIT - others);
-      return current.map((piece) => (piece.id === id && piece.kind === 'text' ? { ...piece, text: next.slice(0, room) } : piece));
-    });
-  }
-
   async function confirmInline(file: File) {
     setInlineFile(null);
-    const stored = await storeImage(file);
+    const stored = await storedImage(file, saveJournalInline);
     if (!stored) return;
-    const imageId = generateId();
-    const textId = generateId();
-    setPieces((current) => {
-      const index = Math.max(0, current.findIndex((piece) => piece.id === focusPiece.current));
-      const focus = current[index];
-      const image: JournalPiece = { id: imageId, kind: 'image', ref: stored };
-      if (focus?.kind === 'text' && focus.text.trim() === '') {
-        const next = [...current];
-        next.splice(index, 0, image);
-        return next;
-      }
-      const next = [...current];
-      next.splice(index + 1, 0, image, { id: textId, kind: 'text', text: '' });
-      focusPiece.current = textId;
-      return next;
-    });
+    (writing ? modalEditor : fieldEditor).current?.insertImage(stored);
   }
 
   async function addUpload(file: File, kind: JournalMedia['kind']) {
@@ -372,7 +675,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
 
   async function addImageAttachment(file?: File) {
     if (!file) return;
-    const stored = await storeImage(file);
+    const stored = await storedImage(file, saveJournalInline);
     if (!stored) return;
     const item: JournalMedia = { id: generateId(), name: file.name, kind: 'image', url: stored };
     setMedia((current) => [...current, item].slice(0, 8));
@@ -511,7 +814,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
                   </button>
                 </span>
               </span>
-              <DescriptionBalloon pieces={pieces} plainLength={plainLength} onWrite={writePiece} onRemoveImage={(id) => setPieces((current) => current.filter((item) => item.id !== id))} onFocusPiece={(id) => { focusPiece.current = id; }} onPasteImage={(file, pieceId) => { focusPiece.current = pieceId; if (file.size > COVER_MAX) { toast.error('A imagem passa de 5 MB.'); return; } setInlineFile(file); }} onDropImage={(file) => { if (file.size > COVER_MAX) { toast.error('A imagem passa de 5 MB.'); return; } setInlineFile(file); }} />
+              <DescriptionBalloon ref={fieldEditor} pieces={pieces} plainLength={plainLength} onPieces={setPieces} onImageFile={queueInline} />
               <input ref={inlineInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) setInlineFile(file); }} />
             </div>
             <div className="grid gap-2 sm:grid-cols-[1fr_190px]">
@@ -569,11 +872,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
                           <button type="button" onClick={() => { setCover(`lib:${item.id}`); setLibrary(false); }} className={cn('block w-full overflow-hidden rounded-xl border', cover === `lib:${item.id}` ? 'border-[#8E35B8]' : 'border-transparent')}>
                             <img src={item.url} alt="" className="aspect-[4/3] w-full object-cover" />
                           </button>
-                          {removingCover === item.id ? (
-                            <button type="button" className="absolute inset-0 grid place-items-center rounded-xl bg-white/95 px-2 text-center text-[11px] font-semibold text-[#9D174D]" onClick={() => { deleteJournalCover(item.id); if (cover === `lib:${item.id}`) setCover(''); setRemovingCover(null); }}>Confirmar exclusão</button>
-                          ) : (
-                            <button type="button" aria-label="Excluir imagem da biblioteca" className="absolute top-1 right-1 grid h-6 w-6 place-items-center rounded-full bg-white text-[#9D174D] shadow" onClick={() => setRemovingCover(item.id)}><Trash2 className="h-3.5 w-3.5" /></button>
-                          )}
+                          <button type="button" aria-label="Excluir imagem da biblioteca" className="absolute top-1 right-1 grid h-6 w-6 place-items-center rounded-full bg-white text-[#9D174D] shadow" onClick={() => { if (!window.confirm('Tem certeza que deseja excluir esta imagem da biblioteca?')) return; deleteJournalCover(item.id); if (cover === `lib:${item.id}`) setCover(''); }}><Trash2 className="h-3.5 w-3.5" /></button>
                         </div>
                       ))}
                     </div>
@@ -670,7 +969,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
                 </span>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto">
-                <DescriptionBalloon expanded pieces={pieces} plainLength={plainLength} onWrite={writePiece} onRemoveImage={(id) => setPieces((current) => current.filter((item) => item.id !== id))} onFocusPiece={(id) => { focusPiece.current = id; }} onPasteImage={(file, pieceId) => { focusPiece.current = pieceId; if (file.size > COVER_MAX) { toast.error('A imagem passa de 5 MB.'); return; } setInlineFile(file); }} onDropImage={(file) => { if (file.size > COVER_MAX) { toast.error('A imagem passa de 5 MB.'); return; } setInlineFile(file); }} />
+                <DescriptionBalloon ref={modalEditor} expanded pieces={pieces} plainLength={plainLength} onPieces={setPieces} onImageFile={queueInline} />
               </div>
             </div>
           </div>,
