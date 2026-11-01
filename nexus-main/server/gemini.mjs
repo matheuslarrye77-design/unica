@@ -16,7 +16,7 @@ export function allowGeminiCall(now = Date.now()) {
 }
 
 export function flashModel(env = process.env) {
-  const model = String(env.GEMINI_MODEL || 'gemini-2.5-flash').trim();
+  const model = String(env.GEMINI_MODEL || 'gemini-3.8-flash').trim();
   if (!/flash/i.test(model) || /pro|ultra/i.test(model)) return '';
   return model;
 }
@@ -77,7 +77,7 @@ export async function completeJson(prompt, options = {}) {
         temperature: 0,
         responseMimeType: 'application/json',
         responseJsonSchema: payload.schema,
-        thinkingConfig: { thinkingBudget: 0 },
+        ...(payload.model.startsWith('gemini-2.5') ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
         httpOptions: { timeout: 20000 },
       },
     });
