@@ -4,7 +4,7 @@ import { LilacWash } from './LilacWash';
 import { ReadMore } from './ReadMore';
 import type { SocialPost } from './types';
 
-export const RecognitionPost: FC<{ post: SocialPost }> = ({ post }) => {
+export const RecognitionPost: FC<{ post: SocialPost; expandId?: string }> = ({ post, expandId }) => {
   const name = post.recognizedName?.trim();
   const first = name?.split(' ')[0];
   const title = post.bannerTitle || (first ? `Reconhecimento especial para ${first}!` : null);
@@ -12,7 +12,7 @@ export const RecognitionPost: FC<{ post: SocialPost }> = ({ post }) => {
     <div className="mt-3">
       {title ? <h3 className="text-[16px] font-semibold leading-6 text-foreground">{title}</h3> : null}
       <div className="mt-1.5">
-        <ReadMore id={`${post.id}-reconhecimento`} text={post.body} className="text-[14.5px] leading-6 text-[#3C3952] dark:text-foreground/90" />
+        <ReadMore id={expandId ?? `${post.id}-reconhecimento`} text={post.body} className="text-[14.5px] leading-6 text-[#3C3952] dark:text-foreground/90" />
       </div>
       <LilacWash
         className="mt-3"

@@ -4,10 +4,10 @@ import { type FC } from 'react';
 import { Link } from 'react-router-dom';
 import type { SocialPost } from './types';
 
-export const EventPost: FC<{ post: SocialPost }> = ({ post }) => {
+export const EventPost: FC<{ post: SocialPost; expandId?: string }> = ({ post, expandId }) => {
   return (
     <div className="mt-3">
-      <ReadMore id={`${post.id}-evento`} text={post.body} className="text-sm leading-6" />
+      <ReadMore id={expandId ?? `${post.id}-evento`} text={post.body} className="text-sm leading-6" />
       <div className="mt-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
         <p className="flex items-center gap-2 text-sm font-medium">
           <CalendarDays className="h-4 w-4 text-primary" />

@@ -22,10 +22,12 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [commentMedia, setCommentMedia] = useState<Record<string, CommentMedia | null>>({});
   const [savedOnly, setSavedOnly] = useState(false);
+  const [openCard, setOpenCard] = useState<string | null>(null);
   const [shareId, setShareId] = useState<string | null>(null);
   const [repostId, setRepostId] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const feedTicket = useRef(0);
+  const feedWarned = useRef(false);
   const firstName = user.name.split(' ')[0];
 
   function holdFeed() {
@@ -37,13 +39,16 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
       const ticket = ++feedTicket.current;
       void loadFeed().then((feed) => {
         if (ticket !== feedTicket.current) return;
+        feedWarned.current = false;
         setPosts((current) => feed.posts.map((post) => {
           const previous = current.find((item) => item.id === post.id);
           return previous ? { ...post, commentsOpen: previous.commentsOpen } : post;
         }));
         setReposts(feed.reposts);
       }).catch(() => {
-        if (ticket === feedTicket.current) toast.error('Não foi possível abrir o mural.');
+        if (ticket !== feedTicket.current || feedWarned.current) return;
+        feedWarned.current = true;
+        toast.error('Não foi possível abrir o mural.');
       });
     };
     refresh();
@@ -169,36 +174,46 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
     return comment.authorId === user.id || comment.author === user.name || post.authorId === user.id || post.author === user.name || isLeader(user);
   }
 
-  const mine = new Set(reposts.filter((item) => item.userId === user.id).map((item) => item.originalId));
   const visiblePosts = (mode === 'recognition' ? posts.filter((post) => post.kind === 'recognition') : posts).filter((post) => !savedOnly || post.saved);
   function canRemove(post: SocialPost) {
     return post.authorId === user.id || post.author === user.name;
   }
-  const visibleReposts = mode === 'recognition'
+  const visibleReposts = (mode === 'recognition'
     ? reposts.filter((repost) => posts.find((post) => post.id === repost.originalId)?.kind === 'recognition')
-    : reposts;
+    : reposts
+  ).filter((repost) => !savedOnly || Boolean(posts.find((post) => post.id === repost.originalId)?.saved));
 
-  function renderFeedPost(post: SocialPost) {
+  function undoRepost(id: string) {
+    void cancelRepost(id).then(() => setReposts((current) => current.filter((item) => item.id !== id))).catch(() => toast.error('Não foi possível desfazer a republicação.'));
+  }
+
+  function renderFeedPost(post: SocialPost, cardKey = post.id, repost?: Repost) {
+    const mineRepost = reposts.find((item) => item.userId === user.id && item.originalId === post.id);
     return (
-      <div key={post.id}>
+      <div key={cardKey}>
         <PostCard
-          post={post}
-          republished={mine.has(post.id)}
+          anchorId={cardKey}
+          post={{ ...post, commentsOpen: openCard === cardKey }}
+          republished={repost ? repost.userId === user.id : Boolean(mineRepost)}
+          repost={repost ? { name: repost.userName, avatar: repost.avatar, note: repost.note } : undefined}
           commentDraft={drafts[post.id] ?? ''}
           onCommentDraft={(value) => setDrafts((current) => ({ ...current, [post.id]: value }))}
           onLike={() => void likeFeedPost(post.id, 'like').then((result) => { holdFeed(); replace(result.post); }).catch(() => toast.error('Não foi possível registrar a reação.'))}
           onReact={(kind) => void likeFeedPost(post.id, kind).then((result) => { holdFeed(); replace(result.post); }).catch(() => toast.error('Não foi possível registrar a reação.'))}
           onToggleSave={() => void saveFeedPost(post.id).then((result) => replace(result.post)).catch(() => toast.error('Não foi possível salvar a publicação.'))}
-          onShare={() => setShareId(post.id)}
+          onShare={() => setShareId(cardKey)}
           onToggleComments={() => {
-            const open = !post.commentsOpen;
-            setPosts((current) => current.map((item) => ({ ...item, commentsOpen: item.id === post.id ? open : false })));
-            if (open) window.setTimeout(() => document.getElementById(`comentario-${post.id}`)?.focus(), 0);
+            const open = openCard !== cardKey;
+            setOpenCard(open ? cardKey : null);
+            if (open) window.setTimeout(() => document.getElementById(`comentario-${cardKey}`)?.focus(), 0);
           }}
           onAddComment={() => {
             const text = (drafts[post.id] ?? '').trim();
             const media = commentMedia[post.id];
-            if (media?.url.startsWith('blob:')) return;
+            if (media?.url.startsWith('blob:')) {
+              toast.error('Espere o arquivo terminar de enviar.');
+              return;
+            }
             if (!text && !media) return;
             void commentFeedPost(post.id, text, media ?? undefined).then((result) => {
               holdFeed();
@@ -228,32 +243,39 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
           onLikeComment={(commentId) => void likeFeedComment(post.id, commentId).then((result) => replace({ ...result.post, commentsOpen: true })).catch(() => toast.error('Não foi possível curtir o comentário.'))}
           onVote={(optionId) => void voteFeedPost(post.id, optionId).then((result) => replace(result.post)).catch(() => toast.error('Não foi possível registrar o voto.'))}
           onRepublish={() => {
-            const existing = reposts.find((item) => item.userId === user.id && item.originalId === post.id);
-            if (existing) {
-              void cancelRepost(existing.id).then(() => setReposts((current) => current.filter((item) => item.id !== existing.id)));
+            if (repost?.userId === user.id) {
+              undoRepost(repost.id);
               return;
             }
-            setRepostId(post.id);
+            if (!repost && mineRepost) {
+              undoRepost(mineRepost.id);
+              return;
+            }
+            if (mineRepost) {
+              toast.error('Você já republicou esta publicação.');
+              return;
+            }
+            setRepostId(cardKey);
             setNote('');
           }}
-          onDelete={canRemove(post) ? () => void removePost(post) : undefined}
+          onDelete={!repost && canRemove(post) ? () => void removePost(post) : undefined}
           canDeleteComment={(commentId) => canDelete(post, commentId)}
           onDeleteComment={(commentId) => {
             if (!window.confirm('Excluir este comentário?')) return;
-            void deleteFeedComment(post.id, commentId).then((result) => replace({ ...result.post, commentsOpen: true }));
+            void deleteFeedComment(post.id, commentId).then((result) => replace({ ...result.post, commentsOpen: true })).catch(() => toast.error('Não foi possível excluir o comentário.'));
           }}
         />
-        {shareId === post.id ? (
+        {shareId === cardKey ? (
           <div className="mt-2 flex gap-2 rounded-xl border bg-card p-3 text-sm">
             <button type="button" className="rounded-lg border px-3 py-1.5" onClick={() => void copy(post)}>Copiar link</button>
             <button type="button" className="rounded-lg border px-3 py-1.5" onClick={() => void share(post)}>Compartilhar</button>
             <button type="button" className="rounded-lg px-3 py-1.5 text-muted-foreground" onClick={() => setShareId(null)}>Cancelar</button>
           </div>
         ) : null}
-        {repostId === post.id ? (
+        {repostId === cardKey ? (
           <form className="mt-2 rounded-xl border bg-card p-3" onSubmit={(event) => { event.preventDefault(); void sendRepost(post); }}>
-            <label className="text-sm font-medium" htmlFor={`nota-${post.id}`}>Comentário da republicação</label>
-            <textarea id={`nota-${post.id}`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Opcional" className="mt-2 w-full rounded-lg border bg-background px-3 py-2 text-sm" />
+            <label className="text-sm font-medium" htmlFor={`nota-${cardKey}`}>Comentário da republicação</label>
+            <textarea id={`nota-${cardKey}`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Opcional" className="mt-2 w-full rounded-lg border bg-background px-3 py-2 text-sm" />
             <div className="mt-2 flex gap-2">
               <button type="submit" className="rounded-lg bg-primary px-3 py-1.5 text-sm text-primary-foreground">Republicar</button>
               <button type="button" className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground" onClick={() => setRepostId(null)}>Cancelar</button>
@@ -285,7 +307,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
         </div>
       ) : null}
 
-      {savedOnly && visiblePosts.length === 0 ? <p className="unica-surface px-5 py-8 text-center text-[13px] text-muted-foreground">Nenhuma publicação salva.</p> : null}
+      {savedOnly && visiblePosts.length === 0 && visibleReposts.length === 0 ? <p className="unica-surface px-5 py-8 text-center text-[13px] text-muted-foreground">Nenhuma publicação salva.</p> : null}
 
       {preview && mode === 'mural' ? <FeedPreview /> : null}
 
@@ -296,30 +318,10 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
       {visibleReposts.map((repost) => {
         const original = posts.find((post) => post.id === repost.originalId);
         if (!original) return null;
-        return (
-          <PostCard
-            key={repost.id}
-            post={{ ...original, commentsOpen: false }}
-            commentDraft=""
-            republished={repost.userId === user.id}
-            repost={{ name: repost.userName, avatar: repost.avatar, note: repost.note }}
-            onCommentDraft={() => undefined}
-            onLike={() => undefined}
-            onShare={() => setShareId(original.id)}
-            onToggleComments={() => undefined}
-            onAddComment={() => undefined}
-            onLikeComment={() => undefined}
-            onVote={() => undefined}
-            onRepublish={() => {
-              if (repost.userId === user.id) {
-                void cancelRepost(repost.id).then(() => setReposts((current) => current.filter((item) => item.id !== repost.id)));
-              }
-            }}
-          />
-        );
+        return renderFeedPost(original, `repost-${repost.id}`, repost);
       })}
 
-      {visiblePosts.map(renderFeedPost)}
+      {visiblePosts.map((post) => renderFeedPost(post))}
     </div>
     </ExpandProvider>
   );

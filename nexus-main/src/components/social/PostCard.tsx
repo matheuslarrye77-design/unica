@@ -4,7 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { FileText, Lock, MoreHorizontal } from 'lucide-react';
 import { PhotoGallery } from './PhotoGallery';
 import { ReadMore } from './ReadMore';
-import { useEffect, useRef, useState, type FC } from 'react';
+import { useEffect, useRef, type FC } from 'react';
 import { Link } from 'react-router-dom';
 import { AnnouncementPost } from './AnnouncementPost';
 import { Comments } from './Comments';
@@ -68,16 +68,16 @@ export const PostCard: FC<{
   onPasteFile?: (file: File) => void;
   onGifFile?: (file: File) => void;
   repost?: { name: string; avatar: string; note: string };
+  anchorId?: string;
   preview?: boolean;
-}> = ({ post, commentDraft, onCommentDraft, onLike, onReact, onToggleSave, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, republished, canDeleteComment, onDeleteComment, pendingMedia, onMedia, onGifFile, onPasteFile, repost }) => {
+}> = ({ post, commentDraft, onCommentDraft, onLike, onReact, onToggleSave, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, republished, canDeleteComment, onDeleteComment, pendingMedia, onMedia, onGifFile, onPasteFile, repost, anchorId }) => {
   const plain = post.kind === 'text' || post.kind === 'image' || post.kind === 'leadership';
-  const [imagesOpen, setImagesOpen] = useState(false);
-  const imageTotal = post.blocks?.filter((block) => block.type === 'image' && block.display !== 'sticker' && block.display !== 'gif').length ?? 0;
+  const domId = anchorId ?? post.id;
+  const blocks = (post.blocks ?? []).filter((block) => !(post.kind === 'poll' && block.type === 'text'));
   const mood = MOODS.find((item) => item.emoji === post.mood);
-  let shownImages = 0;
 
   return (
-      <article id={post.id} className="unica-surface px-4 py-3">
+      <article id={domId} className="unica-surface px-4 py-3">
       {repost ? (
         <div className="mb-3 flex items-center gap-2 text-[12px] text-muted-foreground">
           <img src={repost.avatar} alt="" className="h-6 w-6 rounded-full bg-muted" />
@@ -121,24 +121,17 @@ export const PostCard: FC<{
         </DropdownMenu>
       </header>
 
-      {post.blocks && post.blocks.length > 0 ? (
+      {blocks.length > 0 ? (
         <div className="mt-2 space-y-2">
-          {post.blocks.map((block, index) => {
-            if (block.type === 'text') return <ReadMore key={`${post.id}-texto-${index}`} id={`${post.id}-texto-${index}`} text={block.text} className="text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90" />;
+          {blocks.map((block, index) => {
+            if (block.type === 'text') return <ReadMore key={`${domId}-texto-${index}`} id={`${domId}-texto-${index}`} text={block.text} className="text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90" />;
             if (block.display === 'sticker' || block.display === 'gif') return <img key={`${post.id}-imagem-${index}`} src={block.url} alt={block.display === 'gif' ? 'GIF' : 'Figurinha'} className="h-24 w-24 rounded-xl bg-[#F8EAFB] object-contain" />;
-            shownImages += 1;
-            if (imageTotal > 1 && !imagesOpen && shownImages > 1) return null;
             return <img key={`${post.id}-imagem-${index}`} src={block.url} alt="" className="max-h-[480px] w-full rounded-[12px] bg-[#F8F7FC] object-contain" />;
           })}
-          {imageTotal > 1 ? (
-            <button type="button" className="text-[13px] font-semibold text-[#8E35B8] hover:underline" onClick={() => setImagesOpen((open) => !open)}>
-              {imagesOpen ? 'Ler menos' : 'Ler mais'}
-            </button>
-          ) : null}
         </div>
       ) : (
         <>
-          {plain && post.body ? <div className="mt-2"><ReadMore id={`${post.id}-texto`} text={post.body} className="text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90" /></div> : null}
+          {plain && post.body ? <div className="mt-2"><ReadMore id={`${domId}-texto`} text={post.body} className="text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90" /></div> : null}
           {post.images && post.images.length > 0 ? <PhotoGallery images={post.images} /> : post.kind === 'image' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-contain bg-[#F8F7FC]" /> : null}
         </>
       )}
@@ -164,17 +157,17 @@ export const PostCard: FC<{
       ) : null}
 
       {post.kind === 'announcement' ? <AnnouncementPost post={post} /> : null}
-      {post.kind === 'recognition' ? <RecognitionPost post={post} /> : null}
-      {post.kind === 'poll' ? <PollPost post={post} onVote={onVote} /> : null}
-      {post.kind === 'event' ? <EventPost post={post} /> : null}
+      {post.kind === 'recognition' ? <RecognitionPost post={post} expandId={`${domId}-reconhecimento`} /> : null}
+      {post.kind === 'poll' ? <PollPost post={post} onVote={onVote} expandId={`${domId}-enquete`} /> : null}
+      {post.kind === 'event' ? <EventPost post={post} expandId={`${domId}-evento`} /> : null}
 
       {repost ? (
         <Link to={`/publicacao/${post.id}`} className="mt-3 block text-sm font-medium text-primary">Ver publicação original</Link>
       ) : null}
       <PostActions post={post} republished={republished} onLike={onLike} onReact={onReact} onToggleSave={onToggleSave} onComment={onToggleComments} onShare={onShare} onRepublish={onRepublish} />
-      {post.commentsOpen && !repost ? (
+      {post.commentsOpen ? (
         <Comments
-          inputId={`comentario-${post.id}`}
+          inputId={`comentario-${domId}`}
           comments={post.comments}
           draft={commentDraft}
           onDraft={onCommentDraft}

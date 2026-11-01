@@ -41,13 +41,17 @@ export const PostActions: FC<{
   const [picker, setPicker] = useState(false);
   const [people, setPeople] = useState(false);
   const closeTimer = useRef<number | null>(null);
+  const readyToReact = useRef(false);
   function openPicker() {
     if (closeTimer.current) window.clearTimeout(closeTimer.current);
     setPicker(true);
   }
   function scheduleClose() {
     if (closeTimer.current) window.clearTimeout(closeTimer.current);
-    closeTimer.current = window.setTimeout(() => setPicker(false), 280);
+    closeTimer.current = window.setTimeout(() => {
+      setPicker(false);
+      readyToReact.current = false;
+    }, 280);
   }
   const selected = post.myReactions?.[0] ?? post.reaction ?? (post.liked ? 'like' : null);
   const saved = Boolean(post.saved);
@@ -64,6 +68,7 @@ export const PostActions: FC<{
 
   function choose(kind: 'like' | 'love') {
     setPicker(false);
+    readyToReact.current = false;
     if (onReact) onReact(kind);
     else onLike();
   }
@@ -129,7 +134,11 @@ export const PostActions: FC<{
               aria-expanded={picker}
               className={`inline-flex h-8 items-center gap-1.5 rounded-full px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${selected === 'love' ? 'font-semibold text-[#7C3AED]' : selected === 'like' ? 'font-semibold text-[#1877F2]' : 'hover:bg-accent'}`}
               onClick={() => {
-                if (picker) return;
+                if (readyToReact.current) {
+                  choose(selected === 'love' ? 'love' : 'like');
+                  return;
+                }
+                readyToReact.current = true;
                 setPicker(true);
               }}
             >
