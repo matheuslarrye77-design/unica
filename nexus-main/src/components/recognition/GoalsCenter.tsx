@@ -223,9 +223,7 @@ type Board = {
   startPreset: () => void;
   startCustom: () => void;
   startOverall: () => void;
-  overallOn: Record<string, boolean>;
   presetOn: Record<string, boolean>;
-  toggleOverall: (id: string) => void;
   togglePreset: (id: string) => void;
   pickPreset: (indicator: string) => void;
   talk: (text: string) => Promise<void>;
@@ -260,7 +258,6 @@ export const GoalsProvider: FC<{
   const [pendingRules, setPendingRules] = useState<PendingRules | null>(null);
   const [conference, setConference] = useState<GoalsConference | null>(null);
   const [pendingPodium, setPendingPodium] = useState<Criterion | null>(null);
-  const [overallOn, setOverallOn] = useState<Record<string, boolean>>({ resolvidosCount: true, satisfacao: false, primeira: true, resolucao: true });
   const [presetOn, setPresetOn] = useState<Record<string, boolean>>({ resolvidosCount: true, satisfacao: true, primeira: true, resolucao: true });
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: 'hello',
@@ -306,12 +303,7 @@ export const GoalsProvider: FC<{
   function startOverall() {
     setPhase('overall');
     setPendingPodium(null);
-    setOverallOn({ resolvidosCount: true, satisfacao: false, primeira: true, resolucao: true });
-    say('bot', 'Desempenho geral: marque os indicadores. Os pesos se dividem igualmente entre os escolhidos. Quem não cumpre a condição de entrada zera aquela parcela; o melhor elegível leva o peso inteiro. Transferidos ficam de fora e o pódio não muda.');
-  }
-
-  function toggleOverall(id: string) {
-    setOverallOn((current) => ({ ...current, [id]: !current[id] }));
+    say('bot', 'Desempenho geral: envie as condições de entrada e os resultados. Identifico os indicadores na mensagem, distribuo os pesos igualmente e não peço para marcar nada. Quem não cumpre a condição zera aquela parcela; o melhor elegível leva o peso inteiro. Transferidos ficam de fora e o pódio não muda.');
   }
 
   function togglePreset(id: string) {
@@ -370,11 +362,9 @@ export const GoalsProvider: FC<{
         text: source,
         history,
         mode: phase === 'idle' ? (selected.mode || 'custom') : phase,
-        indicators: phase === 'overall'
-          ? OVERALL_OPTIONS.filter((item) => overallOn[item.id]).map((item) => item.id)
-          : phase === 'preset'
-            ? OVERALL_OPTIONS.filter((item) => presetOn[item.id]).map((item) => item.id)
-            : undefined,
+        indicators: phase === 'preset'
+          ? OVERALL_OPTIONS.filter((item) => presetOn[item.id]).map((item) => item.id)
+          : undefined,
       });
       if (data.kind === 'unavailable' || data.kind === 'quota' || data.kind === 'auth' || data.kind === 'permission' || data.kind === 'model' || data.kind === 'invalid' || data.kind === 'clarify' || data.kind === 'storage') setDraft(source);
       else setDraft('');
@@ -524,9 +514,7 @@ export const GoalsProvider: FC<{
     startPreset,
     startCustom,
     startOverall,
-    overallOn,
     presetOn,
-    toggleOverall,
     togglePreset,
     pickPreset,
     talk,
@@ -536,15 +524,14 @@ export const GoalsProvider: FC<{
     cancelProposal,
     onFile,
     lastReport: lastReport.current,
-  }), [goals, selected, phase, preview, periodKey, replace, pendingRules, conference, pendingPodium, overallOn, presetOn, messages, draft, busy]);
+  }), [goals, selected, phase, preview, periodKey, replace, pendingRules, conference, pendingPodium, presetOn, messages, draft, busy]);
 
   return <BoardContext.Provider value={value}>{children}</BoardContext.Provider>;
 };
 
 export const GoalsCenter: FC = () => {
   const board = useBoard();
-  const { goals, selected, phase, preview, periodKey, replace, setPeriodKey, setReplace, busy, startPreset, startCustom, startOverall, overallOn, presetOn, toggleOverall, togglePreset, patchRow, approveWith } = board;
-  const overallShare = Math.round((100 / Math.max(1, OVERALL_OPTIONS.filter((item) => overallOn[item.id]).length)) * 100) / 100;
+  const { goals, selected, phase, preview, periodKey, replace, setPeriodKey, setReplace, busy, startPreset, startCustom, startOverall, presetOn, togglePreset, patchRow, approveWith } = board;
 
   const cards = [
     {
@@ -564,7 +551,7 @@ export const GoalsCenter: FC = () => {
     {
       id: 'overall' as const,
       title: 'Desempenho Geral',
-      text: 'Nota de 0 a 100 distribuída entre os colaboradores nos indicadores escolhidos, com pesos iguais e condição de entrada.',
+      text: 'Identifico na mensagem quais indicadores entram na avaliação e distribuo a nota de 0 a 100 com pesos iguais e condição de entrada.',
       icon: Star,
       points: ['1 indicador 100%, 2 indicadores 50% cada, 3 cerca de 33,33%, 4 com 25%', 'Quem não cumpre a condição zera aquela parcela', 'O melhor elegível leva o peso inteiro; os demais são proporcionais'],
     },
@@ -627,17 +614,6 @@ export const GoalsCenter: FC = () => {
                       <label key={item.id} className="flex items-center gap-2 text-[12px] text-[#5C5168]">
                         <input type="checkbox" checked={Boolean(presetOn[item.id])} onChange={() => togglePreset(item.id)} />
                         <span>{item.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                ) : null}
-                {card.id === 'overall' && phase === 'overall' ? (
-                  <div className="mt-3 grid gap-1.5 rounded-2xl bg-[#FBF8FC] p-2">
-                    {OVERALL_OPTIONS.map((item) => (
-                      <label key={item.id} className="flex items-center gap-2 text-[12px] text-[#5C5168]">
-                        <input type="checkbox" checked={Boolean(overallOn[item.id])} onChange={() => toggleOverall(item.id)} />
-                        <span className="flex-1">{item.label}</span>
-                        {overallOn[item.id] ? <span>{overallShare}%</span> : null}
                       </label>
                     ))}
                   </div>
@@ -1015,8 +991,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
 
 export const GoalsAssistant: FC = () => {
   const board = useBoard();
-  const { goals, messages, draft, setDraft, busy, talk, phase, pickPreset, pendingRules, setPendingRules, conference, pendingPodium, confirmPodium, saveTemplate, cancelProposal, overallOn, presetOn, toggleOverall, togglePreset } = board;
-  const overallShare = Math.round((100 / Math.max(1, OVERALL_OPTIONS.filter((item) => overallOn[item.id]).length)) * 100) / 100;
+  const { goals, messages, draft, setDraft, busy, talk, phase, pickPreset, pendingRules, setPendingRules, conference, pendingPodium, confirmPodium, saveTemplate, cancelProposal, presetOn, togglePreset } = board;
   const thread = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [bankOpen, setBankOpen] = useState(false);
@@ -1075,18 +1050,6 @@ export const GoalsAssistant: FC = () => {
               <button type="button" disabled={busy} onClick={() => void confirmPodium()} className="h-9 rounded-full bg-[#8E35B8] text-[12.5px] font-semibold text-white disabled:bg-[#C9A6DC]">Confirmar pódio</button>
               <button type="button" disabled={busy} onClick={cancelProposal} className="h-9 rounded-full border border-[#E7DFF0] text-[12.5px] font-semibold text-[#6A228C]">Cancelar</button>
             </div>
-          </div>
-        ) : null}
-        {phase === 'overall' && !conference ? (
-          <div className="grid gap-1.5 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
-            <p className="text-[12px] font-semibold text-[#4A1C73]">Indicadores desta avaliação</p>
-            {OVERALL_OPTIONS.map((item) => (
-              <label key={item.id} className="flex items-center gap-2 text-[12.5px] text-[#5C5168]">
-                <input type="checkbox" checked={Boolean(overallOn[item.id])} onChange={() => toggleOverall(item.id)} />
-                <span className="flex-1">{item.label}</span>
-                {overallOn[item.id] ? <span>{overallShare}%</span> : null}
-              </label>
-            ))}
           </div>
         ) : null}
         {phase === 'custom' && !pendingRules && !conference ? (

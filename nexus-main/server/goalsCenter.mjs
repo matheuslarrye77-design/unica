@@ -160,7 +160,7 @@ function citedKnown(source) {
   return {
     resolvidosCount: /ticket|resolvido/.test(folded) && !named && !/qualidade/.test(folded),
     satisfacao: /satisfa/.test(folded) && !named,
-    primeira: /primeira resposta/.test(folded),
+    primeira: /primeira(?:\s+resposta)?|\btpr\b/.test(folded),
     resolucao: /\btma\b|tempo medio/.test(folded),
   };
 }
@@ -208,21 +208,22 @@ function parseOverallWeights(source) {
   return found;
 }
 
+function fieldsWithValues(rows) {
+  return OVERALL_FIELDS.filter((item) => (rows ?? []).some((row) => resultValue(row, item.id) != null)).map((item) => item.id);
+}
+
 function selectedOverall(source, options = {}) {
-  const allowed = new Set(OVERALL_FIELDS.map((item) => item.id));
-  const fromUi = (Array.isArray(options.indicators) ? options.indicators : [])
-    .map((item) => (item === 'resolvidos' ? 'resolvidosCount' : item))
-    .filter((item) => allowed.has(item));
-  if (fromUi.length) return fromUi;
   const weighted = parseOverallWeights(source);
   const fromText = OVERALL_FIELDS.filter((item) => weighted[item.weightKey] != null).map((item) => item.id);
   if (fromText.length) return fromText;
   const cited = citedKnown(source);
-  const mentioned = OVERALL_FIELDS.filter((item) => cited[item.id] || (item.id === 'resolvidosCount' && cited.resolvidosCount)).map((item) => item.id);
+  const mentioned = OVERALL_FIELDS.filter((item) => cited[item.id]).map((item) => item.id);
   if (mentioned.length) return mentioned;
-  const store = options.weights ?? {};
-  const fromStore = OVERALL_FIELDS.filter((item) => finite(store[item.weightKey]) > 0).map((item) => item.id);
-  return fromStore.length ? fromStore : ['resolvidosCount', 'primeira', 'resolucao'];
+  const fromRules = OVERALL_FIELDS.filter((item) => ruleForIndicator(options.localRules ?? [], item.id)).map((item) => item.id);
+  if (fromRules.length) return fromRules;
+  const fromRows = fieldsWithValues(options.localRows);
+  if (fromRows.length) return fromRows;
+  return OVERALL_FIELDS.filter((item) => ruleForIndicator(options.bank ?? [], item.id) && (options.records ?? []).some((row) => resultValue(row, item.id) != null)).map((item) => item.id);
 }
 
 function equalWeights(selected) {
@@ -241,7 +242,7 @@ function equalWeights(selected) {
 }
 
 function packOverallWeights(selected) {
-  if (!selected.length) return { error: ['pelo menos um indicador para o desempenho geral'] };
+  if (!selected.length) return { error: ['os indicadores desta avaliação (tickets, satisfação, primeira resposta ou TMA), pelos nomes ou pelos resultados enviados'] };
   return { pack: equalWeights(selected) };
 }
 
@@ -725,7 +726,7 @@ function centerPrompt(text, history, options) {
 function combinedSource(text, history) {
   const prior = (history ?? [])
     .map((item) => (typeof item === 'string' ? item : item?.text))
-    .filter((item) => item && !/olá!|escreva a regra|vou calcular|estamos nos criterios|desempenho geral:|criterios predefinidos:|criterio personalizado e so|transferidos ficam de fora/i.test(item));
+    .filter((item) => item && !/olá!|escreva a regra|vou calcular|estamos nos criterios|desempenho geral:|criterios predefinidos:|criterio personalizado e so|transferidos ficam de fora|identifico os indicadores/i.test(item));
   return [...prior, text].filter(Boolean).join('\n');
 }
 
@@ -778,11 +779,11 @@ function interpretOverall(source, options) {
   const people = options.people ?? [];
   const local = localExtract(source, people);
   const period = readGoalPeriod(source).ok ? readGoalPeriod(source) : local.period;
-  const selected = selectedOverall(source, options);
-  const packed = packOverallWeights(selected);
   const bank = rulesFromBank(options.managementGoals, period.periodKey);
-  const rules = rulesForSelected(source, local, bank, selected);
   const records = recordsForPeriod(local, options, period);
+  const selected = selectedOverall(source, { localRules: local.rules, localRows: local.rows, bank, records });
+  const packed = packOverallWeights(selected);
+  const rules = rulesForSelected(source, local, bank, selected);
   const missing = [];
   if (!period.periodLabel) missing.push('o período com mês e ano');
   if (packed.error) missing.push(...packed.error);

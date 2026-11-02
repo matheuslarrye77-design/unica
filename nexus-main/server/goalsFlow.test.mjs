@@ -130,7 +130,9 @@ test('a interface do banco mostra mês/ano, gestão e resultados separados', () 
   assert.match(ui, /pendingPodium/);
   assert.match(ui, /Confirmar pódio/);
   assert.match(ui, /OVERALL_OPTIONS/);
-  assert.match(ui, /overallOn/);
+  assert.match(ui, /Identifico na mensagem/);
+  assert.equal(ui.includes('overallOn'), false);
+  assert.equal(ui.includes('Desempenho geral: marque os indicadores'), false);
   assert.match(ui, /mode: phase === 'idle'/);
   assert.equal(ui.includes('Olá! Envie os relatórios da equipe'), false);
   assert.equal(ui.includes('Escreva com suas palavras como o pódio deve funcionar'), false);
@@ -551,12 +553,13 @@ test('desempenho geral usa pesos iguais, elegibilidade e não muda o pódio', as
   const persist = memoryGoalsStore();
   const first = await postCenter({ text: NATURAL_MESSAGE, mode: 'preset' }, { store: persist });
   await postCenter({ action: 'confirm', text: 'confirmar', conference: first.body.conference }, { store: persist });
-  const overall = await postCenter({ text: 'Calcule o desempenho geral de novembro de 2026. Não alterar o pódio.', mode: 'overall', indicators: ['resolvidosCount', 'primeira', 'resolucao'] }, { store: persist });
+  const overall = await postCenter({ text: 'Calcule o desempenho geral de novembro de 2026. Não alterar o pódio.', mode: 'overall' }, { store: persist });
   assert.equal(overall.body.kind, 'conference');
   assert.equal(overall.body.conference.overall.scores.length, 2);
   assert.equal(new Set(overall.body.conference.overall.scores.map((item) => item.userId)).size, 2);
   assert.equal(overall.body.conference.overall.excludes.includes('transferidos'), true);
-  assert.equal(overall.body.conference.overall.weights.resolvidos, 33.33);
+  assert.equal(overall.body.conference.overall.selected.length, 4);
+  assert.equal(overall.body.conference.overall.weights.resolvidos, 25);
   const saved = await postCenter({ action: 'confirm', text: 'confirmar', conference: overall.body.conference }, { store: persist });
   assert.equal(saved.body.criterion.mode, 'preset');
   assert.equal((saved.body.ledger.applied ?? []).length, 0);
@@ -593,8 +596,6 @@ test('desempenho geral recupera metas do período, calcula nota e não exige ind
   const overall = await postCenter({
     text: MARCH_OVERALL,
     mode: 'overall',
-    indicators: ['resolvidosCount', 'primeira', 'resolucao'],
-    weights: { resolvidos: 40, primeira: 25, resolucao: 35, floor: 70 },
   }, { store: persist });
   assert.equal(overall.body.kind, 'conference');
   assert.equal(overall.body.conference.mode, 'overall');
@@ -624,8 +625,6 @@ test('desempenho geral aceita 1, 2 e 4 indicadores sem zerar os que ficaram de f
   const one = await postCenter({
     text: 'Desempenho geral de março de 2027. Rafael Oliveira: 300 tickets. Felipe Costa: 400 tickets. Conferir. Não alterar o pódio.',
     mode: 'overall',
-    indicators: ['resolvidosCount'],
-    weights: { resolvidos: 100, floor: 70 },
   }, { store: persist });
   assert.equal(one.body.kind, 'conference');
   assert.deepEqual(one.body.conference.overall.selected, ['resolvidosCount']);
@@ -635,8 +634,6 @@ test('desempenho geral aceita 1, 2 e 4 indicadores sem zerar os que ficaram de f
   const two = await postCenter({
     text: 'Desempenho geral de março de 2027. Rafael Oliveira: 300 tickets e 94% de satisfação. Felipe Costa: 400 tickets e 97% de satisfação. Conferir. Não alterar o pódio.',
     mode: 'overall',
-    indicators: ['resolvidosCount', 'satisfacao'],
-    weights: { resolvidos: 40, satisfacao: 60, floor: 70 },
   }, { store: persist });
   assert.equal(two.body.kind, 'conference');
   assert.equal(two.body.conference.overall.weights.resolvidos, 50);
@@ -646,8 +643,6 @@ test('desempenho geral aceita 1, 2 e 4 indicadores sem zerar os que ficaram de f
   const four = await postCenter({
     text: 'Desempenho geral de março de 2027. Rafael Oliveira: 300 tickets, 94% de satisfação, 4 min de primeira resposta e TMA 10 min. Felipe Costa: 400 tickets, 97% de satisfação, 3 min de primeira resposta e TMA 6 min. Conferir. Não alterar o pódio.',
     mode: 'overall',
-    indicators: ['resolvidosCount', 'satisfacao', 'primeira', 'resolucao'],
-    weights: { resolvidos: 25, satisfacao: 25, primeira: 25, resolucao: 25, floor: 70 },
   }, { store: persist });
   assert.equal(four.body.kind, 'conference');
   assert.equal(four.body.conference.overall.selected.length, 4);
@@ -702,8 +697,7 @@ test('desempenho geral lê as condições da mensagem mesmo com o histórico do 
   const result = await postCenter({
     text: APRIL_OVERALL,
     mode: 'overall',
-    indicators: ['resolvidosCount', 'satisfacao', 'primeira', 'resolucao'],
-    history: [{ text: 'Desempenho geral: marque os indicadores. Os pesos se dividem igualmente entre os escolhidos. Quem não cumpre a condição de entrada zera aquela parcela; o melhor elegível leva o peso inteiro. Transferidos ficam de fora e o pódio não muda.' }],
+    history: [{ text: 'Desempenho geral: envie as condições de entrada e os resultados. Identifico os indicadores na mensagem, distribuo os pesos igualmente e não peço para marcar nada. Quem não cumpre a condição zera aquela parcela; o melhor elegível leva o peso inteiro. Transferidos ficam de fora e o pódio não muda.' }],
   });
   assert.equal(result.body.kind, 'conference');
   assert.equal(result.body.persist, false);
@@ -735,12 +729,27 @@ test('desempenho geral lê as condições da mensagem mesmo com o histórico do 
   assert.equal(result.body.conference.people.length, 3);
 });
 
+test('desempenho geral ignora seleção manual e usa só os indicadores da mensagem', async () => {
+  const persist = memoryGoalsStore();
+  const goals = await postCenter({ text: MARCH_GOALS, mode: 'preset' }, { store: persist });
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: goals.body.conference }, { store: persist });
+  const result = await postCenter({
+    text: 'Desempenho geral de março de 2027. Rafael Oliveira: 300 tickets e 4 min de primeira resposta. Felipe Costa: 400 tickets e 3 min de primeira resposta. Conferir. Não alterar o pódio.',
+    mode: 'overall',
+    indicators: ['resolvidosCount', 'satisfacao', 'primeira', 'resolucao'],
+  }, { store: persist });
+  assert.equal(result.body.kind, 'conference');
+  assert.equal(result.body.persist, false);
+  assert.deepEqual(result.body.conference.overall.selected.sort(), ['primeira', 'resolvidosCount']);
+  assert.equal(result.body.conference.overall.weights.resolvidos, 50);
+  assert.equal(result.body.conference.overall.weights.primeira, 50);
+  assert.equal(result.body.conference.overall.selected.includes('satisfacao'), false);
+});
+
 test('desempenho geral pede só a meta do indicador selecionado que faltar', async () => {
   const result = await postCenter({
     text: 'Desempenho geral de março de 2027. Rafael Oliveira primeira resposta 4 minutos. Felipe Costa primeira resposta 3 minutos. Conferir. Não alterar o pódio.',
     mode: 'overall',
-    indicators: ['primeira'],
-    weights: { primeira: 100, floor: 70 },
   });
   assert.equal(result.body.kind, 'clarify');
   assert.match(result.body.reply, /primeira resposta/i);

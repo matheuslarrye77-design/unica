@@ -225,7 +225,9 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
         mode: String(body.mode ?? store.criterion?.mode ?? 'custom'),
         weights: store.weights,
         evaluationWeights: body.weights && typeof body.weights === 'object' ? body.weights : null,
-        indicators: Array.isArray(body.indicators) ? body.indicators : [],
+        indicators: String(body.mode ?? store.criterion?.mode ?? '') === 'overall'
+          ? []
+          : (Array.isArray(body.indicators) ? body.indicators : []),
         criterion: store.criterion,
         managementGoals: store.managementGoals,
         ledger: store.ledger,
