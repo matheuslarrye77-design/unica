@@ -7,7 +7,7 @@ const DEFAULT_WEIGHTS = { resolvidos: 40, primeira: 25, resolucao: 35, floor: 70
 const DEFAULT_TIE = ['resolvidos', 'primeira', 'resolucao'];
 
 export function defaultCriterion() {
-  return { mode: 'preset', indicator: 'resolvidos', templateId: '' };
+  return { mode: 'overall', indicator: 'resolvidos', templateId: '' };
 }
 
 export function emptyStore() {
@@ -29,7 +29,7 @@ export function emptyStore() {
 }
 
 export function readCriterion(value) {
-  const mode = value?.mode === 'custom' || value?.mode === 'overall' ? value.mode : 'preset';
+  const mode = value?.mode === 'custom' ? 'custom' : 'overall';
   const indicator = INDICATORS.includes(value?.indicator) ? value.indicator : 'resolvidos';
   return { mode, indicator, templateId: String(value?.templateId ?? '') };
 }
@@ -1455,7 +1455,7 @@ function presentPodium(item) {
   return {
     periodKey: String(source.periodKey ?? ''),
     periodLabel: String(source.periodLabel ?? ''),
-    mode: source.mode === 'overall' || source.mode === 'custom' ? source.mode : 'preset',
+    mode: source.mode === 'custom' ? 'custom' : 'overall',
     modeLabel: String(source.modeLabel ?? ''),
     channel: source.channel === 'Ligação' || source.channel === 'Chat' || source.channel === 'E-mail' ? source.channel : '',
     selected: Array.isArray(source.selected) ? source.selected.map((id) => String(id)) : [],
@@ -1637,7 +1637,7 @@ export function runAssistant({ text, store, people, preview, periodKey, intent }
 
   if (/^confirmar podio(?: com| usando)? (tickets resolvidos|primeira resposta|tempo medio(?: de resolucao)?|tickets transferidos)$/.test(folded)) {
     const indicator = /transferid/.test(folded) ? 'transferidos' : /primeira/.test(folded) ? 'primeira' : /resolu/.test(folded) && !/resolvid/.test(folded) ? 'resolucao' : 'resolvidos';
-    return { kind: 'criterion', criterion: { mode: 'preset', indicator, templateId: '' }, reply: `Vou usar ${indicator} como critério predefinido do pódio.` };
+    return { kind: 'criterion', criterion: { mode: 'overall', indicator, templateId: '' }, reply: `Vou usar ${indicator} no desempenho geral do pódio.` };
   }
 
   return { kind: 'ask', reply: 'Não identifiquei esse pedido. Cole um relatório, peça as metas atuais, o desempenho geral ou descreva um pódio personalizado com números.' };

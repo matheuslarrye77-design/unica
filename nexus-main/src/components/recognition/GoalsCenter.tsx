@@ -206,7 +206,7 @@ function ruleConference(rule: Rule & { name?: string }, periodLabel?: string) {
 }
 
 type ChatMessage = { id: string; from: 'bot' | 'user'; text: string };
-type Phase = 'idle' | 'preset' | 'custom' | 'overall';
+type Phase = 'idle' | 'custom' | 'overall';
 
 function headers() {
   return { ...authHeaders(), ...(LOGIN_REQUIRED ? {} : { 'x-unica-demo': getDemoId() }) };
@@ -262,12 +262,10 @@ type Board = {
   setDraft: (value: string) => void;
   busy: boolean;
   choose: (next: Criterion, silent?: boolean) => Promise<void>;
-  startPreset: () => void;
   startCustom: () => void;
   startOverall: () => void;
-  presetOn: Record<string, boolean>;
-  togglePreset: (id: string) => void;
-  pickPreset: (indicator: string) => void;
+  overallOn: Record<string, boolean>;
+  toggleOverall: (id: string) => void;
   talk: (text: string) => Promise<void>;
   approveWith: (reportText: string) => Promise<void>;
   patchRow: (index: number, patch: Partial<Row>) => void;
@@ -300,7 +298,7 @@ export const GoalsProvider: FC<{
   const [pendingRules, setPendingRules] = useState<PendingRules | null>(null);
   const [conference, setConference] = useState<GoalsConference | null>(null);
   const [pendingPodium, setPendingPodium] = useState<Criterion | null>(null);
-  const [presetOn, setPresetOn] = useState<Record<string, boolean>>({ resolvidosCount: true, transferidos: true, primeira: true, resolucao: true });
+  const [overallOn, setOverallOn] = useState<Record<string, boolean>>({ resolvidosCount: true, transferidos: true, primeira: true, resolucao: true });
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: 'hello',
     from: 'bot',
@@ -308,7 +306,9 @@ export const GoalsProvider: FC<{
   }]);
   const lastReport = useRef('');
   const saving = useRef(false);
-  const selected = goals.criterion ?? { mode: 'preset' as const, indicator: 'resolvidos' };
+  const selected = goals.criterion?.mode === 'custom'
+    ? goals.criterion
+    : { ...(goals.criterion ?? { indicator: 'resolvidos', templateId: '' }), mode: 'overall' as const };
 
   function say(from: ChatMessage['from'], text: string) {
     setMessages((current) => [...current, { id: `${Date.now()}-${from}-${current.length}`, from, text }]);
@@ -330,26 +330,24 @@ export const GoalsProvider: FC<{
     }
   }
 
-  function startPreset() {
-    setPhase('preset');
-    setPendingPodium(null);
-    say('bot', 'Critérios predefinidos: marque os indicadores conhecidos desta avaliação. Mostro os números reais e se a meta foi atingida, sem nota percentual. O pódio só muda com confirmação explícita.');
-  }
-
   function startCustom() {
     setPhase('custom');
     setPendingPodium(null);
-    say('bot', 'Critério personalizado é só para criar um indicador que ainda não existe. Escreva o nome, a condição e os resultados. Se forem só tickets resolvidos, tickets transferidos, primeira resposta ou TMA, uso os critérios predefinidos.');
+    say('bot', 'Critérios personalizados: crie um indicador inédito, com meta e condição próprias. Se forem só tickets resolvidos, tickets transferidos, primeira resposta ou TMA, uso o desempenho geral.');
   }
 
   function startOverall() {
     setPhase('overall');
     setPendingPodium(null);
-    say('bot', 'Desempenho geral: envie as condições de entrada e os resultados. Identifico os indicadores na mensagem, distribuo os pesos igualmente e não peço para marcar nada. Quem não cumpre a condição zera aquela parcela; o melhor elegível leva o peso inteiro. O pódio não muda.');
+    say('bot', 'Desempenho geral: marque de 1 a 4 indicadores. Distribuo os pesos igualmente, comparo com o melhor da categoria e quem não cumpre a condição zera só aquela parcela. O pódio não muda até a confirmação das metas.');
   }
 
-  function togglePreset(id: string) {
-    setPresetOn((current) => ({ ...current, [id]: !current[id] }));
+  function toggleOverall(id: string) {
+    setOverallOn((current) => {
+      const next = { ...current, [id]: !current[id] };
+      if (!OVERALL_OPTIONS.some((item) => next[item.id])) return current;
+      return next;
+    });
   }
 
   function cancelProposal() {
@@ -359,17 +357,11 @@ export const GoalsProvider: FC<{
     say('bot', 'Cancelei esta conferência. O pódio não foi alterado.');
   }
 
-  async function pickPreset(indicator: string) {
-    const label = METRICS.find((item) => item[0] === indicator)?.[1] ?? indicator;
-    setPendingPodium({ mode: 'preset', indicator, templateId: '' });
-    say('bot', `${label} ficou marcado só para o pódio. As metas não mudam. Confirme o pódio abaixo se for isso, ou escreva as metas predefinidas no chat.`);
-  }
-
   async function confirmPodium(next?: Criterion) {
     const criterion = next ?? pendingPodium;
     if (!criterion) return;
-    await choose(criterion);
-    const label = criterion.mode === 'overall' ? 'desempenho geral' : METRICS.find((item) => item[0] === criterion.indicator)?.[1] ?? criterion.indicator;
+    await choose({ ...criterion, mode: criterion.mode === 'custom' ? 'custom' : 'overall' });
+    const label = criterion.mode === 'custom' ? (METRICS.find((item) => item[0] === criterion.indicator)?.[1] ?? criterion.indicator) : 'desempenho geral';
     setPendingPodium(null);
     say('bot', `Pódio atualizado para ${label}. As metas e o Banco dos relatórios não foram alterados.`);
   }
@@ -403,9 +395,9 @@ export const GoalsProvider: FC<{
       const data = await send('/api/goals/center', 'POST', {
         text: source,
         history,
-        mode: phase === 'idle' ? (selected.mode || 'custom') : phase,
-        indicators: phase === 'preset'
-          ? OVERALL_OPTIONS.filter((item) => presetOn[item.id]).map((item) => item.id)
+        mode: phase === 'idle' ? (selected.mode === 'custom' ? 'custom' : 'overall') : phase,
+        indicators: (phase === 'overall' || (phase === 'idle' && selected.mode !== 'custom'))
+          ? OVERALL_OPTIONS.filter((item) => overallOn[item.id]).map((item) => item.id)
           : undefined,
       });
       if (data.kind === 'unavailable' || data.kind === 'quota' || data.kind === 'auth' || data.kind === 'permission' || data.kind === 'model' || data.kind === 'invalid' || data.kind === 'clarify' || data.kind === 'storage') setDraft(source);
@@ -555,12 +547,10 @@ export const GoalsProvider: FC<{
     setDraft,
     busy,
     choose,
-    startPreset,
     startCustom,
     startOverall,
-    presetOn,
-    togglePreset,
-    pickPreset,
+    overallOn,
+    toggleOverall,
     talk,
     approveWith,
     patchRow,
@@ -568,44 +558,33 @@ export const GoalsProvider: FC<{
     cancelProposal,
     onFile,
     lastReport: lastReport.current,
-  }), [goals, selected, phase, preview, periodKey, replace, pendingRules, conference, pendingPodium, presetOn, messages, draft, busy]);
+  }), [goals, selected, phase, preview, periodKey, replace, pendingRules, conference, pendingPodium, overallOn, messages, draft, busy]);
 
   return <BoardContext.Provider value={value}>{children}</BoardContext.Provider>;
 };
 
 export const GoalsCenter: FC = () => {
   const board = useBoard();
-  const { goals, selected, phase, preview, periodKey, replace, setPeriodKey, setReplace, busy, startPreset, startCustom, startOverall, presetOn, togglePreset, patchRow, approveWith } = board;
+  const { goals, selected, phase, preview, periodKey, replace, setPeriodKey, setReplace, busy, startCustom, startOverall, overallOn, toggleOverall, patchRow, approveWith } = board;
 
   const cards = [
     {
-      id: 'preset' as const,
-      title: 'Critérios Predefinidos',
-      text: 'Compara os números reais com as metas já cadastradas. Dá para usar 1, 2, 3 ou 4 indicadores conhecidos, sem nota percentual.',
-      icon: BarChart3,
-      points: ['Tickets resolvidos', 'Tickets transferidos', 'Tempo de primeira resposta', 'Tempo médio de resolução'],
+      id: 'overall' as const,
+      title: 'Desempenho Geral',
+      text: 'Avalie seus colaboradores utilizando de um a quatro indicadores, com cálculo automático de desempenho.',
+      icon: Star,
+      points: ['Tickets resolvidos, transferidos, primeira resposta e TMA', 'De 1 a 4 indicadores, com pesos iguais', 'Quem não cumpre a condição zera só aquela parcela'],
     },
     {
       id: 'custom' as const,
       title: 'Critérios Personalizados',
-      text: 'Só para criar um indicador que ainda não existe. Indicadores conhecidos ficam nos predefinidos.',
+      text: 'Crie avaliações com indicadores, metas e regras próprias.',
       icon: Settings2,
-      points: ['Maior, menor, igual ou entre valores', 'Dá para combinar mais de um indicador', 'Salva a regra para usar de novo'],
-    },
-    {
-      id: 'overall' as const,
-      title: 'Desempenho Geral',
-      text: 'Identifico na mensagem quais indicadores entram na avaliação e distribuo a nota de 0 a 100 com pesos iguais e condição de entrada.',
-      icon: Star,
-      points: ['1 indicador 100%, 2 indicadores 50% cada, 3 cerca de 33,33%, 4 com 25%', 'Quem não cumpre a condição zera aquela parcela', 'O melhor elegível leva o peso inteiro; os demais são proporcionais'],
+      points: ['Indicadores inéditos, com meta e condição', 'Dá para combinar mais de uma regra', 'Salva o critério para usar de novo'],
     },
   ];
 
-  function onSelect(id: 'preset' | 'custom' | 'overall') {
-    if (id === 'preset') {
-      startPreset();
-      return;
-    }
+  function onSelect(id: 'custom' | 'overall') {
     if (id === 'custom') {
       startCustom();
       return;
@@ -619,8 +598,8 @@ export const GoalsCenter: FC = () => {
         <div className="relative flex items-start gap-3">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/70 text-[#8E35B8]"><Target className="h-6 w-6" /></span>
           <div>
-            <h2 className="flex items-center gap-2 text-[20px] font-semibold text-[#4A1C73]">Central Inteligente de Metas <Hint text="Três modos: predefinidos, personalizados e desempenho geral. Metas e pódio são fluxos separados." /></h2>
-            <p className="mt-0.5 text-[13px] text-[#8A5AA0]">Interprete metas e resultados nos três modos. O pódio só muda com pedido explícito e confirmação.</p>
+            <h2 className="flex items-center gap-2 text-[20px] font-semibold text-[#4A1C73]">Central Inteligente de Metas <Hint text="Dois modos: desempenho geral e critérios personalizados. Metas e pódio são fluxos separados." /></h2>
+            <p className="mt-0.5 text-[13px] text-[#8A5AA0]">Interprete metas e resultados nos dois modos. O pódio só muda com pedido explícito e confirmação.</p>
           </div>
         </div>
       </section>
@@ -630,20 +609,17 @@ export const GoalsCenter: FC = () => {
           <Trophy className="h-4 w-4 text-[#8E35B8]" /> Escolha o modo da Central
         </h3>
         <p className="mt-0.5 text-[12.5px] text-[#8A7C98]">O modo orienta a interpretação. Você pode mudar de assunto no chat a qualquer momento.</p>
-        <div className="mt-3 grid items-stretch gap-3 md:grid-cols-3">
+        <div className="mt-3 grid items-stretch gap-3 sm:grid-cols-2">
           {cards.map((card) => {
             const committed = phase === 'idle' && selected.mode === card.id;
-            const pending = (card.id === 'preset' && phase === 'preset') || (card.id === 'custom' && phase === 'custom') || (card.id === 'overall' && phase === 'overall');
+            const pending = (card.id === 'custom' && phase === 'custom') || (card.id === 'overall' && phase === 'overall');
             const Icon = card.icon;
             return (
-              <article key={card.id} className={cn('relative flex h-full flex-col rounded-[22px] border bg-white p-4 shadow-[0_8px_22px_rgba(80,40,120,0.05)]', committed || pending ? 'border-[#8E35B8]' : 'border-[#EDE4F5]')}>
+              <article key={card.id} className={cn('relative flex h-full flex-col rounded-[22px] border bg-white p-4 shadow-[0_8px_22px_rgba(80,40,120,0.05)]', committed || pending ? 'border-[#8E35B8] ring-1 ring-[#8E35B8]/20' : 'border-[#EDE4F5]')}>
                 {committed ? <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-[#8E35B8] text-white"><Check className="h-3.5 w-3.5" /></span> : null}
                 <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]"><Icon className="h-5 w-5" /></span>
                 <h4 className="mt-3 text-[15px] font-semibold text-[#241B33]">{card.title}</h4>
                 <p className="mt-1 text-[12.5px] leading-5 text-[#8A7C98]">{card.text}</p>
-                {card.id === 'preset' && selected.mode === 'preset' && selected.indicator ? (
-                  <p className="mt-2 text-[12px] font-medium text-[#6A228C]">Ativo: {METRICS.find((item) => item[0] === selected.indicator)?.[1] ?? selected.indicator}</p>
-                ) : null}
                 <ul className="mt-3 grid flex-1 gap-1.5 text-[12.5px] text-[#5C5168]">
                   {card.points.map((point) => (
                     <li key={point} className="flex items-start gap-2">
@@ -652,11 +628,11 @@ export const GoalsCenter: FC = () => {
                     </li>
                   ))}
                 </ul>
-                {card.id === 'preset' && phase === 'preset' ? (
+                {card.id === 'overall' ? (
                   <div className="mt-3 grid gap-1.5 rounded-2xl bg-[#FBF8FC] p-2">
                     {OVERALL_OPTIONS.map((item) => (
                       <label key={item.id} className="flex items-center gap-2 text-[12px] text-[#5C5168]">
-                        <input type="checkbox" checked={Boolean(presetOn[item.id])} onChange={() => togglePreset(item.id)} />
+                        <input type="checkbox" checked={Boolean(overallOn[item.id])} onChange={() => toggleOverall(item.id)} />
                         <span>{item.label}</span>
                       </label>
                     ))}
@@ -1035,7 +1011,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
 
 export const GoalsAssistant: FC = () => {
   const board = useBoard();
-  const { goals, messages, draft, setDraft, busy, talk, phase, pickPreset, pendingRules, setPendingRules, conference, pendingPodium, confirmPodium, saveTemplate, cancelProposal, presetOn, togglePreset } = board;
+  const { goals, messages, draft, setDraft, busy, talk, phase, pendingRules, setPendingRules, conference, pendingPodium, confirmPodium, saveTemplate, cancelProposal, overallOn, toggleOverall } = board;
   const thread = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [bankOpen, setBankOpen] = useState(false);
@@ -1068,21 +1044,14 @@ export const GoalsAssistant: FC = () => {
             <p className={cn('max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-[13px] leading-5', message.from === 'bot' ? 'bg-[#F7F0FB] text-[#3C3148]' : 'bg-[#8E35B8] text-white')}>{message.text}</p>
           </div>
         ))}
-        {phase === 'preset' ? (
-          <div className="grid gap-1.5">
-            <div className="grid gap-1.5 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
-              <p className="text-[12px] font-semibold text-[#4A1C73]">Indicadores desta avaliação</p>
-              {OVERALL_OPTIONS.map((item) => (
-                <label key={item.id} className="flex items-center gap-2 text-[12.5px] text-[#5C5168]">
-                  <input type="checkbox" checked={Boolean(presetOn[item.id])} onChange={() => togglePreset(item.id)} />
-                  {item.label}
-                </label>
-              ))}
-            </div>
-            {METRICS.map(([id, label]) => (
-              <button key={id} type="button" onClick={() => void pickPreset(id)} className="rounded-xl border border-[#E7DFF0] px-3 py-2 text-left text-[12.5px] text-[#6A228C] hover:bg-[#FBF8FC]">
-                {label} no pódio
-              </button>
+        {phase === 'overall' ? (
+          <div className="grid gap-1.5 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
+            <p className="text-[12px] font-semibold text-[#4A1C73]">Indicadores desta avaliação</p>
+            {OVERALL_OPTIONS.map((item) => (
+              <label key={item.id} className="flex items-center gap-2 text-[12.5px] text-[#5C5168]">
+                <input type="checkbox" checked={Boolean(overallOn[item.id])} onChange={() => toggleOverall(item.id)} />
+                {item.label}
+              </label>
             ))}
           </div>
         ) : null}

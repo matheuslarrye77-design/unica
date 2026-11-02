@@ -36,7 +36,7 @@ test('pedido simples vira uma regra e não altera o pódio', async () => {
   assert.equal(result.rules.length, 1);
   assert.equal(result.rules[0].value, 250);
   assert.equal(store.templates.length, 0);
-  assert.equal(store.criterion.mode, 'preset');
+  assert.equal(store.criterion.mode, 'overall');
 });
 
 test('pedido com três indicadores', async () => {
@@ -47,9 +47,9 @@ test('pedido com três indicadores', async () => {
       { indicator: 'resolucao', op: 'lte', value: 18, valueTo: null, period: 'week' },
     ], { weights: { resolvidos: 50, primeira: 20, resolucao: 30 } })),
   });
-  assert.equal(result.ok, false);
-  assert.equal(result.kind, 'clarify');
-  assert.equal(result.rules, undefined);
+  assert.equal(result.ok, true);
+  assert.equal(result.kind, 'proposal');
+  assert.equal(result.rules.length, 3);
 });
 
 test('condições maiores e menores', async () => {
@@ -149,10 +149,10 @@ test('confirmação grava a regra e cancelamento não mexe no histórico', () =>
   const cancelled = commitTemplate(store, proposal, { confirm: false, name: 'Agilidade' });
   assert.equal(cancelled.saved, false);
   assert.equal(store.templates.length, 0);
-  assert.equal(store.criterion.mode, 'preset');
+  assert.equal(store.criterion.mode, 'overall');
   const saved = commitTemplate(store, proposal, { confirm: true, name: 'Agilidade' });
   assert.equal(saved.saved, true);
-  assert.equal(saved.store.criterion.mode, 'preset');
+  assert.equal(saved.store.criterion.mode, 'overall');
   assert.equal(saved.store.templates.length, 1);
   assert.equal(store.templates.length, 0);
 });

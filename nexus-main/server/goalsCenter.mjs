@@ -222,6 +222,11 @@ function fieldsWithValues(rows) {
 }
 
 function selectedOverall(source, options = {}) {
+  const allowed = new Set(CORE);
+  const fromUi = (Array.isArray(options.indicators) ? options.indicators : [])
+    .map((item) => (item === 'resolvidos' ? 'resolvidosCount' : item))
+    .filter((item) => allowed.has(item));
+  if (fromUi.length) return [...new Set(fromUi)];
   const weighted = parseOverallWeights(source);
   const fromText = OVERALL_FIELDS.filter((item) => weighted[item.weightKey] != null).map((item) => item.id);
   if (fromText.length) return fromText;
@@ -264,14 +269,19 @@ function hasNovelIndicator(source) {
   return /indicador novo|indice de qualidade/.test(fold(source));
 }
 
+function publicEvalMode(mode) {
+  return mode === 'custom' ? 'custom' : 'overall';
+}
+
 export function resolveCenterMode(source, mode) {
-  if (mode === 'overall' || wantsOverall(source, mode)) return 'overall';
+  const requested = mode === 'preset' ? 'overall' : mode;
+  if (requested === 'overall' || wantsOverall(source, requested)) return 'overall';
   if (hasNovelIndicator(source)) return 'custom';
   const cited = citedKnown(source);
   const known = CORE.some((field) => cited[field]);
-  if (mode === 'custom' && known) return 'preset';
-  if (mode === 'preset' || known) return 'preset';
-  return mode === 'custom' ? 'custom' : 'preset';
+  if (requested === 'custom' && known) return 'overall';
+  if (known) return 'overall';
+  return requested === 'custom' ? 'custom' : 'overall';
 }
 
 function selectedPreset(source, options = {}) {
@@ -325,7 +335,7 @@ export function readPodiumRequest(text) {
           ? 'resolvidos'
           : '';
   if (!indicator) return { kind: 'ask', missing: 'o indicador do pódio (tickets resolvidos, primeira resposta, TMA ou transferidos) ou desempenho geral' };
-  return { kind: 'apply', criterion: { mode: 'preset', indicator, templateId: '' } };
+  return { kind: 'apply', criterion: { mode: 'overall', indicator, templateId: '' } };
 }
 
 export function toConference({ source, period, rules, rows, mode, overall }) {
@@ -685,11 +695,11 @@ function rulesForMonth(store, month) {
 }
 
 const MODE_LABEL = {
-  preset: 'Critérios predefinidos',
+  preset: 'Desempenho geral',
   overall: 'Desempenho geral',
   custom: 'Critérios personalizados',
 };
-const MODE_RANK = { overall: 0, preset: 1, custom: 2 };
+const MODE_RANK = { overall: 0, custom: 1, preset: 0 };
 const PODIUM_CHANNELS = ['Ligação', 'Chat', 'E-mail'];
 const SKIP_FUNCOES = new Set(['Líder', 'Supervisor']);
 const CHANNEL_RANK = { Ligação: 0, Chat: 1, 'E-mail': 2 };
@@ -737,7 +747,7 @@ function modeTitle(mode, evaluation, label) {
   if (mode === 'custom') {
     return `Critério personalizado - ${prettyCustomName(evaluation?.name || evaluation?.rules?.[0]?.name)} - ${label}`;
   }
-  return MODE_LABEL[mode];
+  return MODE_LABEL.overall;
 }
 
 function describeCondition(rule) {
@@ -774,7 +784,18 @@ function rankCustomBank(records, rules) {
 
 function evaluationsFor(store, month, monthRecords) {
   const saved = (Array.isArray(store.evaluations) ? store.evaluations : []).filter((item) => monthOf(item.periodKey) === month);
-  if (saved.length) return saved;
+  if (saved.length) {
+    const groups = { overall: [], custom: [] };
+    for (const item of saved) groups[publicEvalMode(item.mode)].push(item);
+    const picked = [];
+    if (groups.overall.length) {
+      const native = groups.overall.filter((item) => item.mode === 'overall');
+      const chosen = (native.length ? native : groups.overall).at(-1);
+      picked.push({ ...chosen, mode: 'overall' });
+    }
+    if (groups.custom.length) picked.push(groups.custom.at(-1));
+    return picked;
+  }
   const inferred = [];
   const rules = rulesForMonth(store, month);
   const overall = (Array.isArray(store.overallReviews) ? store.overallReviews : []).filter((item) => monthOf(item.periodKey) === month).at(-1);
@@ -802,7 +823,7 @@ function evaluationsFor(store, month, monthRecords) {
   }
   if (knownRules.length) {
     inferred.push({
-      mode: 'preset',
+      mode: 'overall',
       periodKey: month,
       selected: knownRules.map((rule) => (rule.indicator === 'resolvidos' ? 'resolvidosCount' : rule.indicator)).filter((id, index, list) => list.indexOf(id) === index),
       rules: knownRules,
@@ -813,7 +834,7 @@ function evaluationsFor(store, month, monthRecords) {
   if (!inferred.length && monthRecords.length) {
     const selected = OVERALL_FIELDS.filter((field) => monthRecords.some((row) => resultValue(row, field.id) != null)).map((field) => field.id);
     inferred.push({
-      mode: 'preset',
+      mode: 'overall',
       periodKey: month,
       selected,
       rules,
@@ -826,7 +847,7 @@ function evaluationsFor(store, month, monthRecords) {
 }
 
 function basisFor(evaluation, label) {
-  const mode = evaluation.mode === 'overall' || evaluation.mode === 'custom' ? evaluation.mode : 'preset';
+  const mode = publicEvalMode(evaluation.mode);
   const rules = evaluation.rules ?? [];
   const title = modeTitle(mode, evaluation, label);
   return {
@@ -890,11 +911,11 @@ function overallMetrics(scoreRow, evaluation) {
   });
 }
 
-const PRESET_HEADLINE = ['resolvidosCount', 'primeira', 'resolucao', 'transferidos'];
+const HEADLINE_PRIORITY = ['resolvidosCount', 'primeira', 'resolucao', 'transferidos'];
 
 function presetHeadline(selected, record) {
   const ids = new Set((selected ?? []).map((id) => (id === 'resolvidos' ? 'resolvidosCount' : id)));
-  const field = PRESET_HEADLINE.find((id) => ids.has(id));
+  const field = HEADLINE_PRIORITY.find((id) => ids.has(id));
   if (!field || !record) return '';
   const value = field === 'resolvidosCount' ? record.values?.resolvidosCount ?? null : resultValue(record, field);
   if (value == null) return '';
@@ -922,7 +943,7 @@ function customMetrics(record, evaluation) {
 function buildModePodium(store, month, monthRecords, evaluation, now, channel = '') {
   const label = formatPeriodLabel(month);
   const stamp = (now ?? new Date()).toISOString();
-  const mode = evaluation.mode === 'overall' || evaluation.mode === 'custom' ? evaluation.mode : 'preset';
+  const mode = publicEvalMode(evaluation.mode);
   const rules = evaluation.rules?.length ? evaluation.rules : rulesForMonth(store, month);
   const known = rules.filter((rule) => OVERALL_FIELDS.some((field) => field.id === rule.indicator || (field.id === 'resolvidosCount' && rule.indicator === 'resolvidos')));
   let selected = (evaluation.selected ?? []).map((id) => (id === 'resolvidos' ? 'resolvidosCount' : id)).filter(Boolean);
@@ -933,7 +954,10 @@ function buildModePodium(store, month, monthRecords, evaluation, now, channel = 
     selected = OVERALL_FIELDS.filter((field) => monthRecords.some((row) => resultValue(row, field.id) != null)).map((field) => field.id);
   }
   const detailsPartial = Boolean(evaluation.detailsPartial);
-  const basis = basisFor({ ...evaluation, mode, selected, rules, detailsPartial }, label);
+  const pack = mode === 'custom'
+    ? null
+    : (evaluation.weights && Object.keys(evaluation.weights).length ? evaluation.weights : equalWeights(selected));
+  const basis = basisFor({ ...evaluation, mode, selected, rules, weights: pack || evaluation.weights, detailsPartial }, label);
   const shell = {
     periodKey: month,
     periodLabel: label,
@@ -964,8 +988,7 @@ function buildModePodium(store, month, monthRecords, evaluation, now, channel = 
     };
   }
   if (selected.length) {
-    const pack = evaluation.weights && Object.keys(evaluation.weights).length ? evaluation.weights : equalWeights(selected);
-    const scored = overallFor(monthRecords, known, pack, { periodKey: month, periodLabel: label }, selected, true);
+    const scored = overallFor(monthRecords, known, pack || equalWeights(selected), { periodKey: month, periodLabel: label }, selected, true);
     return {
       ...shell,
       selected: scored.selected,
@@ -974,15 +997,13 @@ function buildModePodium(store, month, monthRecords, evaluation, now, channel = 
         const record = recordFor(monthRecords, row.userId);
         const metrics = detailsPartial
           ? []
-          : mode === 'overall'
-            ? overallMetrics(row, { ...evaluation, rules: known, weights: scored.weights })
-            : presetMetrics(record, { ...evaluation, selected: scored.selected, rules: known });
+          : overallMetrics(row, { ...evaluation, rules: known, weights: scored.weights });
         return {
           place: row.place,
           userId: row.userId,
           name: row.name,
           score: row.score,
-          displayScore: mode === 'overall' ? `${row.score}%` : presetHeadline(scored.selected, record),
+          displayScore: presetHeadline(scored.selected, record),
           detailsAvailable: !detailsPartial && metrics.length > 0,
           metrics,
         };
@@ -1005,10 +1026,14 @@ export function attachBankPodiums(store, now = new Date(), people = []) {
   const liveIndex = new Set(live.map((item) => `${item.periodKey}:${item.mode}`));
   const history = (Array.isArray(store?.podiums) ? store.podiums : []).filter((item) => {
     const key = monthOf(item.periodKey) || item.periodKey;
-    const mode = item.mode === 'overall' || item.mode === 'custom' ? item.mode : 'preset';
+    const mode = publicEvalMode(item.mode);
     return key && !liveIndex.has(`${key}:${mode}`);
-  }).map((item) => ({
+  }).map((item) => {
+    const mode = publicEvalMode(item.mode);
+    return {
     ...item,
+    mode,
+    modeLabel: item.mode === 'custom' ? item.modeLabel : MODE_LABEL.overall,
     detailsAvailable: item.detailsAvailable === true && Array.isArray(item.ranking) && item.ranking.some((row) => row.metrics?.length),
     ranking: (item.ranking ?? []).map((row) => ({
       ...row,
@@ -1018,11 +1043,12 @@ export function attachBankPodiums(store, now = new Date(), people = []) {
     basis: item.basis ?? {
       origin: 'Histórico do Banco de Dados',
       periodLabel: item.periodLabel || '',
-      modeLabel: MODE_LABEL[item.mode === 'overall' || item.mode === 'custom' ? item.mode : 'preset'],
+      modeLabel: MODE_LABEL[mode],
       summary: 'O detalhamento desta avaliação não está disponível.',
       indicators: [],
     },
-  }));
+  };
+  });
   return {
     ...store,
     podiums: [...live, ...history].sort((left, right) => {
@@ -1084,9 +1110,9 @@ function centerPrompt(text, history, options) {
   return [
     'Interprete um recado da Central Inteligente de Metas, em português.',
     `Modo da interface: ${mode}. Isso é contexto. Se o pedido for claramente outro assunto, siga o pedido.`,
-    'Critérios predefinidos usam tickets resolvidos, tickets transferidos, primeira resposta e TMA. Satisfação não é critério predefinido. Tickets resolvidos e tickets transferidos são indicadores diferentes e nunca se misturam.',
-    'Critérios personalizados servem só para criar indicador inédito. Indicadores já conhecidos são critérios predefinidos.',
-    'Desempenho geral compara colaboradores: quem não entra na condição recebe zero na parcela; o melhor elegível leva o peso inteiro; os demais são proporcionais. Pesos iguais entre os selecionados.',
+    'Há só dois modos: desempenho geral e critérios personalizados. Não existe mais a modalidade critérios predefinidos.',
+    'Desempenho geral usa de 1 a 4 indicadores conhecidos: tickets resolvidos, tickets transferidos, primeira resposta e TMA. Satisfação não entra. Tickets resolvidos e tickets transferidos nunca se misturam. Pesos iguais entre os selecionados. Quem não entra na condição zera aquela parcela; o melhor elegível leva o peso inteiro; os demais são proporcionais.',
+    'Critérios personalizados servem só para criar indicador inédito. Indicadores já conhecidos entram no desempenho geral.',
     'Não invente número, indicador, comparador, período ou pessoa.',
     'changePodium só é true se a pessoa pediu explicitamente para mudar o pódio. Meta, resultado e conferência não mudam o pódio.',
     'Indicadores conhecidos: resolvidosCount, resolvidos (%), transferidos, primeira, resolucao, satisfacao.',
@@ -1101,7 +1127,7 @@ function centerPrompt(text, history, options) {
 function combinedSource(text, history) {
   const prior = (history ?? [])
     .map((item) => (typeof item === 'string' ? item : item?.text))
-    .filter((item) => item && !/olá!|escreva a regra|vou calcular|estamos nos criterios|desempenho geral:|criterios predefinidos:|criterio personalizado e so|transferidos ficam de fora|identifico os indicadores/i.test(item));
+    .filter((item) => item && !/olá!|escreva a regra|vou calcular|estamos nos criterios|desempenho geral:|criterios predefinidos:|criterio personalizado e so|transferidos ficam de fora|identifico os indicadores|avalie seus colaboradores/i.test(item));
   return [...prior, text].filter(Boolean).join('\n');
 }
 
@@ -1124,30 +1150,8 @@ function recordsForPeriod(local, options, period) {
   return rows.length ? rows : monthRows;
 }
 
-function interpretKnown(source, options, mode) {
-  const people = options.people ?? [];
-  const local = localExtract(source, people);
-  const period = readGoalPeriod(source).ok ? readGoalPeriod(source) : local.period;
-  const selected = selectedPreset(source, options);
-  const bank = rulesFromBank(options.managementGoals, period.periodKey);
-  const rules = rulesForSelected(source, local, bank, selected);
-  const records = recordsForPeriod(local, options, period);
-  const missing = [];
-  if (!period.periodLabel) missing.push('o período com mês e ano');
-  for (const id of selected) {
-    if (!ruleForIndicator(rules, id)) missing.push(`a meta cadastrada de ${displayName(id)} (${overallField(id).unit.trim() || 'valor'})`);
-  }
-  if (wantsPeople(source) && !records.length) missing.push('os resultados individuais dos colaboradores citados');
-  for (const person of records) {
-    if (!person.userId) missing.push(`o cadastro da Equipe de ${person.name || person.sourceName}`);
-    for (const id of selected) {
-      if (resultValue(person, id) == null) missing.push(`o resultado de ${displayName(id)} de ${person.name || person.sourceName}`);
-    }
-  }
-  if (missing.length) return clarify(missing);
-  const conference = toConference({ source, period, rules, rows: records, mode: 'preset', overall: null });
-  if (!conference.goals.length && !conference.people.length) return clarify(['as metas e os resultados dos indicadores predefinidos']);
-  return conferenceResponse(conference);
+function interpretKnown(source, options) {
+  return interpretOverall(source, { ...options, mode: 'overall' });
 }
 
 function interpretOverall(source, options) {
@@ -1156,7 +1160,7 @@ function interpretOverall(source, options) {
   const period = readGoalPeriod(source).ok ? readGoalPeriod(source) : local.period;
   const bank = rulesFromBank(options.managementGoals, period.periodKey);
   const records = recordsForPeriod(local, options, period);
-  const selected = selectedOverall(source, { localRules: local.rules, localRows: local.rows, bank, records });
+  const selected = selectedOverall(source, { ...options, localRules: local.rules, localRows: local.rows, bank, records });
   const packed = packOverallWeights(selected);
   const rules = rulesForSelected(source, local, bank, selected);
   const missing = [];
@@ -1175,7 +1179,12 @@ function interpretOverall(source, options) {
   if (missing.length) return clarify(missing);
   const overall = overallFor(records, rules, packed.pack, period, selected);
   const conference = toConference({ source, period, rules, rows: records, mode: 'overall', overall });
-  if (!overall.scores.length) return clarify(['os resultados dos indicadores selecionados no período pedido']);
+  if (!conference.goals.length && !conference.people.length) {
+    return clarify(['as condições de entrada e os resultados dos indicadores selecionados']);
+  }
+  if (wantsPeople(source) && !overall.scores.length) {
+    return clarify(['os resultados dos indicadores selecionados no período pedido']);
+  }
   return conferenceResponse(conference);
 }
 
@@ -1183,7 +1192,9 @@ export async function interpretGoalsCenter(text, options = {}) {
   const source = String(text ?? '').trim();
   if (!source) return { kind: 'clarify', questions: ['Escreva as metas e os resultados.'], reply: 'Escreva as metas e os resultados.', conference: null };
   const people = options.people ?? [];
-  const requested = options.mode === 'preset' || options.mode === 'overall' || options.mode === 'custom' ? options.mode : 'custom';
+  const requested = options.mode === 'custom' || options.mode === 'overall' || options.mode === 'preset'
+    ? (options.mode === 'preset' ? 'overall' : options.mode)
+    : 'overall';
   const mode = resolveCenterMode(source, requested);
   const podium = readPodiumRequest(source);
   if (podium.kind === 'ask') return clarify([podium.missing]);
@@ -1198,7 +1209,7 @@ export async function interpretGoalsCenter(text, options = {}) {
   }
   const joined = combinedSource(source, options.history);
   if (mode === 'overall') return interpretOverall(joined, { ...options, mode: 'overall' });
-  if (mode === 'preset') return interpretKnown(joined, { ...options, mode: 'preset' }, 'preset');
+  if (mode === 'preset') return interpretOverall(joined, { ...options, mode: 'overall' });
   const local = localExtract(source, people);
   let parsed = null;
   let modelError = '';
@@ -1239,16 +1250,17 @@ export function saveGoalsCenter(store, conference, people, now = new Date()) {
   const mark = fingerprint(conference);
   if (seen.includes(mark)) return { store, duplicate: true };
   const saved = applyGoalsReview(store, conferenceToReview(conference), people, now);
-  const mode = conference.mode === 'overall' || conference.overall ? 'overall' : conference.mode === 'custom' ? 'custom' : 'preset';
+  const mode = conference.mode === 'custom' && !conference.overall ? 'custom' : 'overall';
   const month = monthOf(conference.period?.key || '');
+  const selected = conference.overall?.selected ?? (conference.goals ?? []).map((goal) => (goal.indicator === 'resolvidos' ? 'resolvidosCount' : goal.indicator));
   const evaluation = {
     id: conference.id || `${mode}-${month}`,
     mode,
     periodKey: month || conference.period?.key || '',
     periodLabel: conference.period?.label || '',
-    selected: conference.overall?.selected ?? (conference.goals ?? []).map((goal) => goal.indicator),
+    selected,
     rules: conference.goals ?? [],
-    weights: conference.overall?.weights ?? null,
+    weights: conference.overall?.weights ?? (mode === 'overall' ? equalWeights(selected) : null),
     name: mode === 'custom' ? displayName(conference.goals?.[0]?.indicator, conference.goals?.[0]?.name) : '',
     savedAt: now.toISOString(),
   };

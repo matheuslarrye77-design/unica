@@ -14,7 +14,11 @@ const STEP = {
   3: { strong: '#818CF8', wash: '#EEF2FF', line: '#C7D2FE', height: 'h-[58px]', avatar: 'h-12 w-12' },
 } as const;
 
-const MODE_ORDER = ['overall', 'preset', 'custom'] as const;
+const MODE_ORDER = ['overall', 'custom'] as const;
+
+function podiumMode(item: { mode?: string } | undefined) {
+  return item?.mode === 'custom' ? 'custom' : 'overall';
+}
 const CATEGORIES: { id: 'Ligação' | 'Chat' | 'E-mail'; Icon: LucideIcon }[] = [
   { id: 'Ligação', Icon: Phone },
   { id: 'Chat', Icon: MessageCircle },
@@ -49,8 +53,9 @@ function metricLabel(item: Metric) {
 
 function metricLine(item: Metric, mode: string) {
   const label = metricLabel(item);
-  if (mode === 'overall') return `${label} - ${percentText(item.contribution)}`;
-  return `${label} - ${item.shown || (item.value == null ? '—' : String(item.value))}`;
+  const raw = item.shown || (item.value == null ? '—' : String(item.value));
+  if (mode === 'overall') return `${label} - ${raw} - ${percentText(item.contribution)}`;
+  return `${label} - ${raw}`;
 }
 
 const PersonCard: FC<{ person: Ranking; mode: string }> = ({ person, mode }) => {
@@ -83,7 +88,7 @@ const PersonCard: FC<{ person: Ranking; mode: string }> = ({ person, mode }) => 
               onMouseLeave={() => { if (!touch) setOpen(false); }}
               onClick={() => { if (touch) setOpen((value) => !value); }}
             >
-              {mode === 'preset' ? (person.displayScore || '—') : (person.displayScore || person.score || '—')}
+              {person.displayScore || (mode === 'custom' ? person.score : '—') || '—'}
             </button>
             {open ? (
               <div className="pointer-events-none absolute bottom-[calc(100%+10px)] left-1/2 z-50 w-[min(220px,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border border-[#EDE4F5] bg-white/95 px-3 py-2 text-left shadow-[0_12px_28px_rgba(80,40,120,0.14)] backdrop-blur-sm">
@@ -120,12 +125,12 @@ export const PodiumStage: FC<{
   const periodIndex = periods.findIndex((item) => item.key === periodKey);
   const [channel, setChannel] = useState<(typeof CATEGORIES)[number]['id']>('Ligação');
   const forPeriod = podiums.filter((item) => item.periodKey === periodKey && item.channel === channel);
-  const modes = MODE_ORDER.filter((mode) => forPeriod.some((item) => item.mode === mode));
-  const [mode, setMode] = useState(modes[0] || 'preset');
+  const modes = MODE_ORDER.filter((mode) => forPeriod.some((item) => podiumMode(item) === mode));
+  const [mode, setMode] = useState(modes[0] || 'overall');
   useEffect(() => {
-    if (!modes.includes(mode as typeof MODE_ORDER[number])) setMode(modes[0] || 'preset');
+    if (!modes.includes(mode as typeof MODE_ORDER[number])) setMode(modes[0] || 'overall');
   }, [periodKey, channel, modes.join('|')]);
-  const active = forPeriod.find((item) => item.mode === mode) ?? forPeriod[0];
+  const active = forPeriod.find((item) => podiumMode(item) === mode) ?? forPeriod[0];
   const standing = active?.ranking ?? [];
   const subtitle = active
     ? (active.mode === 'custom' ? active.modeLabel : `${active.modeLabel} — ${active.periodLabel}`)
@@ -182,7 +187,7 @@ export const PodiumStage: FC<{
       <div className="mx-auto mt-5 max-w-xl overflow-visible">
         <div className="grid grid-cols-3 items-end gap-4 overflow-visible">
           {([standing.find((row) => row.place === 2), standing.find((row) => row.place === 1), standing.find((row) => row.place === 3)]).map((person, index) => (
-            person ? <PersonCard key={`${person.place}-${person.userId}`} person={person} mode={active?.mode || 'preset'} /> : <div key={`vazio-${index}`} className="min-h-[120px]" />
+            person ? <PersonCard key={`${person.place}-${person.userId}`} person={person} mode={podiumMode(active)} /> : <div key={`vazio-${index}`} className="min-h-[120px]" />
           ))}
         </div>
         <div className="mx-6 mt-2 h-1.5 rounded-full bg-gradient-to-r from-[#F9A8D4] via-[#C4B5FD] to-[#A5B4FC]" />

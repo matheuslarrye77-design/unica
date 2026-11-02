@@ -164,7 +164,7 @@ test('subsetor oficial vem da função da equipe', () => {
 test('critério escolhido fica gravado e não apaga semana anterior', () => {
   const first = buildApproval(emptyStore(), { text: consolidated, periodKey: '2026-W10' }, people, { id: 'helena', name: 'Helena' });
   const next = applyCriterion(first.store, { mode: 'preset', indicator: 'primeira' }, '2026-W10');
-  assert.equal(next.criterion.mode, 'preset');
+  assert.equal(next.criterion.mode, 'overall');
   assert.equal(next.criterion.indicator, 'primeira');
   assert.equal(next.imports[0].display.indicator, 'primeira');
   const later = buildApproval(next, { text: consolidated.replace('mínimo de 87%', 'mínimo de 90%'), periodKey: '2026-W11', replace: false }, people, { id: 'helena', name: 'Helena' });

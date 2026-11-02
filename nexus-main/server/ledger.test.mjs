@@ -28,7 +28,7 @@ test('teste A: dois colaboradores entram no banco e a meta não muda o pódio', 
   assert.equal(original.ledger.records.length, 0);
   assert.equal(outcome.store.imports.length, 0);
   assert.equal(outcome.store.templates.length, 0);
-  assert.equal(outcome.store.criterion.mode, 'preset');
+  assert.equal(outcome.store.criterion.mode, 'overall');
   assert.equal(outcome.store.ledger.records.length, 2);
   const names = outcome.store.ledger.records.map((row) => row.userId).sort();
   assert.deepEqual(names, ['tm-4', 'tm-8']);
@@ -60,7 +60,7 @@ test('teste B: o mesmo período substitui o valor e guarda o anterior', () => {
   assert.match(second.reply, /220 \(ATUALIZADO\)/);
   assert.match(second.reply, /96% \(SEM ALTERAÇÃO\)/);
   assert.equal(second.reply.includes('96% (NOVO)'), false);
-  assert.equal(second.store.criterion.mode, 'preset');
+  assert.equal(second.store.criterion.mode, 'overall');
   const month = ingestReport(second.store, 'Matheus: 80 tickets resolvidos no mês.', [matheus], { now });
   assert.equal(month.store.ledger.records.length, 2);
   assert.equal(month.store.ledger.records.find((row) => row.periodKey === monthKey(now)).values.resolvidosCount, 80);
@@ -134,7 +134,7 @@ test('teste F: o banco sobrevive a um novo carregamento do arquivo', () => {
   assert.equal(view.ledger.records.find((row) => row.userId === 'tm-4').values.resolvidosCount, 320);
   assert.equal(view.ledger.records.find((row) => row.userId === 'tm-8').values.resolvidosCount, 285);
   assert.equal(view.ledger.ranking.length, 2);
-  assert.equal(view.criterion.mode, 'preset');
+  assert.equal(view.criterion.mode, 'overall');
   assert.equal(view.imports.length, 0);
 });
 
@@ -154,7 +154,7 @@ test('teste G: a classificação usa o banco e só quem atende ao critério', ()
   const proposal = proposeFromLedger(store, 'Crie uma meta de reconhecimento para quem resolver pelo menos 250 tickets no mês.', now);
   assert.deepEqual(proposal.ranking.map((row) => row.name), ['Felipe Costa', 'Rafael Oliveira']);
   assert.equal(proposal.ranking.some((row) => row.name === 'Ana Souza' || row.name === 'Visitante'), false);
-  assert.equal(store.criterion.mode, 'preset');
+  assert.equal(store.criterion.mode, 'overall');
   assert.equal(store.imports.length, 0);
   assert.equal(store.ledger.records.length, 4);
   assert.equal(store.ledger.records.find((row) => row.sourceName === 'Visitante').userId, '');
@@ -166,7 +166,7 @@ test('teste G: a classificação usa o banco e só quem atende ao critério', ()
   const chosen = applyLedgerRanking(applyCriterion(withTemplate, { mode: 'custom', templateId: 'meta-1' }, ''), now);
   assert.deepEqual(chosen.ledger.applied.map((row) => row.name), ['Felipe Costa', 'Rafael Oliveira']);
   assert.equal(chosen.imports.length, 0);
-  const back = applyLedgerRanking(applyCriterion(chosen, { mode: 'preset', indicator: 'resolvidos' }, ''), now);
+  const back = applyLedgerRanking(applyCriterion(chosen, { mode: 'overall', indicator: 'resolvidos' }, ''), now);
   assert.equal(back.ledger.applied.length, 0);
   assert.equal(back.ledger.records.length, 4);
 });
