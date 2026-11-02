@@ -16,6 +16,12 @@ const NAMES = {
   transferidos: 'Tickets transferidos',
 };
 const UNITS = { resolvidos: '%', satisfacao: '%', primeira: ' min', resolucao: ' min' };
+const OVERALL_FIELDS = [
+  { id: 'resolvidosCount', weightKey: 'resolvidos', higher: true, unit: ' tickets', ask: 'a quantidade de tickets resolvidos da meta' },
+  { id: 'satisfacao', weightKey: 'satisfacao', higher: true, unit: '%', ask: 'o percentual da meta de Satisfação' },
+  { id: 'primeira', weightKey: 'primeira', higher: false, unit: ' min', ask: 'os minutos da meta de Primeira resposta' },
+  { id: 'resolucao', weightKey: 'resolucao', higher: false, unit: ' min', ask: 'os minutos da meta de Tempo médio de resolução (TMA)' },
+];
 const CONFERENCE_REPLY = 'Conferência pronta. Confira os dados organizados abaixo. Nada foi salvo e o pódio não foi alterado.';
 
 export const GOALS_CENTER_SCHEMA = {
@@ -177,9 +183,95 @@ function wantsPeople(text) {
 }
 
 function wantsOverall(text, mode) {
-  const folded = fold(text);
-  if (mode === 'overall' && /desempenho|geral|nota|peso|pontua/.test(folded)) return true;
-  return /desempenho geral|nota geral|pontuacao geral/.test(folded);
+  if (mode === 'overall') return true;
+  return /desempenho geral|nota geral|pontuacao geral/.test(fold(text));
+}
+
+function overallField(indicator) {
+  if (indicator === 'resolvidos') return OVERALL_FIELDS[0];
+  return OVERALL_FIELDS.find((item) => item.id === indicator) || null;
+}
+
+function parseOverallWeights(source) {
+  const folded = fold(source);
+  const found = {};
+  const take = (key, pattern) => {
+    const hit = folded.match(pattern);
+    const value = finite(hit?.[1]);
+    if (value !== null) found[key] = value;
+  };
+  take('resolvidos', /tickets?(?:\s+resolvid\w*)?[^.\n]{0,48}peso(?:\s+de)?\s+(\d+)/);
+  take('satisfacao', /satisfa\w*[^.\n]{0,48}peso(?:\s+de)?\s+(\d+)/);
+  take('primeira', /primeira(?:\s+resposta)?[^.\n]{0,48}peso(?:\s+de)?\s+(\d+)/);
+  take('resolucao', /(?:\btma\b|tempo medio(?: de (?:atendimento|resolucao))?)[^.\n]{0,48}peso(?:\s+de)?\s+(\d+)/);
+  if (found.resolucao == null) take('resolucao', /tempo medio de resolucao[^.\n]{0,48}peso(?:\s+de)?\s+(\d+)/);
+  return found;
+}
+
+function selectedOverall(source, options = {}) {
+  const allowed = new Set(OVERALL_FIELDS.map((item) => item.id));
+  const fromUi = (Array.isArray(options.indicators) ? options.indicators : [])
+    .map((item) => (item === 'resolvidos' ? 'resolvidosCount' : item))
+    .filter((item) => allowed.has(item));
+  if (fromUi.length) return fromUi;
+  const weighted = parseOverallWeights(source);
+  const fromText = OVERALL_FIELDS.filter((item) => weighted[item.weightKey] != null).map((item) => item.id);
+  if (fromText.length) return fromText;
+  const cited = citedKnown(source);
+  const mentioned = OVERALL_FIELDS.filter((item) => cited[item.id] || (item.id === 'resolvidosCount' && cited.resolvidosCount)).map((item) => item.id);
+  if (mentioned.length) return mentioned;
+  const store = options.weights ?? {};
+  const fromStore = OVERALL_FIELDS.filter((item) => finite(store[item.weightKey]) > 0).map((item) => item.id);
+  return fromStore.length ? fromStore : ['resolvidosCount', 'primeira', 'resolucao'];
+}
+
+function packOverallWeights(selected, source, options = {}) {
+  const parsed = parseOverallWeights(source);
+  const store = options.weights ?? {};
+  const incoming = options.evaluationWeights && typeof options.evaluationWeights === 'object' ? options.evaluationWeights : {};
+  const items = [];
+  for (const id of selected) {
+    const field = overallField(id);
+    if (!field) continue;
+    const value = finite(incoming[field.weightKey]) ?? finite(parsed[field.weightKey]) ?? finite(store[field.weightKey]);
+    items.push({ id, key: field.weightKey, name: displayName(id), weight: value, unit: field.ask });
+  }
+  const missing = items.filter((item) => item.weight == null || item.weight <= 0);
+  if (!items.length) return { error: ['pelo menos um indicador para o desempenho geral'] };
+  if (missing.length) {
+    return { error: missing.map((item) => `o peso de ${item.name} (${item.unit.replace(/^a |^o |^os /, '')})`) };
+  }
+  const sum = items.reduce((total, item) => total + item.weight, 0);
+  if (sum <= 0) return { error: ['pesos maiores que zero para os indicadores selecionados'] };
+  const pack = { floor: finite(incoming.floor) ?? finite(store.floor) ?? 70 };
+  for (const item of items) {
+    pack[item.key] = Math.round((item.weight / sum) * 1000) / 10;
+  }
+  const used = items.map((item) => item.key);
+  const drift = Math.round((used.reduce((total, key) => total + pack[key], 0) - 100) * 10) / 10;
+  if (drift && used.length) pack[used[0]] = Math.round((pack[used[0]] - drift) * 10) / 10;
+  return { pack, items };
+}
+
+function rulesFromBank(managementGoals, periodKey) {
+  const wanted = monthOf(periodKey);
+  return (managementGoals ?? [])
+    .filter((item) => !wanted || monthOf(item.periodKey) === wanted)
+    .flatMap((item) => item.rules ?? []);
+}
+
+function ruleForIndicator(rules, indicator) {
+  if (indicator === 'resolvidosCount') return rules.find((item) => item.indicator === 'resolvidosCount') || rules.find((item) => item.indicator === 'resolvidos') || null;
+  return rules.find((item) => item.indicator === indicator) || null;
+}
+
+function resultValue(row, indicator) {
+  if (indicator === 'resolvidosCount') {
+    if (row.values?.resolvidosCount != null) return row.values.resolvidosCount;
+    if (row.values?.resolvidos != null) return row.values.resolvidos;
+    return null;
+  }
+  return row.values?.[indicator] ?? null;
 }
 
 export function readPodiumRequest(text) {
@@ -268,8 +360,9 @@ export function toConference({ source, period, rules, rows, mode, overall }) {
 
 function missingParts(conference, source, mode = '') {
   const missing = [];
-  if (conference.overall?.scores?.length && (mode === 'overall' || wantsOverall(source, mode))) {
+  if (mode === 'overall' || conference.overall) {
     if (!conference.period?.label) missing.push('o período com mês e ano');
+    if (!conference.overall?.selected?.length) missing.push('os indicadores que entram nesta avaliação de desempenho geral');
     return missing;
   }
   const cited = citedKnown(source);
@@ -467,11 +560,9 @@ function monthOf(key) {
   return hit ? hit[1] : '';
 }
 
-function overallFor(records, rules, weights, period) {
-  const pack = weights ?? { resolvidos: 40, primeira: 25, resolucao: 35, floor: 70 };
+function overallFor(records, rules, pack, period, selected) {
   const wanted = monthOf(period.periodKey || period.key);
-  const by = Object.fromEntries((rules ?? []).map((rule) => [rule.indicator, rule]));
-  const tickets = by.resolvidos || by.resolvidosCount;
+  const chosen = (selected ?? []).map((id) => overallField(id)).filter(Boolean);
   const scores = [];
   const seen = new Set();
   for (const record of records ?? []) {
@@ -479,29 +570,45 @@ function overallFor(records, rules, weights, period) {
     if (wanted && monthOf(record.periodKey) && monthOf(record.periodKey) !== wanted) continue;
     if (seen.has(record.userId)) continue;
     seen.add(record.userId);
-    const resolvidosValue = by.resolvidos ? record.values?.resolvidos : record.values?.resolvidosCount;
-    const resolvidos = partScore(resolvidosValue, tickets?.value, true);
-    const primeira = partScore(record.values?.primeira, by.primeira?.value, false);
-    const resolucao = partScore(record.values?.resolucao, by.resolucao?.value, false);
-    if (resolvidos === null || primeira === null || resolucao === null) continue;
-    const weighted = (resolvidos * pack.resolvidos + primeira * pack.primeira + resolucao * pack.resolucao) / 100;
-    const worst = Math.min(resolvidos, primeira, resolucao);
+    const parts = {};
+    let weighted = 0;
+    let worst = 100;
+    let ready = true;
+    for (const field of chosen) {
+      const rule = ruleForIndicator(rules, field.id);
+      const value = resultValue(record, field.id);
+      const score = partScore(value, rule?.value, field.higher);
+      if (score === null) {
+        ready = false;
+        break;
+      }
+      const weight = pack[field.weightKey] ?? 0;
+      const contribution = Math.round((score * weight) / 10) / 10;
+      parts[field.id] = { score: Math.round(score * 10) / 10, weight, contribution, name: displayName(field.id) };
+      weighted += (score * weight) / 100;
+      worst = Math.min(worst, score);
+    }
+    if (!ready || !chosen.length) continue;
     const floor = pack.floor ?? 70;
-    const score = Math.round((worst < floor ? Math.min(weighted, worst) : weighted) * 10) / 10;
+    const capped = worst < floor;
+    const score = Math.round((capped ? Math.min(weighted, worst) : weighted) * 10) / 10;
     scores.push({
       userId: record.userId,
       name: record.name,
       score,
       weighted: Math.round(weighted * 10) / 10,
       worst: Math.round(worst * 10) / 10,
-      capped: worst < floor,
-      parts: { resolvidos, primeira, resolucao },
+      capped,
+      parts,
     });
   }
   scores.sort((left, right) => right.score - left.score || fold(left.name).localeCompare(fold(right.name), 'pt'));
+  const excluded = OVERALL_FIELDS.map((item) => item.id).filter((id) => !chosen.some((item) => item.id === id));
   return {
     weights: pack,
-    excludes: ['transferidos'],
+    selected: chosen.map((item) => item.id),
+    excluded,
+    excludes: ['transferidos', ...excluded],
     periodLabel: period?.periodLabel || period?.label || '',
     scores: scores.map((item, index) => ({ ...item, place: index + 1 })),
   };
@@ -570,6 +677,52 @@ function centerPrompt(text, history, options) {
   ].filter(Boolean).join('\n');
 }
 
+function combinedSource(text, history) {
+  const prior = (history ?? [])
+    .map((item) => (typeof item === 'string' ? item : item?.text))
+    .filter((item) => item && !/olá!|escreva a regra|vou calcular|estamos nos criterios/i.test(item));
+  return [...prior, text].filter(Boolean).join('\n');
+}
+
+function interpretOverall(source, options) {
+  const people = options.people ?? [];
+  const local = localExtract(source, people);
+  const period = readGoalPeriod(source).ok ? readGoalPeriod(source) : local.period;
+  const selected = selectedOverall(source, options);
+  const packed = packOverallWeights(selected, source, options);
+  const bank = rulesFromBank(options.managementGoals, period.periodKey);
+  const localRules = (local.rules ?? []).filter((rule) => {
+    if (!(selected.includes(rule.indicator) || (rule.indicator === 'resolvidos' && selected.includes('resolvidosCount')))) return false;
+    return !new RegExp(`peso(?:\\s+de)?\\s+${rule.value}(?:\\s*%)?`).test(fold(source));
+  });
+  const rules = [];
+  for (const id of selected) {
+    const current = ruleForIndicator(localRules, id) || ruleForIndicator(bank, id);
+    if (current) rules.push({ ...current, name: displayName(id, current.name), unit: unitOf(id, current.unit) });
+  }
+  const rows = (local.rows ?? []).filter((row) => row.userId);
+  const monthRows = (options.ledger?.records ?? []).filter((row) => row.userId && (!period.periodKey || monthOf(row.periodKey) === monthOf(period.periodKey)));
+  const records = rows.length ? rows : monthRows;
+  const missing = [];
+  if (!period.periodLabel) missing.push('o período com mês e ano');
+  if (packed.error) missing.push(...packed.error);
+  for (const id of selected) {
+    if (!ruleForIndicator(rules, id)) missing.push(overallField(id).ask);
+  }
+  if (wantsPeople(source) && !records.length) missing.push('os resultados individuais dos colaboradores citados');
+  for (const person of records) {
+    if (!person.userId) missing.push(`o cadastro da Equipe de ${person.name || person.sourceName}`);
+    for (const id of selected) {
+      if (resultValue(person, id) == null) missing.push(`o resultado de ${displayName(id)} de ${person.name || person.sourceName}`);
+    }
+  }
+  if (missing.length) return clarify(missing);
+  const overall = overallFor(records, rules, packed.pack, period, selected);
+  const conference = toConference({ source, period, rules, rows: records, mode: 'overall', overall });
+  if (!overall.scores.length) return clarify(['os resultados dos indicadores selecionados no período pedido']);
+  return conferenceResponse(conference);
+}
+
 export async function interpretGoalsCenter(text, options = {}) {
   const source = String(text ?? '').trim();
   if (!source) return { kind: 'clarify', questions: ['Escreva as metas e os resultados.'], reply: 'Escreva as metas e os resultados.', conference: null };
@@ -585,6 +738,9 @@ export async function interpretGoalsCenter(text, options = {}) {
       criterion: podium.criterion,
       reply: 'Atualizei só o critério do pódio. As metas e o Banco dos relatórios não foram alterados.',
     };
+  }
+  if (mode === 'overall' || wantsOverall(source, mode)) {
+    return interpretOverall(combinedSource(source, options.history), { ...options, mode: 'overall' });
   }
   const local = localExtract(source, people);
   let parsed = null;
@@ -608,19 +764,9 @@ export async function interpretGoalsCenter(text, options = {}) {
     ? { rules: rulesFromModel(parsed.goals, source, period.period), rows: rowsFromModel(parsed.people, people, source) }
     : { rules: [], rows: [] };
   const merged = fill(model, local);
-  let overall = null;
-  if (wantsOverall(source, mode) || parsed?.intent === 'overall') {
-    const records = options.ledger?.records ?? merged.rows;
-    const wanted = monthOf(period.periodKey);
-    const fromBank = (options.managementGoals ?? [])
-      .filter((item) => !wanted || monthOf(item.periodKey) === wanted)
-      .flatMap((item) => item.rules ?? []);
-    const rules = merged.rules.length ? merged.rules : fromBank;
-    overall = overallFor(records, rules, options.weights, period);
-  }
-  const conference = toConference({ source, period, rules: merged.rules, rows: merged.rows, mode, overall });
+  const conference = toConference({ source, period, rules: merged.rules, rows: merged.rows, mode, overall: null });
   const missing = missingParts(conference, source, mode);
-  if (!conference.goals.length && !conference.people.length && !overall?.scores?.length) {
+  if (!conference.goals.length && !conference.people.length) {
     if (missing.length) return clarify(missing);
     if (modelError) return failure(modelError);
     return clarify(['as metas, os resultados ou o desempenho geral que você quer conferir']);

@@ -129,6 +129,9 @@ test('a interface do banco mostra mês/ano, gestão e resultados separados', () 
   assert.match(ui, /regra personalizada/);
   assert.match(ui, /pendingPodium/);
   assert.match(ui, /Confirmar pódio/);
+  assert.match(ui, /OVERALL_OPTIONS/);
+  assert.match(ui, /overallOn/);
+  assert.match(ui, /mode: phase === 'idle'/);
   assert.equal(ui.includes('Olá! Envie os relatórios da equipe'), false);
   assert.equal(ui.includes('Escreva com suas palavras como o pódio deve funcionar'), false);
   assert.equal(ui.includes('Qual indicador predefinido entra no pódio desta semana'), false);
@@ -552,6 +555,102 @@ test('desempenho geral usa pesos, piso e não inclui transferidos nem muda o pó
   const saved = await postCenter({ action: 'confirm', text: 'confirmar', conference: overall.body.conference }, { store: persist });
   assert.equal(saved.body.criterion.mode, 'preset');
   assert.equal((saved.body.ledger.applied ?? []).length, 0);
+});
+
+const MARCH_OVERALL = `Período: março de 2027.
+Tickets resolvidos: peso de 40%.
+Primeira resposta: peso de 25%.
+Tempo médio de atendimento (TMA): peso de 35%.
+Rafael Oliveira: 300 tickets, primeira resposta de 4 minutos e TMA de 10 minutos.
+Felipe Costa: 400 tickets, primeira resposta de 3 minutos e TMA de 6 minutos.
+Conferir antes de salvar. Não alterar o pódio.`;
+
+const MARCH_GOALS = `Quatro metas para março de 2027:
+* Tickets resolvidos: pelo menos 320.
+* Satisfação: pelo menos 95%.
+* Primeira resposta: no máximo 5 minutos.
+* Tempo médio de resolução: no máximo 8 minutos.`;
+
+test('desempenho geral no modo da interface não cai em critério personalizado', async () => {
+  const missing = await postCenter({ text: MARCH_OVERALL, mode: 'overall' });
+  assert.equal(missing.body.kind, 'clarify');
+  assert.match(missing.body.reply, /primeira resposta/i);
+  assert.match(missing.body.reply, /tempo médio de resolução|TMA/i);
+  assert.equal(missing.body.reply.includes('regra personalizada'), false);
+  assert.equal(missing.body.conference, null);
+});
+
+test('desempenho geral recupera metas do período, calcula nota e não exige indicador de fora', async () => {
+  const persist = memoryGoalsStore();
+  const goals = await postCenter({ text: MARCH_GOALS, mode: 'preset' }, { store: persist });
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: goals.body.conference }, { store: persist });
+  const overall = await postCenter({
+    text: MARCH_OVERALL,
+    mode: 'overall',
+    indicators: ['resolvidosCount', 'primeira', 'resolucao'],
+    weights: { resolvidos: 40, primeira: 25, resolucao: 35, floor: 70 },
+  }, { store: persist });
+  assert.equal(overall.body.kind, 'conference');
+  assert.equal(overall.body.conference.mode, 'overall');
+  assert.deepEqual(overall.body.conference.overall.selected.sort(), ['primeira', 'resolucao', 'resolvidosCount']);
+  assert.equal(overall.body.conference.overall.excluded.includes('satisfacao'), true);
+  assert.equal(overall.body.conference.people.length, 2);
+  const feli = overall.body.conference.overall.scores.find((item) => item.userId === 'tm-4');
+  const rafa = overall.body.conference.overall.scores.find((item) => item.userId === 'tm-8');
+  assert.equal(feli.score, 100);
+  assert.equal(rafa.score, 90.5);
+  assert.equal(overall.body.conference.goals.some((item) => item.indicator === 'satisfacao'), false);
+  const saved = await postCenter({ action: 'confirm', text: 'confirmar', conference: overall.body.conference }, { store: persist });
+  assert.equal(saved.body.criterion.indicator, 'resolvidos');
+  assert.equal((saved.body.ledger.applied ?? []).length, 0);
+  const march = saved.body.bank.periods.find((item) => item.key === '2027-03');
+  assert.equal(march.people.length, 2);
+  assert.equal(march.people.find((row) => row.userId === 'tm-8').indicators.find((item) => item.field === 'resolvidosCount').value, 300);
+});
+
+test('desempenho geral aceita 1, 2 e 4 indicadores sem zerar os que ficaram de fora', async () => {
+  const persist = memoryGoalsStore();
+  const goals = await postCenter({ text: MARCH_GOALS, mode: 'preset' }, { store: persist });
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: goals.body.conference }, { store: persist });
+  const one = await postCenter({
+    text: 'Desempenho geral de março de 2027. Rafael Oliveira: 300 tickets. Felipe Costa: 400 tickets. Conferir. Não alterar o pódio.',
+    mode: 'overall',
+    indicators: ['resolvidosCount'],
+    weights: { resolvidos: 100, floor: 70 },
+  }, { store: persist });
+  assert.equal(one.body.kind, 'conference');
+  assert.deepEqual(one.body.conference.overall.selected, ['resolvidosCount']);
+  assert.equal(one.body.conference.overall.scores.find((item) => item.userId === 'tm-4').score, 100);
+  const two = await postCenter({
+    text: 'Desempenho geral de março de 2027. Rafael Oliveira: 300 tickets e 94% de satisfação. Felipe Costa: 400 tickets e 97% de satisfação. Conferir. Não alterar o pódio.',
+    mode: 'overall',
+    indicators: ['resolvidosCount', 'satisfacao'],
+    weights: { resolvidos: 40, satisfacao: 60, floor: 70 },
+  }, { store: persist });
+  assert.equal(two.body.kind, 'conference');
+  assert.equal(two.body.conference.overall.selected.includes('primeira'), false);
+  assert.equal(two.body.reply.includes('Primeira resposta'), false);
+  const four = await postCenter({
+    text: 'Desempenho geral de março de 2027. Rafael Oliveira: 300 tickets, 94% de satisfação, 4 min de primeira resposta e TMA 10 min. Felipe Costa: 400 tickets, 97% de satisfação, 3 min de primeira resposta e TMA 6 min. Conferir. Não alterar o pódio.',
+    mode: 'overall',
+    indicators: ['resolvidosCount', 'satisfacao', 'primeira', 'resolucao'],
+    weights: { resolvidos: 25, satisfacao: 25, primeira: 25, resolucao: 25, floor: 70 },
+  }, { store: persist });
+  assert.equal(four.body.kind, 'conference');
+  assert.equal(four.body.conference.overall.selected.length, 4);
+});
+
+test('desempenho geral pede só a meta do indicador selecionado que faltar', async () => {
+  const result = await postCenter({
+    text: 'Desempenho geral de março de 2027. Rafael Oliveira primeira resposta 4 minutos. Felipe Costa primeira resposta 3 minutos. Conferir. Não alterar o pódio.',
+    mode: 'overall',
+    indicators: ['primeira'],
+    weights: { primeira: 100, floor: 70 },
+  });
+  assert.equal(result.body.kind, 'clarify');
+  assert.match(result.body.reply, /primeira resposta/i);
+  assert.equal(result.body.reply.includes('Tickets resolvidos'), false);
+  assert.equal(result.body.reply.includes('Satisfação'), false);
 });
 
 

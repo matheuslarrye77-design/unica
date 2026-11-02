@@ -79,7 +79,13 @@ type GoalsConference = {
   period: { kind: string; key: string; label: string };
   goals: ConferenceGoal[];
   people: ConferencePerson[];
-  overall?: { weights?: { resolvidos: number; primeira: number; resolucao: number; floor: number }; excludes?: string[]; scores?: { userId: string; name: string; score: number; place: number; capped?: boolean; worst?: number }[] } | null;
+  overall?: {
+    weights?: { resolvidos?: number; satisfacao?: number; primeira?: number; resolucao?: number; floor: number };
+    selected?: string[];
+    excluded?: string[];
+    excludes?: string[];
+    scores?: { userId: string; name: string; score: number; place: number; capped?: boolean; worst?: number; parts?: Record<string, { score: number; weight: number; contribution: number; name: string } | number> }[];
+  } | null;
   fingerprint?: string;
 };
 type Criterion = { mode: 'preset' | 'custom' | 'overall'; indicator?: string; templateId?: string };
@@ -87,7 +93,7 @@ export type GoalsPayload = {
   canManage: boolean;
   currentKey: string;
   criterion?: Criterion;
-  weights: { resolvidos: number; primeira: number; resolucao: number; floor: number };
+  weights: { resolvidos: number; primeira: number; resolucao: number; floor: number; satisfacao?: number };
   tieBreak: string[];
   people: Person[];
   templates: Template[];
@@ -127,6 +133,13 @@ const METRICS = [
   ['transferidos', 'Tickets transferidos'],
   ['primeira', 'Tempo de primeira resposta'],
   ['resolucao', 'Tempo médio de resolução'],
+] as const;
+
+const OVERALL_OPTIONS = [
+  { id: 'resolvidosCount', weightKey: 'resolvidos', label: 'Tickets resolvidos' },
+  { id: 'satisfacao', weightKey: 'satisfacao', label: 'Satisfação' },
+  { id: 'primeira', weightKey: 'primeira', label: 'Primeira resposta' },
+  { id: 'resolucao', weightKey: 'resolucao', label: 'Tempo médio de resolução (TMA)' },
 ] as const;
 
 const RULE_NAMES: Record<string, string> = {
@@ -209,6 +222,10 @@ type Board = {
   startPreset: () => void;
   startCustom: () => void;
   startOverall: () => void;
+  overallOn: Record<string, boolean>;
+  overallWeights: Record<string, number>;
+  toggleOverall: (id: string) => void;
+  setOverallWeight: (key: string, value: number) => void;
   pickPreset: (indicator: string) => void;
   talk: (text: string) => Promise<void>;
   approveWith: (reportText: string) => Promise<void>;
@@ -242,6 +259,13 @@ export const GoalsProvider: FC<{
   const [pendingRules, setPendingRules] = useState<PendingRules | null>(null);
   const [conference, setConference] = useState<GoalsConference | null>(null);
   const [pendingPodium, setPendingPodium] = useState<Criterion | null>(null);
+  const [overallOn, setOverallOn] = useState<Record<string, boolean>>({ resolvidosCount: true, satisfacao: false, primeira: true, resolucao: true });
+  const [overallWeights, setOverallWeights] = useState<Record<string, number>>({
+    resolvidos: goals.weights?.resolvidos ?? 40,
+    satisfacao: goals.weights?.satisfacao ?? 0,
+    primeira: goals.weights?.primeira ?? 25,
+    resolucao: goals.weights?.resolucao ?? 35,
+  });
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: 'hello',
     from: 'bot',
@@ -286,7 +310,27 @@ export const GoalsProvider: FC<{
   function startOverall() {
     setPhase('overall');
     setPendingPodium(null);
-    say('bot', 'Vou calcular o desempenho geral com os pesos configurados (resolvidos, primeira resposta e TMA), aplicar o piso e deixar tickets transferidos de fora. Envie os resultados ou peça para usar o que já está no banco. O pódio só muda se você confirmar isso.');
+    setOverallOn({
+      resolvidosCount: true,
+      satisfacao: Boolean(goals.weights?.satisfacao),
+      primeira: true,
+      resolucao: true,
+    });
+    setOverallWeights({
+      resolvidos: goals.weights?.resolvidos ?? 40,
+      satisfacao: goals.weights?.satisfacao ?? 0,
+      primeira: goals.weights?.primeira ?? 25,
+      resolucao: goals.weights?.resolucao ?? 35,
+    });
+    say('bot', 'Desempenho geral: marque os indicadores desta avaliação, ajuste os pesos se precisar e envie o período e os resultados. Uso as metas já cadastradas no período. Transferidos ficam de fora e o pódio não muda.');
+  }
+
+  function toggleOverall(id: string) {
+    setOverallOn((current) => ({ ...current, [id]: !current[id] }));
+  }
+
+  function setOverallWeight(key: string, value: number) {
+    setOverallWeights((current) => ({ ...current, [key]: value }));
   }
 
   function cancelProposal() {
@@ -341,6 +385,16 @@ export const GoalsProvider: FC<{
         text: source,
         history,
         mode: phase === 'idle' ? (selected.mode || 'custom') : phase,
+        indicators: phase === 'overall' ? OVERALL_OPTIONS.filter((item) => overallOn[item.id]).map((item) => item.id) : undefined,
+        weights: phase === 'overall'
+          ? {
+            resolvidos: overallWeights.resolvidos,
+            satisfacao: overallWeights.satisfacao,
+            primeira: overallWeights.primeira,
+            resolucao: overallWeights.resolucao,
+            floor: goals.weights?.floor ?? 70,
+          }
+          : undefined,
       });
       if (data.kind === 'unavailable' || data.kind === 'quota' || data.kind === 'auth' || data.kind === 'permission' || data.kind === 'model' || data.kind === 'invalid' || data.kind === 'clarify' || data.kind === 'storage') setDraft(source);
       else setDraft('');
@@ -490,6 +544,10 @@ export const GoalsProvider: FC<{
     startPreset,
     startCustom,
     startOverall,
+    overallOn,
+    overallWeights,
+    toggleOverall,
+    setOverallWeight,
     pickPreset,
     talk,
     approveWith,
@@ -498,14 +556,14 @@ export const GoalsProvider: FC<{
     cancelProposal,
     onFile,
     lastReport: lastReport.current,
-  }), [goals, selected, phase, preview, periodKey, replace, pendingRules, conference, pendingPodium, messages, draft, busy]);
+  }), [goals, selected, phase, preview, periodKey, replace, pendingRules, conference, pendingPodium, overallOn, overallWeights, messages, draft, busy]);
 
   return <BoardContext.Provider value={value}>{children}</BoardContext.Provider>;
 };
 
 export const GoalsCenter: FC = () => {
   const board = useBoard();
-  const { goals, selected, phase, preview, periodKey, replace, setPeriodKey, setReplace, busy, startPreset, startCustom, startOverall, patchRow, approveWith } = board;
+  const { goals, selected, phase, preview, periodKey, replace, setPeriodKey, setReplace, busy, startPreset, startCustom, startOverall, overallOn, overallWeights, toggleOverall, setOverallWeight, patchRow, approveWith } = board;
 
   const cards = [
     {
@@ -525,9 +583,9 @@ export const GoalsCenter: FC = () => {
     {
       id: 'overall' as const,
       title: 'Desempenho Geral',
-      text: 'Não olha um indicador isolado. Junta as três metas numa nota de 0 a 100, cada uma no peso do subsetor da pessoa.',
+      text: 'Escolha 1 a 4 indicadores, use os pesos e as metas já cadastradas e calcule uma nota de 0 a 100. O pódio não muda.',
       icon: Star,
-      points: ['Resolvidos 40%, primeira resposta 25%, resolução 35%', 'Quem vai muito mal numa meta não sobe só porque foi bem em outra', 'Tickets transferidos não entram nessa nota'],
+      points: ['Marque só os indicadores desta avaliação', 'Os pesos dos escolhidos são normalizados para 100%', 'Tickets transferidos não entram nessa nota'],
     },
   ];
 
@@ -582,6 +640,26 @@ export const GoalsCenter: FC = () => {
                     </li>
                   ))}
                 </ul>
+                {card.id === 'overall' && phase === 'overall' ? (
+                  <div className="mt-3 grid gap-1.5 rounded-2xl bg-[#FBF8FC] p-2">
+                    {OVERALL_OPTIONS.map((item) => (
+                      <label key={item.id} className="flex items-center gap-2 text-[12px] text-[#5C5168]">
+                        <input type="checkbox" checked={Boolean(overallOn[item.id])} onChange={() => toggleOverall(item.id)} />
+                        <span className="flex-1">{item.label}</span>
+                        {overallOn[item.id] ? (
+                          <input
+                            type="number"
+                            min={0}
+                            value={overallWeights[item.weightKey] ?? ''}
+                            onChange={(event) => setOverallWeight(item.weightKey, Number(event.target.value))}
+                            className="h-7 w-14 rounded-lg border border-[#E7DFF0] bg-white px-1 text-[12px]"
+                            aria-label={`Peso de ${item.label}`}
+                          />
+                        ) : null}
+                      </label>
+                    ))}
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   disabled={!goals.canManage}
@@ -955,7 +1033,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
 
 export const GoalsAssistant: FC = () => {
   const board = useBoard();
-  const { goals, messages, draft, setDraft, busy, talk, phase, pickPreset, pendingRules, setPendingRules, conference, pendingPodium, confirmPodium, saveTemplate, cancelProposal } = board;
+  const { goals, messages, draft, setDraft, busy, talk, phase, pickPreset, pendingRules, setPendingRules, conference, pendingPodium, confirmPodium, saveTemplate, cancelProposal, overallOn, overallWeights, toggleOverall, setOverallWeight } = board;
   const thread = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [bankOpen, setBankOpen] = useState(false);
@@ -1007,6 +1085,27 @@ export const GoalsAssistant: FC = () => {
             </div>
           </div>
         ) : null}
+        {phase === 'overall' && !conference ? (
+          <div className="grid gap-1.5 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
+            <p className="text-[12px] font-semibold text-[#4A1C73]">Indicadores desta avaliação</p>
+            {OVERALL_OPTIONS.map((item) => (
+              <label key={item.id} className="flex items-center gap-2 text-[12.5px] text-[#5C5168]">
+                <input type="checkbox" checked={Boolean(overallOn[item.id])} onChange={() => toggleOverall(item.id)} />
+                <span className="flex-1">{item.label}</span>
+                {overallOn[item.id] ? (
+                  <input
+                    type="number"
+                    min={0}
+                    value={overallWeights[item.weightKey] ?? ''}
+                    onChange={(event) => setOverallWeight(item.weightKey, Number(event.target.value))}
+                    className="h-7 w-14 rounded-lg border border-[#E7DFF0] bg-white px-1 text-[12px]"
+                    aria-label={`Peso de ${item.label}`}
+                  />
+                ) : null}
+              </label>
+            ))}
+          </div>
+        ) : null}
         {phase === 'custom' && !pendingRules && !conference ? (
           <div className="grid gap-1.5">
             {[
@@ -1037,10 +1136,17 @@ export const GoalsAssistant: FC = () => {
             {conference.overall?.scores?.length ? (
               <>
                 <p className="text-[12px] font-medium text-[#4A1C73]">Desempenho geral</p>
-                <p className="text-[11px] text-[#8A7C98]">Pesos: resolvidos {conference.overall.weights?.resolvidos}%, primeira {conference.overall.weights?.primeira}%, TMA {conference.overall.weights?.resolucao}%. Piso {conference.overall.weights?.floor}. Transferidos fora.</p>
+                <p className="text-[11px] text-[#8A7C98]">
+                  Incluídos: {(conference.overall.selected ?? []).map((id) => OVERALL_OPTIONS.find((item) => item.id === id)?.label ?? id).join(', ') || 'indicadores selecionados'}.
+                  {(conference.overall.excluded ?? []).length ? ` Fora: ${(conference.overall.excluded ?? []).map((id) => OVERALL_OPTIONS.find((item) => item.id === id)?.label ?? id).join(', ')}.` : ''}
+                  {' '}Piso {conference.overall.weights?.floor}. Transferidos fora.
+                </p>
                 <ul className="grid gap-1 text-[12.5px] leading-5 break-words text-[#5C5168]">
                   {conference.overall.scores.map((item) => (
-                    <li key={item.userId}>{item.place}º {item.name}: {item.score}{item.capped ? ' (piso aplicado)' : ''}</li>
+                    <li key={item.userId}>
+                      {item.place}º {item.name}: {item.score}{item.capped ? ' (piso aplicado)' : ''}
+                      {item.parts ? ` — ${Object.values(item.parts).map((part) => (typeof part === 'number' ? String(part) : `${part.name} ${part.contribution}`)).join('; ')}` : ''}
+                    </li>
                   ))}
                 </ul>
               </>
