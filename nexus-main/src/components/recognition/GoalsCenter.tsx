@@ -69,6 +69,17 @@ type BankPeriod = {
   people: { userId: string; name: string; periodKey: string; periodLabel: string; pending: boolean; history: { at: string; values: LedgerValues }[]; indicators: BankIndicator[] }[];
   pending: { id: string; sourceName: string; periodLabel: string; pending: boolean; indicators: BankIndicator[] }[];
 };
+type ConferenceResult = { indicator: string; name: string; value: number; unit: string; target: number | null; op: string; met: boolean | null; status: string };
+type ConferencePerson = { userId: string; name: string; sourceName: string; subsetor: string; identified: boolean; values?: Values; results: ConferenceResult[] };
+type ConferenceGoal = { indicator: string; name: string; op: string; value: number; valueTo?: number | null; unit: string; period?: string };
+type GoalsConference = {
+  id: string;
+  sourceText: string;
+  period: { kind: string; key: string; label: string };
+  goals: ConferenceGoal[];
+  people: ConferencePerson[];
+  fingerprint?: string;
+};
 type Criterion = { mode: 'preset' | 'custom' | 'overall'; indicator?: string; templateId?: string };
 export type GoalsPayload = {
   canManage: boolean;
@@ -184,6 +195,7 @@ type Board = {
   setReplace: (value: boolean) => void;
   pendingRules: PendingRules | null;
   setPendingRules: (value: PendingRules | null) => void;
+  conference: GoalsConference | null;
   cancelProposal: () => void;
   messages: ChatMessage[];
   draft: string;
@@ -223,6 +235,7 @@ export const GoalsProvider: FC<{
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState<Phase>('idle');
   const [pendingRules, setPendingRules] = useState<PendingRules | null>(null);
+  const [conference, setConference] = useState<GoalsConference | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: 'hello',
     from: 'bot',
@@ -263,7 +276,8 @@ export const GoalsProvider: FC<{
 
   function cancelProposal() {
     setPendingRules(null);
-    say('bot', 'Cancelei este critério. O pódio não foi alterado.');
+    setConference(null);
+    say('bot', 'Cancelei esta conferência. O pódio não foi alterado.');
   }
 
   async function pickPreset(indicator: string) {
@@ -276,13 +290,13 @@ export const GoalsProvider: FC<{
     const source = text.trim();
     if (!source || busy) return;
     const normalized = source.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    if (pendingRules && /^(confirmar|aprovar|aprovar regra|aprovar criterio|confirmar metas)$/.test(normalized)) {
+    if ((conference || pendingRules) && /^(confirmar|aprovar|aprovar regra|aprovar criterio|confirmar metas)$/.test(normalized)) {
       say('user', source);
       setDraft('');
       await saveTemplate();
       return;
     }
-    if (pendingRules && /^(cancelar|descartar)$/.test(normalized)) {
+    if ((conference || pendingRules) && /^(cancelar|descartar)$/.test(normalized)) {
       say('user', source);
       setDraft('');
       cancelProposal();
@@ -292,75 +306,18 @@ export const GoalsProvider: FC<{
     setBusy(true);
     try {
       const history = messages.slice(-6).map((message) => ({ text: message.text }));
-      const data = await send('/api/goals/assistant', 'POST', { text: source, preview: phase === 'custom' ? undefined : preview, periodKey: periodKey || week || goals.currentKey, intent: phase, history });
+      const data = await send('/api/goals/center', 'POST', { text: source, history });
       if (data.kind === 'unavailable' || data.kind === 'quota' || data.kind === 'auth' || data.kind === 'permission' || data.kind === 'model' || data.kind === 'invalid' || data.kind === 'clarify' || data.kind === 'storage') setDraft(source);
       else setDraft('');
       say('bot', String(data.reply ?? ''));
-      if ((data.kind === 'ledger' || data.kind === 'proposal') && data.ledger) onChange({ ...data, canManage: goals.canManage, people: data.people ?? goals.people });
-      if (data.kind === 'ledger') {
-        if (data.proposal?.rules?.length) {
-          setPendingRules({
-            period: data.proposal.period,
-            periodKey: String(data.proposal.periodKey ?? ''),
-            periodLabel: String(data.proposal.periodLabel ?? ''),
-            rules: data.proposal.rules,
-            name: '',
-            explanation: String(data.proposal.explanation ?? ''),
-            combine: data.proposal.combine === 'any' ? 'any' : 'all',
-            subsetor: String(data.proposal.subsetor ?? ''),
-            weights: data.proposal.weights ?? null,
-          });
-        } else setPendingRules(null);
+      if (data.kind === 'conference' && data.conference) {
+        setConference(data.conference);
+        setPendingRules(null);
+        return;
       }
-      if (data.kind === 'preview') {
-        lastReport.current = source;
-        setPreview(data.preview);
-        setPeriodKey(data.preview.periodKey || periodKey);
-        setReplace(false);
-      }
-      if (data.kind === 'cancel') setPreview(null);
-      if (data.kind === 'approve') await approveWith(source);
-      if (data.kind === 'criterion') await choose(data.criterion);
-      if (data.kind === 'review') {
-        setPendingRules({
-          period: String(data.period ?? ''),
-          periodKey: String(data.periodKey ?? ''),
-          periodLabel: String(data.periodLabel ?? ''),
-          rules: Array.isArray(data.rules) ? data.rules : [],
-          name: '',
-          explanation: String(data.explanation ?? data.reply ?? ''),
-          combine: 'all',
-          subsetor: '',
-          weights: null,
-          rows: Array.isArray(data.rows) ? data.rows : [],
-          sourceText: source,
-          comparisons: Array.isArray(data.comparisons) ? data.comparisons : [],
-        });
-        setPhase('custom');
-      }
-      if (data.kind === 'proposal') {
-        setPendingRules({
-          period: data.period,
-          periodKey: String(data.periodKey ?? ''),
-          periodLabel: String(data.periodLabel ?? ''),
-          rules: data.rules,
-          name: '',
-          explanation: String(data.explanation ?? ''),
-          combine: data.combine === 'any' ? 'any' : 'all',
-          subsetor: String(data.subsetor ?? ''),
-          weights: data.weights ?? null,
-        });
-        setPhase('custom');
-      }
-      if (data.kind === 'clarify') setPendingRules(null);
-      if (data.kind === 'goal' && preview) {
-        setPreview({
-          ...preview,
-          rows: preview.rows.map((row) => {
-            if (data.channel && row.subsetor !== data.channel) return row;
-            return { ...row, goal: { ...row.goal, [data.metric]: { ...(row.goal[data.metric as 'resolvidos'] ?? {}), target: data.target, direction: data.metric === 'resolvidos' ? 'higher' : 'lower' } } };
-          }),
-        });
+      if (data.kind === 'clarify') {
+        setConference(null);
+        setPendingRules(null);
       }
     } catch (error) {
       setDraft(source);
@@ -410,30 +367,26 @@ export const GoalsProvider: FC<{
   }
 
   async function saveTemplate() {
+    if (conference) {
+      setBusy(true);
+      try {
+        const data = await send('/api/goals/center', 'POST', { action: 'confirm', text: 'confirmar', conference });
+        onChange({ ...data, canManage: goals.canManage, people: data.people ?? goals.people });
+        setConference(null);
+        setPendingRules(null);
+        setPhase('idle');
+        say('bot', String(data.reply ?? 'Gravei as metas e os resultados no Banco dos relatórios. O pódio não foi alterado.'));
+      } catch {
+        say('bot', 'Não consegui salvar. O pódio continua como estava.');
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     if (!pendingRules) return;
     const name = pendingRules.name.trim() || 'Metas da gestão';
     setBusy(true);
     try {
-      if (pendingRules.sourceText || pendingRules.rows?.length) {
-        const data = await send('/api/goals/assistant', 'POST', {
-          text: 'confirmar',
-          review: {
-            name: 'Metas da gestão',
-            period: pendingRules.period,
-            periodKey: pendingRules.periodKey,
-            periodLabel: pendingRules.periodLabel,
-            rules: pendingRules.rules,
-            rows: pendingRules.rows,
-            sourceText: pendingRules.sourceText,
-            explanation: pendingRules.explanation,
-          },
-        });
-        onChange({ ...data, canManage: goals.canManage, people: data.people ?? goals.people });
-        setPendingRules(null);
-        setPhase('idle');
-        say('bot', String(data.reply ?? 'Gravei as metas e os resultados no Banco dos relatórios. O pódio não foi alterado.'));
-        return;
-      }
       const data = await send('/api/goals/templates', 'POST', {
         confirm: true,
         name,
@@ -478,6 +431,7 @@ export const GoalsProvider: FC<{
     setReplace,
     pendingRules,
     setPendingRules,
+    conference,
     messages,
     draft,
     setDraft,
@@ -493,7 +447,7 @@ export const GoalsProvider: FC<{
     cancelProposal,
     onFile,
     lastReport: lastReport.current,
-  }), [goals, selected, phase, preview, periodKey, replace, pendingRules, messages, draft, busy]);
+  }), [goals, selected, phase, preview, periodKey, replace, pendingRules, conference, messages, draft, busy]);
 
   return <BoardContext.Provider value={value}>{children}</BoardContext.Provider>;
 };
@@ -936,14 +890,14 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
 
 export const GoalsAssistant: FC = () => {
   const board = useBoard();
-  const { goals, messages, draft, setDraft, busy, talk, phase, pickPreset, pendingRules, setPendingRules, saveTemplate, cancelProposal } = board;
+  const { goals, messages, draft, setDraft, busy, talk, phase, pickPreset, pendingRules, setPendingRules, conference, saveTemplate, cancelProposal } = board;
   const thread = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [bankOpen, setBankOpen] = useState(false);
 
   useEffect(() => {
     thread.current?.scrollTo({ top: thread.current.scrollHeight });
-  }, [messages, phase, pendingRules]);
+  }, [messages, phase, pendingRules, conference]);
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -990,7 +944,43 @@ export const GoalsAssistant: FC = () => {
             ))}
           </div>
         ) : null}
-        {pendingRules ? (
+        {conference ? (
+          <div className="grid gap-2 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
+            <p className="text-[12px] font-semibold text-[#4A1C73]">Conferência. Nada foi salvo e o pódio não foi alterado.</p>
+            {conference.period?.label ? <p className="text-[12px] text-[#5C5168]">Período: {conference.period.label}</p> : null}
+            {conference.goals.length ? (
+              <>
+                <p className="text-[12px] font-medium text-[#4A1C73]">Metas da gestão — {conference.period.label}</p>
+                <p className="text-[11px] text-[#8A7C98]">Indicador | Valor | Regra | Período</p>
+                <ul className="grid gap-1 text-[12.5px] leading-5 break-words text-[#5C5168]">
+                  {conference.goals.map((goal, index) => (
+                    <li key={`${goal.indicator}-${index}`}>{ruleConference(goal, conference.period.label)}</li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {conference.people.length ? (
+              <>
+                <p className="text-[12px] font-medium text-[#4A1C73]">Resultados individuais</p>
+                <ul className="grid gap-2 text-[12.5px] leading-5 break-words text-[#5C5168]">
+                  {conference.people.map((person) => (
+                    <li key={person.userId || person.sourceName}>
+                      <p className="font-medium text-[#241B33]">{person.name}{person.identified ? ' — cadastro da Equipe' : ' — aguardando identificação'}</p>
+                      {person.results.map((item) => (
+                        <p key={item.indicator}>{item.name}: {item.value}{item.unit} — {item.status}</p>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            <p className="text-[12px] text-[#8A7C98]">O pódio permanece como está.</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" disabled={busy} onClick={() => void saveTemplate()} className="h-9 rounded-full bg-[#8E35B8] text-[12.5px] font-semibold text-white disabled:bg-[#C9A6DC]">Confirmar metas</button>
+              <button type="button" disabled={busy} onClick={cancelProposal} className="h-9 rounded-full border border-[#E7DFF0] text-[12.5px] font-semibold text-[#6A228C]">Cancelar</button>
+            </div>
+          </div>
+        ) : pendingRules ? (
           <div className="grid gap-2 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
             <p className="text-[12px] font-semibold text-[#4A1C73]">Conferência. Nada foi salvo e o pódio não foi alterado.</p>
             {pendingRules.rules.length ? (

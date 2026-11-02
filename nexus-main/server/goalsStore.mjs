@@ -46,6 +46,7 @@ export function normalizeGoals(parsed) {
     weights: { ...emptyStore().weights, ...(source.weights ?? {}) },
     criterion: readCriterion(source.criterion),
     managementGoals: Array.isArray(source.managementGoals) ? source.managementGoals : [],
+    centerFingerprints: Array.isArray(source.centerFingerprints) ? source.centerFingerprints : [],
     ledger: {
       records: Array.isArray(source.ledger?.records) ? source.ledger.records : [],
       ranking: Array.isArray(source.ledger?.ranking) ? source.ledger.ranking : [],

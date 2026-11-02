@@ -120,6 +120,9 @@ test('a interface do banco mostra mês/ano, gestão e resultados separados', () 
   assert.match(ui, /O pódio não foi alterado/);
   assert.match(ui, /Novembro\/\$\{year\}|\/\$\{year\}/);
   assert.match(ui, /pendingRules\.comparisons/);
+  assert.match(ui, /\/api\/goals\/center/);
+  assert.match(ui, /data\.conference/);
+  assert.match(ui, /conference\.people/);
   assert.match(ui, /messages\.slice\(-6\)/);
   assert.equal(ui.includes('O pódio passa a usar esta regra'), false);
 });
@@ -359,4 +362,96 @@ test('correção de resultado atualiza o mesmo colaborador no mesmo período', a
   assert.equal(rafa.indicators.find((item) => item.field === 'resolvidosCount').value, 310);
   assert.equal(reload.body.criterion.mode, 'preset');
 });
+
+async function postCenter(payload, req = {}, generate) {
+  const persist = req.store ?? memoryGoalsStore();
+  const res = { status: 0, body: null };
+  await handleGoals(
+    { method: 'POST', url: '/api/goals/center', ...req },
+    {},
+    leader,
+    process.cwd(),
+    [],
+    teamRoster,
+    (_response, status, body) => { res.status = status; res.body = body; },
+    async () => Buffer.from(Object.prototype.hasOwnProperty.call(req, 'raw') ? req.raw : JSON.stringify(payload)),
+    { store: persist, generate: generate ?? (async () => ({ error: 'unconfigured' })) },
+  );
+  res.store = persist;
+  return res;
+}
+
+function assertConference(result) {
+  assert.equal(result.status, 200);
+  assert.equal(result.body.kind, 'conference');
+  assert.equal(result.body.persist, false);
+  const conference = result.body.conference;
+  assert.ok(conference);
+  assert.equal(conference.period.label, 'Novembro/2026');
+  assert.equal(conference.goals.length, 4);
+  assert.equal(conference.people.length, 2);
+  const rafa = conference.people.find((row) => row.userId === 'tm-8');
+  const feli = conference.people.find((row) => row.userId === 'tm-4');
+  const valueOf = (person, field) => person.results.find((item) => item.indicator === field)?.value;
+  assert.equal(valueOf(rafa, 'resolvidosCount'), 300);
+  assert.equal(valueOf(rafa, 'satisfacao'), 94);
+  assert.equal(valueOf(rafa, 'primeira'), 4);
+  assert.equal(valueOf(rafa, 'resolucao'), 9);
+  assert.equal(valueOf(feli, 'resolvidosCount'), 350);
+  assert.equal(valueOf(feli, 'satisfacao'), 97);
+  assert.equal(valueOf(feli, 'primeira'), 3);
+  assert.equal(valueOf(feli, 'resolucao'), 7);
+  assert.equal(rafa.results.find((item) => item.indicator === 'resolvidosCount').status, 'Abaixo da meta');
+  assert.equal(feli.results.find((item) => item.indicator === 'resolucao').status, 'Atingiu');
+  assert.match(result.body.reply, /300/);
+  assert.match(result.body.reply, /350/);
+  assert.match(result.body.reply, /Rafael Oliveira/);
+  assert.match(result.body.reply, /Felipe Costa/);
+}
+
+test('a rota exclusiva /api/goals/center monta uma conferência completa da mensagem natural', async () => {
+  const namesOnly = async () => ({
+    text: JSON.stringify({
+      status: 'ready',
+      intent: 'review',
+      explanation: 'metas e resultados',
+      questions: [],
+      period: 'month',
+      periodKey: 'month:2026-11',
+      periodLabel: 'Novembro/2026',
+      changePodium: false,
+      goals: [],
+      people: [
+        { name: 'Rafael Oliveira', resolvidosCount: null, resolvidos: null, transferidos: null, primeira: null, resolucao: null, satisfacao: null },
+        { name: 'Felipe Costa', resolvidosCount: null, resolvidos: null, transferidos: null, primeira: null, resolucao: null, satisfacao: null },
+      ],
+    }),
+  });
+  const result = await postCenter({ text: NATURAL_MESSAGE, history: [] }, {}, namesOnly);
+  assertConference(result);
+  const nested = await postCenter({ text: NATURAL_MESSAGE }, { url: '/api/goals?nested=goals/center' });
+  assertConference(nested);
+});
+
+test('a rota exclusiva não monta conferência incompleta e só grava depois de confirmar', async () => {
+  const persist = memoryGoalsStore();
+  const incomplete = await postCenter({ text: 'Preciso definir as metas gerais para novembro de 2026. Conferir antes de salvar.' }, { store: persist });
+  assert.equal(incomplete.body.kind, 'clarify');
+  assert.equal(incomplete.body.conference, null);
+  const first = await postCenter({ text: NATURAL_MESSAGE }, { store: persist });
+  assertConference(first);
+  const saved = await postCenter({ action: 'confirm', text: 'confirmar', conference: first.body.conference }, { store: persist });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.kind, 'saved');
+  assert.equal(saved.body.criterion.mode, 'preset');
+  assert.equal((saved.body.ledger.applied ?? []).length, 0);
+  const month = saved.body.bank.periods.find((item) => item.key === '2026-11');
+  assert.equal(month.goals.length, 4);
+  assert.equal(month.people.length, 2);
+  assert.equal(month.people.find((row) => row.userId === 'tm-8').indicators.find((item) => item.field === 'resolvidosCount').value, 300);
+  assert.equal(month.people.find((row) => row.userId === 'tm-4').indicators.find((item) => item.field === 'satisfacao').value, 97);
+  const again = await postCenter({ action: 'confirm', text: 'confirmar', conference: first.body.conference }, { store: persist });
+  assert.equal(again.body.duplicate, true);
+});
+
 

@@ -1,5 +1,6 @@
 import { isLeader } from './auth/permissions.mjs';
 import { commitTemplate, interpretCriteria, normalizeProposal } from './criteria.mjs';
+import { interpretGoalsCenter, saveGoalsCenter } from './goalsCenter.mjs';
 import { interpretGoalsTurn } from './goalsTurn.mjs';
 import { applyGoalsReview, applyLedgerRanking, ingestReport, proposeFromLedger } from './ledger.mjs';
 import { applyCriterion, buildApproval, emptyStore, fold, goalState, INDICATORS, looksLikeReport, overallScore, parseReport, publicStore, readCriterion, relinkLedger, runAssistant } from './goals.mjs';
@@ -97,7 +98,7 @@ function parseGoalsBody(raw, req) {
   if (extra && typeof extra === 'object' && !Array.isArray(extra) && !Buffer.isBuffer(extra)) {
     body = { ...extra, ...body };
   }
-  if (!body.text && !body.review && typeof extra === 'string') {
+  if (!body.text && !body.review && !body.conference && typeof extra === 'string') {
     try {
       body = { ...body, ...JSON.parse(extra) };
     } catch {
@@ -196,7 +197,38 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
       send(res, 200, publicView(result.store, user, people));
       return true;
     }
-    const assistantPost = req.method === 'POST' && (url === '/api/goals/assistant' || (url === '/api/goals' && body.text && !body.confirm && !body.rows && !body.mode && !body.display && !body.review));
+    if (req.method === 'POST' && url === '/api/goals/center') {
+      if (body.conference && (body.action === 'confirm' || /^(confirmar|aprovar)( metas| resultados| conferencia)?$/.test(fold(String(body.text ?? 'confirmar'))))) {
+        const result = await commit((current) => {
+          const saved = saveGoalsCenter(current, body.conference, people, new Date());
+          if (saved.error === 'incomplete') return { skip: true, error: 'incomplete' };
+          return { store: saved.store, duplicate: saved.duplicate };
+        });
+        if (!result) return true;
+        if (result.error === 'incomplete') {
+          send(res, 200, { kind: 'clarify', conference: body.conference, reply: 'A conferência está incompleta. Nada foi gravado e o pódio não mudou.' });
+          return true;
+        }
+        send(res, 200, {
+          ...publicView(result.store, user, people),
+          kind: 'saved',
+          duplicate: Boolean(result.duplicate),
+          reply: result.duplicate
+            ? 'Esses dados já estavam no Banco dos relatórios. O pódio não foi alterado.'
+            : 'Gravei as metas e os resultados no Banco dos relatórios. O pódio não foi alterado.',
+        });
+        return true;
+      }
+      const interpreted = await interpretGoalsCenter(String(body.text ?? ''), {
+        people,
+        history: Array.isArray(body.history) ? body.history : [],
+        env: options.env ?? process.env,
+        generate: options.generate,
+      });
+      send(res, 200, interpreted);
+      return true;
+    }
+    const assistantPost = req.method === 'POST' && (url === '/api/goals/assistant' || (url === '/api/goals' && body.text && !body.confirm && !body.rows && !body.mode && !body.display && !body.review && !body.conference));
     if (assistantPost) {
       const text = String(body.text ?? '');
       const intent = String(body.intent ?? '');

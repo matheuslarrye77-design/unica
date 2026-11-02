@@ -21,6 +21,7 @@ export function emptyStore() {
     criterion: defaultCriterion(),
     ledger: { records: [], ranking: [], applied: [] },
     managementGoals: [],
+    centerFingerprints: [],
   };
 }
 
