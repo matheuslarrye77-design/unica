@@ -140,8 +140,8 @@ const RULE_NAMES: Record<string, string> = {
 const RULE_OPS: Record<string, string> = { gt: '>', gte: '>=', lt: '<', lte: '<=', eq: '=', between: 'entre' };
 const RULE_UNITS: Record<string, string> = { resolvidos: '%', satisfacao: '%', primeira: ' min', resolucao: ' min' };
 
-function ruleConference(rule: Rule, periodLabel?: string) {
-  const name = RULE_NAMES[rule.indicator] ?? rule.indicator;
+function ruleConference(rule: Rule & { name?: string }, periodLabel?: string) {
+  const name = rule.name || RULE_NAMES[rule.indicator] ?? rule.indicator.replace(/^c:/, '').replace(/-/g, ' ');
   const unit = RULE_UNITS[rule.indicator] ?? '';
   const value = rule.op === 'between' ? `${rule.value} a ${rule.valueTo ?? ''}${unit}` : `${rule.value}${unit}`;
   const sign = RULE_OPS[rule.op] ?? rule.op;
