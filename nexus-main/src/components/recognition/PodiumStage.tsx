@@ -46,9 +46,10 @@ const PersonCard: FC<{ person: Ranking; mode: string }> = ({ person, mode }) => 
   const place = (person.place === 2 || person.place === 3 ? person.place : 1) as 1 | 2 | 3;
   const tone = STEP[place];
   const role = teamRoster.find((item) => item.id === person.userId || item.name === person.name)?.role ?? '';
+  const touch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
   return (
-    <div className="relative flex min-w-0 flex-col items-center text-center" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
-      <button type="button" className="flex w-full min-w-0 flex-col items-center" onClick={() => setOpen((value) => !value)}>
+    <div className="relative z-10 flex min-w-0 flex-col items-center text-center" onMouseEnter={() => { if (!touch) setOpen(true); }} onMouseLeave={() => { if (!touch) setOpen(false); }}>
+      <button type="button" className="flex w-full min-w-0 flex-col items-center" onClick={() => { if (touch) setOpen((value) => !value); }}>
         <div className="relative">
           {place === 1 ? <Crown className="absolute -top-4 left-1/2 h-5 w-5 -translate-x-1/2 text-[#7C3AED]" /> : null}
           <img src={face(person.name)} alt="" className={cn('rounded-full bg-white object-cover', tone.avatar)} style={{ boxShadow: `0 0 0 3px #fff, 0 0 0 5px ${tone.strong}` }} />
@@ -64,7 +65,7 @@ const PersonCard: FC<{ person: Ranking; mode: string }> = ({ person, mode }) => 
         </div>
       </button>
       {open ? (
-        <div className="absolute bottom-[calc(100%-8px)] z-30 w-[min(260px,calc(100vw-2rem))] rounded-2xl border border-[#E7DFF0] bg-white p-3 text-left shadow-[0_18px_40px_rgba(80,40,120,0.16)]">
+        <div className="absolute left-1/2 top-full z-40 mt-2 w-[min(260px,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl border border-[#E7DFF0] bg-white p-3 text-left shadow-[0_18px_40px_rgba(80,40,120,0.16)]">
           <p className="text-[12px] font-semibold text-[#4A1C73]">{place}º {person.name}</p>
           {person.detailsAvailable && person.metrics?.length ? (
             <ul className="mt-2 grid gap-1.5 text-[11.5px] leading-4 text-[#5C5168]">
@@ -108,7 +109,7 @@ export const PodiumStage: FC<{
 
   return (
     <>
-      <section className="rounded-[22px] border border-[#F0E7F6] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
+      <section className="overflow-visible rounded-[22px] border border-[#F0E7F6] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-start gap-2.5">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#F3E4FA] text-[#8E35B8]"><Trophy className="h-4 w-4" /></span>
