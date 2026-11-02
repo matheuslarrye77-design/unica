@@ -49,7 +49,7 @@ const PersonCard: FC<{ person: Ranking; mode: string }> = ({ person, mode }) => 
   const touch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
   return (
     <div className="relative z-10 flex min-w-0 flex-col items-center text-center" onMouseEnter={() => { if (!touch) setOpen(true); }} onMouseLeave={() => { if (!touch) setOpen(false); }}>
-      <button type="button" className="flex w-full min-w-0 flex-col items-center" onClick={() => { if (touch) setOpen((value) => !value); }}>
+      <button type="button" className="flex w-full min-w-0 flex-col items-center" onClick={() => setOpen((value) => !value)}>
         <div className="relative">
           {place === 1 ? <Crown className="absolute -top-4 left-1/2 h-5 w-5 -translate-x-1/2 text-[#7C3AED]" /> : null}
           <img src={face(person.name)} alt="" className={cn('rounded-full bg-white object-cover', tone.avatar)} style={{ boxShadow: `0 0 0 3px #fff, 0 0 0 5px ${tone.strong}` }} />
