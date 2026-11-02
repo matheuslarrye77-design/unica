@@ -255,8 +255,13 @@ test('GET omite o ledger completo de quem não é líder e a API avisa indisponi
   db.failRead('42501');
   const fail = fakeRes();
   await handleGoals({ method: 'GET', url: '/api/goals' }, {}, leader, os.tmpdir(), [], [felipe], fail.send, async () => Buffer.from('{}'), { store: persist });
-  assert.equal(fail.res.status, 503);
-  assert.equal(fail.res.body.kind, 'storage');
+  assert.equal(fail.res.status, 200);
+  assert.equal(fail.res.body.canManage, true);
+  assert.equal(fail.res.body.storage, 'unavailable');
+  assert.equal(fail.res.body.ledger.records.length, 0);
+  const write = fakeRes();
+  await handleGoals({ method: 'POST', url: '/api/goals/assistant' }, {}, leader, os.tmpdir(), [], [felipe], write.send, async () => Buffer.from(JSON.stringify({ text: 'Felipe Costa: 1 tickets resolvidos.' })), { store: persist });
+  assert.equal(write.res.status, 503);
   const ui = fs.readFileSync(new URL('../src/components/recognition/GoalsCenter.tsx', import.meta.url), 'utf8');
   assert.equal(ui.includes("data.kind === 'storage'"), true);
   const durable = fs.readFileSync(new URL('./durable.mjs', import.meta.url), 'utf8');

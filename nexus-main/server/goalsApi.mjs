@@ -74,15 +74,15 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
   if (url !== '/api/goals' && !url.startsWith('/api/goals/')) return false;
   const persist = options.store ?? createGoalsStore({ dir, env: options.env ?? process.env, remote: options.remote, client: options.client, migrateBlob: options.migrateBlob, timeoutMs: options.timeoutMs, retries: options.retries });
   const loaded = await persist.load();
-  if (loaded.error) {
-    send(res, 503, storageBody());
-    return true;
-  }
-  let store = loaded.store ?? emptyStore();
+  const store = loaded.error ? emptyStore() : loaded.store ?? emptyStore();
   const people = directory(colleagues, store.aliases, teamRoster);
   const labels = redactLabels(colleagues, store.aliases, teamRoster);
   if (req.method === 'GET' && url === '/api/goals') {
-    send(res, 200, publicView(store, user, people));
+    send(res, 200, { ...publicView(store, user, people), storage: loaded.error ? 'unavailable' : 'ok' });
+    return true;
+  }
+  if (loaded.error) {
+    send(res, 503, storageBody());
     return true;
   }
   if (!isLeader(user)) {

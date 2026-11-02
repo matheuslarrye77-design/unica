@@ -76,8 +76,8 @@ export const KudosFeedPage: FC = () => {
   const [week, setWeek] = useState('');
   useEffect(() => {
     void fetch('/api/goals', { credentials: 'include', headers: { ...authHeaders(), ...(LOGIN_REQUIRED ? {} : { 'x-unica-demo': getDemoId() }) } })
-      .then((response) => response.ok ? response.json() as Promise<GoalsPayload> : null)
-      .then((data) => { if (data) setGoals(data); })
+      .then((response) => response.json().catch(() => null) as Promise<GoalsPayload | null>)
+      .then((data) => { if (data && typeof data.canManage === 'boolean') setGoals(data); })
       .catch(() => undefined);
   }, []);
   const approved = goals?.imports ?? [];
