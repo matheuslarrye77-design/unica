@@ -477,6 +477,18 @@ export function extraApi(): Connect.NextHandleFunction {
   }
 
   return async (req, res, next) => {
+    const incoming = String(req.url ?? '');
+    if (incoming.includes('nested=')) {
+      const current = incoming.startsWith('http') ? new URL(incoming) : new URL(incoming, 'http://internal');
+      const nested = current.searchParams.get('nested');
+      if (nested) {
+        current.searchParams.delete('nested');
+        const nestedPath = `/${nested.replace(/^\/+/, '')}`;
+        const restored = (nestedPath.startsWith('/api/') ? nestedPath : `/api${nestedPath}`).replace(/\/+$/, '') || '/';
+        const query = current.searchParams.toString();
+        req.url = `${restored}${query ? `?${query}` : ''}`;
+      }
+    }
     const url = req.url?.split('?')[0] ?? '';
     const feedRoute = url === '/api/feed' || url.startsWith('/api/feed/');
     const uploadRoute = url.startsWith('/api/uploads');

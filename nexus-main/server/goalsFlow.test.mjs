@@ -3,7 +3,10 @@ import fs from 'node:fs';
 import test from 'node:test';
 import { commitTemplate, interpretCriteria } from './criteria.mjs';
 import { emptyStore, parseReport, publicStore, reportBankSnapshot, runAssistant, understandGoalsMessage } from './goals.mjs';
+import { handleGoals } from './goalsApi.mjs';
+import { createGoalsStore } from './goalsStore.mjs';
 import { applyGoalsReview, ingestReport } from './ledger.mjs';
+import { teamRoster } from '../src/data/team.ts';
 
 const now = new Date(2026, 10, 2, 12, 0, 0);
 const felipe = { id: 'tm-4', name: 'Felipe Costa', funcao: 'E-mail', role: 'Atendimento', aliases: [] };
@@ -199,5 +202,98 @@ test('conferência natural só grava no banco depois de confirmar, sem pódio', 
   assert.equal(month.pending.length, 0);
   assert.equal(month.people.find((row) => row.userId === 'tm-8').indicators.find((item) => item.field === 'resolvidosCount').met, false);
   assert.equal(month.people.find((row) => row.userId === 'tm-4').indicators.find((item) => item.field === 'resolucao').met, true);
+});
+
+const leader = { id: '1', name: 'Helena Duarte', role: 'Líder', department: 'Comunicação' };
+
+function memoryGoalsStore() {
+  const row = { id: 'goals', payload: emptyStore(), updated_at: 'ok' };
+  return createGoalsStore({
+    env: {
+      VERCEL: '1',
+      VERCEL_ENV: 'production',
+      SUPABASE_URL: 'https://example.supabase.co',
+      SUPABASE_SECRET_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.signature',
+    },
+    remote: true,
+    client: {
+      from() {
+        const filters = {};
+        let action = 'select';
+        let payload;
+        const run = () => {
+          if (action === 'select') return { data: JSON.parse(JSON.stringify(row)), error: null };
+          row.payload = payload.payload;
+          row.updated_at = payload.updated_at;
+          return { data: [{ id: payload.id }], error: null };
+        };
+        const chain = {
+          select() { return chain; },
+          insert(value) { action = 'insert'; payload = value; return chain; },
+          update(value) { action = 'update'; payload = value; return chain; },
+          upsert(value) { action = 'upsert'; payload = value; return chain; },
+          eq(field, value) { filters[field] = value; return chain; },
+          maybeSingle() { return run(); },
+          then(resolve, reject) { return Promise.resolve(run()).then(resolve, reject); },
+        };
+        return chain;
+      },
+    },
+    migrateBlob: async () => ({ ok: true, payload: null }),
+  });
+}
+
+async function postAssistant(payload, req = {}) {
+  const res = { status: 0, body: null };
+  await handleGoals(
+    { method: 'POST', url: '/api/goals/assistant', ...req },
+    {},
+    leader,
+    process.cwd(),
+    [],
+    teamRoster,
+    (_response, status, body) => { res.status = status; res.body = body; },
+    async () => Buffer.from(Object.prototype.hasOwnProperty.call(req, 'raw') ? req.raw : JSON.stringify(payload)),
+    { store: memoryGoalsStore() },
+  );
+  return res;
+}
+
+function assertApiReview(result) {
+  assert.equal(result.status, 200);
+  assert.equal(result.body.kind, 'review');
+  assert.notEqual(result.body.kind, 'ask');
+  assert.equal(result.body.persist, false);
+  assert.equal(result.body.periodLabel, 'Novembro/2026');
+  assert.equal(result.body.rules.length, 4);
+  assertNatural(result.body);
+  assert.equal(result.body.criterion?.mode ?? 'preset', 'preset');
+  assert.equal((result.body.ledger?.applied ?? []).length, 0);
+}
+
+test('a rota real /api/goals/assistant reconhece a mensagem natural da interface', async () => {
+  const result = await postAssistant({ text: NATURAL_MESSAGE, intent: 'idle', preview: null, periodKey: '', history: [] });
+  assertApiReview(result);
+});
+
+test('a rota real aceita intent custom, rewrite da Vercel e corpo já parseado', async () => {
+  const custom = await postAssistant({ text: NATURAL_MESSAGE, intent: 'custom', preview: null, periodKey: '', history: [] });
+  assertApiReview(custom);
+  const nested = await postAssistant(
+    { text: NATURAL_MESSAGE, intent: 'idle', preview: null, periodKey: '', history: [] },
+    { url: '/api/goals?nested=goals/assistant' },
+  );
+  assertApiReview(nested);
+  const parsed = await postAssistant(
+    { text: NATURAL_MESSAGE, intent: 'idle' },
+    { url: '/api/goals/assistant', body: { text: NATURAL_MESSAGE, intent: 'idle' }, raw: '' },
+  );
+  assertApiReview(parsed);
+});
+
+test('a rota real reconhece a mensagem em tópicos sem gravar nem mudar o pódio', async () => {
+  const text = NATURAL_VARIATIONS[1];
+  const result = await postAssistant({ text, intent: 'idle', preview: null, periodKey: '', history: [] });
+  assertApiReview(result);
 });
 

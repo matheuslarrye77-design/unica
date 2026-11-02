@@ -1,7 +1,7 @@
 import { isLeader } from './auth/permissions.mjs';
 import { commitTemplate, interpretCriteria, normalizeProposal } from './criteria.mjs';
 import { applyGoalsReview, applyLedgerRanking, ingestReport, proposeFromLedger } from './ledger.mjs';
-import { applyCriterion, buildApproval, emptyStore, fold, goalState, INDICATORS, looksLikeReport, overallScore, parseReport, publicStore, readCriterion, relinkLedger, runAssistant, understandGoalsMessage } from './goals.mjs';
+import { applyCriterion, buildApproval, emptyStore, fold, goalState, INDICATORS, isGoalsConferenceTalk, looksLikeReport, overallScore, parseReport, publicStore, readCriterion, relinkLedger, runAssistant, understandGoalsMessage } from './goals.mjs';
 import { STORAGE_REPLY, createGoalsStore } from './goalsStore.mjs';
 
 function redactLabels(colleagues, aliases, teamRoster) {
@@ -74,8 +74,40 @@ function publicView(store, user, people) {
   return body;
 }
 
+function resolveGoalsUrl(req) {
+  const raw = String(req?.url ?? '');
+  const current = raw.startsWith('http') ? new URL(raw) : new URL(raw, 'http://internal');
+  const nested = current.searchParams.get('nested');
+  if (nested) {
+    const path = `/${String(nested).replace(/^\/+/, '')}`;
+    return (path.startsWith('/api/') ? path : `/api${path}`).replace(/\/+$/, '') || '/api/goals';
+  }
+  return (current.pathname || '/').replace(/\/+$/, '') || '/';
+}
+
+function parseGoalsBody(raw, req) {
+  let body = {};
+  try {
+    body = JSON.parse(String(raw ?? '').trim() || '{}');
+  } catch {
+    body = {};
+  }
+  const extra = req?.body;
+  if (extra && typeof extra === 'object' && !Array.isArray(extra) && !Buffer.isBuffer(extra)) {
+    body = { ...extra, ...body };
+  }
+  if (!body.text && !body.review && typeof extra === 'string') {
+    try {
+      body = { ...body, ...JSON.parse(extra) };
+    } catch {
+      /* keep parsed stream */
+    }
+  }
+  return body && typeof body === 'object' ? body : {};
+}
+
 export async function handleGoals(req, res, user, dir, colleagues, teamRoster, send, readBody, options = {}) {
-  const url = req.url?.split('?')[0] ?? '';
+  const url = resolveGoalsUrl(req);
   if (url !== '/api/goals' && !url.startsWith('/api/goals/')) return false;
   const persist = options.store ?? createGoalsStore({ dir, env: options.env ?? process.env, remote: options.remote, client: options.client, migrateBlob: options.migrateBlob, timeoutMs: options.timeoutMs, retries: options.retries });
   const loaded = await persist.load();
@@ -96,8 +128,7 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
   }
   const raw = await readBody(req);
   {
-    let body = {};
-    try { body = JSON.parse(raw.toString('utf8') || '{}'); } catch { body = {}; }
+    const body = parseGoalsBody(raw, req);
 
     async function commit(mutator) {
       const result = await persist.mutate(mutator);
@@ -164,7 +195,8 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
       send(res, 200, publicView(result.store, user, people));
       return true;
     }
-    if (req.method === 'POST' && url === '/api/goals/assistant') {
+    const assistantPost = req.method === 'POST' && (url === '/api/goals/assistant' || (url === '/api/goals' && body.text && !body.confirm && !body.rows && !body.mode && !body.display && !body.review));
+    if (assistantPost) {
       const text = String(body.text ?? '');
       const intent = String(body.intent ?? '');
       const history = Array.isArray(body.history) ? body.history : [];
@@ -175,14 +207,12 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
         return true;
       }
       const understood = understandGoalsMessage(text, people);
-      const bankTalk = /conferir|nao alterar o podio|nao mude o podio|metas gerais|banco dos relatorios/.test(fold(text))
-        || (understood.kind === 'review' && understood.periodLabel);
-      if (understood.kind === 'review' && (!looksLikeReport(text) || bankTalk)) {
+      if ((understood.kind === 'review' || understood.kind === 'proposal') && (!looksLikeReport(text) || isGoalsConferenceTalk(text) || understood.kind === 'review')) {
         send(res, 200, {
           ...understood,
-          combine: 'all',
+          combine: understood.combine ?? 'all',
           subsetor: '',
-          weights: null,
+          weights: understood.weights ?? null,
         });
         return true;
       }

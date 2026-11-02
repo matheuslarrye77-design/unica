@@ -669,14 +669,18 @@ function describeIndicatorLine(item) {
   return `${names[item.indicator] ?? item.indicator}: ${shown} — ${status}`;
 }
 
+export function isGoalsConferenceTalk(text) {
+  const folded = fold(text);
+  return /conferir|confira|confere|conferencia|antes de salvar|antes de gravar|nao salvar|nao gravar|nao alterar o podio|nao mude o podio|nao mexa no podio|nao mexe no podio|metas gerais|metas da gestao|definir as metas|compara(?:r|cao)? os resultados|banco dos relatorios/.test(folded);
+}
+
 export function understandGoalsMessage(text, people) {
   const source = String(text ?? '').trim();
   if (!source) return { kind: 'unknown' };
   const peopleParsed = parsePeopleFromText(source, people);
   const rows = peopleParsed.rows.filter((row) => ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao', 'satisfacao'].some((field) => row.values[field] !== null && row.values[field] !== undefined));
   const goals = parseCustomRequest(blankPersonSpans(source, people));
-  const folded = fold(source);
-  const hold = /conferir|antes de salvar|antes de gravar|nao salvar|nao gravar|nao alterar o podio|nao mude o podio|nao mexa no podio|nao mexe no podio/.test(folded);
+  const hold = isGoalsConferenceTalk(source);
   if (!goals.ok && !rows.length) return { kind: 'unknown' };
   if (goals.ok && !rows.length) {
     return {
@@ -1435,9 +1439,7 @@ export function runAssistant({ text, store, people, preview, periodKey, intent }
   if (!source) return { kind: 'ask', reply: 'Cole o relatório ou escreva o que precisa. Não invento números que não vieram no texto.' };
 
   const understood = understandGoalsMessage(source, people);
-  const bankTalk = /conferir|confere antes|nao alterar o podio|nao mude o podio|nao mexe no podio|nao mexa no podio|metas gerais|banco dos relatorios/.test(fold(source))
-    || (understood.kind === 'review' && understood.periodLabel);
-  if ((understood.kind === 'review' || understood.kind === 'proposal') && (!looksLikeReport(source) || bankTalk)) return understood;
+  if ((understood.kind === 'review' || understood.kind === 'proposal') && (!looksLikeReport(source) || isGoalsConferenceTalk(source))) return understood;
 
   const folded = fold(source);
   const item = currentImport(store, periodKey);
