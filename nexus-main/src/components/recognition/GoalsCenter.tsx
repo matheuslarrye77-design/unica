@@ -5,7 +5,7 @@ import { BarChart3, Bot, Check, ChevronDown, FileText, Info, Paperclip, Pencil, 
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type FC, type FormEvent, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
-type Rule = { indicator: string; op: string; value: number; valueTo?: number; period?: string };
+type Rule = { indicator: string; op: string; value: number; valueTo?: number | null; period?: string };
 type PendingRules = {
   period: string;
   periodKey?: string;
@@ -998,20 +998,23 @@ export const GoalsAssistant: FC = () => {
               <>
                 <p className="text-[12px] font-medium text-[#4A1C73]">Resultados individuais</p>
                 <ul className="grid gap-2 text-[12.5px] leading-5 break-words text-[#5C5168]">
-                  {(pendingRules.comparisons?.length ? pendingRules.comparisons : pendingRules.rows ?? []).map((person) => (
-                    <li key={person.userId || person.sourceName || person.name}>
-                      <p className="font-medium text-[#241B33]">{person.name || person.sourceName}{person.userId ? ' — cadastro da Equipe' : ''}</p>
-                      {person.indicators?.length
-                        ? person.indicators.filter((item) => item.value !== null).map((item) => (
+                  {pendingRules.comparisons?.length
+                    ? pendingRules.comparisons.map((person) => (
+                      <li key={person.userId || person.sourceName || person.name}>
+                        <p className="font-medium text-[#241B33]">{person.name || person.sourceName}{person.userId ? ' — cadastro da Equipe' : ''}</p>
+                        {person.indicators.filter((item) => item.value !== null).map((item) => (
                           <p key={item.indicator}>{ruleConference({ indicator: item.indicator, op: item.op, value: item.value ?? 0 }, item.met === true ? 'Atingiu' : item.met === false ? 'Não atingiu' : 'Sem meta')}</p>
-                        ))
-                        : person.values
-                          ? Object.entries(person.values).filter(([, value]) => value !== null && value !== undefined).map(([field, value]) => (
-                            <p key={field}>{RULE_NAMES[field] ?? field}: {String(value)}</p>
-                          ))
-                          : null}
-                    </li>
-                  ))}
+                        ))}
+                      </li>
+                    ))
+                    : (pendingRules.rows ?? []).map((person) => (
+                      <li key={person.userId || person.sourceName}>
+                        <p className="font-medium text-[#241B33]">{person.name || person.sourceName}{person.userId ? ' — cadastro da Equipe' : ''}</p>
+                        {Object.entries(person.values).filter(([, value]) => value !== null && value !== undefined).map(([field, value]) => (
+                          <p key={field}>{RULE_NAMES[field] ?? field}: {String(value)}</p>
+                        ))}
+                      </li>
+                    ))}
                 </ul>
               </>
             ) : null}
