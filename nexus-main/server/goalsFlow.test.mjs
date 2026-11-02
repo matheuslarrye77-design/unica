@@ -130,8 +130,10 @@ test('a interface do banco mostra mês/ano, gestão e resultados separados', () 
   assert.match(ui, /pendingPodium/);
   assert.match(ui, /Confirmar pódio/);
   assert.match(ui, /OVERALL_OPTIONS/);
-  assert.match(ui, /Avalie seus colaboradores/);
-  assert.match(ui, /overallOn/);
+  assert.match(ui, /identifica pelo texto/);
+  assert.match(ui, /Ampliar chat e banco/);
+  assert.equal(ui.includes('overallOn'), false);
+  assert.equal(ui.includes('toggleOverall'), false);
   assert.equal(ui.includes('Critérios Predefinidos'), false);
   assert.match(ui, /mode: phase === 'idle'/);
   assert.equal(ui.includes('Olá! Envie os relatórios da equipe'), false);
@@ -898,7 +900,7 @@ Conferir. Não alterar o pódio.`;
   const loaded = await getGoals(persist);
   const march = podiumAt(loaded.body, '2027-03', 'overall');
   assert.equal(march.ranking[0].userId, 'tm-4');
-  assert.equal(march.ranking[0].displayScore, '350');
+  assert.equal(march.ranking[0].displayScore, `${String(march.ranking[0].score).replace('.', ',')}%`);
   const tickets = march.ranking[0].metrics.find((item) => item.id === 'resolvidosCount');
   assert.equal(tickets.value, 350);
   assert.equal(tickets.weight, 25);
@@ -926,7 +928,7 @@ test('pódio personalizado mostra a regra, o valor real e se cumpriu', async () 
   assert.equal(january.ranking.some((row) => row.userId === 'tm-8'), false);
 });
 
-test('pódio predefinido mostra o resultado bruto do indicador prioritário, sem mudar a ordem', async () => {
+test('pódio de desempenho geral mostra o percentual total, sem mudar a ordem', async () => {
   const persist = memoryGoalsStore();
   const pending = await postCenter({ text: NATURAL_MESSAGE, mode: 'overall' }, { store: persist });
   await postCenter({ action: 'confirm', text: 'confirmar', conference: pending.body.conference }, { store: persist });
@@ -935,26 +937,19 @@ test('pódio predefinido mostra o resultado bruto do indicador prioritário, sem
   assert.equal(november.ranking[0].userId, 'tm-4');
   assert.equal(november.ranking[1].userId, 'tm-8');
   assert.equal(november.ranking[0].score, 100);
-  assert.equal(november.ranking[0].displayScore, '350');
-  assert.equal(november.ranking[1].displayScore, '300');
-  assert.notEqual(String(november.ranking[1].displayScore), String(november.ranking[1].score));
+  assert.equal(november.ranking[0].displayScore, '100%');
+  assert.equal(november.ranking[1].displayScore, `${String(november.ranking[1].score).replace('.', ',')}%`);
+  assert.notEqual(november.ranking[1].displayScore, '300');
 });
 
-test('pódio predefinido escolhe o indicador prioritário em todas as combinações selecionadas', async () => {
+test('pódio de desempenho geral mostra percentual em todas as combinações selecionadas', async () => {
   const persist = memoryGoalsStore();
   const pending = await postCenter({ text: NATURAL_MESSAGE, mode: 'overall' }, { store: persist });
   await postCenter({ action: 'confirm', text: 'confirmar', conference: pending.body.conference }, { store: persist });
   const fields = ['resolvidosCount', 'primeira', 'resolucao', 'transferidos'];
-  const shown = {
-    resolvidosCount: { 'tm-4': '350', 'tm-8': '300' },
-    primeira: { 'tm-4': '3 min', 'tm-8': '4 min' },
-    resolucao: { 'tm-4': '7 min', 'tm-8': '9 min' },
-    transferidos: { 'tm-4': '20', 'tm-8': '35' },
-  };
   let counted = 0;
   for (let mask = 1; mask < 16; mask += 1) {
     const selected = fields.filter((_, index) => mask & (1 << index));
-    const priority = fields.find((id) => selected.includes(id));
     await persist.mutate((current) => ({
       store: {
         ...current,
@@ -967,15 +962,15 @@ test('pódio predefinido escolhe o indicador prioritário em todas as combinaç�
     const podium = podiumAt(view.body, '2026-11', 'overall');
     const felipe = podium.ranking.find((row) => row.userId === 'tm-4');
     const rafael = podium.ranking.find((row) => row.userId === 'tm-8');
-    assert.equal(felipe.displayScore, shown[priority]['tm-4']);
-    assert.equal(rafael.displayScore, shown[priority]['tm-8']);
+    assert.equal(felipe.displayScore, `${String(felipe.score).replace('.', ',')}%`);
+    assert.equal(rafael.displayScore, `${String(rafael.score).replace('.', ',')}%`);
     assert.equal(felipe.metrics.map((item) => item.id).sort().join(','), [...selected].sort().join(','));
     counted += 1;
   }
   assert.equal(counted, 15);
 });
 
-test('pódio predefinido não inventa zero quando falta o indicador prioritário', async () => {
+test('pódio de desempenho geral mostra percentual mesmo quando falta um indicador', async () => {
   const persist = memoryGoalsStore();
   const pending = await postCenter({ text: NATURAL_MESSAGE, mode: 'overall' }, { store: persist });
   await postCenter({ action: 'confirm', text: 'confirmar', conference: pending.body.conference }, { store: persist });
@@ -997,9 +992,9 @@ test('pódio predefinido não inventa zero quando falta o indicador prioritário
   const podium = podiumAt(view.body, '2026-11', 'overall');
   const rafael = podium.ranking.find((row) => row.userId === 'tm-8');
   const felipe = podium.ranking.find((row) => row.userId === 'tm-4');
-  assert.equal(felipe.displayScore, '350');
-  assert.equal(rafael.displayScore, '');
-  assert.notEqual(rafael.displayScore, '0');
+  assert.equal(felipe.displayScore, `${String(felipe.score).replace('.', ',')}%`);
+  assert.equal(rafael.displayScore, `${String(rafael.score).replace('.', ',')}%`);
+  assert.notEqual(felipe.displayScore, '350');
 });
 
 test('dezembro separa ligação, chat e e-mail e exclui líder e supervisor', async () => {
@@ -1021,12 +1016,12 @@ Conferir antes de salvar. Não alterar o pódio.`;
   const chat = podiumAt(loaded.body, '2026-12', 'overall', 'Chat');
   const mail = podiumAt(loaded.body, '2026-12', 'overall', 'E-mail');
   assert.deepEqual(call.ranking.map((row) => row.userId), ['tm-5', 'tm-9']);
-  assert.equal(call.ranking[0].displayScore, '200');
+  assert.equal(call.ranking[0].displayScore, `${String(call.ranking[0].score).replace('.', ',')}%`);
   assert.deepEqual(chat.ranking.map((row) => row.userId), ['tm-3', 'tm-6']);
-  assert.equal(chat.ranking[0].displayScore, '150');
+  assert.equal(chat.ranking[0].displayScore, `${String(chat.ranking[0].score).replace('.', ',')}%`);
   assert.deepEqual(mail.ranking.map((row) => row.userId), ['tm-4', 'tm-8']);
-  assert.equal(mail.ranking[0].displayScore, '390');
-  assert.equal(mail.ranking[1].displayScore, '360');
+  assert.equal(mail.ranking[0].displayScore, `${String(mail.ranking[0].score).replace('.', ',')}%`);
+  assert.equal(mail.ranking[1].displayScore, `${String(mail.ranking[1].score).replace('.', ',')}%`);
   const names = [...call.ranking, ...chat.ranking, ...mail.ranking].map((row) => row.name);
   assert.equal(names.includes('Alexandra Mitchell'), false);
   assert.equal(names.includes('Bruno Almeida'), false);
@@ -1074,7 +1069,7 @@ test('avaliação antiga em critérios predefinidos aparece como desempenho gera
   assert.equal(modes.includes('overall'), true);
   const november = podiumAt(view.body, '2026-11', 'overall');
   assert.equal(november.modeLabel, 'Desempenho geral');
-  assert.equal(november.ranking[0].displayScore, '350');
+  assert.equal(november.ranking[0].displayScore, `${String(november.ranking[0].score).replace('.', ',')}%`);
   assert.equal(november.ranking[0].metrics[0].contribution != null, true);
 });
 

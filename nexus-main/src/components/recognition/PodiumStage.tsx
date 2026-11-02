@@ -82,13 +82,13 @@ const PersonCard: FC<{ person: Ranking; mode: string }> = ({ person, mode }) => 
             <button
               type="button"
               aria-label={`Detalhe da pontuação de ${person.name}`}
-              className="flex h-9 w-full items-center justify-center rounded-b-[20px] px-1 text-[15px] font-semibold text-white"
+              className="flex h-9 w-full items-center justify-center rounded-b-[20px] px-1 text-[13px] font-semibold tabular-nums text-white"
               style={{ background: tone.strong }}
               onMouseEnter={() => { if (!touch) setOpen(true); }}
               onMouseLeave={() => { if (!touch) setOpen(false); }}
               onClick={() => { if (touch) setOpen((value) => !value); }}
             >
-              {person.displayScore || (mode === 'custom' ? person.score : '—') || '—'}
+              {mode === 'overall' && person.score != null ? percentText(person.score) : (person.displayScore || (person.score == null ? '—' : String(person.score)))}
             </button>
             {open ? (
               <div className="pointer-events-none absolute bottom-[calc(100%+10px)] left-1/2 z-50 w-[min(220px,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border border-[#EDE4F5] bg-white/95 px-3 py-2 text-left shadow-[0_12px_28px_rgba(80,40,120,0.14)] backdrop-blur-sm">

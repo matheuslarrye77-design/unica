@@ -911,15 +911,11 @@ function overallMetrics(scoreRow, evaluation) {
   });
 }
 
-const HEADLINE_PRIORITY = ['resolvidosCount', 'primeira', 'resolucao', 'transferidos'];
-
-function presetHeadline(selected, record) {
-  const ids = new Set((selected ?? []).map((id) => (id === 'resolvidos' ? 'resolvidosCount' : id)));
-  const field = HEADLINE_PRIORITY.find((id) => ids.has(id));
-  if (!field || !record) return '';
-  const value = field === 'resolvidosCount' ? record.values?.resolvidosCount ?? null : resultValue(record, field);
-  if (value == null) return '';
-  return shownValue(field, value);
+function percentDisplay(score) {
+  if (score == null || score === '') return '';
+  const n = Number(score);
+  if (!Number.isFinite(n)) return '';
+  return `${String(n).replace('.', ',')}%`;
 }
 
 function customMetrics(record, evaluation) {
@@ -1003,7 +999,7 @@ function buildModePodium(store, month, monthRecords, evaluation, now, channel = 
           userId: row.userId,
           name: row.name,
           score: row.score,
-          displayScore: presetHeadline(scored.selected, record),
+          displayScore: percentDisplay(row.score),
           detailsAvailable: !detailsPartial && metrics.length > 0,
           metrics,
         };
@@ -1037,6 +1033,7 @@ export function attachBankPodiums(store, now = new Date(), people = []) {
     detailsAvailable: item.detailsAvailable === true && Array.isArray(item.ranking) && item.ranking.some((row) => row.metrics?.length),
     ranking: (item.ranking ?? []).map((row) => ({
       ...row,
+      displayScore: mode === 'custom' ? row.displayScore : percentDisplay(row.score),
       detailsAvailable: Boolean(row.metrics?.length),
       metrics: row.metrics ?? [],
     })),
@@ -1111,7 +1108,7 @@ function centerPrompt(text, history, options) {
     'Interprete um recado da Central Inteligente de Metas, em português.',
     `Modo da interface: ${mode}. Isso é contexto. Se o pedido for claramente outro assunto, siga o pedido.`,
     'Há só dois modos: desempenho geral e critérios personalizados. Não existe mais a modalidade critérios predefinidos.',
-    'Desempenho geral usa de 1 a 4 indicadores conhecidos: tickets resolvidos, tickets transferidos, primeira resposta e TMA. Satisfação não entra. Tickets resolvidos e tickets transferidos nunca se misturam. Pesos iguais entre os selecionados. Quem não entra na condição zera aquela parcela; o melhor elegível leva o peso inteiro; os demais são proporcionais.',
+    'Desempenho geral usa de 1 a 4 indicadores conhecidos: tickets resolvidos, tickets transferidos, primeira resposta e TMA. Satisfação não entra. Identifique no texto quais desses indicadores a pessoa citou; não peça para marcar caixa. Se o texto não citar um recorte, use os indicadores com meta ou resultado. Pesos iguais entre os selecionados. Quem não entra na condição zera aquela parcela; o melhor elegível leva o peso inteiro; os demais são proporcionais. O pódio de desempenho geral mostra o percentual total, não a quantidade bruta de tickets.',
     'Critérios personalizados servem só para criar indicador inédito. Indicadores já conhecidos entram no desempenho geral.',
     'Não invente número, indicador, comparador, período ou pessoa.',
     'changePodium só é true se a pessoa pediu explicitamente para mudar o pódio. Meta, resultado e conferência não mudam o pódio.',

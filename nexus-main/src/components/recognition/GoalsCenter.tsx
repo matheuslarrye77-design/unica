@@ -1,7 +1,7 @@
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { authHeaders, getDemoId } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import { BarChart3, Bot, Check, ChevronDown, FileText, Info, Paperclip, Pencil, Send, Settings2, Sparkles, Star, Target, Trophy } from 'lucide-react';
+import { BarChart3, Bot, Check, ChevronDown, FileText, Info, Maximize2, Minimize2, Paperclip, Pencil, Send, Settings2, Sparkles, Star, Target, Trophy } from 'lucide-react';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type FC, type FormEvent, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
@@ -264,8 +264,6 @@ type Board = {
   choose: (next: Criterion, silent?: boolean) => Promise<void>;
   startCustom: () => void;
   startOverall: () => void;
-  overallOn: Record<string, boolean>;
-  toggleOverall: (id: string) => void;
   talk: (text: string) => Promise<void>;
   approveWith: (reportText: string) => Promise<void>;
   patchRow: (index: number, patch: Partial<Row>) => void;
@@ -298,7 +296,6 @@ export const GoalsProvider: FC<{
   const [pendingRules, setPendingRules] = useState<PendingRules | null>(null);
   const [conference, setConference] = useState<GoalsConference | null>(null);
   const [pendingPodium, setPendingPodium] = useState<Criterion | null>(null);
-  const [overallOn, setOverallOn] = useState<Record<string, boolean>>({ resolvidosCount: true, transferidos: true, primeira: true, resolucao: true });
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: 'hello',
     from: 'bot',
@@ -333,21 +330,13 @@ export const GoalsProvider: FC<{
   function startCustom() {
     setPhase('custom');
     setPendingPodium(null);
-    say('bot', 'Critérios personalizados: crie um indicador inédito, com meta e condição próprias. Se forem só tickets resolvidos, tickets transferidos, primeira resposta ou TMA, uso o desempenho geral.');
+    say('bot', 'Critérios personalizados: descreva no chat um indicador inédito, com meta, condição e período. Se o texto falar só de tickets resolvidos, transferidos, primeira resposta ou TMA, eu uso o desempenho geral.');
   }
 
   function startOverall() {
     setPhase('overall');
     setPendingPodium(null);
-    say('bot', 'Desempenho geral: marque de 1 a 4 indicadores. Distribuo os pesos igualmente, comparo com o melhor da categoria e quem não cumpre a condição zera só aquela parcela. O pódio não muda até a confirmação das metas.');
-  }
-
-  function toggleOverall(id: string) {
-    setOverallOn((current) => {
-      const next = { ...current, [id]: !current[id] };
-      if (!OVERALL_OPTIONS.some((item) => next[item.id])) return current;
-      return next;
-    });
+    say('bot', 'Desempenho geral: descreva no chat as metas e os resultados. Eu identifico pelo texto quais indicadores entram (tickets resolvidos, transferidos, primeira resposta e TMA), distribuo os pesos igualmente e comparo com o melhor da categoria. Quem não cumpre a condição zera só aquela parcela. O pódio não muda até você pedir e confirmar.');
   }
 
   function cancelProposal() {
@@ -396,9 +385,6 @@ export const GoalsProvider: FC<{
         text: source,
         history,
         mode: phase === 'idle' ? (selected.mode === 'custom' ? 'custom' : 'overall') : phase,
-        indicators: (phase === 'overall' || (phase === 'idle' && selected.mode !== 'custom'))
-          ? OVERALL_OPTIONS.filter((item) => overallOn[item.id]).map((item) => item.id)
-          : undefined,
       });
       if (data.kind === 'unavailable' || data.kind === 'quota' || data.kind === 'auth' || data.kind === 'permission' || data.kind === 'model' || data.kind === 'invalid' || data.kind === 'clarify' || data.kind === 'storage') setDraft(source);
       else setDraft('');
@@ -549,8 +535,6 @@ export const GoalsProvider: FC<{
     choose,
     startCustom,
     startOverall,
-    overallOn,
-    toggleOverall,
     talk,
     approveWith,
     patchRow,
@@ -558,29 +542,40 @@ export const GoalsProvider: FC<{
     cancelProposal,
     onFile,
     lastReport: lastReport.current,
-  }), [goals, selected, phase, preview, periodKey, replace, pendingRules, conference, pendingPodium, overallOn, messages, draft, busy]);
+  }), [goals, selected, phase, preview, periodKey, replace, pendingRules, conference, pendingPodium, messages, draft, busy]);
 
   return <BoardContext.Provider value={value}>{children}</BoardContext.Provider>;
 };
 
 export const GoalsCenter: FC = () => {
   const board = useBoard();
-  const { goals, selected, phase, preview, periodKey, replace, setPeriodKey, setReplace, busy, startCustom, startOverall, overallOn, toggleOverall, patchRow, approveWith } = board;
+  const { goals, selected, phase, preview, periodKey, replace, setPeriodKey, setReplace, busy, startCustom, startOverall, patchRow, approveWith } = board;
 
   const cards = [
     {
       id: 'overall' as const,
       title: 'Desempenho Geral',
-      text: 'Avalie seus colaboradores utilizando de um a quatro indicadores, com cálculo automático de desempenho.',
+      text: 'Avalia a equipe com os indicadores padrão da operação: tickets resolvidos, tickets transferidos, tempo de primeira resposta e TMA. Você descreve no chat quais entram, as metas e os resultados; a IA identifica pelo texto, reparte os pesos igualmente e calcula o percentual de desempenho.',
       icon: Star,
-      points: ['Tickets resolvidos, transferidos, primeira resposta e TMA', 'De 1 a 4 indicadores, com pesos iguais', 'Quem não cumpre a condição zera só aquela parcela'],
+      points: [
+        'Escreva no chat o recorte: um, dois, três ou os quatro indicadores',
+        'A IA reconhece o pedido pelo texto; não é preciso marcar caixas',
+        'A pontuação é proporcional ao melhor resultado da mesma categoria',
+        'Quem não cumpre a condição zera só aquela parcela, não a avaliação inteira',
+        'O pódio mostra o percentual total; o detalhe de cada indicador fica no tooltip',
+      ],
     },
     {
       id: 'custom' as const,
       title: 'Critérios Personalizados',
-      text: 'Crie avaliações com indicadores, metas e regras próprias.',
+      text: 'Cria uma avaliação com indicador, meta e regra que ainda não existem na plataforma. Use quando precisar medir algo próprio, sem misturar com tickets, primeira resposta ou TMA.',
       icon: Settings2,
-      points: ['Indicadores inéditos, com meta e condição', 'Dá para combinar mais de uma regra', 'Salva o critério para usar de novo'],
+      points: [
+        'Descreva no chat o indicador inédito, a meta, a condição e o período',
+        'Dá para combinar várias condições na mesma avaliação',
+        'A Central compara cada colaborador com as regras que você definiu',
+        'O critério fica salvo para reutilizar e gera um pódio próprio',
+      ],
     },
   ];
 
@@ -628,16 +623,6 @@ export const GoalsCenter: FC = () => {
                     </li>
                   ))}
                 </ul>
-                {card.id === 'overall' ? (
-                  <div className="mt-3 grid gap-1.5 rounded-2xl bg-[#FBF8FC] p-2">
-                    {OVERALL_OPTIONS.map((item) => (
-                      <label key={item.id} className="flex items-center gap-2 text-[12px] text-[#5C5168]">
-                        <input type="checkbox" checked={Boolean(overallOn[item.id])} onChange={() => toggleOverall(item.id)} />
-                        <span>{item.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                ) : null}
                 <button
                   type="button"
                   disabled={!goals.canManage}
@@ -785,7 +770,7 @@ function StatusText({ met }: { met: boolean | null }) {
   return <span className="text-[12px] text-[#8A7C98]">Sem meta cadastrada</span>;
 }
 
-function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => void }) {
+function ReportBank({ goals, onClose, wide, onWide }: { goals: GoalsPayload; onClose: () => void; wide: boolean; onWide: () => void }) {
   const records = goals.ledger?.records ?? [];
   const bankPeriods = goals.bank?.periods ?? [];
   const buckets = [...new Set([
@@ -846,7 +831,12 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
           <h3 className="text-[14px] font-semibold text-[#241B33]">Banco dos relatórios</h3>
           <p className="text-[11.5px] text-[#8A7C98]">Metas da gestão e resultados por colaborador, separados por mês.</p>
         </div>
-        <button type="button" onClick={onClose} className="rounded-full border border-[#E7DFF0] px-3 py-1 text-[12px] font-semibold text-[#6A228C]">Fechar</button>
+        <div className="flex items-center gap-1.5">
+          <button type="button" aria-label={wide ? 'Reduzir painel' : 'Ampliar chat e banco de dados'} title={wide ? 'Reduzir' : 'Ampliar'} onClick={onWide} className="grid h-8 w-8 place-items-center rounded-full border border-[#E7DFF0] text-[#6A228C] hover:bg-[#F3E4FA]">
+            {wide ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+          <button type="button" onClick={onClose} className="rounded-full border border-[#E7DFF0] px-3 py-1 text-[12px] font-semibold text-[#6A228C]">Fechar</button>
+        </div>
       </div>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
         {openKeys.length > 0 ? (
@@ -1011,10 +1001,11 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
 
 export const GoalsAssistant: FC = () => {
   const board = useBoard();
-  const { goals, messages, draft, setDraft, busy, talk, phase, pendingRules, setPendingRules, conference, pendingPodium, confirmPodium, saveTemplate, cancelProposal, overallOn, toggleOverall } = board;
+  const { goals, messages, draft, setDraft, busy, talk, phase, pendingRules, setPendingRules, conference, pendingPodium, confirmPodium, saveTemplate, cancelProposal } = board;
   const thread = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [bankOpen, setBankOpen] = useState(false);
+  const [wide, setWide] = useState(false);
 
   useEffect(() => {
     thread.current?.scrollTo({ top: thread.current.scrollHeight });
@@ -1026,17 +1017,22 @@ export const GoalsAssistant: FC = () => {
   }
 
   return (
-    <aside className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[22px] border border-[#EDE4F5] bg-white">
-      <div className="flex shrink-0 items-center justify-between border-b border-[#F3EAF8] px-3 py-3 pr-10">
-        <h3 className="flex items-center gap-2 text-[14px] font-semibold text-[#241B33]">
-          <Sparkles className="h-4 w-4 text-[#8E35B8]" /> Fale com o assistente de metas
+    <aside className={cn('relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[22px] border border-[#EDE4F5] bg-white', wide && 'fixed inset-3 z-[70] shadow-[0_24px_60px_rgba(80,40,120,0.22)] xl:inset-y-3 xl:right-3 xl:left-[256px]')}>
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#F3EAF8] px-3 py-3 pr-10">
+        <h3 className="flex min-w-0 items-center gap-2 text-[14px] font-semibold text-[#241B33]">
+          <Sparkles className="h-4 w-4 shrink-0 text-[#8E35B8]" /> <span className="truncate">Fale com o assistente de metas</span>
           <Hint text="A Central interpreta metas e resultados, mostra uma conferência e só grava depois da confirmação. O pódio só muda com pedido explícito e confirmação." />
-          <button type="button" aria-label="Abrir banco de dados dos relatórios" title="Banco de dados" onClick={() => setBankOpen(true)} className="grid h-7 w-7 place-items-center rounded-lg text-[#8E35B8] hover:bg-[#F3E4FA]">
+        </h3>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <button type="button" aria-label="Abrir banco de dados dos relatórios" title="Banco de dados" onClick={() => setBankOpen(true)} className="grid h-8 w-8 place-items-center rounded-lg text-[#8E35B8] hover:bg-[#F3E4FA]">
             <FileText className="h-4 w-4" />
           </button>
-        </h3>
+          <button type="button" aria-label={wide ? 'Reduzir painel' : 'Ampliar chat e banco de dados'} title={wide ? 'Reduzir' : 'Ampliar chat e banco'} onClick={() => setWide((value) => !value)} className="grid h-8 w-8 place-items-center rounded-lg text-[#8E35B8] hover:bg-[#F3E4FA]">
+            {wide ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
-      {bankOpen ? <ReportBank goals={goals} onClose={() => setBankOpen(false)} /> : null}
+      {bankOpen ? <ReportBank goals={goals} wide={wide} onWide={() => setWide((value) => !value)} onClose={() => setBankOpen(false)} /> : null}
       <div ref={thread} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
         {messages.map((message) => (
           <div key={message.id} className={cn('flex gap-2', message.from === 'user' ? 'justify-end' : 'items-start')}>
@@ -1044,17 +1040,6 @@ export const GoalsAssistant: FC = () => {
             <p className={cn('max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-[13px] leading-5', message.from === 'bot' ? 'bg-[#F7F0FB] text-[#3C3148]' : 'bg-[#8E35B8] text-white')}>{message.text}</p>
           </div>
         ))}
-        {phase === 'overall' ? (
-          <div className="grid gap-1.5 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
-            <p className="text-[12px] font-semibold text-[#4A1C73]">Indicadores desta avaliação</p>
-            {OVERALL_OPTIONS.map((item) => (
-              <label key={item.id} className="flex items-center gap-2 text-[12.5px] text-[#5C5168]">
-                <input type="checkbox" checked={Boolean(overallOn[item.id])} onChange={() => toggleOverall(item.id)} />
-                {item.label}
-              </label>
-            ))}
-          </div>
-        ) : null}
         {pendingPodium ? (
           <div className="grid gap-2 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
             <p className="text-[12px] font-semibold text-[#4A1C73]">Só o pódio. As metas não mudam.</p>
