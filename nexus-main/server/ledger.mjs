@@ -1,4 +1,4 @@
-import { fold, isoWeekKey, mentionedPeriods, monthKey, parseCustomRequest, parseReport, passesRules, weekLabel } from './goals.mjs';
+import { fold, isoWeekKey, mentionedPeriods, metricOf, monthKey, parseCustomRequest, parseReport, passesRules, weekLabel } from './goals.mjs';
 
 const FIELDS = ['resolvidosCount', 'resolvidos', 'transferidos', 'primeira', 'resolucao', 'satisfacao'];
 const NAMES = {
@@ -91,6 +91,8 @@ function wantsRecognition(text) {
 function recognitionText(text) {
   return String(text).split(/\r?\n/).filter((line) => {
     const cleaned = String(line).replace(/^[\s*•●▪◦\u2022\u00b7]+/, '').replace(/^[-–—]\s+/, '').trim();
+    const label = cleaned.split(':')[0] ?? '';
+    if (metricOf(label) || /^metas?\b|^indicador/i.test(label)) return true;
     if (/^.{2,80}:\s*\d/.test(cleaned)) return false;
     if (/^.{2,60}\s+[—–-]\s+\d/.test(cleaned)) return false;
     return true;

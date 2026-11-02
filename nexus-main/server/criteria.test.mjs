@@ -47,9 +47,9 @@ test('pedido com três indicadores', async () => {
       { indicator: 'resolucao', op: 'lte', value: 18, valueTo: null, period: 'week' },
     ], { weights: { resolvidos: 50, primeira: 20, resolucao: 30 } })),
   });
-  assert.equal(result.ok, true);
-  assert.equal(result.rules.length, 3);
-  assert.equal(result.weights.resolvidos, 50);
+  assert.equal(result.ok, false);
+  assert.equal(result.kind, 'clarify');
+  assert.equal(result.rules, undefined);
 });
 
 test('condições maiores e menores', async () => {
@@ -111,7 +111,7 @@ test('dois colaboradores parecidos não recebem um vencedor automático', () => 
 });
 
 test('falha de comunicação não finge uma resposta da IA', async () => {
-  const result = await interpretCriteria('250 tickets no mês', {
+  const result = await interpretCriteria('monte um pódio especial agora', {
     generate: async () => { throw new Error('socket hang up'); },
   });
   assert.equal(result.kind, 'unavailable');
@@ -124,7 +124,7 @@ test('limite gratuito excedido é informado sem chamar de novo', async () => {
   resetGeminiBudget();
   for (let index = 0; index < 20; index += 1) assert.equal(allowGeminiCall(1_000), true);
   assert.equal(allowGeminiCall(1_000), false);
-  const result = await interpretCriteria('250 tickets', {
+  const result = await interpretCriteria('monte um pódio especial agora', {
     generate: async () => ({ error: 'quota' }),
   });
   assert.equal(result.kind, 'quota');
@@ -205,14 +205,18 @@ test('o prompt e o frontend não levam a chave nem o cadastro', async () => {
   });
   assert.equal(called, false);
   assert.equal(report.kind, 'clarify');
-  await interpretCriteria('reconhecer Matheus Larrye com pelo menos 250 tickets no mês', {
+  const named = await interpretCriteria('reconhecer Matheus Larrye com pelo menos 250 tickets no mês', {
     labels,
     generate: async (sent) => { seen = sent; return { text: JSON.stringify(ready([{ indicator: 'resolvidosCount', op: 'gte', value: 250, valueTo: null, period: 'month' }], { period: 'month' })) }; },
   });
-  assert.equal(seen.includes('Matheus'), false);
-  assert.match(seen, /250 tickets/);
+  assert.equal(seen, '');
+  assert.equal(named.ok, true);
+  assert.equal(named.rules[0].value, 250);
+  assert.equal(named.period, 'month');
   const ui = fs.readFileSync(new URL('../src/components/recognition/GoalsCenter.tsx', import.meta.url), 'utf8');
   const api = fs.readFileSync(new URL('./goalsApi.mjs', import.meta.url), 'utf8');
+  assert.match(ui, /Conferência das metas/);
+  assert.match(ui, /Indicador \| Valor \| Regra \| Período/);
   assert.equal(ui.includes('GEMINI_API_KEY') || ui.includes('@google/genai') || ui.includes('generativelanguage.googleapis.com'), false);
   assert.equal(api.includes('GEMINI_API_KEY'), false);
   assert.equal(flashModel({}), 'gemini-3.5-flash-lite');

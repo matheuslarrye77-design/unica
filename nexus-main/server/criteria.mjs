@@ -1,16 +1,19 @@
-import { CHANNELS, looksLikeReport } from './goals.mjs';
+import { CHANNELS, looksLikeReport, parseCustomRequest } from './goals.mjs';
 import { classifyGeminiError, completeJson } from './gemini.mjs';
 
-const INDICATORS = ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao'];
+const INDICATORS = ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao', 'satisfacao'];
 const OPS = ['gt', 'gte', 'lt', 'lte', 'eq', 'between'];
 const NAMES = {
-  resolvidos: 'tickets resolvidos (%)',
-  resolvidosCount: 'quantidade de tickets resolvidos',
-  primeira: 'primeira resposta (minutos)',
-  resolucao: 'tempo médio de resolução (minutos)',
-  transferidos: 'tickets transferidos',
+  resolvidos: 'Tickets resolvidos (%)',
+  resolvidosCount: 'Tickets resolvidos',
+  primeira: 'Primeira resposta',
+  resolucao: 'Tempo médio de resolução',
+  transferidos: 'Tickets transferidos',
+  satisfacao: 'Satisfação',
 };
 const OPS_PT = { gt: 'maior que', gte: 'pelo menos', lt: 'menor que', lte: 'no máximo', eq: 'igual a', between: 'entre' };
+const OPS_SIGN = { gt: '>', gte: '>=', lt: '<', lte: '<=', eq: '=', between: 'entre' };
+const UNITS = { resolvidos: '%', satisfacao: '%', primeira: ' min', resolucao: ' min', resolvidosCount: '', transferidos: '' };
 
 export const CRITERIA_SCHEMA = {
   type: 'object',
@@ -21,6 +24,8 @@ export const CRITERIA_SCHEMA = {
     explanation: { type: 'string' },
     questions: { type: 'array', items: { type: 'string' } },
     period: { type: 'string', enum: ['week', 'month', ''] },
+    periodKey: { type: 'string' },
+    periodLabel: { type: 'string' },
     combine: { type: 'string', enum: ['all', 'any', ''] },
     subsetor: { type: 'string', enum: ['', ...CHANNELS] },
     weights: {
@@ -95,21 +100,22 @@ function finite(value) {
 }
 
 export function describeCriteria(proposal) {
-  const period = proposal.period === 'month' ? 'no mês' : proposal.period === 'week' ? 'na semana' : 'no período de cada condição';
-  const lines = proposal.rules.map((rule) => {
-    const when = rule.period === 'month' ? 'no mês' : rule.period === 'week' ? 'na semana' : period;
+  const period = proposal.periodLabel || (proposal.period === 'month' ? 'mês' : proposal.period === 'week' ? 'semana' : 'período de cada condição');
+  const lines = ['Conferência das metas. Confirme antes de aplicar.', 'Indicador | Valor | Regra | Período'];
+  for (const rule of proposal.rules) {
+    const when = rule.period === 'month' || proposal.period === 'month' ? (proposal.periodLabel || 'mês') : rule.period === 'week' || proposal.period === 'week' ? (proposal.periodLabel || 'semana') : period;
     const name = NAMES[rule.indicator] ?? rule.indicator;
-    const text = rule.op === 'between'
-      ? `${name} entre ${rule.value} e ${rule.valueTo} ${when}`
-      : `${name} ${OPS_PT[rule.op] ?? rule.op} ${rule.value} ${when}`;
-    return text;
-  });
-  const join = proposal.combine === 'any' ? 'Basta uma destas condições' : 'Todas estas condições são obrigatórias';
+    const unit = UNITS[rule.indicator] ?? '';
+    const value = rule.op === 'between' ? `${rule.value} a ${rule.valueTo}${unit}` : `${rule.value}${unit}`;
+    const sign = OPS_SIGN[rule.op] ?? rule.op;
+    lines.push(`${name} | ${value} | ${sign} | ${when}`);
+  }
+  const join = proposal.combine === 'any' ? 'Basta uma destas condições.' : 'Todas estas condições são obrigatórias.';
   const where = proposal.subsetor ? ` Subsetor: ${proposal.subsetor}, vindo do cadastro da Equipe.` : '';
   const weights = proposal.weights
     ? ` Pesos só para ordenar quem passar: produtividade ${proposal.weights.resolvidos}%, primeira resposta ${proposal.weights.primeira}%, resolução ${proposal.weights.resolucao}%.`
     : '';
-  return `${join}: ${lines.join('; ')}.${where}${weights} Nada foi aplicado ao pódio.`;
+  return `${lines.join('\n')}\n${join}${where}${weights} Nada foi aplicado ao pódio.`;
 }
 
 export function normalizeProposal(raw) {
@@ -137,9 +143,11 @@ export function normalizeProposal(raw) {
       questions.push('Quais pesos, em porcentagem, devo usar para produtividade, primeira resposta e tempo de resolução? A soma precisa ser 100.');
     }
   }
+  const periodKey = cleanText(parsed.periodKey, 32);
+  const periodLabel = cleanText(parsed.periodLabel, 80);
   const rules = [];
   const broken = [];
-  for (const item of Array.isArray(parsed.criteria) ? parsed.criteria.slice(0, 6) : []) {
+  for (const item of Array.isArray(parsed.criteria) ? parsed.criteria.slice(0, 8) : []) {
     const indicator = INDICATORS.includes(item?.indicator) ? item.indicator : '';
     const op = OPS.includes(item?.op) ? item.op : '';
     const value = finite(item?.value);
@@ -160,7 +168,7 @@ export function normalizeProposal(raw) {
       : ['Faltou algum dado para a regra valer. Qual indicador, número, comparação (maior, menor ou entre) e período (semana ou mês)?'];
     return { ok: false, kind: 'clarify', questions: ask, explanation, reply: `${ask.join(' ')} Nada foi aplicado ao pódio.` };
   }
-  const proposal = { ok: true, kind: 'proposal', explanation, questions: [], period, combine, subsetor, weights, rules };
+  const proposal = { ok: true, kind: 'proposal', explanation, questions: [], period, periodKey, periodLabel, combine, subsetor, weights, rules };
   const summary = describeCriteria(proposal);
   proposal.reply = explanation ? `${explanation} ${summary}` : summary;
   return proposal;
@@ -179,9 +187,12 @@ export function criteriaPrompt(text, history = [], labels = []) {
     'Interprete um pedido de pódio escrito por uma liderança de atendimento, em português.',
     'Não invente número, indicador, comparador, período, peso ou subsetor.',
     'Se faltar qualquer um desses dados, use status needs_clarification e faça uma pergunta curta.',
-    'Indicadores: resolvidos (percentual), resolvidosCount (quantidade de tickets), transferidos (quantidade), primeira (minutos da primeira resposta), resolucao (minutos do tempo médio).',
+    'Indicadores: resolvidos (percentual de tickets resolvidos), resolvidosCount (quantidade de tickets), transferidos (quantidade), primeira (minutos da primeira resposta), resolucao (minutos do tempo médio), satisfacao (percentual de satisfação).',
+    'Satisfação nunca é percentual de tickets resolvidos.',
+    'Não omita indicador citado. Não invente indicador. Não use resultado de colaborador como meta da gestão.',
+    '"pelo menos", "no mínimo", "maior ou igual" = gte. "no máximo", "até", "menor ou igual" = lte.',
     'Comparadores: gt, gte, lt, lte, eq, between.',
-    'Período de cada condição: week ou month.',
+    'Período de cada condição: week ou month. Mês nomeado (ex.: novembro de 2026) é month. Não transforme mês em semana.',
     'combine all quando todas as condições são obrigatórias; any quando basta uma.',
     'Subsetor só pode ser Chat, E-mail, Ligação, Atendimento ou vazio. Não cite nomes de pessoas.',
     'Pesos só se a liderança pedir, e apenas resolvidos, primeira e resolucao, somando 100. Caso contrário weights null.',
@@ -201,11 +212,37 @@ function failure(kind) {
   return { ok: false, kind: 'unavailable', reply: `A IA não respondeu. ${kept}` };
 }
 
+function fromLocalRules(local) {
+  return normalizeProposal({
+    status: 'ready',
+    explanation: 'Estas são as metas da gestão, não os resultados dos colaboradores.',
+    questions: [],
+    period: local.period,
+    periodKey: local.periodKey ?? '',
+    periodLabel: local.periodLabel ?? '',
+    combine: 'all',
+    subsetor: '',
+    weights: null,
+    criteria: local.rules.map((rule) => ({
+      indicator: rule.indicator,
+      op: rule.op,
+      value: rule.value,
+      valueTo: rule.valueTo ?? null,
+      period: local.period,
+    })),
+  });
+}
+
 export async function interpretCriteria(text, options = {}) {
   const source = cleanText(text, 2000);
   if (!source) return { ok: false, kind: 'clarify', questions: ['Escreva o pedido do pódio.'], reply: 'Escreva o pedido do pódio. Nada foi aplicado.' };
+  const local = parseCustomRequest(source);
+  if (local.ok) return fromLocalRules(local);
   if (looksLikeReport(source)) {
     return { ok: false, kind: 'clarify', questions: ['Descreva a regra sem colar o relatório.'], reply: 'Esse texto parece um relatório. Ele fica só na conferência e não vai para a IA. Descreva a regra do pódio sem colar resultados. Nada foi aplicado.' };
+  }
+  if (local.message) {
+    return { ok: false, kind: 'clarify', questions: [local.message], reply: `${local.message}` };
   }
   const history = options.history ?? [];
   const prompt = criteriaPrompt(source, history, options.labels ?? []);

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 type Rule = { indicator: string; op: string; value: number; valueTo?: number; period?: string };
 type PendingRules = {
   period: string;
+  periodLabel?: string;
   rules: Rule[];
   name: string;
   explanation: string;
@@ -110,12 +111,16 @@ const RULE_NAMES: Record<string, string> = {
   transferidos: 'Tickets transferidos',
   satisfacao: 'Satisfação',
 };
-const RULE_OPS: Record<string, string> = { gt: 'maior que', gte: 'pelo menos', lt: 'menor que', lte: 'no máximo', eq: 'igual a', between: 'entre' };
+const RULE_OPS: Record<string, string> = { gt: '>', gte: '>=', lt: '<', lte: '<=', eq: '=', between: 'entre' };
+const RULE_UNITS: Record<string, string> = { resolvidos: '%', satisfacao: '%', primeira: ' min', resolucao: ' min' };
 
-function ruleLabel(rule: Rule) {
+function ruleConference(rule: Rule, periodLabel?: string) {
   const name = RULE_NAMES[rule.indicator] ?? rule.indicator;
-  if (rule.op === 'between') return `${name} entre ${rule.value} e ${rule.valueTo ?? ''}`;
-  return `${name} ${RULE_OPS[rule.op] ?? rule.op} ${rule.value}`;
+  const unit = RULE_UNITS[rule.indicator] ?? '';
+  const value = rule.op === 'between' ? `${rule.value} a ${rule.valueTo ?? ''}${unit}` : `${rule.value}${unit}`;
+  const sign = RULE_OPS[rule.op] ?? rule.op;
+  const when = periodLabel || (rule.period === 'month' ? 'mês' : rule.period === 'week' ? 'semana' : '');
+  return `${name} | ${value} | ${sign} | ${when}`;
 }
 
 type ChatMessage = { id: string; from: 'bot' | 'user'; text: string };
@@ -283,6 +288,7 @@ export const GoalsProvider: FC<{
         if (data.proposal?.rules?.length) {
           setPendingRules({
             period: data.proposal.period,
+            periodLabel: String(data.proposal.periodLabel ?? ''),
             rules: data.proposal.rules,
             name: '',
             explanation: String(data.proposal.explanation ?? ''),
@@ -304,6 +310,7 @@ export const GoalsProvider: FC<{
       if (data.kind === 'proposal') {
         setPendingRules({
           period: data.period,
+          periodLabel: String(data.periodLabel ?? ''),
           rules: data.rules,
           name: '',
           explanation: String(data.explanation ?? ''),
@@ -910,10 +917,11 @@ export const GoalsAssistant: FC = () => {
         ) : null}
         {pendingRules ? (
           <div className="grid gap-2 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
-            <p className="text-[12px] font-semibold text-[#4A1C73]">Confira antes de aplicar</p>
+            <p className="text-[12px] font-semibold text-[#4A1C73]">Conferência das metas. Confirme antes de aplicar.</p>
+            <p className="text-[11px] text-[#8A7C98]">Indicador | Valor | Regra | Período</p>
             <ul className="grid gap-1 text-[12.5px] leading-5 break-words text-[#5C5168]">
               {pendingRules.rules.map((rule, index) => (
-                <li key={`${rule.indicator}-${index}`}>{ruleLabel(rule)}{rule.period === 'month' ? ' no mês' : rule.period === 'week' ? ' na semana' : ''}</li>
+                <li key={`${rule.indicator}-${index}`}>{ruleConference(rule, pendingRules.periodLabel)}</li>
               ))}
             </ul>
             <p className="text-[12px] text-[#8A7C98]">{pendingRules.combine === 'any' ? 'Basta uma condição.' : 'Todas as condições são obrigatórias.'}{pendingRules.subsetor ? ` Subsetor ${pendingRules.subsetor}.` : ''}</p>

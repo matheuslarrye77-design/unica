@@ -204,7 +204,7 @@ function readToken(part) {
   return null;
 }
 
-function metricOf(line) {
+export function metricOf(line) {
   const text = fold(line);
   if (/satisfa|\bcsat\b|\bnps\b/.test(text)) return 'satisfacao';
   if (/tickets?\s+transferid/.test(text)) return 'transferidos';
@@ -328,10 +328,46 @@ export function monthKey(now = new Date()) {
   return `month:${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
+const MONTH_NUMBERS = {
+  janeiro: 1, fevereiro: 2, marco: 3, abril: 4, maio: 5, junho: 6,
+  julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12,
+};
+
+export function readGoalPeriod(text, now = new Date()) {
+  const folded = fold(text);
+  const named = folded.match(/\b(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)(?:\s+de)?\s+(\d{4})\b/)
+    || folded.match(/\b(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\b/);
+  const monthWord = /\b(?:no|neste|deste|do|durante o)\s+mes\b|\bmensal\b/.test(folded);
+  const weekWord = /\bsemana\b|\bsemanal\b/.test(folded);
+  if (named && weekWord) return { ok: false, reason: 'conflict' };
+  if (monthWord && weekWord) return { ok: false, reason: 'conflict' };
+  if (named) {
+    const month = MONTH_NUMBERS[named[1]];
+    const year = named[2] ? Number(named[2]) : now.getFullYear();
+    const key = `month:${year}-${String(month).padStart(2, '0')}`;
+    const titles = {
+      janeiro: 'Janeiro', fevereiro: 'Fevereiro', marco: 'Março', abril: 'Abril', maio: 'Maio', junho: 'Junho',
+      julho: 'Julho', agosto: 'Agosto', setembro: 'Setembro', outubro: 'Outubro', novembro: 'Novembro', dezembro: 'Dezembro',
+    };
+    const label = `${titles[named[1]]}/${year}`;
+    return { ok: true, period: 'month', periodKey: key, periodLabel: label };
+  }
+  if (monthWord) {
+    const key = monthKey(now);
+    return { ok: true, period: 'month', periodKey: key, periodLabel: 'mês' };
+  }
+  if (weekWord) {
+    return { ok: true, period: 'week', periodKey: isoWeekKey(now), periodLabel: 'semana' };
+  }
+  return { ok: false, reason: 'missing' };
+}
+
 export function mentionedPeriods(text, now = new Date()) {
   const folded = fold(text);
   const found = [];
-  if (/\b(?:no|neste|deste|do)\s+mes\b|\bdurante o mes\b|\bmensal\b/.test(folded)) found.push(monthKey(now));
+  const named = readGoalPeriod(text, now);
+  if (named.ok && named.period === 'month') found.push(named.periodKey);
+  else if (/\b(?:no|neste|deste|do)\s+mes\b|\bdurante o mes\b|\bmensal\b/.test(folded)) found.push(monthKey(now));
   const dated = periodFromText(text);
   if (dated) found.push(dated);
   else if (/\b(?:na|nesta|esta|dessa)\s+semana\b/.test(folded)) found.push(isoWeekKey(now));
@@ -657,38 +693,117 @@ export function passesRules(values, rules) {
   });
 }
 
+function clauseOp(folded, raw = '') {
+  if (/>=|≥/.test(raw) || /maior ou igual/.test(folded)) return 'gte';
+  if (/<=|≤/.test(raw) || /menor ou igual/.test(folded)) return 'lte';
+  if (/entre\s+[\d.,]+\s+e\s+[\d.,]+/.test(folded)) return 'between';
+  if (/\bpelo menos\b|\bno minimo\b|\bminimo de\b|\bacima de\b/.test(folded)) return 'gte';
+  if (/\bno maximo\b|\bmaximo de\b|\babaixo de\b/.test(folded)) return 'lte';
+  if (/\bate\s+[\d.,]+/.test(folded)) return 'lte';
+  if (/\bmaior que\b|\bmais de\b/.test(folded)) return 'gt';
+  if (/\bmenor que\b|\bmenos de\b/.test(folded)) return 'lt';
+  if (/\bigual\b/.test(folded)) return 'eq';
+  return '';
+}
+
+function clauseIndicator(folded, raw) {
+  if (/satisfa|\bcsat\b|\bnps\b/.test(folded)) return 'satisfacao';
+  if (/transferid/.test(folded)) return 'transferidos';
+  if (/primeira|\btpr\b/.test(folded)) return 'primeira';
+  if ((/tempo\s+medio|\btma\b|medio\s+(de\s+)?resolu|tempo\s+de\s+resolu|ate\s+resolu/.test(folded)) && !/tickets?\s+resolvid/.test(folded)) return 'resolucao';
+  if (/tickets?\s+resolvid/.test(folded) || (/\btickets?\b/.test(folded) && !/satisfa/.test(folded))) {
+    return /%/.test(raw) && !/\d[\d.]*\s+tickets?/.test(folded) ? 'resolvidos' : 'resolvidosCount';
+  }
+  if (/(?:percentual|taxa)\s+de\s+resolvid/.test(folded)) return 'resolvidos';
+  return '';
+}
+
+function mentionedIndicators(text) {
+  const folded = fold(text);
+  const found = [];
+  if (/satisfa|\bcsat\b|\bnps\b/.test(folded)) found.push('satisfacao');
+  if (/transferid/.test(folded)) found.push('transferidos');
+  if (/primeira|\btpr\b/.test(folded)) found.push('primeira');
+  if (/tempo\s+medio|\btma\b|medio\s+(de\s+)?resolu|tempo\s+de\s+resolu/.test(folded)) found.push('resolucao');
+  if (/tickets?\s+resolvid|\b\d[\d.]*\s+tickets?\b|\btickets?\b/.test(folded)) found.push('resolvidosCount');
+  if (/(?:percentual|taxa)\s+de\s+resolvid/.test(folded)) found.push('resolvidos');
+  return [...new Set(found)];
+}
+
+function isPersonResultLine(line) {
+  const cleaned = cleanLine(line);
+  const label = cleanName((cleaned.match(/^([^:]{2,80}):/) ?? [])[1] ?? '');
+  if (!label) return false;
+  if (metricOf(label) || /^metas?\b|^resultados?\b|^indicador/i.test(label)) return false;
+  return /^.{2,80}:\s*\d/.test(cleaned) || /^.{2,60}\s+[—–-]\s+\d/.test(cleaned);
+}
+
+function splitGoalClauses(text) {
+  return String(text ?? '')
+    .split(/\n+|;\s+|\*\s+|,\s+(?=[A-Za-zÀ-ÿ*•])|\s+e\s+(?=(?:o\s+)?(?:tempo|tma|satisfa|primeira|tickets|csat|tpr|quantidade))/i)
+    .map((line) => cleanLine(line))
+    .filter((line) => line.length > 2 && !isPersonResultLine(line));
+}
+
+const INDICATOR_SPAN = /satisfa(?:ção|cao)?|\bcsat\b|\bnps\b|tickets?\s+transferid\w*|quantidade\s+de\s+tickets?|tickets?\s+resolvid\w*|\btickets?\b|primeira\s+resposta|\btpr\b|tempo\s+m[eé]dio(?:\s+de\s+resolu[cç][aã]o)?|\btma\b|tempo\s+(?:m[eé]dio\s+)?(?:at[eé]\s+)?resolu[cç][aã]o/gi;
+
+function clauseWindows(clause) {
+  const matches = [...String(clause).matchAll(INDICATOR_SPAN)];
+  if (matches.length === 0) return [clause];
+  return matches.map((match, index) => {
+    const from = match.index;
+    const to = matches[index + 1]?.index ?? clause.length;
+    const prefixFrom = Math.max(index === 0 ? 0 : (matches[index - 1].index + matches[index - 1][0].length), from - 40);
+    return String(clause).slice(prefixFrom, to);
+  });
+}
+
+function clauseValue(indicator, raw) {
+  const source = String(raw ?? '').replace(/\b(?:19|20)\d{2}\b/g, ' ');
+  const percent = source.match(/([\d.,]+)\s*%/);
+  const minutes = source.match(/([\d.,]+)\s*(?:min|minuto)/i);
+  const afterOp = source.match(/(?:>=|<=|≥|≤|pelo menos|no m[ií]nimo|no m[aá]ximo|at[eé]|maior ou igual(?: a)?|menor ou igual(?: a)?|acima de|abaixo de|m[ií]nimo de|m[aá]ximo de)\s*([\d.,]+)/i);
+  const count = afterOp?.[1] ?? (source.match(/(\d[\d.]*)/) ?? [])[1];
+  if (indicator === 'satisfacao' || indicator === 'resolvidos') return percent ? numberFrom(percent[1]) : (afterOp ? numberFrom(afterOp[1]) : null);
+  if (indicator === 'primeira' || indicator === 'resolucao') return minutes ? numberFrom(minutes[1]) : (count ? numberFrom(count) : null);
+  return count ? countFrom(count) : null;
+}
+
 export function parseCustomRequest(text) {
   const source = String(text ?? '').trim();
+  const wanted = mentionedIndicators(source);
   const rules = [];
-  const patterns = [
-    { indicator: 'resolvidosCount', re: /(\d[\d.]*)\s+tickets/i },
-    { indicator: 'resolvidos', re: /(?:tickets?\s+resolvid|resolvid)[^\d%]{0,48}([\d.,]+)\s*%/i },
-    { indicator: 'satisfacao', re: /(?:satisfa[cç][aã]o|csat|nps)[^\d%]{0,48}([\d.,]+)\s*%/i },
-    { indicator: 'primeira', re: /primeira\s+resposta[^\d]{0,48}([\d.,]+)\s*(?:min|minuto)/i },
-    { indicator: 'resolucao', re: /(?:tempo\s+m[eé]dio(?:\s+(?:de|at[eé]|ate))?(?:\s+resolu[cç][aã]o)?|resolu[cç][aã]o|tma)[^\d]{0,48}([\d.,]+)\s*(?:min|minuto)/i },
-    { indicator: 'transferidos', re: /transferid[^\d]{0,40}([\d.,]+)/i },
-  ];
-  for (const pattern of patterns) {
-    const match = source.match(pattern.re);
-    if (!match) continue;
-    const around = source.slice(Math.max(0, match.index - 40), match.index + match[0].length + 40);
-    const folded = fold(around);
-    let op = 'gte';
-    if (/abaixo|menor|no maximo|até|ate/.test(folded)) op = 'lte';
-    else if (/acima|maior|pelo menos|no minimo|mínimo|minimo/.test(folded)) op = 'gte';
-    else if (/igual/.test(folded)) op = 'eq';
-    const between = around.match(/entre\s+([\d.,]+)\s+e\s+([\d.,]+)/i);
-    if (between) {
-      rules.push({ indicator: pattern.indicator, op: 'between', value: numberFrom(between[1]), valueTo: numberFrom(between[2]) });
-    } else {
-      rules.push({ indicator: pattern.indicator, op, value: numberFrom(match[1]) });
+  const seen = new Set();
+  for (const clause of splitGoalClauses(source)) {
+    for (const window of clauseWindows(clause)) {
+      const folded = fold(window);
+      const indicator = clauseIndicator(folded, window);
+      if (!indicator || seen.has(indicator)) continue;
+      const op = clauseOp(folded, window);
+      const between = window.match(/entre\s+([\d.,]+)\s+e\s+([\d.,]+)/i);
+      if (between) {
+        seen.add(indicator);
+        rules.push({ indicator, op: 'between', value: numberFrom(between[1]), valueTo: numberFrom(between[2]) });
+        continue;
+      }
+      const value = clauseValue(indicator, window);
+      if (!op || value === null) continue;
+      seen.add(indicator);
+      rules.push({ indicator, op, value });
     }
   }
-  const period = /m[eê]s|mensal/i.test(source) ? 'month' : 'week';
-  if (rules.length === 0 || rules.some((rule) => rule.value === null)) {
-    return { ok: false, message: 'Não consegui transformar esse pedido em regras. Diga o indicador, o número e se ele deve ser maior ou menor.' };
+  const period = readGoalPeriod(source);
+  const missing = wanted.filter((item) => !rules.some((rule) => rule.indicator === item || (item === 'resolvidosCount' && rule.indicator === 'resolvidos')));
+  if (missing.length) {
+    return { ok: false, message: 'Faltou algum indicador pedido. Confirme indicador, valor, se deve ser maior ou menor, e o período. Nada foi aplicado.' };
   }
-  return { ok: true, period, rules };
+  if (rules.length === 0 || rules.some((rule) => rule.value === null)) {
+    return { ok: false };
+  }
+  if (!period.ok) {
+    return { ok: false, message: period.reason === 'conflict' ? 'O texto cita semana e mês. Diga qual período vale para estas metas. Nada foi aplicado.' : 'Diga se as metas são da semana ou do mês. Nada foi aplicado.' };
+  }
+  return { ok: true, period: period.period, periodKey: period.periodKey, periodLabel: period.periodLabel, rules };
 }
 
 export function aggregateMonth(imports, monthKey) {
@@ -959,7 +1074,9 @@ export function publicStore(store) {
 export function looksLikeReport(text) {
   const folded = fold(text);
   const hasMetric = /tickets?\s+resolvid|tickets?\s+transferid|primeira\s+resposta|tempo medio|ate resolu/.test(folded);
-  const hasPeople = /ola |resultados|metas da semana/.test(folded) || /[A-Za-zÀ-ÿ]{2,}\s*:/.test(text);
+  const lines = String(text ?? '').split(/\n+/);
+  const hasPeople = /ola |resultados da semana|resultados do mes/.test(folded)
+    || lines.some((line) => isPersonResultLine(line));
   return hasMetric && hasPeople;
 }
 
