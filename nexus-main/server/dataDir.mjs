@@ -17,7 +17,7 @@ export function dataDir() {
     for (const name of fs.readdirSync(bundled)) {
       const from = path.join(bundled, name);
       const to = path.join(writable, name);
-      if (name === 'auth.json' || fs.existsSync(to) || !fs.statSync(from).isFile()) continue;
+      if (name === 'auth.json' || name === 'goals.json' || fs.existsSync(to) || !fs.statSync(from).isFile()) continue;
       fs.copyFileSync(from, to);
     }
   }

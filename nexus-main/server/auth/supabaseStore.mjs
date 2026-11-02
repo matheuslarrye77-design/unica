@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 export function serverSecretKey(env = process.env) {
-  return String(env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  return String(env.SUPABASE_SECRET_KEY || env.SUPABASE_SECRET_KEY_Key || env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 }
 
 function acceptsServerSecret(key) {

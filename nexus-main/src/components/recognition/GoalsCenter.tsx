@@ -1,7 +1,7 @@
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { authHeaders, getDemoId } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import { BarChart3, Bot, Check, Info, Paperclip, Pencil, Send, Settings2, Sparkles, Star, Target, Trophy } from 'lucide-react';
+import { BarChart3, Bot, Check, FileText, Info, Paperclip, Pencil, Send, Settings2, Sparkles, Star, Target, Trophy } from 'lucide-react';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type FC, type FormEvent, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
@@ -38,6 +38,22 @@ export type GoalImport = {
   approvedBy: string;
   approvedAt: string;
 };
+type LedgerValues = { resolvidos: number | null; resolvidosCount: number | null; transferidos: number | null; primeira: number | null; resolucao: number | null };
+type LedgerRecord = {
+  id: string;
+  userId: string;
+  sourceName: string;
+  name: string;
+  periodKey: string;
+  periodLabel: string;
+  values: LedgerValues;
+  changes: Record<string, string>;
+  updatedAt: string;
+  pending: boolean;
+  note: string;
+  candidates: { id: string; name: string }[];
+  history: { at: string; values: LedgerValues }[];
+};
 type Person = { id: string; name: string; funcao: string; role: string; aliases: string[] };
 type Template = { id: string; name: string; description: string; period: string; rules: Rule[] };
 type Criterion = { mode: 'preset' | 'custom' | 'overall'; indicator?: string; templateId?: string };
@@ -50,7 +66,39 @@ export type GoalsPayload = {
   people: Person[];
   templates: Template[];
   imports: GoalImport[];
+  ledger?: {
+    records: LedgerRecord[];
+    ranking: { place: number; userId: string; name: string; values: LedgerValues; count?: number | string }[];
+    applied?: { place: number; userId: string; name: string; values: LedgerValues; count?: number | string }[];
+  };
 };
+
+const LEDGER_FIELDS = [
+  ['resolvidosCount', 'Tickets resolvidos'],
+  ['resolvidos', 'Tickets resolvidos (%)'],
+  ['transferidos', 'Tickets transferidos'],
+  ['primeira', 'Primeira resposta'],
+  ['resolucao', 'Tempo médio de resolução'],
+] as const;
+
+function ledgerText(field: string, value: number | null) {
+  if (value === null || value === undefined) return '';
+  if (field === 'resolvidos') return `${value}%`;
+  if (field === 'primeira' || field === 'resolucao') return `${value} min`;
+  return String(value);
+}
+
+function changeMark(change?: string) {
+  if (change === 'new') return { label: 'NOVO', className: 'text-[#157A3A]' };
+  if (change === 'updated') return { label: 'ATUALIZADO', className: 'text-[#A16207]' };
+  return { label: 'SEM ALTERAÇÃO', className: 'text-[#8A7C98]' };
+}
+
+function clock(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 
 const METRICS = [
   ['resolvidos', 'Tickets resolvidos'],
@@ -164,7 +212,7 @@ export const GoalsProvider: FC<{
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: 'hello',
     from: 'bot',
-    text: 'Olá! Envie aqui os relatórios da sua equipe para que eu possa processar as informações e atualizar os pódios.',
+    text: 'Olá! Envie os relatórios da equipe. Eu guardo os dados no banco e só proponho a meta. O pódio muda quando você confirma.',
   }]);
   const lastReport = useRef('');
   const selected = goals.criterion ?? { mode: 'preset' as const, indicator: 'resolvidos' };
@@ -231,9 +279,23 @@ export const GoalsProvider: FC<{
     try {
       const history = phase === 'custom' ? messages.slice(-6).map((message) => ({ text: message.text })) : [];
       const data = await send('/api/goals/assistant', 'POST', { text: source, preview: phase === 'custom' ? undefined : preview, periodKey: periodKey || week || goals.currentKey, intent: phase, history });
-      if (data.kind === 'unavailable' || data.kind === 'quota' || data.kind === 'auth' || data.kind === 'permission' || data.kind === 'model' || data.kind === 'invalid') setDraft(source);
+      if (data.kind === 'unavailable' || data.kind === 'quota' || data.kind === 'auth' || data.kind === 'permission' || data.kind === 'model' || data.kind === 'invalid' || data.kind === 'clarify' || data.kind === 'storage') setDraft(source);
       else setDraft('');
       say('bot', String(data.reply ?? ''));
+      if ((data.kind === 'ledger' || data.kind === 'proposal') && data.ledger) onChange({ ...data, canManage: goals.canManage, people: data.people ?? goals.people });
+      if (data.kind === 'ledger') {
+        if (data.proposal?.rules?.length) {
+          setPendingRules({
+            period: data.proposal.period,
+            rules: data.proposal.rules,
+            name: '',
+            explanation: String(data.proposal.explanation ?? ''),
+            combine: data.proposal.combine === 'any' ? 'any' : 'all',
+            subsetor: String(data.proposal.subsetor ?? ''),
+            weights: data.proposal.weights ?? null,
+          });
+        } else setPendingRules(null);
+      }
       if (data.kind === 'preview') {
         lastReport.current = source;
         setPreview(data.preview);
@@ -265,9 +327,10 @@ export const GoalsProvider: FC<{
           }),
         });
       }
-    } catch {
+    } catch (error) {
       setDraft(source);
-      say('bot', 'Não consegui falar com a IA agora. Nada foi alterado e o seu texto continua no campo.');
+      const data = error && typeof error === 'object' && 'data' in error ? (error as { data?: { kind?: string; reply?: string } }).data : undefined;
+      say('bot', data?.kind === 'storage' && data.reply ? data.reply : 'Não consegui falar com a IA agora. Nada foi alterado e o seu texto continua no campo.');
     } finally {
       setBusy(false);
     }
@@ -546,11 +609,65 @@ export const GoalsCenter: FC = () => {
   );
 };
 
+function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => void }) {
+  const records = [...(goals.ledger?.records ?? [])].sort((left, right) => (left.name || left.sourceName).localeCompare(right.name || right.sourceName, 'pt') || left.periodKey.localeCompare(right.periodKey));
+  const ranking = goals.ledger?.ranking ?? [];
+  return (
+    <div className="absolute inset-0 z-20 flex flex-col bg-white">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#F3EAF8] px-3 py-3">
+        <h3 className="text-[14px] font-semibold text-[#241B33]">Banco dos relatórios</h3>
+        <button type="button" onClick={onClose} className="rounded-full border border-[#E7DFF0] px-3 py-1 text-[12px] font-semibold text-[#6A228C]">Fechar</button>
+      </div>
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
+        <p className="text-[12px] leading-5 text-[#8A7C98]">Os dados ficam salvos no servidor. <span className="text-[#157A3A]">NOVO</span>, <span className="text-[#A16207]">ATUALIZADO</span> e <span className="text-[#8A7C98]">SEM ALTERAÇÃO</span> mostram só o que mudou na última importação.</p>
+        {ranking.length ? (
+          <section className="rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-3">
+            <p className="text-[12px] font-semibold text-[#4A1C73]">Classificação proposta</p>
+            <ul className="mt-1 grid gap-1 text-[12.5px] text-[#5C5168]">
+              {ranking.map((row) => <li key={`${row.userId}-${row.place}`}>{row.place}º {row.name}{row.values.resolvidosCount !== null ? ` · ${row.values.resolvidosCount} tickets` : ''}</li>)}
+            </ul>
+            <p className="mt-1 text-[11.5px] text-[#8A7C98]">O pódio oficial só muda se você confirmar a regra.</p>
+          </section>
+        ) : null}
+        {records.length === 0 ? <p className="text-[13px] text-[#8A7C98]">Nenhum relatório foi armazenado ainda.</p> : records.map((record) => (
+          <article key={record.id} className="rounded-xl border border-[#EDE4F5] p-3">
+            <p className="text-[13px] font-semibold text-[#241B33]">{record.name || record.sourceName}</p>
+            <p className="text-[12px] text-[#8A7C98]">Cadastro na Equipe: {record.userId || 'pendente de identificação'}</p>
+            <p className="text-[12px] text-[#8A7C98]">{record.periodLabel} · atualizado em {clock(record.updatedAt) || '—'}</p>
+            {record.note ? <p className="mt-1 text-[12px] leading-5 text-[#A16207]">{record.note}</p> : null}
+            <ul className="mt-2 grid gap-1">
+              {LEDGER_FIELDS.map(([field, label]) => {
+                const value = record.values[field];
+                if (value === null || value === undefined) return null;
+                const mark = changeMark(record.changes?.[field]);
+                return <li key={field} className="text-[12.5px] text-[#3C3148]">{label}: {ledgerText(field, value)} <span className={cn('text-[11px] font-semibold', mark.className)}>({mark.label})</span></li>;
+              })}
+            </ul>
+            {record.history.length ? (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-[12px] font-medium text-[#6A228C]">Histórico das atualizações</summary>
+                <ul className="mt-1 grid gap-1">
+                  {record.history.map((item, index) => (
+                    <li key={`${item.at}-${index}`} className="text-[12px] text-[#8A7C98]">
+                      {clock(item.at) || 'versão anterior'}: {LEDGER_FIELDS.filter(([field]) => item.values[field] !== null && item.values[field] !== undefined).map(([field, label]) => `${label} ${ledgerText(field, item.values[field])}`).join(' · ')}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export const GoalsAssistant: FC = () => {
   const board = useBoard();
-  const { messages, draft, setDraft, busy, talk, phase, pickPreset, pendingRules, setPendingRules, saveTemplate, cancelProposal } = board;
+  const { goals, messages, draft, setDraft, busy, talk, phase, pickPreset, pendingRules, setPendingRules, saveTemplate, cancelProposal } = board;
   const thread = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [bankOpen, setBankOpen] = useState(false);
 
   useEffect(() => {
     thread.current?.scrollTo({ top: thread.current.scrollHeight });
@@ -562,13 +679,17 @@ export const GoalsAssistant: FC = () => {
   }
 
   return (
-    <aside className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[22px] border border-[#EDE4F5] bg-white">
+    <aside className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[22px] border border-[#EDE4F5] bg-white">
       <div className="flex shrink-0 items-center justify-between border-b border-[#F3EAF8] px-3 py-3 pr-10">
         <h3 className="flex items-center gap-2 text-[14px] font-semibold text-[#241B33]">
           <Sparkles className="h-4 w-4 text-[#8E35B8]" /> Fale com o assistente de metas
-          <Hint text="Critérios personalizados são interpretados pela IA gratuita. Relatórios e nomes continuam conferidos aqui, e o pódio só muda quando você confirma." />
+          <Hint text="Relatórios entram no banco de dados, neste chat. A meta só vale como proposta até você confirmar, e o pódio oficial não muda antes disso." />
+          <button type="button" aria-label="Abrir banco de dados dos relatórios" title="Banco de dados" onClick={() => setBankOpen(true)} className="grid h-7 w-7 place-items-center rounded-lg text-[#8E35B8] hover:bg-[#F3E4FA]">
+            <FileText className="h-4 w-4" />
+          </button>
         </h3>
       </div>
+      {bankOpen ? <ReportBank goals={goals} onClose={() => setBankOpen(false)} /> : null}
       <div ref={thread} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
         {messages.map((message) => (
           <div key={message.id} className={cn('flex gap-2', message.from === 'user' ? 'justify-end' : 'items-start')}>
@@ -618,13 +739,7 @@ export const GoalsAssistant: FC = () => {
         <div className="flex items-end gap-2 rounded-2xl border border-[#E7DFF0] bg-[#FBF8FC] px-3 py-2">
           <input ref={fileRef} type="file" accept=".txt,.csv,.md,text/plain" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) board.onFile(file); event.currentTarget.value = ''; }} />
           <button type="button" aria-label="Anexar relatório" onClick={() => fileRef.current?.click()} className="grid h-8 w-8 place-items-center text-[#8A7C98]"><Paperclip className="h-4 w-4" /></button>
-          <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onPaste={(event) => {
-            const pasted = event.clipboardData.getData('text');
-            if (pasted.length > 180) {
-              event.preventDefault();
-              void talk(pasted);
-            }
-          }} placeholder="Cole ou digite sua mensagem..." rows={2} className="min-h-10 max-h-24 flex-1 resize-none bg-transparent text-[13px] outline-none" />
+          <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Cole ou digite sua mensagem..." rows={2} className="min-h-10 max-h-24 flex-1 resize-none bg-transparent text-[13px] outline-none" />
           <button type="submit" disabled={busy || !draft.trim()} aria-label="Enviar" className="grid h-8 w-8 place-items-center rounded-full bg-[#8E35B8] text-white disabled:bg-[#C9A6DC]"><Send className="h-3.5 w-3.5" /></button>
         </div>
       </form>

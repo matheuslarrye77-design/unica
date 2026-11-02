@@ -83,6 +83,10 @@ export const KudosFeedPage: FC = () => {
   const approved = goals?.imports ?? [];
   const activeKey = week || goals?.currentKey || '';
   const activeImport = approved.find((item) => item.periodKey === activeKey);
+  const confirmed = goals?.criterion?.mode === 'custom' ? (goals.ledger?.applied ?? []) : [];
+  const standing = confirmed.length
+    ? confirmed.map((row) => ({ place: row.place, name: row.name, role: '', count: row.count ?? row.values.resolvidosCount ?? '' }))
+    : (activeImport?.ranking ?? []).map((row) => ({ place: row.place, name: row.name, role: row.subsetor, count: row.overall ?? row.values.resolvidos ?? row.values.resolvidosCount ?? '' }));
   const weekOrder = [...approved].sort((left, right) => left.periodKey.localeCompare(right.periodKey));
   const weekIndex = weekOrder.findIndex((item) => item.periodKey === activeKey);
   const items = [...extra, ...RECENT].filter((item) => filter === 'Todos' || item.area === filter);
@@ -166,7 +170,7 @@ export const KudosFeedPage: FC = () => {
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#F3E4FA] text-[#8E35B8]"><Trophy className="h-4 w-4" /></span>
                   <div>
                     <h2 className="text-[16px] font-semibold text-[#241B33]">Pódio do mês</h2>
-                    <p className="text-[12.5px] text-[#8A7C98]">{activeImport ? 'Pódio aprovado da semana selecionada' : 'Os 3 colaboradores com mais reconhecimentos'}</p>
+                    <p className="text-[12.5px] text-[#8A7C98]">{confirmed.length ? 'Pódio da meta confirmada' : activeImport ? 'Pódio aprovado da semana selecionada' : 'Os 3 colaboradores com mais reconhecimentos'}</p>
                   </div>
                 </div>
                 {weekOrder.length > 0 ? (
@@ -183,12 +187,12 @@ export const KudosFeedPage: FC = () => {
               </div>
               <div className="mx-auto mt-5 max-w-xl">
                 <div className="grid grid-cols-3 items-end gap-4">
-                  {(activeImport?.ranking.length ? [activeImport.ranking[1], activeImport.ranking[0], activeImport.ranking[2]] : PODIUM).map((person, index) => {
+                  {(standing.length ? [standing[1], standing[0], standing[2]] : PODIUM).map((person, index) => {
                     if (!person) return <div key={`vazio-${index}`} />;
                     const place = (person.place === 2 || person.place === 3 ? person.place : 1) as 1 | 2 | 3;
                     const name = person.name;
-                    const role = 'role' in person ? person.role : person.subsetor;
-                    const count = 'count' in person ? person.count : (person.overall ?? person.values.resolvidos ?? '');
+                    const role = person.role;
+                    const count = person.count;
                     const tone = STEP[place];
                     return (
                       <div key={person.name} className="flex min-w-0 flex-col items-center text-center">

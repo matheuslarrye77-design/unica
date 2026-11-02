@@ -1,22 +1,8 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { isLeader } from './auth/permissions.mjs';
 import { commitTemplate, interpretCriteria, normalizeProposal } from './criteria.mjs';
+import { applyLedgerRanking, ingestReport, proposeFromLedger } from './ledger.mjs';
 import { applyCriterion, buildApproval, emptyStore, goalState, INDICATORS, looksLikeReport, overallScore, parseReport, publicStore, readCriterion, runAssistant } from './goals.mjs';
-
-function readStore(file) {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
-    return { ...emptyStore(), ...parsed, weights: { ...emptyStore().weights, ...(parsed.weights ?? {}) }, criterion: readCriterion(parsed.criterion) };
-  } catch {
-    return emptyStore();
-  }
-}
-
-function writeStore(file, store) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(store));
-}
+import { STORAGE_REPLY, createGoalsStore } from './goalsStore.mjs';
 
 function redactLabels(colleagues, aliases, teamRoster) {
   const skip = new Set(['de', 'da', 'do', 'dos', 'das', 'e', 'del']);
@@ -54,6 +40,10 @@ function directory(colleagues, aliases, teamRoster) {
   }));
 }
 
+function viewPeople(people, store) {
+  return people.map((person) => ({ id: person.id, name: person.name, funcao: person.funcao, role: person.role, aliases: store.aliases[person.id] ?? [] }));
+}
+
 function preview(store, text, people) {
   const parsed = parseReport(text, people);
   return {
@@ -67,15 +57,32 @@ function preview(store, text, people) {
   };
 }
 
-export async function handleGoals(req, res, user, dir, colleagues, teamRoster, send, readBody) {
+function storageBody() {
+  return { error: 'storage', kind: 'storage', reply: STORAGE_REPLY };
+}
+
+function publicView(store, user, people) {
+  const body = { ...publicStore(store), canManage: isLeader(user), people: viewPeople(people, store) };
+  if (!isLeader(user)) {
+    body.ledger = { records: [], ranking: [], applied: store.ledger?.applied ?? [] };
+  }
+  return body;
+}
+
+export async function handleGoals(req, res, user, dir, colleagues, teamRoster, send, readBody, options = {}) {
   const url = req.url?.split('?')[0] ?? '';
   if (url !== '/api/goals' && !url.startsWith('/api/goals/')) return false;
-  const file = path.join(dir, 'goals.json');
-  const store = readStore(file);
+  const persist = options.store ?? createGoalsStore({ dir, env: options.env ?? process.env, remote: options.remote, client: options.client, migrateBlob: options.migrateBlob, timeoutMs: options.timeoutMs, retries: options.retries });
+  const loaded = await persist.load();
+  if (loaded.error) {
+    send(res, 503, storageBody());
+    return true;
+  }
+  let store = loaded.store ?? emptyStore();
   const people = directory(colleagues, store.aliases, teamRoster);
   const labels = redactLabels(colleagues, store.aliases, teamRoster);
   if (req.method === 'GET' && url === '/api/goals') {
-    send(res, 200, { ...publicStore(store), canManage: isLeader(user), people: people.map((person) => ({ id: person.id, name: person.name, funcao: person.funcao, role: person.role, aliases: store.aliases[person.id] ?? [] })) });
+    send(res, 200, publicView(store, user, people));
     return true;
   }
   if (!isLeader(user)) {
@@ -86,6 +93,16 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
   {
     let body = {};
     try { body = JSON.parse(raw.toString('utf8') || '{}'); } catch { body = {}; }
+
+    async function commit(mutator) {
+      const result = await persist.mutate(mutator);
+      if (result?.error === 'storage') {
+        send(res, 503, storageBody());
+        return null;
+      }
+      return result;
+    }
+
     if (req.method === 'POST' && url === '/api/goals/preview') {
       const text = String(body.text ?? '');
       if (!text.trim()) {
@@ -96,44 +113,82 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
       return true;
     }
     if (req.method === 'POST' && url === '/api/goals/approve') {
-      const result = buildApproval(store, {
-        text: String(body.text ?? ''),
-        periodKey: String(body.periodKey ?? ''),
-        rows: Array.isArray(body.rows) ? body.rows : [],
-        replace: Boolean(body.replace),
-        display: body.display,
-      }, people, user);
+      const result = await commit((current) => {
+        const approved = buildApproval(current, {
+          text: String(body.text ?? ''),
+          periodKey: String(body.periodKey ?? ''),
+          rows: Array.isArray(body.rows) ? body.rows : [],
+          replace: Boolean(body.replace),
+          display: body.display,
+        }, people, user);
+        if (approved.error) return { skip: true, error: approved.error };
+        return { store: approved.store };
+      });
+      if (!result) return true;
       if (result.error) {
         send(res, 409, { error: result.error });
         return true;
       }
-      writeStore(file, result.store);
-      send(res, 200, publicStore(result.store));
+      send(res, 200, publicView(result.store, user, people));
       return true;
     }
     if (req.method === 'POST' && url === '/api/goals/display') {
-      const item = store.imports.find((entry) => entry.periodKey === String(body.periodKey ?? ''));
-      if (!item) {
+      const result = await commit((current) => {
+        const item = current.imports.find((entry) => entry.periodKey === String(body.periodKey ?? ''));
+        if (!item) return { skip: true, error: 'missing' };
+        const criterion = readCriterion(body.display ?? body);
+        return {
+          store: {
+            ...current,
+            criterion,
+            imports: current.imports.map((entry) => entry.periodKey === item.periodKey ? { ...entry, display: criterion } : entry),
+          },
+        };
+      });
+      if (!result) return true;
+      if (result.error === 'missing') {
         send(res, 404, { error: 'missing' });
         return true;
       }
-      const criterion = readCriterion(body.display ?? body);
-      item.display = criterion;
-      const next = { ...store, criterion };
-      writeStore(file, next);
-      send(res, 200, publicStore(next));
+      send(res, 200, publicView(result.store, user, people));
       return true;
     }
     if (req.method === 'POST' && url === '/api/goals/criterion') {
-      const next = applyCriterion(store, body, String(body.periodKey ?? ''));
-      writeStore(file, next);
-      send(res, 200, publicStore(next));
+      const result = await commit((current) => ({ store: applyLedgerRanking(applyCriterion(current, body, String(body.periodKey ?? ''))) }));
+      if (!result) return true;
+      send(res, 200, publicView(result.store, user, people));
       return true;
     }
     if (req.method === 'POST' && url === '/api/goals/assistant') {
       const text = String(body.text ?? '');
       const intent = String(body.intent ?? '');
       const history = Array.isArray(body.history) ? body.history : [];
+      const parsed = parseReport(text, people);
+      const outcome = ingestReport(store, text, people, { now: new Date(), parsed });
+      if (outcome.kind === 'clarify') {
+        send(res, 200, { kind: 'clarify', reply: outcome.reply });
+        return true;
+      }
+      if (outcome.kind === 'ledger') {
+        const result = await commit((current) => ingestReport(current, text, people, { now: new Date(), parsed }));
+        if (!result) return true;
+        send(res, 200, { ...publicView(result.store, user, people), kind: 'ledger', reply: result.reply, proposal: result.proposal });
+        return true;
+      }
+      const proposal = proposeFromLedger(store, text, new Date());
+      if (proposal) {
+        const result = await commit((current) => {
+          const nextProposal = proposeFromLedger(current, text, new Date());
+          if (!nextProposal) return { skip: true, store: current, ...proposal };
+          return {
+            store: { ...current, ledger: { records: current.ledger?.records ?? [], ranking: nextProposal.ranking, applied: current.ledger?.applied ?? [] } },
+            ...nextProposal,
+          };
+        });
+        if (!result) return true;
+        send(res, 200, { ...publicView(result.store, user, people), ...result });
+        return true;
+      }
       if (intent === 'custom' && !looksLikeReport(text)) {
         send(res, 200, await interpretCriteria(text, { history, labels }));
         return true;
@@ -168,9 +223,9 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
         return true;
       }
       const tieBreak = Array.isArray(body.tieBreak) ? body.tieBreak.filter((item) => INDICATORS.includes(item)) : store.tieBreak;
-      const next = { ...store, weights: { resolvidos, primeira, resolucao, floor }, tieBreak };
-      writeStore(file, next);
-      send(res, 200, publicStore(next));
+      const result = await commit((current) => ({ store: { ...current, weights: { resolvidos, primeira, resolucao, floor }, tieBreak } }));
+      if (!result) return true;
+      send(res, 200, publicView(result.store, user, people));
       return true;
     }
     if (req.method === 'POST' && url === '/api/goals/templates') {
@@ -189,13 +244,17 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
         send(res, 422, proposal);
         return true;
       }
-      const saved = commitTemplate(store, proposal, { name: body.name, confirm: Boolean(body.confirm), description: body.description });
-      if (!saved.saved) {
+      if (!body.confirm) {
         send(res, 200, proposal);
         return true;
       }
-      writeStore(file, saved.store);
-      send(res, 201, publicStore(saved.store));
+      const result = await commit((current) => {
+        const saved = commitTemplate(current, proposal, { name: body.name, confirm: true, description: body.description });
+        if (!saved.saved) return { skip: true, proposal: saved.proposal ?? proposal };
+        return { store: saved.store };
+      });
+      if (!result) return true;
+      send(res, 201, publicView(result.store, user, people));
       return true;
     }
     if (req.method === 'PUT' && url === '/api/goals/aliases') {
@@ -205,8 +264,8 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
         return true;
       }
       const names = Array.isArray(body.names) ? body.names.map((item) => String(item).trim()).filter(Boolean).slice(0, 8) : [];
-      const next = { ...store, aliases: { ...store.aliases, [person.id]: names } };
-      writeStore(file, next);
+      const result = await commit((current) => ({ store: { ...current, aliases: { ...current.aliases, [person.id]: names } }, names }));
+      if (!result) return true;
       send(res, 200, { id: person.id, names });
       return true;
     }

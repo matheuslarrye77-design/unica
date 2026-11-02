@@ -119,6 +119,7 @@ test('ausência de configuração do banco', () => {
   assert.equal(missing.body.error, 'config');
   const url = 'https://example.supabase.co';
   assert.equal(supabaseConfigError({ SUPABASE_URL: url, SUPABASE_SECRET_KEY: 'sb_secret_example' }), null);
+  assert.equal(supabaseConfigError({ SUPABASE_URL: url, SUPABASE_SECRET_KEY_Key: 'sb_secret_example' }), null);
   assert.equal(supabaseConfigError({ SUPABASE_URL: url, SUPABASE_SERVICE_ROLE_KEY: 'aaa.bbb.ccc' }), null);
   assert.equal(supabaseConfigError({ SUPABASE_URL: url, SUPABASE_SECRET_KEY: 'sb_publishable_example' }).status, 503);
 });
@@ -201,7 +202,7 @@ test('migração sem configuração não altera auth.json', () => {
   const before = fs.readFileSync(authFile);
   const run = spawnSync(process.execPath, ['scripts/migrate-auth-to-supabase.mjs'], {
     cwd: new URL('../..', import.meta.url),
-    env: { ...process.env, SUPABASE_URL: '', SUPABASE_SECRET_KEY: '', SUPABASE_SERVICE_ROLE_KEY: '' },
+    env: { ...process.env, SUPABASE_URL: '', SUPABASE_SECRET_KEY: '', SUPABASE_SECRET_KEY_Key: '', SUPABASE_SERVICE_ROLE_KEY: '' },
     encoding: 'utf8',
   });
   const after = fs.readFileSync(authFile);

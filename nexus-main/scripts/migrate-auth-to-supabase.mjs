@@ -14,7 +14,7 @@ function fail(message) {
 }
 
 const url = process.env.SUPABASE_URL;
-const key = String(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+const key = String(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SECRET_KEY_Key || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 if (!url || !key || key.startsWith('sb_publishable_') || (key.startsWith('sb_') && !key.startsWith('sb_secret_'))) {
   fail('Defina SUPABASE_URL e SUPABASE_SECRET_KEY somente no servidor. Nenhum dado foi alterado.');
 }

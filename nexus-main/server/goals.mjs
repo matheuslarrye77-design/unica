@@ -19,6 +19,7 @@ export function emptyStore() {
     templates: [],
     imports: [],
     criterion: defaultCriterion(),
+    ledger: { records: [], ranking: [], applied: [] },
   };
 }
 
@@ -44,7 +45,7 @@ export function subsetorOf(person) {
   return '';
 }
 
-function fold(value) {
+export function fold(value) {
   return String(value ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -92,10 +93,48 @@ function personLabels(person) {
   return [person.name, ...(person.aliases ?? [])].filter(Boolean);
 }
 
+function editDistance(left, right) {
+  const limit = Math.min(left.length, right.length) >= 8 ? 2 : 1;
+  if (Math.abs(left.length - right.length) > limit) return limit + 1;
+  const grid = [Array.from({ length: right.length + 1 }, (_, index) => index)];
+  for (let i = 1; i <= left.length; i += 1) {
+    grid[i] = [i];
+    for (let j = 1; j <= right.length; j += 1) {
+      const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+      grid[i][j] = Math.min(grid[i - 1][j] + 1, grid[i][j - 1] + 1, grid[i - 1][j - 1] + cost);
+    }
+  }
+  return grid[left.length][right.length];
+}
+
+function closeToken(token, word) {
+  if (token === word) return true;
+  if (/^\d+$/.test(token) || /^\d+$/.test(word)) return false;
+  if (Math.min(token.length, word.length) < 5) return false;
+  const limit = Math.min(token.length, word.length) >= 8 ? 2 : 1;
+  return editDistance(token, word) <= limit;
+}
+
+function fuzzyName(query, name) {
+  const wanted = fold(query).split(' ').filter(Boolean);
+  const owned = fold(name).split(' ').filter(Boolean);
+  if (!wanted.length || wanted.length > owned.length) return false;
+  if (wanted.some((token) => token.length <= 2)) return false;
+  let cursor = 0;
+  let exact = 0;
+  for (const token of wanted) {
+    const found = owned.findIndex((item, index) => index >= cursor && closeToken(token, item));
+    if (found < 0) return false;
+    if (owned[found] === token) exact += 1;
+    cursor = found + 1;
+  }
+  return wanted.length === 1 || exact >= 1;
+}
+
 export function matchPeople(query, people) {
   const text = fold(query);
   if (!text) return [];
-  return people.filter((person) => personLabels(person).some((label) => fold(label) === text || wordsInOrder(text, label) || abbreviated(text, label)));
+  return people.filter((person) => personLabels(person).some((label) => fold(label) === text || wordsInOrder(text, label) || abbreviated(text, label) || fuzzyName(text, label)));
 }
 
 function numberFrom(raw) {
@@ -241,6 +280,20 @@ function periodFromText(text) {
   return isoWeekKey(dates[0]);
 }
 
+export function monthKey(now = new Date()) {
+  return `month:${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function mentionedPeriods(text, now = new Date()) {
+  const folded = fold(text);
+  const found = [];
+  if (/\b(?:no|neste|deste|do)\s+mes\b|\bdurante o mes\b|\bmensal\b/.test(folded)) found.push(monthKey(now));
+  const dated = periodFromText(text);
+  if (dated) found.push(dated);
+  else if (/\b(?:na|nesta|esta|dessa)\s+semana\b/.test(folded)) found.push(isoWeekKey(now));
+  return [...new Set(found)];
+}
+
 function fingerprint(text) {
   return createHash('sha256').update(fold(text)).digest('hex');
 }
@@ -274,6 +327,46 @@ function splitValues(text) {
   }
   if (current.trim()) parts.push(current.trim());
   return parts;
+}
+
+function cleanLine(line) {
+  return String(line ?? '').replace(/^[\s*•●▪◦\u2022\u00b7]+/, '').replace(/^[-–—]\s+/, '').trim();
+}
+
+function cleanName(value) {
+  return String(value ?? '').replace(/^[\s*•●▪◦\u2022\u00b7\-–—"“”'‘’]+|[\s*•●▪◦\u2022\u00b7\-–—"“”'‘’]+$/g, '').trim();
+}
+
+function countFrom(raw) {
+  return numberFrom(String(raw ?? '').replace(/\./g, ''));
+}
+
+function applyPhrase(values, phrase) {
+  const text = String(phrase ?? '');
+  const resolved = text.match(/(\d[\d.]*)\s+tickets?\s+resolvid/i);
+  const transferred = text.match(/(\d[\d.]*)\s+tickets?\s+transferid/i);
+  if (resolved) values.resolvidosCount = countFrom(resolved[1]);
+  else if (transferred) values.transferidos = countFrom(transferred[1]);
+  else {
+    const tickets = text.match(/(\d[\d.]*)\s+tickets?\b/i);
+    if (tickets) values.resolvidosCount = countFrom(tickets[1]);
+  }
+  assignLoose(values, splitValues(text));
+}
+
+function personValues(line) {
+  const cleaned = cleanLine(line);
+  const named = cleaned.match(/^([^:]{2,80}):\s*(.+)$/);
+  const dashed = named ? null : cleaned.match(/^(.{2,60}?)\s+[—–-]\s+(\d[\d.,]*.+)$/);
+  const label = cleanName(named?.[1] ?? dashed?.[1] ?? '');
+  const phrase = named?.[2] ?? dashed?.[2] ?? '';
+  if (!label || !phrase || metricOf(label) || /^metas?\b|^resultados?\b/i.test(label)) return null;
+  if (fold(label).length < 2) return null;
+  const values = {};
+  applyPhrase(values, phrase);
+  const fields = ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao'];
+  if (!fields.some((field) => values[field] !== undefined && values[field] !== null)) return null;
+  return { name: label, values };
 }
 
 function assignLoose(values, parts) {
@@ -315,8 +408,17 @@ export function parseReport(text, people) {
     }
     const greeting = personFromGreeting(line);
     if (greeting) {
-      currentName = greeting;
-      ensure(greeting);
+      currentName = cleanName(greeting);
+      ensure(currentName);
+      continue;
+    }
+    const personLine = personValues(line);
+    if (personLine) {
+      const entry = ensure(personLine.name);
+      for (const field of ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao']) {
+        if (personLine.values[field] !== undefined && personLine.values[field] !== null) entry.values[field] = personLine.values[field];
+      }
+      currentName = personLine.name;
       continue;
     }
     const metric = metricOf(line);
@@ -338,13 +440,6 @@ export function parseReport(text, people) {
       }
       continue;
     }
-    const named = line.replace(/^[*•\-]\s*/, '').match(/^([^:]{2,80}):\s*(.+)$/);
-    if (!named || metricOf(named[1])) continue;
-    const label = named[1].trim();
-    if (/^metas?\b|^resultados?\b/i.test(label)) continue;
-    const entry = ensure(label);
-    assignLoose(entry.values, splitValues(named[2]));
-    currentName = label;
   }
 
   if (!sawGoal) {
@@ -678,6 +773,54 @@ export function podiumFor(store, periodKey, display, people) {
   });
 }
 
+function ledgerValues(values) {
+  return {
+    resolvidos: values?.resolvidos ?? null,
+    resolvidosCount: values?.resolvidosCount ?? null,
+    transferidos: values?.transferidos ?? null,
+    primeira: values?.primeira ?? null,
+    resolucao: values?.resolucao ?? null,
+  };
+}
+
+export function presentLedger(store) {
+  const source = store?.ledger ?? {};
+  const records = Array.isArray(source.records) ? source.records : [];
+  const ranking = Array.isArray(source.ranking) ? source.ranking : [];
+  return {
+    records: records.map((record) => ({
+      id: String(record.id ?? ''),
+      identity: String(record.identity ?? ''),
+      userId: String(record.userId ?? ''),
+      sourceName: String(record.sourceName ?? ''),
+      name: String(record.name ?? ''),
+      periodKey: String(record.periodKey ?? ''),
+      periodLabel: String(record.periodLabel ?? ''),
+      values: ledgerValues(record.values),
+      changes: record.changes ?? {},
+      updatedAt: String(record.updatedAt ?? ''),
+      pending: !record.userId,
+      note: String(record.note ?? ''),
+      candidates: Array.isArray(record.candidates) ? record.candidates.map((item) => ({ id: String(item.id ?? ''), name: String(item.name ?? '') })) : [],
+      history: (record.history ?? []).slice(-20).map((item) => ({ at: String(item.at ?? ''), values: ledgerValues(item.values) })),
+    })),
+    ranking: ranking.map((row) => ({
+      place: row.place,
+      userId: String(row.userId ?? ''),
+      name: String(row.name ?? ''),
+      values: ledgerValues(row.values),
+      count: ledgerValues(row.values).resolvidosCount ?? ledgerValues(row.values).resolvidos ?? '',
+    })),
+    applied: (Array.isArray(source.applied) ? source.applied : []).map((row) => ({
+      place: row.place,
+      userId: String(row.userId ?? ''),
+      name: String(row.name ?? ''),
+      values: ledgerValues(row.values),
+      count: ledgerValues(row.values).resolvidosCount ?? ledgerValues(row.values).resolvidos ?? '',
+    })),
+  };
+}
+
 export function publicStore(store) {
   const criterion = readCriterion(store.criterion);
   return {
@@ -686,6 +829,7 @@ export function publicStore(store) {
     aliases: store.aliases,
     templates: store.templates,
     criterion,
+    ledger: presentLedger(store),
     currentKey: latestPeriod(store),
     imports: store.imports.map((item) => ({
       id: item.id,
@@ -751,7 +895,7 @@ export function runAssistant({ text, store, people, preview, periodKey, intent }
 
   if (looksLikeReport(source)) {
     const next = assistantPreview(store, source, people);
-    if (next.rows.length === 0) return { kind: 'ask', reply: 'Li o texto, mas não encontrei colaboradores cadastrados. Confira os nomes ou os nomes reconhecidos na Equipe.' };
+    if (next.rows.length === 0) return { kind: 'ask', reply: 'Não encontrei nome e indicador neste texto. Exemplo: Felipe Costa: 320 tickets resolvidos. Um nome sem correspondência segura fica pendente e não cria cadastro novo.' };
     const pending = next.rows.filter((row) => !row.userId).length;
     const week = next.periodKey ? weekLabel(next.periodKey) : 'semana a confirmar';
     return {
