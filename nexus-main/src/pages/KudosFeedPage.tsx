@@ -30,11 +30,6 @@ type Recognition = {
   likes: number;
 };
 
-const PODIUM = [
-  { place: 2 as const, name: 'Felipe Costa', role: 'Analista Financeiro', count: 35 },
-  { place: 1 as const, name: 'Camila Souza', role: 'Analista de Atendimento', count: 42 },
-  { place: 3 as const, name: 'Gabriela Lima', role: 'Analista de RH', count: 28 },
-];
 
 const RECENT: Recognition[] = [
   { id: 'r1', from: 'João Pereira', to: 'Camila Souza', area: 'Gestão', quote: 'Excelente organização e dedicação no projeto. Você fez toda a diferença!', when: '15 de out, 14:12', likes: 12 },
@@ -74,21 +69,24 @@ export const KudosFeedPage: FC = () => {
   const [sending, setSending] = useState<string | null>(null);
   const [goals, setGoals] = useState<GoalsPayload | null>(null);
   const [week, setWeek] = useState('');
+  const [podiumMonth, setPodiumMonth] = useState('');
   useEffect(() => {
     void fetch('/api/goals', { credentials: 'include', headers: { ...authHeaders(), ...(LOGIN_REQUIRED ? {} : { 'x-unica-demo': getDemoId() }) } })
       .then((response) => response.json().catch(() => null) as Promise<GoalsPayload | null>)
       .then((data) => { if (data && typeof data.canManage === 'boolean') setGoals(data); })
       .catch(() => undefined);
   }, []);
-  const approved = goals?.imports ?? [];
   const activeKey = week || goals?.currentKey || '';
-  const activeImport = approved.find((item) => item.periodKey === activeKey);
-  const confirmed = goals?.criterion?.mode === 'custom' ? (goals.ledger?.applied ?? []) : [];
-  const standing = confirmed.length
-    ? confirmed.map((row) => ({ place: row.place, name: row.name, role: '', count: row.count ?? row.values.resolvidosCount ?? '' }))
-    : (activeImport?.ranking ?? []).map((row) => ({ place: row.place, name: row.name, role: row.subsetor, count: row.overall ?? row.values.resolvidos ?? row.values.resolvidosCount ?? '' }));
-  const weekOrder = [...approved].sort((left, right) => left.periodKey.localeCompare(right.periodKey));
-  const weekIndex = weekOrder.findIndex((item) => item.periodKey === activeKey);
+  const months = [...(goals?.podiums ?? [])].sort((left, right) => left.periodKey.localeCompare(right.periodKey));
+  const podiumKey = podiumMonth || goals?.currentPodiumKey || months[months.length - 1]?.periodKey || '';
+  const activePodium = months.find((item) => item.periodKey === podiumKey) ?? months[months.length - 1];
+  const standing = (activePodium?.ranking ?? []).map((row) => ({
+    place: row.place,
+    name: row.name,
+    role: teamRoster.find((person) => person.id === row.userId || person.name === row.name)?.role ?? '',
+    count: row.score == null ? '' : row.score,
+  }));
+  const monthIndex = months.findIndex((item) => item.periodKey === (activePodium?.periodKey ?? podiumKey));
   const items = [...extra, ...RECENT].filter((item) => filter === 'Todos' || item.area === filter);
   const canManageGoals = Boolean(goals?.canManage);
   const tab = canManageGoals && params.get('painel') === 'metas' ? 'metas' : 'mural';
@@ -170,14 +168,14 @@ export const KudosFeedPage: FC = () => {
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#F3E4FA] text-[#8E35B8]"><Trophy className="h-4 w-4" /></span>
                   <div>
                     <h2 className="text-[16px] font-semibold text-[#241B33]">Pódio do mês</h2>
-                    <p className="text-[12.5px] text-[#8A7C98]">{confirmed.length ? 'Pódio da meta confirmada' : activeImport ? 'Pódio aprovado da semana selecionada' : 'Os 3 colaboradores com mais reconhecimentos'}</p>
+                    <p className="text-[12.5px] text-[#8A7C98]">{activePodium ? `Resultados confirmados — ${activePodium.periodLabel}` : 'Ainda não há resultados confirmados no Banco de Dados'}</p>
                   </div>
                 </div>
-                {weekOrder.length > 0 ? (
+                {months.length > 0 ? (
                   <div className="inline-flex items-center gap-1 rounded-full border border-[#E7DFF0] bg-white px-1.5 py-1 text-[12.5px] font-medium text-[#5C5168]">
-                    <button type="button" aria-label="Semana anterior" disabled={weekIndex <= 0} onClick={() => setWeek(weekOrder[weekIndex - 1].periodKey)} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button>
-                    <span className="inline-flex items-center gap-1.5 px-1"><Calendar className="h-3.5 w-3.5 text-[#8E35B8]" /> {activeImport?.label || monthLabel()}</span>
-                    <button type="button" aria-label="Semana seguinte" disabled={weekIndex < 0 || weekIndex >= weekOrder.length - 1} onClick={() => setWeek(weekOrder[weekIndex + 1].periodKey)} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button>
+                    <button type="button" aria-label="Período anterior" disabled={monthIndex <= 0} onClick={() => setPodiumMonth(months[monthIndex - 1].periodKey)} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button>
+                    <span className="inline-flex items-center gap-1.5 px-1"><Calendar className="h-3.5 w-3.5 text-[#8E35B8]" /> {activePodium?.periodLabel || monthLabel()}</span>
+                    <button type="button" aria-label="Período seguinte" disabled={monthIndex < 0 || monthIndex >= months.length - 1} onClick={() => setPodiumMonth(months[monthIndex + 1].periodKey)} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button>
                   </div>
                 ) : (
                   <p className="inline-flex items-center gap-1.5 rounded-full border border-[#E7DFF0] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#5C5168]">
@@ -187,15 +185,15 @@ export const KudosFeedPage: FC = () => {
               </div>
               <div className="mx-auto mt-5 max-w-xl">
                 <div className="grid grid-cols-3 items-end gap-4">
-                  {(standing.length ? [standing[1], standing[0], standing[2]] : PODIUM).map((person, index) => {
-                    if (!person) return <div key={`vazio-${index}`} />;
+                  {([standing.find((row) => row.place === 2), standing.find((row) => row.place === 1), standing.find((row) => row.place === 3)]).map((person, index) => {
+                    if (!person) return <div key={`vazio-${index}`} className="min-h-[120px]" />;
                     const place = (person.place === 2 || person.place === 3 ? person.place : 1) as 1 | 2 | 3;
                     const name = person.name;
                     const role = person.role;
                     const count = person.count;
                     const tone = STEP[place];
                     return (
-                      <div key={person.name} className="flex min-w-0 flex-col items-center text-center">
+                        <div key={`${person.place}-${person.name}`} className="flex min-w-0 flex-col items-center text-center">
                         <div className="relative">
                           {place === 1 ? <Crown className="absolute -top-4 left-1/2 h-5 w-5 -translate-x-1/2 text-[#7C3AED]" /> : null}
                           <img

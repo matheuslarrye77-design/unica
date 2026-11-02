@@ -105,6 +105,15 @@ export type GoalsPayload = {
     applied?: { place: number; userId: string; name: string; values: LedgerValues; count?: number | string }[];
   };
   bank?: { periods: BankPeriod[] };
+  podiums?: {
+    periodKey: string;
+    periodLabel: string;
+    selected?: string[];
+    weights?: Record<string, number>;
+    ranking: { place: number; userId: string; name: string; score: number | null }[];
+    computedAt?: string;
+  }[];
+  currentPodiumKey?: string;
 };
 
 const LEDGER_FIELDS = [

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { classifyGeminiError, completeJson } from './gemini.mjs';
-import { blankPersonSpans, fold, formatPeriodLabel, matchPeople, parseCustomRequest, parsePeopleFromText, readGoalPeriod, subsetorOf } from './goals.mjs';
+import { blankPersonSpans, fold, formatPeriodLabel, matchPeople, parseCustomRequest, parsePeopleFromText, readGoalPeriod, subsetorOf, weekRange } from './goals.mjs';
 import { applyGoalsReview } from './ledger.mjs';
 import { citedNumbers } from './goalsTurn.mjs';
 
@@ -579,8 +579,11 @@ function partScore(value, target, higher) {
 }
 
 function monthOf(key) {
-  const hit = /(?:month:)?(\d{4}-\d{2})/.exec(String(key ?? ''));
-  return hit ? hit[1] : '';
+  const month = /^(?:month:)?(\d{4})-(\d{2})$/.exec(String(key ?? ''));
+  if (month) return `${month[1]}-${month[2]}`;
+  const range = weekRange(String(key ?? ''));
+  if (!range) return '';
+  return `${range.start.getUTCFullYear()}-${String(range.start.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
 function eligibilityReason(field, rule) {
@@ -592,7 +595,13 @@ function eligibilityReason(field, rule) {
   return `Acima da condição de entrada (${rule.op === 'lt' ? '<' : 'máximo'} ${shown})`;
 }
 
-function overallFor(records, rules, pack, period, selected) {
+function overallEligible(value, rule, open) {
+  if (value == null) return false;
+  if (rule) return passes(value, rule) === true;
+  return Boolean(open);
+}
+
+function overallFor(records, rules, pack, period, selected, open = false) {
   const wanted = monthOf(period.periodKey || period.key);
   const chosen = (selected ?? []).map((id) => overallField(id)).filter(Boolean);
   const people = [];
@@ -609,7 +618,7 @@ function overallFor(records, rules, pack, period, selected) {
     const rule = ruleForIndicator(rules, field.id);
     const eligible = people
       .map((row) => ({ row, value: resultValue(row, field.id) }))
-      .filter((item) => item.value != null && passes(item.value, rule) === true)
+      .filter((item) => overallEligible(item.value, rule, open))
       .map((item) => item.value);
     bestOf[field.id] = eligible.length ? (field.higher ? Math.max(...eligible) : Math.min(...eligible)) : null;
   }
@@ -621,7 +630,7 @@ function overallFor(records, rules, pack, period, selected) {
       const value = resultValue(record, field.id);
       const weight = pack[field.weightKey] ?? 0;
       const best = bestOf[field.id];
-      const eligible = value != null && passes(value, rule) === true;
+      const eligible = overallEligible(value, rule, open);
       let contribution = 0;
       let reason = '';
       if (!eligible) {
@@ -657,6 +666,92 @@ function overallFor(records, rules, pack, period, selected) {
     excludes: ['transferidos', ...excluded],
     periodLabel: period?.periodLabel || period?.label || '',
     scores: scores.map((item, index) => ({ ...item, place: index + 1 })),
+  };
+}
+
+function rulesForMonth(store, month) {
+  const managed = (store.managementGoals ?? []).filter((item) => monthOf(item.periodKey) === month);
+  const source = managed.length ? managed : (store.templates ?? []).filter((item) => monthOf(item.periodKey) === month);
+  return source.flatMap((item) => item.rules ?? []);
+}
+
+function rankCustomBank(records, rules) {
+  const metric = rules[0]?.indicator;
+  const lower = rules[0] && (rules[0].op === 'lt' || rules[0].op === 'lte');
+  return [...records].filter((record) => record.userId && rules.every((rule) => overallEligible(resultValue(record, rule.indicator), rule, false))).sort((left, right) => {
+    const a = resultValue(left, metric);
+    const b = resultValue(right, metric);
+    if (a === b) return fold(left.name).localeCompare(fold(right.name), 'pt');
+    if (a == null) return 1;
+    if (b == null) return -1;
+    return lower ? a - b : b - a;
+  }).map((record, index) => ({
+    place: index + 1,
+    userId: record.userId,
+    name: record.name,
+    score: resultValue(record, metric),
+  }));
+}
+
+function buildPeriodPodium(store, month, records, now) {
+  const monthRecords = records.filter((row) => monthOf(row.periodKey) === month);
+  const rules = rulesForMonth(store, month);
+  const known = rules.filter((rule) => OVERALL_FIELDS.some((field) => field.id === rule.indicator || (field.id === 'resolvidosCount' && rule.indicator === 'resolvidos')));
+  let selected = OVERALL_FIELDS.filter((field) => ruleForIndicator(known, field.id) && monthRecords.some((row) => resultValue(row, field.id) != null)).map((field) => field.id);
+  if (!selected.length) {
+    selected = OVERALL_FIELDS.filter((field) => monthRecords.some((row) => resultValue(row, field.id) != null)).map((field) => field.id);
+  }
+  const stamp = (now ?? new Date()).toISOString();
+  const label = formatPeriodLabel(month);
+  if (selected.length) {
+    const pack = equalWeights(selected);
+    const scored = overallFor(monthRecords, known, pack, { periodKey: month, periodLabel: label }, selected, true);
+    return {
+      periodKey: month,
+      periodLabel: label,
+      selected: scored.selected,
+      weights: scored.weights,
+      ranking: scored.scores.slice(0, 3).map((row) => ({
+        place: row.place,
+        userId: row.userId,
+        name: row.name,
+        score: row.score,
+      })),
+      computedAt: stamp,
+    };
+  }
+  if (rules.length) {
+    return {
+      periodKey: month,
+      periodLabel: label,
+      selected: rules.map((rule) => rule.indicator),
+      weights: {},
+      ranking: rankCustomBank(monthRecords, rules).slice(0, 3),
+      computedAt: stamp,
+    };
+  }
+  return {
+    periodKey: month,
+    periodLabel: label,
+    selected: [],
+    weights: {},
+    ranking: [],
+    computedAt: stamp,
+  };
+}
+
+export function attachBankPodiums(store, now = new Date()) {
+  const records = Array.isArray(store?.ledger?.records) ? store.ledger.records : [];
+  const confirmed = records.filter((row) => row.userId);
+  const liveKeys = [...new Set(confirmed.map((row) => monthOf(row.periodKey)).filter(Boolean))];
+  const live = liveKeys.map((key) => buildPeriodPodium(store, key, confirmed, now));
+  const history = (Array.isArray(store?.podiums) ? store.podiums : []).filter((item) => {
+    const key = monthOf(item.periodKey) || item.periodKey;
+    return key && !liveKeys.includes(key);
+  });
+  return {
+    ...store,
+    podiums: [...live, ...history].sort((left, right) => String(right.periodKey).localeCompare(String(left.periodKey))),
   };
 }
 
@@ -881,11 +976,11 @@ export function saveGoalsCenter(store, conference, people, now = new Date()) {
     reviews.splice(0, reviews.length, ...next.slice(-50));
   }
   return {
-    store: {
+    store: attachBankPodiums({
       ...saved.store,
       criterion: store.criterion,
       centerFingerprints: [...seen, mark].slice(-50),
       overallReviews: reviews,
-    },
+    }, now),
   };
 }

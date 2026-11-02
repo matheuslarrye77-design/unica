@@ -23,6 +23,7 @@ export function emptyStore() {
     managementGoals: [],
     centerFingerprints: [],
     overallReviews: [],
+    podiums: [],
   };
 }
 
@@ -1434,7 +1435,21 @@ export function publicStore(store) {
     criterion,
     ledger: presentLedger(store),
     bank: reportBankSnapshot(store),
+    podiums: Array.isArray(store.podiums) ? store.podiums.map((item) => ({
+      periodKey: String(item.periodKey ?? ''),
+      periodLabel: String(item.periodLabel ?? ''),
+      selected: Array.isArray(item.selected) ? item.selected : [],
+      weights: item.weights && typeof item.weights === 'object' ? item.weights : {},
+      ranking: (Array.isArray(item.ranking) ? item.ranking : []).slice(0, 3).map((row) => ({
+        place: Number(row.place) || 0,
+        userId: String(row.userId ?? ''),
+        name: String(row.name ?? ''),
+        score: row.score == null ? null : Number(row.score),
+      })),
+      computedAt: String(item.computedAt ?? ''),
+    })) : [],
     currentKey: latestPeriod(store),
+    currentPodiumKey: Array.isArray(store.podiums) && store.podiums[0]?.periodKey ? store.podiums[0].periodKey : '',
     imports: store.imports.map((item) => ({
       id: item.id,
       periodKey: item.periodKey,

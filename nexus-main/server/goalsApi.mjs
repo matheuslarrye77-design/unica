@@ -1,6 +1,6 @@
 import { isLeader } from './auth/permissions.mjs';
 import { commitTemplate, interpretCriteria, normalizeProposal } from './criteria.mjs';
-import { interpretGoalsCenter, saveGoalsCenter } from './goalsCenter.mjs';
+import { attachBankPodiums, interpretGoalsCenter, saveGoalsCenter } from './goalsCenter.mjs';
 import { interpretGoalsTurn } from './goalsTurn.mjs';
 import { applyGoalsReview, applyLedgerRanking, ingestReport, proposeFromLedger } from './ledger.mjs';
 import { applyCriterion, buildApproval, emptyStore, fold, goalState, INDICATORS, looksLikeReport, overallScore, parseReport, publicStore, readCriterion, relinkLedger, runAssistant } from './goals.mjs';
@@ -67,9 +67,10 @@ function storageBody() {
 }
 
 function publicView(store, user, people) {
-  const body = { ...publicStore(store), canManage: isLeader(user), people: viewPeople(people, store) };
+  const synced = attachBankPodiums(store);
+  const body = { ...publicStore(synced), canManage: isLeader(user), people: viewPeople(people, store) };
   if (!isLeader(user)) {
-    body.ledger = { records: [], ranking: [], applied: store.ledger?.applied ?? [] };
+    body.ledger = { records: [], ranking: [], applied: synced.ledger?.applied ?? [] };
     return body;
   }
   body.ledger = relinkLedger(body.ledger, people);
@@ -258,7 +259,7 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
       const intent = String(body.intent ?? '');
       const history = Array.isArray(body.history) ? body.history : [];
       if (body.review && /^(confirmar|aprovar)( metas| resultados| conferencia)?$/.test(fold(text))) {
-        const result = await commit((current) => ({ store: applyGoalsReview(current, body.review, people, new Date()).store }));
+        const result = await commit((current) => ({ store: attachBankPodiums(applyGoalsReview(current, body.review, people, new Date()).store) }));
         if (!result) return true;
         send(res, 200, { ...publicView(result.store, user, people), kind: 'ledger', reply: 'Gravei as metas e os resultados no Banco dos relatórios. O pódio não foi alterado.' });
         return true;
@@ -285,7 +286,10 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
         return true;
       }
       if (outcome.kind === 'ledger') {
-        const result = await commit((current) => ingestReport(current, text, people, { now: new Date(), parsed }));
+        const result = await commit((current) => {
+          const outcome = ingestReport(current, text, people, { now: new Date(), parsed });
+          return outcome.store ? { ...outcome, store: attachBankPodiums(outcome.store) } : outcome;
+        });
         if (!result) return true;
         send(res, 200, { ...publicView(result.store, user, people), kind: 'ledger', reply: result.reply, proposal: result.proposal });
         return true;
