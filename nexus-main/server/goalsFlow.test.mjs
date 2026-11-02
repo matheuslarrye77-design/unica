@@ -920,6 +920,82 @@ test('pódio personalizado mostra a regra, o valor real e se cumpriu', async () 
   assert.equal(january.ranking.some((row) => row.userId === 'tm-8'), false);
 });
 
+test('pódio predefinido mostra o resultado bruto do indicador prioritário, sem mudar a ordem', async () => {
+  const persist = memoryGoalsStore();
+  const pending = await postCenter({ text: NATURAL_MESSAGE, mode: 'preset' }, { store: persist });
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: pending.body.conference }, { store: persist });
+  const loaded = await getGoals(persist);
+  const november = loaded.body.podiums.find((item) => item.periodKey === '2026-11' && item.mode === 'preset');
+  assert.equal(november.ranking[0].userId, 'tm-4');
+  assert.equal(november.ranking[1].userId, 'tm-8');
+  assert.equal(november.ranking[0].score, 100);
+  assert.equal(november.ranking[0].displayScore, '350');
+  assert.equal(november.ranking[1].displayScore, '300');
+  assert.notEqual(String(november.ranking[1].displayScore), String(november.ranking[1].score));
+});
+
+test('pódio predefinido escolhe o indicador prioritário em todas as combinações selecionadas', async () => {
+  const persist = memoryGoalsStore();
+  const pending = await postCenter({ text: NATURAL_MESSAGE, mode: 'preset' }, { store: persist });
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: pending.body.conference }, { store: persist });
+  const fields = ['resolvidosCount', 'primeira', 'resolucao', 'transferidos'];
+  const shown = {
+    resolvidosCount: { 'tm-4': '350', 'tm-8': '300' },
+    primeira: { 'tm-4': '3 min', 'tm-8': '4 min' },
+    resolucao: { 'tm-4': '7 min', 'tm-8': '9 min' },
+    transferidos: { 'tm-4': '20', 'tm-8': '35' },
+  };
+  let counted = 0;
+  for (let mask = 1; mask < 16; mask += 1) {
+    const selected = fields.filter((_, index) => mask & (1 << index));
+    const priority = fields.find((id) => selected.includes(id));
+    await persist.mutate((current) => ({
+      store: {
+        ...current,
+        evaluations: (current.evaluations ?? []).map((item) => (
+          item.mode === 'preset' && item.periodKey === '2026-11' ? { ...item, selected } : item
+        )),
+      },
+    }));
+    const view = await getGoals(persist);
+    const podium = view.body.podiums.find((item) => item.periodKey === '2026-11' && item.mode === 'preset');
+    const felipe = podium.ranking.find((row) => row.userId === 'tm-4');
+    const rafael = podium.ranking.find((row) => row.userId === 'tm-8');
+    assert.equal(felipe.displayScore, shown[priority]['tm-4']);
+    assert.equal(rafael.displayScore, shown[priority]['tm-8']);
+    assert.equal(felipe.metrics.map((item) => item.id).sort().join(','), [...selected].sort().join(','));
+    counted += 1;
+  }
+  assert.equal(counted, 15);
+});
+
+test('pódio predefinido não inventa zero quando falta o indicador prioritário', async () => {
+  const persist = memoryGoalsStore();
+  const pending = await postCenter({ text: NATURAL_MESSAGE, mode: 'preset' }, { store: persist });
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: pending.body.conference }, { store: persist });
+  await persist.mutate((current) => ({
+    store: {
+      ...current,
+      evaluations: (current.evaluations ?? []).map((item) => (
+        item.mode === 'preset' ? { ...item, selected: ['resolvidosCount'] } : item
+      )),
+      ledger: {
+        ...current.ledger,
+        records: (current.ledger?.records ?? []).map((row) => (
+          row.userId === 'tm-8' ? { ...row, values: { ...row.values, resolvidosCount: null } } : row
+        )),
+      },
+    },
+  }));
+  const view = await getGoals(persist);
+  const podium = view.body.podiums.find((item) => item.periodKey === '2026-11' && item.mode === 'preset');
+  const rafael = podium.ranking.find((row) => row.userId === 'tm-8');
+  const felipe = podium.ranking.find((row) => row.userId === 'tm-4');
+  assert.equal(felipe.displayScore, '350');
+  assert.equal(rafael.displayScore, '');
+  assert.notEqual(rafael.displayScore, '0');
+});
+
 test('desempenho geral pede só a meta do indicador selecionado que faltar', async () => {
   const result = await postCenter({
     text: 'Desempenho geral de março de 2027. Rafael Oliveira primeira resposta 4 minutos. Felipe Costa primeira resposta 3 minutos. Conferir. Não alterar o pódio.',

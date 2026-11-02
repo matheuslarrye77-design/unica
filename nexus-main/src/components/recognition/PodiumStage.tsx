@@ -78,7 +78,7 @@ const PersonCard: FC<{ person: Ranking; mode: string }> = ({ person, mode }) => 
               onMouseLeave={() => { if (!touch) setOpen(false); }}
               onClick={() => { if (touch) setOpen((value) => !value); }}
             >
-              {person.displayScore || person.score || '—'}
+              {mode === 'preset' ? (person.displayScore || '—') : (person.displayScore || person.score || '—')}
             </button>
             {open ? (
               <div className="pointer-events-none absolute bottom-[calc(100%+10px)] left-1/2 z-50 w-[min(220px,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border border-[#EDE4F5] bg-white/95 px-3 py-2 text-left shadow-[0_12px_28px_rgba(80,40,120,0.14)] backdrop-blur-sm">

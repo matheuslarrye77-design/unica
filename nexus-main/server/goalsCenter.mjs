@@ -871,6 +871,17 @@ function overallMetrics(scoreRow, evaluation) {
   });
 }
 
+const PRESET_HEADLINE = ['resolvidosCount', 'primeira', 'resolucao', 'transferidos'];
+
+function presetHeadline(selected, record) {
+  const ids = new Set((selected ?? []).map((id) => (id === 'resolvidos' ? 'resolvidosCount' : id)));
+  const field = PRESET_HEADLINE.find((id) => ids.has(id));
+  if (!field || !record) return '';
+  const value = field === 'resolvidosCount' ? record.values?.resolvidosCount ?? null : resultValue(record, field);
+  if (value == null) return '';
+  return shownValue(field, value);
+}
+
 function customMetrics(record, evaluation) {
   return (evaluation.rules ?? []).map((rule) => {
     const value = record ? resultValue(record, rule.indicator) : null;
@@ -951,7 +962,7 @@ function buildModePodium(store, month, monthRecords, evaluation, now) {
           userId: row.userId,
           name: row.name,
           score: row.score,
-          displayScore: mode === 'overall' ? `${row.score}%` : String(row.score ?? ''),
+          displayScore: mode === 'overall' ? `${row.score}%` : presetHeadline(scored.selected, record),
           detailsAvailable: !detailsPartial && metrics.length > 0,
           metrics,
         };
