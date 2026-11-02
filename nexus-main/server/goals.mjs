@@ -443,7 +443,7 @@ function phraseHint(text) {
   if (/satisfa|\bcsat\b|\bnps\b/.test(folded)) return 'satisfacao';
   if (/transferid/.test(folded)) return 'transferidos';
   if (/primeira|\btpr\b/.test(folded)) return 'primeira';
-  if ((/tempo\s+medio|\btma\b|ate\s+resolu|media\s+ate|medio\s+de\s+resolu|tempo\s+de\s+resolu|\bresolucao\b/.test(folded)) && !/tickets?\s+resolvid/.test(folded)) return 'resolucao';
+  if ((/tempo\s+medio|\btma\b|ate\s+resolu|media\s+ate|medio\s+de\s+(?:resolu|atendimento)|tempo\s+de\s+(?:resolu|atendimento)|\bresolucao\b/.test(folded)) && !/tickets?\s+resolvid/.test(folded)) return 'resolucao';
   if (/tickets?\s+resolvid/.test(folded) || (/\btickets?\b/.test(folded) && !/transferid/.test(folded))) return 'resolvidosCount';
   if (/taxa\s+de\s+resol|percentual/.test(folded) && /resolvid/.test(folded)) return 'resolvidos';
   return '';
@@ -563,6 +563,8 @@ export function extractPersonSpans(text, people) {
   const hits = [];
   for (const person of people ?? []) {
     const labels = [...new Set([person.name, ...(person.aliases ?? [])].filter((label) => fold(label).split(' ').filter(Boolean).length >= 2))];
+    const first = uniqueFirstName(person.name.split(/\s+/)[0] ?? '', people);
+    if (first === person.name) labels.push(person.name.split(/\s+/)[0]);
     for (const label of labels) {
       const matcher = nameFinder(label);
       let match = matcher.exec(source);
@@ -591,7 +593,7 @@ export function extractPersonSpans(text, people) {
   });
 }
 
-function blankPersonSpans(text, people) {
+export function blankPersonSpans(text, people) {
   const source = String(text ?? '');
   const spans = extractPersonSpans(source, people).sort((left, right) => right.start - left.start);
   let next = source;
@@ -767,7 +769,14 @@ export function buildGoalsReview({ source, rules, rows, period, periodKey, perio
   };
 }
 
-function personHeading(line) {
+function uniqueFirstName(label, people) {
+  const token = fold(label).split(' ').filter(Boolean)[0] ?? '';
+  if (!token || token.length < 3) return '';
+  const matches = (people ?? []).filter((person) => fold(person.name).split(' ').filter(Boolean)[0] === token);
+  return matches.length === 1 ? matches[0].name : '';
+}
+
+function personHeading(line, people = []) {
   const cleaned = cleanLine(line);
   if (!cleaned) return '';
   const named = cleaned.match(/^([^:]{2,80}):\s*(.*)$/);
@@ -776,6 +785,7 @@ function personHeading(line) {
   if (named && String(named[2] ?? '').trim()) return '';
   if (/\d/.test(label)) return '';
   const words = fold(label).split(' ').filter(Boolean);
+  if (words.length === 1) return uniqueFirstName(label, people);
   if (words.length < 2 || words.length > 6) return '';
   if (channelOf(label)) return '';
   return label;
@@ -810,7 +820,7 @@ export function parseReport(text, people) {
       continue;
     }
     if (/crie uma meta|monte o podio|\breconhec/.test(fold(line))) currentName = '';
-    const heading = personHeading(line);
+    const heading = personHeading(line, people);
     if (heading) {
       currentName = heading;
       ensure(currentName);
@@ -981,8 +991,8 @@ function clauseOp(folded, raw = '') {
   if (/>=|≥/.test(raw) || /maior ou igual/.test(folded)) return 'gte';
   if (/<=|≤/.test(raw) || /menor ou igual/.test(folded)) return 'lte';
   if (/entre\s+[\d.,]+\s+e\s+[\d.,]+/.test(folded)) return 'between';
-  if (/\bpelo menos\b|\bno minimo\b|\bminimo de\b|\bacima de\b/.test(folded)) return 'gte';
-  if (/\bno maximo\b|\bmaximo de\b|\babaixo de\b/.test(folded)) return 'lte';
+  if (/\bpelo menos\b|\bno minimo\b|\bminima de\b|\bminimo de\b|\bminimo\b|\bminima\b|\bacima de\b/.test(folded)) return 'gte';
+  if (/\bno maximo\b|\bmaxima de\b|\bmaximo de\b|\bmaximo\b|\bmaxima\b|\babaixo de\b/.test(folded)) return 'lte';
   if (/\bate\s+[\d.,]+/.test(folded)) return 'lte';
   if (/\bmaior que\b|\bmais de\b/.test(folded)) return 'gt';
   if (/\bmenor que\b|\bmenos de\b/.test(folded)) return 'lt';
@@ -994,7 +1004,7 @@ function clauseIndicator(folded, raw) {
   if (/satisfa|\bcsat\b|\bnps\b/.test(folded)) return 'satisfacao';
   if (/transferid/.test(folded)) return 'transferidos';
   if (/primeira|\btpr\b/.test(folded)) return 'primeira';
-  if ((/tempo\s+medio|\btma\b|medio\s+(de\s+)?resolu|tempo\s+de\s+resolu|ate\s+resolu|\bresolucao\b/.test(folded)) && !/tickets?\s+resolvid/.test(folded)) return 'resolucao';
+  if ((/tempo\s+medio|\btma\b|medio\s+(de\s+)?(?:resolu|atendimento)|tempo\s+de\s+(?:resolu|atendimento)|ate\s+resolu|\bresolucao\b/.test(folded)) && !/tickets?\s+resolvid/.test(folded)) return 'resolucao';
   if (/tickets?\s+resolvid/.test(folded) || (/\btickets?\b/.test(folded) && !/satisfa/.test(folded))) {
     return /%/.test(raw) && !/\d[\d.]*\s+tickets?/.test(folded) ? 'resolvidos' : 'resolvidosCount';
   }
@@ -1006,9 +1016,9 @@ function mentionedIndicators(text) {
   const folded = fold(text);
   const found = [];
   if (/satisfa|\bcsat\b|\bnps\b/.test(folded)) found.push('satisfacao');
-  if (/transferid/.test(folded)) found.push('transferidos');
+  if (/transferid/.test(folded) && !/de fora|nao entra|exclu|nao (?:usar|incluir|avaliar)/.test(folded)) found.push('transferidos');
   if (/primeira|\btpr\b/.test(folded)) found.push('primeira');
-  if (/tempo\s+medio|\btma\b|medio\s+(de\s+)?resolu|tempo\s+de\s+resolu|\bresolucao\b/.test(folded)) found.push('resolucao');
+  if (/tempo\s+medio|\btma\b|medio\s+(de\s+)?(?:resolu|atendimento)|tempo\s+de\s+(?:resolu|atendimento)|\bresolucao\b/.test(folded)) found.push('resolucao');
   if (/tickets?\s+resolvid|\b\d[\d.]*\s+tickets?\b|\btickets?\b/.test(folded)) found.push('resolvidosCount');
   if (/(?:percentual|taxa)\s+de\s+resolvid/.test(folded)) found.push('resolvidos');
   return [...new Set(found)];
@@ -1030,7 +1040,7 @@ function splitGoalClauses(text) {
     .filter((line) => line.length > 2 && !isPersonResultLine(line));
 }
 
-const INDICATOR_SPAN = /satisfa(?:ção|cao)?|\bcsat\b|\bnps\b|tickets?\s+transferid\w*|quantidade\s+de\s+tickets?|tickets?\s+resolvid\w*|\btickets?\b|primeira\s+resposta|\btpr\b|tempo\s+m[eé]dio(?:\s+de\s+resolu[cç][aã]o)?|\btma\b|tempo\s+(?:m[eé]dio\s+)?(?:at[eé]\s+)?resolu[cç][aã]o|\bresolu[cç][aã]o\b/gi;
+const INDICATOR_SPAN = /satisfa(?:ção|cao)?|\bcsat\b|\bnps\b|tickets?\s+transferid\w*|quantidade\s+de\s+tickets?|tickets?\s+resolvid\w*|\btickets?\b|primeira\s+resposta|\btpr\b|tempo\s+m[eé]dio(?:\s+de\s+(?:resolu[cç][aã]o|atendimento))?|\btma\b|tempo\s+(?:m[eé]dio\s+)?(?:at[eé]\s+)?resolu[cç][aã]o|\bresolu[cç][aã]o\b/gi;
 
 function clauseWindows(clause) {
   const matches = [...String(clause).matchAll(INDICATOR_SPAN)];
@@ -1051,13 +1061,13 @@ function clauseValue(indicator, raw) {
   if (indicator === 'resolvidosCount' && tickets) return countFrom(tickets[1]);
   const percent = source.match(/([\d.,]+)\s*%/);
   const minutes = source.match(/([\d.,]+)\s*(?:min|minuto)/i);
-  const afterOp = source.match(/(?:>=|<=|≥|≤|pelo menos|no m[ií]nimo|no m[aá]ximo|at[eé]|maior ou igual(?: a)?|menor ou igual(?: a)?|acima de|abaixo de|m[ií]nimo de|m[aá]ximo de)\s*([.,]*\d[\d.,]*)/i);
+  const afterOp = source.match(/(?:>=|<=|≥|≤|pelo menos|no m[ií]nimo|no m[aá]ximo|at[eé]|maior ou igual(?: a)?|menor ou igual(?: a)?|acima de|abaixo de|m[ií]nim[oa](?:\s+de)?|m[aá]xim[oa](?:\s+de)?)\s*([.,]*\d[\d.,]*)/i);
   const count = afterOp?.[1] ?? (source.match(/(\d[\d.]*)/) ?? [])[1];
   if (indicator === 'satisfacao' || indicator === 'resolvidos') return percent ? numberFrom(percent[1]) : (afterOp ? numberFrom(afterOp[1]) : null);
   if (indicator === 'primeira' || indicator === 'resolucao') {
     const pivot = source.search(indicator === 'primeira' ? /primeira|\btpr\b/i : /resolu|\btma\b|tempo\s+m[eé]dio/i);
     const tail = pivot >= 0 ? source.slice(pivot) : source;
-    const afterLimit = tail.match(/(?:at[eé]|no m[aá]ximo|no maximo)\s*([\d.,]+)/i);
+    const afterLimit = tail.match(/(?:at[eé]|no m[aá]ximo|no maximo|m[aá]xim[oa](?:\s+de)?)\s*([\d.,]+)/i);
     if (afterLimit) return numberFrom(afterLimit[1]);
     const tailMinutes = tail.match(/([\d.,]+)\s*(?:min|minuto)/i);
     if (tailMinutes) return numberFrom(tailMinutes[1]);
@@ -1092,14 +1102,14 @@ export function parseCustomRequest(text) {
   }
   const period = readGoalPeriod(original);
   const missing = wanted.filter((item) => !rules.some((rule) => rule.indicator === item || (item === 'resolvidosCount' && rule.indicator === 'resolvidos')));
-  if (missing.length) {
-    return { ok: false, message: 'Faltou algum indicador pedido. Confirme indicador, valor, se deve ser maior ou menor, e o período. Nada foi aplicado.' };
-  }
   if (rules.length === 0 || rules.some((rule) => rule.value === null)) {
-    return { ok: false };
+    return { ok: false, rules };
   }
   if (!period.ok) {
-    return { ok: false, message: period.reason === 'conflict' ? 'O texto cita semana e mês. Diga qual período vale para estas metas. Nada foi aplicado.' : 'Diga se as metas são da semana ou do mês. Nada foi aplicado.' };
+    return { ok: false, rules, message: period.reason === 'conflict' ? 'O texto cita semana e mês. Diga qual período vale para estas metas. Nada foi aplicado.' : 'Diga se as metas são da semana ou do mês. Nada foi aplicado.' };
+  }
+  if (missing.length) {
+    return { ok: false, rules, period: period.period, periodKey: period.periodKey, periodLabel: period.periodLabel, message: 'Faltou algum indicador pedido. Confirme indicador, valor, se deve ser maior ou menor, e o período. Nada foi aplicado.' };
   }
   return { ok: true, period: period.period, periodKey: period.periodKey, periodLabel: period.periodLabel, rules };
 }

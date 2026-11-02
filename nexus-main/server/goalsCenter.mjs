@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { classifyGeminiError, completeJson } from './gemini.mjs';
-import { fold, formatPeriodLabel, matchPeople, parseCustomRequest, parsePeopleFromText, readGoalPeriod, subsetorOf } from './goals.mjs';
+import { blankPersonSpans, fold, formatPeriodLabel, matchPeople, parseCustomRequest, parsePeopleFromText, readGoalPeriod, subsetorOf } from './goals.mjs';
 import { applyGoalsReview } from './ledger.mjs';
 import { citedNumbers } from './goalsTurn.mjs';
 
@@ -136,7 +136,7 @@ export function normalizeIndicator(indicator, name = '') {
   if (KNOWN.includes(indicator)) return indicator;
   if (/satisfa/.test(raw)) return 'satisfacao';
   if (/primeira/.test(raw)) return 'primeira';
-  if (/\btma\b|tempo medio|resolucao/.test(raw) && !/qualidade/.test(raw)) return 'resolucao';
+  if (/\btma\b|tempo medio(?: de (?:atendimento|resolucao))?|resolucao/.test(raw) && !/qualidade/.test(raw)) return 'resolucao';
   if (/transfer/.test(raw)) return 'transferidos';
   if ((/ticket/.test(raw) || /resolvido/.test(raw)) && /%|percent/.test(raw)) return 'resolvidos';
   if (/ticket/.test(raw) || (/resolvido/.test(raw) && !/qualidade/.test(raw))) return 'resolvidosCount';
@@ -498,8 +498,8 @@ function fill(primary, extra) {
 
 function clauseOp(folded) {
   if (/entre /.test(folded)) return 'between';
-  if (/pelo menos|no minimo|maior ou igual|>=/.test(folded)) return 'gte';
-  if (/no maximo|ate |menor ou igual|<=/.test(folded)) return 'lte';
+  if (/pelo menos|no minimo|minima de|minimo de|minimo |minima |maior ou igual|>=/.test(folded)) return 'gte';
+  if (/no maximo|maxima de|maximo de|maximo |maxima |ate |menor ou igual|<=/.test(folded)) return 'lte';
   if (/maior que|acima de/.test(folded)) return 'gt';
   if (/menor que|abaixo de/.test(folded)) return 'lt';
   if (/igual a|igual /.test(folded)) return 'eq';
@@ -556,13 +556,13 @@ function localCustomPeople(source, people, indicator) {
 }
 
 function localExtract(source, people) {
-  const goals = parseCustomRequest(source);
+  const goals = parseCustomRequest(blankPersonSpans(source, people));
   const period = readGoalPeriod(source);
   const parsed = parsePeopleFromText(source, people);
   const knownRows = parsed.rows.filter((row) => row.userId && KNOWN.some((field) => row.values[field] != null));
   const custom = localCustomRules(source, period.ok ? period : { period: 'month', periodKey: '', periodLabel: '' });
   const customRows = custom.length ? localCustomPeople(source, people, custom[0].indicator) : [];
-  const knownRules = goals.ok ? goals.rules.map((rule) => ({ ...rule, name: NAMES[rule.indicator], unit: UNITS[rule.indicator] ?? '', period: goals.period })) : [];
+  const knownRules = (goals.rules ?? []).filter((rule) => rule.value != null).map((rule) => ({ ...rule, name: NAMES[rule.indicator], unit: UNITS[rule.indicator] ?? '', period: goals.period || period.period || 'month' }));
   return {
     rules: fill({ rules: knownRules, rows: [] }, { rules: custom, rows: [] }).rules,
     rows: custom.length && !knownRules.length
@@ -584,10 +584,11 @@ function monthOf(key) {
 
 function eligibilityReason(field, rule) {
   const name = displayName(field.id);
-  const unit = field.unit.replace(/^\s/, '');
+  const unit = String(field.unit ?? '').trim();
+  const shown = unit ? `${rule?.value} ${unit}`.replace(/\s+/g, ' ') : String(rule?.value ?? '');
   if (!rule) return `Sem condição de entrada para ${name}`;
-  if (field.higher || rule.op === 'gte' || rule.op === 'gt') return `Abaixo da condição de entrada (${rule.op === 'gt' ? '>' : 'mínimo'} ${rule.value}${unit})`;
-  return `Acima da condição de entrada (${rule.op === 'lt' ? '<' : 'máximo'} ${rule.value}${unit})`;
+  if (field.higher || rule.op === 'gte' || rule.op === 'gt') return `Abaixo da condição de entrada (${rule.op === 'gt' ? '>' : 'mínimo'} ${shown})`;
+  return `Acima da condição de entrada (${rule.op === 'lt' ? '<' : 'máximo'} ${shown})`;
 }
 
 function overallFor(records, rules, pack, period, selected) {
@@ -724,7 +725,7 @@ function centerPrompt(text, history, options) {
 function combinedSource(text, history) {
   const prior = (history ?? [])
     .map((item) => (typeof item === 'string' ? item : item?.text))
-    .filter((item) => item && !/olá!|escreva a regra|vou calcular|estamos nos criterios/i.test(item));
+    .filter((item) => item && !/olá!|escreva a regra|vou calcular|estamos nos criterios|desempenho geral:|criterios predefinidos:|criterio personalizado e so|transferidos ficam de fora/i.test(item));
   return [...prior, text].filter(Boolean).join('\n');
 }
 

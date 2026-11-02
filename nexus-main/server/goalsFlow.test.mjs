@@ -675,6 +675,66 @@ test('predefinidos avaliam 1 ou 2 indicadores com números reais, sem nota geral
   assert.equal(rafa.results.find((item) => item.indicator === 'primeira').status, 'Atingiu');
 });
 
+const APRIL_OVERALL = `Período: abril de 2027.
+Condições:
+* Tickets resolvidos: mínimo de 10.
+* Satisfação: mínimo de 80%.
+* Primeira resposta: máximo de 5 minutos.
+* TMA: máximo de 15 minutos.
+Rafael Oliveira:
+* 20 tickets.
+* 90% de satisfação.
+* 2 minutos de primeira resposta.
+* 10 minutos de TMA.
+Felipe Costa:
+* 18 tickets.
+* 85% de satisfação.
+* 3 minutos de primeira resposta.
+* 12 minutos de TMA.
+Camila:
+* 9 tickets.
+* 95% de satisfação.
+* 6 minutos de primeira resposta.
+* 18 minutos de TMA.
+Conferir. Não alterar o pódio.`;
+
+test('desempenho geral lê as condições da mensagem mesmo com o histórico do assistente', async () => {
+  const result = await postCenter({
+    text: APRIL_OVERALL,
+    mode: 'overall',
+    indicators: ['resolvidosCount', 'satisfacao', 'primeira', 'resolucao'],
+    history: [{ text: 'Desempenho geral: marque os indicadores. Os pesos se dividem igualmente entre os escolhidos. Quem não cumpre a condição de entrada zera aquela parcela; o melhor elegível leva o peso inteiro. Transferidos ficam de fora e o pódio não muda.' }],
+  });
+  assert.equal(result.body.kind, 'conference');
+  assert.equal(result.body.persist, false);
+  assert.equal(result.body.conference.mode, 'overall');
+  assert.equal(result.body.conference.period.label, 'Abril/2027');
+  assert.equal(result.body.conference.overall.weights.resolvidos, 25);
+  const rafa = result.body.conference.overall.scores.find((item) => item.userId === 'tm-8');
+  const feli = result.body.conference.overall.scores.find((item) => item.userId === 'tm-4');
+  const cami = result.body.conference.overall.scores.find((item) => item.userId === 'tm-3');
+  assert.equal(rafa.score, 98.68);
+  assert.equal(feli.score, 82.37);
+  assert.equal(cami.score, 25);
+  assert.equal(rafa.place, 1);
+  assert.equal(feli.place, 2);
+  assert.equal(cami.place, 3);
+  assert.equal(rafa.parts.resolvidosCount.contribution, 25);
+  assert.equal(feli.parts.resolvidosCount.contribution, 22.5);
+  assert.equal(cami.parts.resolvidosCount.contribution, 0);
+  assert.equal(rafa.parts.satisfacao.contribution, 23.68);
+  assert.equal(feli.parts.satisfacao.contribution, 22.37);
+  assert.equal(cami.parts.satisfacao.contribution, 25);
+  assert.equal(rafa.parts.primeira.contribution, 25);
+  assert.equal(feli.parts.primeira.contribution, 16.67);
+  assert.equal(cami.parts.primeira.contribution, 0);
+  assert.equal(rafa.parts.resolucao.contribution, 25);
+  assert.equal(feli.parts.resolucao.contribution, 20.83);
+  assert.equal(cami.parts.resolucao.contribution, 0);
+  assert.equal(cami.parts.resolvidosCount.reason.includes('mínimo 10'), true);
+  assert.equal(result.body.conference.people.length, 3);
+});
+
 test('desempenho geral pede só a meta do indicador selecionado que faltar', async () => {
   const result = await postCenter({
     text: 'Desempenho geral de março de 2027. Rafael Oliveira primeira resposta 4 minutos. Felipe Costa primeira resposta 3 minutos. Conferir. Não alterar o pódio.',
