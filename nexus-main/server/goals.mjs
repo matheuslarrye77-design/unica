@@ -347,11 +347,13 @@ export function monthKey(now = new Date()) {
 const MONTH_NUMBERS = {
   janeiro: 1, fevereiro: 2, marco: 3, abril: 4, maio: 5, junho: 6,
   julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12,
+  jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
 };
 
 export function readGoalPeriod(text, now = new Date()) {
   const folded = fold(text);
-  const named = folded.match(/\b(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)(?:\s+de)?\s+(\d{4})\b/)
+  const named = folded.match(/\b(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)(?:\s+de)?[\s\/\-](\d{4})\b/)
+    || folded.match(/\b(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[\s\/\-](\d{4})\b/)
     || folded.match(/\b(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\b/);
   const monthWord = /\b(?:no|neste|deste|do|durante o)\s+mes\b|\bmensal\b/.test(folded);
   const weekWord = /\bsemana\b|\bsemanal\b/.test(folded);
@@ -438,14 +440,14 @@ function phraseHint(text) {
   if (/satisfa|\bcsat\b|\bnps\b/.test(folded)) return 'satisfacao';
   if (/transferid/.test(folded)) return 'transferidos';
   if (/primeira|\btpr\b/.test(folded)) return 'primeira';
-  if ((/tempo\s+medio|\btma\b|ate\s+resolu|media\s+ate|medio\s+de\s+resolu|tempo\s+de\s+resolu/.test(folded)) && !/tickets?\s+resolvid/.test(folded)) return 'resolucao';
+  if ((/tempo\s+medio|\btma\b|ate\s+resolu|media\s+ate|medio\s+de\s+resolu|tempo\s+de\s+resolu|\bresolucao\b/.test(folded)) && !/tickets?\s+resolvid/.test(folded)) return 'resolucao';
   if (/tickets?\s+resolvid/.test(folded) || (/\btickets?\b/.test(folded) && !/transferid/.test(folded))) return 'resolvidosCount';
   if (/taxa\s+de\s+resol|percentual/.test(folded) && /resolvid/.test(folded)) return 'resolvidos';
   return '';
 }
 
 function applyPhrase(values, phrase) {
-  const text = String(phrase ?? '');
+  const text = String(phrase ?? '').replace(/\s+e\s+(?=\d)/gi, ', ');
   const unlabeled = { percents: [], minutes: [], counts: [] };
   for (const part of splitValues(text)) {
     const token = readToken(part);
@@ -459,12 +461,20 @@ function applyPhrase(values, phrase) {
       if (count !== null && count !== undefined) values.transferidos = count;
       continue;
     }
+    const foldedPart = fold(part);
+    if (/primeira/.test(foldedPart) && /tempo\s+medio|medio\s+de\s+resolu|\btma\b|tempo\s+de\s+resolu/.test(foldedPart)) {
+      const mins = [...String(part).matchAll(/([\d.,]+)\s*min/gi)].map((item) => numberFrom(item[1])).filter((item) => item !== null);
+      if (mins[0] !== undefined) values.primeira = mins[0];
+      if (mins[1] !== undefined) values.resolucao = mins[1];
+      continue;
+    }
     if (hint === 'primeira' && (token?.minutes !== undefined || token?.count !== undefined)) {
       values.primeira = token.minutes ?? token.count;
       continue;
     }
-    if (hint === 'resolucao' && (token?.minutes !== undefined || token?.count !== undefined)) {
-      values.resolucao = token.minutes ?? token.count;
+    if (hint === 'resolucao') {
+      const value = token?.minutes ?? token?.count ?? numberFrom((String(part).match(/(\d[\d.]*)/) ?? [])[1]);
+      if (value !== null && value !== undefined) values.resolucao = value;
       continue;
     }
     if (hint === 'resolvidosCount') {
@@ -477,10 +487,25 @@ function applyPhrase(values, phrase) {
       values.resolvidos = token.percent;
       continue;
     }
-    if (!token) continue;
+    if (!token) {
+      if (/\b(?:19|20)\d{2}\b/.test(part)) continue;
+      const mins = [...String(part).matchAll(/([\d.,]+)\s*(?:min|minuto)/gi)].map((item) => numberFrom(item[1])).filter((item) => item !== null);
+      if (mins.length) {
+        unlabeled.minutes.push(...mins);
+        continue;
+      }
+      const raw = String(part).match(/(\d[\d.,]*)/);
+      const value = raw ? numberFrom(raw[1]) : null;
+      if (value === null) continue;
+      if (/%/.test(part)) unlabeled.percents.push(value);
+      else unlabeled.counts.push(value);
+      continue;
+    }
     if (token.percent !== undefined) unlabeled.percents.push(token.percent);
-    else if (token.minutes !== undefined) unlabeled.minutes.push(token.minutes);
-    else if (token.count !== undefined) unlabeled.counts.push(token.count);
+    else if (token.minutes !== undefined) {
+      const mins = [...String(part).matchAll(/([\d.,]+)\s*(?:min|minuto)/gi)].map((item) => numberFrom(item[1])).filter((item) => item !== null);
+      unlabeled.minutes.push(...(mins.length ? mins : [token.minutes]));
+    } else if (token.count !== undefined) unlabeled.counts.push(token.count);
   }
   const whole = fold(text);
   const satisfactionPhrase = /satisfa|\bcsat\b|\bnps\b/.test(whole);
@@ -494,6 +519,9 @@ function applyPhrase(values, phrase) {
   } else {
     if (values.primeira == null && unlabeled.minutes[0] !== undefined) values.primeira = unlabeled.minutes[0];
     if (values.resolucao == null && unlabeled.minutes[1] !== undefined) values.resolucao = unlabeled.minutes[1];
+    else if (values.resolucao == null && values.primeira != null && unlabeled.minutes[0] !== undefined && unlabeled.minutes[0] !== values.primeira) {
+      values.resolucao = unlabeled.minutes[0];
+    }
   }
   for (const count of unlabeled.counts) {
     if (values.resolvidosCount == null && /\btickets?\b/.test(whole)) values.resolvidosCount = count;
@@ -507,8 +535,8 @@ function personValues(line) {
   const dashed = named ? null : cleaned.match(/^(.{2,60}?)\s+[—–-]\s+(\d[\d.,]*.+)$/);
   const label = cleanName(named?.[1] ?? dashed?.[1] ?? '');
   const phrase = named?.[2] ?? dashed?.[2] ?? '';
-  if (!label || !phrase || metricOf(label) || /^metas?\b|^resultados?\b/i.test(label)) return null;
-  if (fold(label).length < 2) return null;
+  if (!label || !phrase || metricOf(label) || /metas?\b|resultados?\b|indicador|validade|nov\/|ficam assim/i.test(label)) return null;
+  if (fold(label).length < 2 || fold(label).split(' ').filter(Boolean).length > 6) return null;
   const values = {};
   applyPhrase(values, phrase);
   const fields = ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao', 'satisfacao'];
@@ -516,12 +544,202 @@ function personValues(line) {
   return { name: label, values };
 }
 
+function escapeRegExp(value) {
+  return String(value ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function nameFinder(label) {
+  const pattern = escapeRegExp(String(label ?? '').trim()).replace(/ /g, '\\s+').replace(/[A-Za-z]/g, (letter) => ({
+    a: '[aáàâã]', A: '[AÁÀÂÃ]', e: '[eéê]', E: '[EÉÊ]', i: '[ií]', I: '[IÍ]', o: '[oóôõ]', O: '[OÓÔÕ]', u: '[uú]', U: '[UÚ]', c: '[cç]', C: '[CÇ]',
+  }[letter] ?? letter));
+  return new RegExp(`(^|[^A-Za-zÀ-ÿ])(${pattern})(?=$|[^A-Za-zÀ-ÿ])`, 'gi');
+}
+
+export function extractPersonSpans(text, people) {
+  const source = String(text ?? '');
+  const hits = [];
+  for (const person of people ?? []) {
+    const labels = [...new Set([person.name, ...(person.aliases ?? [])].filter((label) => fold(label).split(' ').filter(Boolean).length >= 2))];
+    for (const label of labels) {
+      const matcher = nameFinder(label);
+      let match = matcher.exec(source);
+      while (match) {
+        hits.push({
+          start: match.index + match[1].length,
+          end: match.index + match[0].length,
+          person,
+          label: match[2],
+        });
+        match = matcher.exec(source);
+      }
+    }
+  }
+  hits.sort((left, right) => left.start - right.start || (right.end - right.start) - (left.end - left.start));
+  const chosen = [];
+  for (const hit of hits) {
+    if (chosen.some((item) => hit.start < item.end && hit.end > item.start)) continue;
+    const clash = hits.filter((item) => item.start === hit.start && item.person.id !== hit.person.id);
+    if (clash.length) continue;
+    chosen.push(hit);
+  }
+  return chosen.map((hit, index) => {
+    const stop = chosen[index + 1]?.start ?? source.length;
+    return { ...hit, slice: source.slice(hit.start, stop), person: hit.person, sourceName: hit.label };
+  });
+}
+
+function blankPersonSpans(text, people) {
+  const source = String(text ?? '');
+  const spans = extractPersonSpans(source, people).sort((left, right) => right.start - left.start);
+  let next = source;
+  for (const span of spans) next = `${next.slice(0, span.start)}${' '.repeat(Math.max(span.slice.length, 1))}${next.slice(span.start + span.slice.length)}`;
+  return next;
+}
+
+function personRowFromValues(sourceName, person, values) {
+  const fields = ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao', 'satisfacao'];
+  const filled = Object.fromEntries(fields.map((field) => [field, values[field] ?? null]));
+  if (!fields.some((field) => filled[field] !== null)) return null;
+  return {
+    sourceName,
+    userId: person?.id ?? '',
+    name: person?.name ?? '',
+    subsetor: person ? subsetorOf(person) : '',
+    ambiguous: [],
+    values: filled,
+    goal: blankGoal(),
+  };
+}
+
+export function parsePeopleFromText(text, people) {
+  const report = parseReport(text, people);
+  const rows = new Map(report.rows.map((row) => [fold(row.userId || row.sourceName), row]));
+  for (const span of extractPersonSpans(text, people)) {
+    const values = {};
+    applyPhrase(values, span.slice.replace(span.sourceName, ' '));
+    if (values.resolvidosCount == null && values.transferidos != null && values.primeira != null && values.resolucao != null) {
+      values.resolvidosCount = values.transferidos;
+      values.transferidos = null;
+    }
+    if (values.satisfacao == null && values.resolvidos != null && values.resolvidosCount != null && values.primeira != null && values.resolucao != null) {
+      values.satisfacao = values.resolvidos;
+      values.resolvidos = null;
+    }
+    const row = personRowFromValues(span.sourceName, span.person, values);
+    if (!row) continue;
+    const key = fold(span.person.id || span.person.name);
+    const current = rows.get(key) || rows.get(fold(span.sourceName));
+    if (current) {
+      for (const field of ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao', 'satisfacao']) {
+        if ((current.values[field] === null || current.values[field] === undefined) && row.values[field] !== null) current.values[field] = row.values[field];
+      }
+      if (!current.userId && span.person.id) {
+        current.userId = span.person.id;
+        current.name = span.person.name;
+        current.subsetor = subsetorOf(span.person);
+      }
+      rows.set(key, current);
+    } else {
+      rows.set(key, row);
+    }
+  }
+  return { ...report, rows: [...rows.values()] };
+}
+
+function compareRowToRules(row, rules) {
+  return (rules ?? []).map((rule) => {
+    const value = row.values?.[rule.indicator];
+    const met = value === null || value === undefined ? null : passesRules(row.values, [rule]);
+    return { indicator: rule.indicator, value: value ?? null, target: rule.value, op: rule.op, met };
+  });
+}
+
+function describeIndicatorLine(item) {
+  const names = {
+    resolvidosCount: 'Tickets resolvidos',
+    resolvidos: 'Tickets resolvidos (%)',
+    satisfacao: 'Satisfação',
+    primeira: 'Primeira resposta',
+    resolucao: 'Tempo médio de resolução',
+    transferidos: 'Tickets transferidos',
+  };
+  const units = { resolvidos: '%', satisfacao: '%', primeira: ' min', resolucao: ' min' };
+  const status = item.met === true ? 'Atingiu' : item.met === false ? 'Não atingiu' : 'Sem meta';
+  const shown = item.value === null ? '—' : `${item.value}${units[item.indicator] ?? ''}`;
+  return `${names[item.indicator] ?? item.indicator}: ${shown} — ${status}`;
+}
+
+export function understandGoalsMessage(text, people) {
+  const source = String(text ?? '').trim();
+  if (!source) return { kind: 'unknown' };
+  const peopleParsed = parsePeopleFromText(source, people);
+  const rows = peopleParsed.rows.filter((row) => ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao', 'satisfacao'].some((field) => row.values[field] !== null && row.values[field] !== undefined));
+  const goals = parseCustomRequest(blankPersonSpans(source, people));
+  const folded = fold(source);
+  const hold = /conferir|antes de salvar|antes de gravar|nao salvar|nao gravar|nao alterar o podio|nao mude o podio|nao mexa no podio|nao mexe no podio/.test(folded);
+  if (!goals.ok && !rows.length) return { kind: 'unknown' };
+  if (goals.ok && !rows.length) {
+    return {
+      kind: 'proposal',
+      ok: true,
+      period: goals.period,
+      periodKey: goals.periodKey,
+      periodLabel: goals.periodLabel,
+      rules: goals.rules.map((rule) => ({ ...rule, period: goals.period })),
+      combine: 'all',
+      subsetor: '',
+      weights: null,
+      questions: [],
+      explanation: 'Estas são as metas da gestão, não os resultados dos colaboradores.',
+    };
+  }
+  if (rows.length && !goals.ok && !hold) return { kind: 'ingest', rows };
+  const comparisons = rows.map((row) => ({
+    userId: row.userId,
+    name: row.name || row.sourceName,
+    sourceName: row.sourceName,
+    values: row.values,
+    indicators: compareRowToRules(row, goals.ok ? goals.rules : []),
+  }));
+  const lines = ['Conferência. Nada foi salvo e o pódio não foi alterado.'];
+  if (goals.ok) {
+    lines.push('', `Metas da gestão — ${goals.periodLabel || 'período a confirmar'}`);
+    for (const rule of goals.rules) {
+      const unit = rule.indicator === 'satisfacao' || rule.indicator === 'resolvidos' ? '%' : rule.indicator === 'primeira' || rule.indicator === 'resolucao' ? ' min' : '';
+      const sign = rule.op === 'gte' ? '>=' : rule.op === 'lte' ? '<=' : rule.op;
+      lines.push(`• ${rule.indicator === 'resolvidosCount' ? 'Tickets resolvidos' : rule.indicator === 'satisfacao' ? 'Satisfação' : rule.indicator === 'primeira' ? 'Primeira resposta' : rule.indicator === 'resolucao' ? 'Tempo médio de resolução' : rule.indicator} | ${rule.value}${unit} | ${sign} | ${goals.periodLabel}`);
+    }
+  }
+  if (comparisons.length) {
+    lines.push('', 'Resultados individuais');
+    for (const person of comparisons) {
+      lines.push(`${person.name}${person.userId ? ' — cadastro da Equipe' : ' — aguardando identificação'}`);
+      for (const item of person.indicators.filter((entry) => entry.value !== null)) {
+        lines.push(`• ${describeIndicatorLine(item)}`);
+      }
+    }
+  }
+  lines.push('', 'Escreva Confirmar para gravar no Banco dos relatórios. O pódio permanece como está.');
+  return {
+    kind: 'review',
+    reply: lines.join('\n'),
+    period: goals.ok ? goals.period : '',
+    periodKey: goals.ok ? goals.periodKey : '',
+    periodLabel: goals.ok ? goals.periodLabel : '',
+    rules: goals.ok ? goals.rules : [],
+    rows,
+    comparisons,
+    sourceText: source,
+    persist: false,
+  };
+}
+
 function personHeading(line) {
   const cleaned = cleanLine(line);
   if (!cleaned) return '';
   const named = cleaned.match(/^([^:]{2,80}):\s*(.*)$/);
   const label = cleanName(named ? named[1] : cleaned);
-  if (!label || metricOf(label) || /^metas?\b|^resultados?\b|^indicador|^validade/i.test(label)) return '';
+  if (!label || metricOf(label) || /metas?\b|resultados?\b|indicador|validade|nov\//i.test(label)) return '';
   if (named && String(named[2] ?? '').trim()) return '';
   if (/\d/.test(label)) return '';
   const words = fold(label).split(' ').filter(Boolean);
@@ -743,7 +961,7 @@ function clauseIndicator(folded, raw) {
   if (/satisfa|\bcsat\b|\bnps\b/.test(folded)) return 'satisfacao';
   if (/transferid/.test(folded)) return 'transferidos';
   if (/primeira|\btpr\b/.test(folded)) return 'primeira';
-  if ((/tempo\s+medio|\btma\b|medio\s+(de\s+)?resolu|tempo\s+de\s+resolu|ate\s+resolu/.test(folded)) && !/tickets?\s+resolvid/.test(folded)) return 'resolucao';
+  if ((/tempo\s+medio|\btma\b|medio\s+(de\s+)?resolu|tempo\s+de\s+resolu|ate\s+resolu|\bresolucao\b/.test(folded)) && !/tickets?\s+resolvid/.test(folded)) return 'resolucao';
   if (/tickets?\s+resolvid/.test(folded) || (/\btickets?\b/.test(folded) && !/satisfa/.test(folded))) {
     return /%/.test(raw) && !/\d[\d.]*\s+tickets?/.test(folded) ? 'resolvidos' : 'resolvidosCount';
   }
@@ -757,7 +975,7 @@ function mentionedIndicators(text) {
   if (/satisfa|\bcsat\b|\bnps\b/.test(folded)) found.push('satisfacao');
   if (/transferid/.test(folded)) found.push('transferidos');
   if (/primeira|\btpr\b/.test(folded)) found.push('primeira');
-  if (/tempo\s+medio|\btma\b|medio\s+(de\s+)?resolu|tempo\s+de\s+resolu/.test(folded)) found.push('resolucao');
+  if (/tempo\s+medio|\btma\b|medio\s+(de\s+)?resolu|tempo\s+de\s+resolu|\bresolucao\b/.test(folded)) found.push('resolucao');
   if (/tickets?\s+resolvid|\b\d[\d.]*\s+tickets?\b|\btickets?\b/.test(folded)) found.push('resolvidosCount');
   if (/(?:percentual|taxa)\s+de\s+resolvid/.test(folded)) found.push('resolvidos');
   return [...new Set(found)];
@@ -767,7 +985,8 @@ function isPersonResultLine(line) {
   const cleaned = cleanLine(line);
   const label = cleanName((cleaned.match(/^([^:]{2,80}):/) ?? [])[1] ?? '');
   if (!label) return false;
-  if (metricOf(label) || /^metas?\b|^resultados?\b|^indicador/i.test(label)) return false;
+  if (metricOf(label) || /metas?\b|resultados?\b|indicador|validade|ficam assim/i.test(label)) return false;
+  if (fold(label).split(' ').filter(Boolean).length > 6) return false;
   return /^.{2,80}:\s*\d/.test(cleaned) || /^.{2,60}\s+[—–-]\s+\d/.test(cleaned);
 }
 
@@ -778,7 +997,7 @@ function splitGoalClauses(text) {
     .filter((line) => line.length > 2 && !isPersonResultLine(line));
 }
 
-const INDICATOR_SPAN = /satisfa(?:ção|cao)?|\bcsat\b|\bnps\b|tickets?\s+transferid\w*|quantidade\s+de\s+tickets?|tickets?\s+resolvid\w*|\btickets?\b|primeira\s+resposta|\btpr\b|tempo\s+m[eé]dio(?:\s+de\s+resolu[cç][aã]o)?|\btma\b|tempo\s+(?:m[eé]dio\s+)?(?:at[eé]\s+)?resolu[cç][aã]o/gi;
+const INDICATOR_SPAN = /satisfa(?:ção|cao)?|\bcsat\b|\bnps\b|tickets?\s+transferid\w*|quantidade\s+de\s+tickets?|tickets?\s+resolvid\w*|\btickets?\b|primeira\s+resposta|\btpr\b|tempo\s+m[eé]dio(?:\s+de\s+resolu[cç][aã]o)?|\btma\b|tempo\s+(?:m[eé]dio\s+)?(?:at[eé]\s+)?resolu[cç][aã]o|\bresolu[cç][aã]o\b/gi;
 
 function clauseWindows(clause) {
   const matches = [...String(clause).matchAll(INDICATOR_SPAN)];
@@ -786,24 +1005,37 @@ function clauseWindows(clause) {
   return matches.map((match, index) => {
     const from = match.index;
     const to = matches[index + 1]?.index ?? clause.length;
-    const prefixFrom = Math.max(index === 0 ? 0 : (matches[index - 1].index + matches[index - 1][0].length), from - 40);
-    return String(clause).slice(prefixFrom, to);
+    const prevEnd = index === 0 ? 0 : matches[index - 1].index + matches[index - 1][0].length;
+    const prefixFrom = Math.max(prevEnd, from - 48);
+    const prefix = String(clause).slice(prefixFrom, from);
+    return `${prefix}${String(clause).slice(from, to)}`;
   });
 }
 
 function clauseValue(indicator, raw) {
   const source = String(raw ?? '').replace(/\b(?:19|20)\d{2}\b/g, ' ');
+  const tickets = source.match(/(\d[\d.]*)\s+tickets?/i);
+  if (indicator === 'resolvidosCount' && tickets) return countFrom(tickets[1]);
   const percent = source.match(/([\d.,]+)\s*%/);
   const minutes = source.match(/([\d.,]+)\s*(?:min|minuto)/i);
-  const afterOp = source.match(/(?:>=|<=|≥|≤|pelo menos|no m[ií]nimo|no m[aá]ximo|at[eé]|maior ou igual(?: a)?|menor ou igual(?: a)?|acima de|abaixo de|m[ií]nimo de|m[aá]ximo de)\s*([\d.,]+)/i);
+  const afterOp = source.match(/(?:>=|<=|≥|≤|pelo menos|no m[ií]nimo|no m[aá]ximo|at[eé]|maior ou igual(?: a)?|menor ou igual(?: a)?|acima de|abaixo de|m[ií]nimo de|m[aá]ximo de)\s*([.,]*\d[\d.,]*)/i);
   const count = afterOp?.[1] ?? (source.match(/(\d[\d.]*)/) ?? [])[1];
   if (indicator === 'satisfacao' || indicator === 'resolvidos') return percent ? numberFrom(percent[1]) : (afterOp ? numberFrom(afterOp[1]) : null);
-  if (indicator === 'primeira' || indicator === 'resolucao') return minutes ? numberFrom(minutes[1]) : (count ? numberFrom(count) : null);
+  if (indicator === 'primeira' || indicator === 'resolucao') {
+    const pivot = source.search(indicator === 'primeira' ? /primeira|\btpr\b/i : /resolu|\btma\b|tempo\s+m[eé]dio/i);
+    const tail = pivot >= 0 ? source.slice(pivot) : source;
+    const afterLimit = tail.match(/(?:at[eé]|no m[aá]ximo|no maximo)\s*([\d.,]+)/i);
+    if (afterLimit) return numberFrom(afterLimit[1]);
+    const tailMinutes = tail.match(/([\d.,]+)\s*(?:min|minuto)/i);
+    if (tailMinutes) return numberFrom(tailMinutes[1]);
+    return minutes ? numberFrom(minutes[1]) : (count ? numberFrom(count) : null);
+  }
   return count ? countFrom(count) : null;
 }
 
 export function parseCustomRequest(text) {
-  const source = String(text ?? '').trim();
+  const original = String(text ?? '').trim();
+  const source = splitGoalClauses(original).join('\n') || original;
   const wanted = mentionedIndicators(source);
   const rules = [];
   const seen = new Set();
@@ -825,7 +1057,7 @@ export function parseCustomRequest(text) {
       rules.push({ indicator, op, value });
     }
   }
-  const period = readGoalPeriod(source);
+  const period = readGoalPeriod(original);
   const missing = wanted.filter((item) => !rules.some((rule) => rule.indicator === item || (item === 'resolvidosCount' && rule.indicator === 'resolvidos')));
   if (missing.length) {
     return { ok: false, message: 'Faltou algum indicador pedido. Confirme indicador, valor, se deve ser maior ou menor, e o período. Nada foi aplicado.' };
@@ -1201,6 +1433,11 @@ function currentImport(store, periodKey) {
 export function runAssistant({ text, store, people, preview, periodKey, intent }) {
   const source = String(text ?? '').trim();
   if (!source) return { kind: 'ask', reply: 'Cole o relatório ou escreva o que precisa. Não invento números que não vieram no texto.' };
+
+  const understood = understandGoalsMessage(source, people);
+  const bankTalk = /conferir|confere antes|nao alterar o podio|nao mude o podio|nao mexe no podio|nao mexa no podio|metas gerais|banco dos relatorios/.test(fold(source))
+    || (understood.kind === 'review' && understood.periodLabel);
+  if ((understood.kind === 'review' || understood.kind === 'proposal') && (!looksLikeReport(source) || bankTalk)) return understood;
 
   const folded = fold(source);
   const item = currentImport(store, periodKey);

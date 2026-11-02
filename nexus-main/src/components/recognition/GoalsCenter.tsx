@@ -16,6 +16,8 @@ type PendingRules = {
   combine: 'all' | 'any';
   subsetor: string;
   weights: { resolvidos: number; primeira: number; resolucao: number } | null;
+  rows?: Row[];
+  sourceText?: string;
 };
 type Values = { resolvidos: number | null; resolvidosCount: number | null; transferidos: number | null; primeira: number | null; resolucao: number | null; satisfacao?: number | null };
 type Row = {
@@ -273,7 +275,7 @@ export const GoalsProvider: FC<{
     const source = text.trim();
     if (!source || busy) return;
     const normalized = source.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    if (pendingRules && /^(confirmar|aprovar|aprovar regra|aprovar criterio)$/.test(normalized)) {
+    if (pendingRules && /^(confirmar|aprovar|aprovar regra|aprovar criterio|confirmar metas)$/.test(normalized)) {
       say('user', source);
       setDraft('');
       await saveTemplate();
@@ -318,6 +320,22 @@ export const GoalsProvider: FC<{
       if (data.kind === 'cancel') setPreview(null);
       if (data.kind === 'approve') await approveWith(source);
       if (data.kind === 'criterion') await choose(data.criterion);
+      if (data.kind === 'review') {
+        setPendingRules({
+          period: String(data.period ?? ''),
+          periodKey: String(data.periodKey ?? ''),
+          periodLabel: String(data.periodLabel ?? ''),
+          rules: Array.isArray(data.rules) ? data.rules : [],
+          name: '',
+          explanation: String(data.explanation ?? data.reply ?? ''),
+          combine: 'all',
+          subsetor: '',
+          weights: null,
+          rows: Array.isArray(data.rows) ? data.rows : [],
+          sourceText: source,
+        });
+        setPhase('custom');
+      }
       if (data.kind === 'proposal') {
         setPendingRules({
           period: data.period,
@@ -391,9 +409,29 @@ export const GoalsProvider: FC<{
 
   async function saveTemplate() {
     if (!pendingRules) return;
-    const name = pendingRules.name.trim() || 'Pódio personalizado';
+    const name = pendingRules.name.trim() || 'Metas da gestão';
     setBusy(true);
     try {
+      if (pendingRules.rows?.length) {
+        const data = await send('/api/goals/assistant', 'POST', {
+          text: 'confirmar',
+          review: {
+            name,
+            period: pendingRules.period,
+            periodKey: pendingRules.periodKey,
+            periodLabel: pendingRules.periodLabel,
+            rules: pendingRules.rules,
+            rows: pendingRules.rows,
+            sourceText: pendingRules.sourceText,
+            explanation: pendingRules.explanation,
+          },
+        });
+        onChange({ ...data, canManage: goals.canManage, people: data.people ?? goals.people });
+        setPendingRules(null);
+        setPhase('idle');
+        say('bot', String(data.reply ?? 'Gravei as metas e os resultados no Banco dos relatórios. O pódio não foi alterado.'));
+        return;
+      }
       const data = await send('/api/goals/templates', 'POST', {
         confirm: true,
         name,

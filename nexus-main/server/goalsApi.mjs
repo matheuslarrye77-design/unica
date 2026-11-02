@@ -1,7 +1,7 @@
 import { isLeader } from './auth/permissions.mjs';
 import { commitTemplate, interpretCriteria, normalizeProposal } from './criteria.mjs';
-import { applyLedgerRanking, ingestReport, proposeFromLedger } from './ledger.mjs';
-import { applyCriterion, buildApproval, emptyStore, goalState, INDICATORS, looksLikeReport, overallScore, parseReport, publicStore, readCriterion, relinkLedger, runAssistant } from './goals.mjs';
+import { applyGoalsReview, applyLedgerRanking, ingestReport, proposeFromLedger } from './ledger.mjs';
+import { applyCriterion, buildApproval, emptyStore, fold, goalState, INDICATORS, looksLikeReport, overallScore, parseReport, publicStore, readCriterion, relinkLedger, runAssistant, understandGoalsMessage } from './goals.mjs';
 import { STORAGE_REPLY, createGoalsStore } from './goalsStore.mjs';
 
 function redactLabels(colleagues, aliases, teamRoster) {
@@ -168,6 +168,24 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
       const text = String(body.text ?? '');
       const intent = String(body.intent ?? '');
       const history = Array.isArray(body.history) ? body.history : [];
+      if (body.review && /^(confirmar|aprovar)( metas| resultados| conferencia)?$/.test(fold(text))) {
+        const result = await commit((current) => ({ store: applyGoalsReview(current, body.review, people, new Date()).store }));
+        if (!result) return true;
+        send(res, 200, { ...publicView(result.store, user, people), kind: 'ledger', reply: 'Gravei as metas e os resultados no Banco dos relatórios. O pódio não foi alterado.' });
+        return true;
+      }
+      const understood = understandGoalsMessage(text, people);
+      const bankTalk = /conferir|nao alterar o podio|nao mude o podio|metas gerais|banco dos relatorios/.test(fold(text))
+        || (understood.kind === 'review' && understood.periodLabel);
+      if (understood.kind === 'review' && (!looksLikeReport(text) || bankTalk)) {
+        send(res, 200, {
+          ...understood,
+          combine: 'all',
+          subsetor: '',
+          weights: null,
+        });
+        return true;
+      }
       const parsed = parseReport(text, people);
       const outcome = ingestReport(store, text, people, { now: new Date(), parsed });
       if (outcome.kind === 'clarify') {

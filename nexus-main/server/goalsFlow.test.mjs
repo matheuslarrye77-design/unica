@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import { commitTemplate, interpretCriteria } from './criteria.mjs';
-import { emptyStore, parseReport, publicStore, reportBankSnapshot, runAssistant } from './goals.mjs';
-import { ingestReport } from './ledger.mjs';
+import { emptyStore, parseReport, publicStore, reportBankSnapshot, runAssistant, understandGoalsMessage } from './goals.mjs';
+import { applyGoalsReview, ingestReport } from './ledger.mjs';
 
 const now = new Date(2026, 10, 2, 12, 0, 0);
 const felipe = { id: 'tm-4', name: 'Felipe Costa', funcao: 'E-mail', role: 'Atendimento', aliases: [] };
@@ -118,3 +118,86 @@ test('a interface do banco mostra mês/ano, gestão e resultados separados', () 
   assert.match(ui, /Novembro\/\$\{year\}|\/\$\{year\}/);
   assert.equal(ui.includes('O pódio passa a usar esta regra'), false);
 });
+
+const NATURAL_MESSAGE = 'Preciso definir as metas gerais para novembro de 2026: tickets resolvidos pelo menos 320, satisfação pelo menos 95%, primeira resposta no máximo 5 minutos e tempo médio de resolução no máximo 8 minutos. O Rafael Oliveira ficou com 300 tickets resolvidos, 94% de satisfação, 4 minutos de primeira resposta e 9 minutos de tempo médio de resolução. O Felipe Costa ficou com 350 tickets resolvidos, 97% de satisfação, 3 minutos de primeira resposta e 7 minutos de tempo médio de resolução. Compara os resultados de cada um com as metas. Conferir antes de salvar. Não alterar o pódio.';
+
+const NATURAL_VARIATIONS = [
+  NATURAL_MESSAGE,
+  `Metas de novembro de 2026
+- pelo menos 320 tickets resolvidos
+- satisfação no mínimo 95%
+- primeira resposta até 5 min
+- tma no máximo 8 min
+
+Rafael Oliveira: 300 tickets, 94% de satisfação, 4 min de primeira resposta, 9 min de resolução.
+Felipe Costa: 350 tickets, 97% de satisfação, 3 min de primeira resposta, 7 min de resolução.
+
+Compara com as metas, conferir antes de salvar, não alterar o pódio.`,
+  `oi, as metas de nov/2026 ficam assim: 320 tickets no mínimo, 95% de satisfação pelo menos, primeira resposta no máximo 5 minutos e resolução até 8. rafael oliveira fez 300 tickets, 94% satisfação, 4 min primeira resposta e 9 de tma. felipe costa fez 350, 97%, 3 min e 7 min. compara aí, confere antes de salvar e não mexe no pódio.`,
+];
+
+function assertNatural(understood) {
+  assert.equal(understood.kind, 'review');
+  assert.equal(understood.persist, false);
+  assert.equal(understood.periodLabel, 'Novembro/2026');
+  assert.equal(understood.rules.length, 4);
+  assert.deepEqual(understood.rules.map((rule) => rule.indicator).sort(), ['primeira', 'resolucao', 'resolvidosCount', 'satisfacao']);
+  const rafa = understood.rows.find((row) => row.userId === 'tm-8');
+  const feli = understood.rows.find((row) => row.userId === 'tm-4');
+  assert.equal(rafa.values.resolvidosCount, 300);
+  assert.equal(rafa.values.satisfacao, 94);
+  assert.equal(rafa.values.primeira, 4);
+  assert.equal(rafa.values.resolucao, 9);
+  assert.equal(feli.values.resolvidosCount, 350);
+  assert.equal(feli.values.satisfacao, 97);
+  assert.equal(feli.values.primeira, 3);
+  assert.equal(feli.values.resolucao, 7);
+  const flag = (person, field) => understood.comparisons.find((row) => row.userId === person).indicators.find((item) => item.indicator === field);
+  assert.equal(flag('tm-8', 'resolvidosCount').met, false);
+  assert.equal(flag('tm-8', 'satisfacao').met, false);
+  assert.equal(flag('tm-8', 'primeira').met, true);
+  assert.equal(flag('tm-8', 'resolucao').met, false);
+  assert.equal(flag('tm-4', 'resolvidosCount').met, true);
+  assert.equal(flag('tm-4', 'satisfacao').met, true);
+  assert.equal(flag('tm-4', 'primeira').met, true);
+  assert.equal(flag('tm-4', 'resolucao').met, true);
+  assert.match(understood.reply, /Conferência/);
+  assert.match(understood.reply, /não foi alterado|permanece como está/i);
+}
+
+test('mensagem natural mista é reconhecida e não cai no fallback', () => {
+  const store = emptyStore();
+  const understood = understandGoalsMessage(NATURAL_MESSAGE, people);
+  assertNatural(understood);
+  const assistant = runAssistant({ text: NATURAL_MESSAGE, store, people });
+  assert.equal(assistant.kind, 'review');
+  assert.notEqual(assistant.kind, 'ask');
+  assert.notEqual(assistant.kind, 'criterion');
+  assert.equal(store.criterion.mode, 'preset');
+  assert.equal(store.ledger.records.length, 0);
+});
+
+for (const [index, text] of NATURAL_VARIATIONS.entries()) {
+  test(`variação natural ${index + 1} preserva metas, pessoas e comparação`, () => {
+    assertNatural(understandGoalsMessage(text, people));
+  });
+}
+
+test('conferência natural só grava no banco depois de confirmar, sem pódio', () => {
+  const original = emptyStore();
+  const understood = understandGoalsMessage(NATURAL_MESSAGE, people);
+  assert.equal(original.ledger.records.length, 0);
+  const saved = applyGoalsReview(original, understood, people, now);
+  assert.equal(original.ledger.records.length, 0);
+  assert.equal(saved.store.criterion.mode, 'preset');
+  assert.equal((saved.store.ledger.applied ?? []).length, 0);
+  const view = publicStore(saved.store);
+  const month = view.bank.periods.find((item) => item.key === '2026-11');
+  assert.equal(month.label, 'Novembro/2026');
+  assert.equal(month.goals.length, 4);
+  assert.equal(month.people.length, 2);
+  assert.equal(month.pending.length, 0);
+  assert.equal(month.people.find((row) => row.userId === 'tm-8').indicators.find((item) => item.field === 'resolvidosCount').met, false);
+  assert.equal(month.people.find((row) => row.userId === 'tm-4').indicators.find((item) => item.field === 'resolucao').met, true);
+});
+

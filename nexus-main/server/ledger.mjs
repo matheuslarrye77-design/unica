@@ -1,3 +1,4 @@
+import { commitTemplate } from './criteria.mjs';
 import { fold, formatPeriodLabel, isoWeekKey, mentionedPeriods, metricOf, monthKey, parseCustomRequest, parseReport, passesRules } from './goals.mjs';
 
 const FIELDS = ['resolvidosCount', 'resolvidos', 'transferidos', 'primeira', 'resolucao', 'satisfacao'];
@@ -260,6 +261,32 @@ export function applyLedgerRanking(store, now = new Date()) {
   if (!rules.length) return { ...store, ledger: { ...ledger, applied: ledger.ranking ?? [] } };
   const period = template.period === 'month' || rules.every((rule) => rule.period === 'month') ? 'month' : 'week';
   return { ...store, ledger: { ...ledger, applied: rankLedger(ledger.records, rules, selectPeriod(ledger.records, period, now), template.combine === 'any' ? 'any' : 'all') } };
+}
+
+export function applyGoalsReview(store, review, people, now = new Date()) {
+  let next = store;
+  if (Array.isArray(review?.rules) && review.rules.length) {
+    const saved = commitTemplate(next, {
+      ok: true,
+      period: review.period || 'month',
+      periodKey: review.periodKey || '',
+      periodLabel: review.periodLabel || '',
+      combine: review.combine === 'any' ? 'any' : 'all',
+      subsetor: '',
+      weights: review.weights ?? null,
+      rules: review.rules,
+      explanation: review.explanation || 'Metas da gestão',
+    }, { confirm: true, name: review.name || 'Metas da gestão' });
+    if (saved.saved) next = saved.store;
+  }
+  if (Array.isArray(review?.rows) && review.rows.length) {
+    const ingested = ingestReport(next, review.sourceText || '', people, {
+      now,
+      parsed: { rows: review.rows, periodKey: review.periodKey || '', warnings: [] },
+    });
+    if (ingested.kind === 'ledger') next = ingested.store;
+  }
+  return { store: next };
 }
 
 export function proposeFromLedger(store, text, now = new Date()) {
