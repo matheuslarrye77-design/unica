@@ -16,7 +16,7 @@ export function allowGeminiCall(now = Date.now()) {
 }
 
 export function flashModel(env = process.env) {
-  const model = String(env.GEMINI_MODEL || 'gemini-3.8-flash').trim();
+  const model = String(env.GEMINI_MODEL || 'gemini-3.5-flash-lite').trim();
   if (!/flash/i.test(model) || /pro|ultra/i.test(model)) return '';
   return model;
 }
@@ -49,7 +49,7 @@ export function classifyGeminiError(error) {
   if (info.httpStatus === 403 || /PERMISSION_DENIED|API_KEY_HTTP_REFERRER|API_KEY_SERVICE_BLOCKED/i.test(blob)) return 'permission';
   if (info.httpStatus === 400 || /INVALID_ARGUMENT/i.test(blob)) return 'invalid';
   if (info.httpStatus === 404 || /NOT_FOUND|is not found/i.test(blob)) return 'model';
-  if (/timeout|ECONNRESET|ENOTFOUND|EAI_AGAIN|fetch failed|socket hang up/i.test(blob)) return 'unavailable';
+  if (info.httpStatus === 504 || info.httpStatus === 503 || info.httpStatus === 408 || /DEADLINE_EXCEEDED|UNAVAILABLE/i.test(blob)) return 'unavailable';
   return 'unavailable';
 }
 

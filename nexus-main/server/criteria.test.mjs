@@ -214,7 +214,7 @@ test('o prompt e o frontend não levam a chave nem o cadastro', async () => {
   const api = fs.readFileSync(new URL('./goalsApi.mjs', import.meta.url), 'utf8');
   assert.equal(ui.includes('GEMINI_API_KEY') || ui.includes('@google/genai') || ui.includes('generativelanguage.googleapis.com'), false);
   assert.equal(api.includes('GEMINI_API_KEY'), false);
-  assert.equal(flashModel({}), 'gemini-3.8-flash');
+  assert.equal(flashModel({}), 'gemini-3.5-flash-lite');
   assert.equal(flashModel({ GEMINI_MODEL: 'gemini-2.5-pro' }), '');
   assert.equal(flashModel({ GEMINI_MODEL: 'gemini-2.5-flash' }), 'gemini-2.5-flash');
   assert.equal(flashModel({ GEMINI_MODEL: 'gemini-3.8-flash' }), 'gemini-3.8-flash');
