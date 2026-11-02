@@ -231,7 +231,7 @@ export const GoalsProvider: FC<{
     try {
       const history = phase === 'custom' ? messages.slice(-6).map((message) => ({ text: message.text })) : [];
       const data = await send('/api/goals/assistant', 'POST', { text: source, preview: phase === 'custom' ? undefined : preview, periodKey: periodKey || week || goals.currentKey, intent: phase, history });
-      if (data.kind === 'unavailable' || data.kind === 'quota') setDraft(source);
+      if (data.kind === 'unavailable' || data.kind === 'quota' || data.kind === 'auth' || data.kind === 'permission' || data.kind === 'model' || data.kind === 'invalid') setDraft(source);
       else setDraft('');
       say('bot', String(data.reply ?? ''));
       if (data.kind === 'preview') {

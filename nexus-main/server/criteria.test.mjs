@@ -115,6 +115,7 @@ test('falha de comunicação não finge uma resposta da IA', async () => {
     generate: async () => { throw new Error('socket hang up'); },
   });
   assert.equal(result.kind, 'unavailable');
+  assert.equal(result.google, undefined);
   assert.equal(result.rules, undefined);
   assert.match(result.reply, /Nada foi alterado/);
 });
