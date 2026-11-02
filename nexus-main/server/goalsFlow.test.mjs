@@ -514,7 +514,8 @@ test('desempenho geral usa pesos, piso e não inclui transferidos nem muda o pó
   await postCenter({ action: 'confirm', text: 'confirmar', conference: first.body.conference }, { store: persist });
   const overall = await postCenter({ text: 'Calcule o desempenho geral de novembro de 2026 com os pesos atuais. Não alterar o pódio.', mode: 'overall' }, { store: persist });
   assert.equal(overall.body.kind, 'conference');
-  assert.ok(overall.body.conference.overall.scores.length >= 2);
+  assert.equal(overall.body.conference.overall.scores.length, 2);
+  assert.equal(new Set(overall.body.conference.overall.scores.map((item) => item.userId)).size, 2);
   assert.equal(overall.body.conference.overall.excludes.includes('transferidos'), true);
   assert.equal(overall.body.conference.overall.weights.resolvidos, 40);
   const saved = await postCenter({ action: 'confirm', text: 'confirmar', conference: overall.body.conference }, { store: persist });

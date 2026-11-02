@@ -406,13 +406,23 @@ function partScore(value, target, higher) {
   return Math.min(100, higher ? (value / target) * 100 : (target / value) * 100);
 }
 
+function monthOf(key) {
+  const hit = /(?:month:)?(\d{4}-\d{2})/.exec(String(key ?? ''));
+  return hit ? hit[1] : '';
+}
+
 function overallFor(records, rules, weights, period) {
   const pack = weights ?? { resolvidos: 40, primeira: 25, resolucao: 35, floor: 70 };
+  const wanted = monthOf(period.periodKey || period.key);
   const by = Object.fromEntries((rules ?? []).map((rule) => [rule.indicator, rule]));
   const tickets = by.resolvidos || by.resolvidosCount;
   const scores = [];
+  const seen = new Set();
   for (const record of records ?? []) {
     if (!record.userId) continue;
+    if (wanted && monthOf(record.periodKey) && monthOf(record.periodKey) !== wanted) continue;
+    if (seen.has(record.userId)) continue;
+    seen.add(record.userId);
     const resolvidosValue = by.resolvidos ? record.values?.resolvidos : record.values?.resolvidosCount;
     const resolvidos = partScore(resolvidosValue, tickets?.value, true);
     const primeira = partScore(record.values?.primeira, by.primeira?.value, false);
@@ -537,7 +547,11 @@ export async function interpretGoalsCenter(text, options = {}) {
   let overall = null;
   if (wantsOverall(source, mode) || parsed?.intent === 'overall') {
     const records = options.ledger?.records ?? merged.rows;
-    const rules = merged.rules.length ? merged.rules : (options.managementGoals ?? []).flatMap((item) => item.rules ?? []);
+    const wanted = monthOf(period.periodKey);
+    const fromBank = (options.managementGoals ?? [])
+      .filter((item) => !wanted || monthOf(item.periodKey) === wanted)
+      .flatMap((item) => item.rules ?? []);
+    const rules = merged.rules.length ? merged.rules : fromBank;
     overall = overallFor(records, rules, options.weights, period);
   }
   const conference = toConference({ source, period, rules: merged.rules, rows: merged.rows, mode, overall });
