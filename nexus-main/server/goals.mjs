@@ -22,6 +22,7 @@ export function emptyStore() {
     ledger: { records: [], ranking: [], applied: [] },
     managementGoals: [],
     centerFingerprints: [],
+    overallReviews: [],
   };
 }
 
@@ -1405,7 +1406,10 @@ export function reportBankSnapshot(store) {
           return { field, name, value, met: null };
         }).filter(Boolean),
       }));
-      return { key: bucket, label, goals, people, pending };
+      const overall = (Array.isArray(store?.overallReviews) ? store.overallReviews : [])
+        .filter((item) => monthBucketOf(item.periodKey) === bucket)
+        .at(-1) ?? null;
+      return { key: bucket, label, goals, people, pending, overall };
     }),
   };
 }

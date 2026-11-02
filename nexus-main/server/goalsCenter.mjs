@@ -225,32 +225,54 @@ function selectedOverall(source, options = {}) {
   return fromStore.length ? fromStore : ['resolvidosCount', 'primeira', 'resolucao'];
 }
 
-function packOverallWeights(selected, source, options = {}) {
-  const parsed = parseOverallWeights(source);
-  const store = options.weights ?? {};
-  const incoming = options.evaluationWeights && typeof options.evaluationWeights === 'object' ? options.evaluationWeights : {};
-  const items = [];
-  for (const id of selected) {
+function equalWeights(selected) {
+  const pack = {};
+  const n = selected.length;
+  if (!n) return pack;
+  let remain = 100;
+  selected.forEach((id, index) => {
     const field = overallField(id);
-    if (!field) continue;
-    const value = finite(incoming[field.weightKey]) ?? finite(parsed[field.weightKey]) ?? finite(store[field.weightKey]);
-    items.push({ id, key: field.weightKey, name: displayName(id), weight: value, unit: field.ask });
+    if (!field) return;
+    const weight = index === n - 1 ? Math.round(remain * 100) / 100 : Math.round((100 / n) * 100) / 100;
+    pack[field.weightKey] = weight;
+    remain = Math.round((remain - weight) * 100) / 100;
+  });
+  return pack;
+}
+
+function packOverallWeights(selected) {
+  if (!selected.length) return { error: ['pelo menos um indicador para o desempenho geral'] };
+  return { pack: equalWeights(selected) };
+}
+
+function hasNovelIndicator(source) {
+  const named = namedIndicator(source);
+  if (named) {
+    const indicator = normalizeIndicator('', named);
+    return Boolean(indicator) && !KNOWN.includes(indicator);
   }
-  const missing = items.filter((item) => item.weight == null || item.weight <= 0);
-  if (!items.length) return { error: ['pelo menos um indicador para o desempenho geral'] };
-  if (missing.length) {
-    return { error: missing.map((item) => `o peso de ${item.name} (${item.unit.replace(/^a |^o |^os /, '')})`) };
-  }
-  const sum = items.reduce((total, item) => total + item.weight, 0);
-  if (sum <= 0) return { error: ['pesos maiores que zero para os indicadores selecionados'] };
-  const pack = { floor: finite(incoming.floor) ?? finite(store.floor) ?? 70 };
-  for (const item of items) {
-    pack[item.key] = Math.round((item.weight / sum) * 1000) / 10;
-  }
-  const used = items.map((item) => item.key);
-  const drift = Math.round((used.reduce((total, key) => total + pack[key], 0) - 100) * 10) / 10;
-  if (drift && used.length) pack[used[0]] = Math.round((pack[used[0]] - drift) * 10) / 10;
-  return { pack, items };
+  return /indicador novo|indice de qualidade/.test(fold(source));
+}
+
+export function resolveCenterMode(source, mode) {
+  if (mode === 'overall' || wantsOverall(source, mode)) return 'overall';
+  if (hasNovelIndicator(source)) return 'custom';
+  const cited = citedKnown(source);
+  const known = CORE.some((field) => cited[field]);
+  if (mode === 'custom' && known) return 'preset';
+  if (mode === 'preset' || known) return 'preset';
+  return mode === 'custom' ? 'custom' : 'preset';
+}
+
+function selectedPreset(source, options = {}) {
+  const allowed = new Set(CORE);
+  const fromUi = (Array.isArray(options.indicators) ? options.indicators : [])
+    .map((item) => (item === 'resolvidos' ? 'resolvidosCount' : item))
+    .filter((item) => allowed.has(item));
+  if (fromUi.length) return fromUi;
+  const cited = citedKnown(source);
+  const mentioned = CORE.filter((field) => cited[field]);
+  return mentioned.length ? mentioned : CORE;
 }
 
 function rulesFromBank(managementGoals, periodKey) {
@@ -560,48 +582,70 @@ function monthOf(key) {
   return hit ? hit[1] : '';
 }
 
+function eligibilityReason(field, rule) {
+  const name = displayName(field.id);
+  const unit = field.unit.replace(/^\s/, '');
+  if (!rule) return `Sem condição de entrada para ${name}`;
+  if (field.higher || rule.op === 'gte' || rule.op === 'gt') return `Abaixo da condição de entrada (${rule.op === 'gt' ? '>' : 'mínimo'} ${rule.value}${unit})`;
+  return `Acima da condição de entrada (${rule.op === 'lt' ? '<' : 'máximo'} ${rule.value}${unit})`;
+}
+
 function overallFor(records, rules, pack, period, selected) {
   const wanted = monthOf(period.periodKey || period.key);
   const chosen = (selected ?? []).map((id) => overallField(id)).filter(Boolean);
-  const scores = [];
+  const people = [];
   const seen = new Set();
   for (const record of records ?? []) {
     if (!record.userId) continue;
     if (wanted && monthOf(record.periodKey) && monthOf(record.periodKey) !== wanted) continue;
     if (seen.has(record.userId)) continue;
     seen.add(record.userId);
+    people.push(record);
+  }
+  const bestOf = {};
+  for (const field of chosen) {
+    const rule = ruleForIndicator(rules, field.id);
+    const eligible = people
+      .map((row) => ({ row, value: resultValue(row, field.id) }))
+      .filter((item) => item.value != null && passes(item.value, rule) === true)
+      .map((item) => item.value);
+    bestOf[field.id] = eligible.length ? (field.higher ? Math.max(...eligible) : Math.min(...eligible)) : null;
+  }
+  const scores = people.map((record) => {
     const parts = {};
-    let weighted = 0;
-    let worst = 100;
-    let ready = true;
+    let total = 0;
     for (const field of chosen) {
       const rule = ruleForIndicator(rules, field.id);
       const value = resultValue(record, field.id);
-      const score = partScore(value, rule?.value, field.higher);
-      if (score === null) {
-        ready = false;
-        break;
-      }
       const weight = pack[field.weightKey] ?? 0;
-      const contribution = Math.round((score * weight) / 10) / 10;
-      parts[field.id] = { score: Math.round(score * 10) / 10, weight, contribution, name: displayName(field.id) };
-      weighted += (score * weight) / 100;
-      worst = Math.min(worst, score);
+      const best = bestOf[field.id];
+      const eligible = value != null && passes(value, rule) === true;
+      let contribution = 0;
+      let reason = '';
+      if (!eligible) {
+        reason = value == null ? `Sem resultado de ${displayName(field.id)}` : eligibilityReason(field, rule);
+      } else if (best && best !== 0) {
+        const ratio = field.higher ? value / best : best / value;
+        contribution = Math.min(weight, Math.round(ratio * weight * 100) / 100);
+      }
+      total += contribution;
+      parts[field.id] = {
+        name: displayName(field.id),
+        value,
+        best,
+        eligible,
+        reason,
+        weight,
+        contribution: Math.round(contribution * 100) / 100,
+      };
     }
-    if (!ready || !chosen.length) continue;
-    const floor = pack.floor ?? 70;
-    const capped = worst < floor;
-    const score = Math.round((capped ? Math.min(weighted, worst) : weighted) * 10) / 10;
-    scores.push({
+    return {
       userId: record.userId,
       name: record.name,
-      score,
-      weighted: Math.round(weighted * 10) / 10,
-      worst: Math.round(worst * 10) / 10,
-      capped,
+      score: Math.round(total * 100) / 100,
       parts,
-    });
-  }
+    };
+  });
   scores.sort((left, right) => right.score - left.score || fold(left.name).localeCompare(fold(right.name), 'pt'));
   const excluded = OVERALL_FIELDS.map((item) => item.id).filter((id) => !chosen.some((item) => item.id === id));
   return {
@@ -664,8 +708,8 @@ function centerPrompt(text, history, options) {
     'Interprete um recado da Central Inteligente de Metas, em português.',
     `Modo da interface: ${mode}. Isso é contexto. Se o pedido for claramente outro assunto, siga o pedido.`,
     'Critérios predefinidos usam tickets, satisfação, primeira resposta e TMA.',
-    'Critérios personalizados aceitam indicador conhecido ou inédito, uma ou várias condições, e não exigem os quatro indicadores se o texto não os citar.',
-    'Desempenho geral usa pesos de resolvidos, primeira resposta e TMA, aplica o piso e não inclui tickets transferidos.',
+    'Critérios personalizados servem só para criar indicador inédito. Indicadores já conhecidos são critérios predefinidos.',
+    'Desempenho geral compara colaboradores: quem não entra na condição recebe zero na parcela; o melhor elegível leva o peso inteiro; os demais são proporcionais. Pesos iguais entre os selecionados.',
     'Não invente número, indicador, comparador, período ou pessoa.',
     'changePodium só é true se a pessoa pediu explicitamente para mudar o pódio. Meta, resultado e conferência não mudam o pódio.',
     'Indicadores conhecidos: resolvidosCount, resolvidos (%), transferidos, primeira, resolucao, satisfacao.',
@@ -684,13 +728,7 @@ function combinedSource(text, history) {
   return [...prior, text].filter(Boolean).join('\n');
 }
 
-function interpretOverall(source, options) {
-  const people = options.people ?? [];
-  const local = localExtract(source, people);
-  const period = readGoalPeriod(source).ok ? readGoalPeriod(source) : local.period;
-  const selected = selectedOverall(source, options);
-  const packed = packOverallWeights(selected, source, options);
-  const bank = rulesFromBank(options.managementGoals, period.periodKey);
+function rulesForSelected(source, local, bank, selected) {
   const localRules = (local.rules ?? []).filter((rule) => {
     if (!(selected.includes(rule.indicator) || (rule.indicator === 'resolvidos' && selected.includes('resolvidosCount')))) return false;
     return !new RegExp(`peso(?:\\s+de)?\\s+${rule.value}(?:\\s*%)?`).test(fold(source));
@@ -698,16 +736,57 @@ function interpretOverall(source, options) {
   const rules = [];
   for (const id of selected) {
     const current = ruleForIndicator(localRules, id) || ruleForIndicator(bank, id);
-    if (current) rules.push({ ...current, name: displayName(id, current.name), unit: unitOf(id, current.unit) });
+    if (current) rules.push({ ...current, indicator: current.indicator === 'resolvidos' && id === 'resolvidosCount' ? 'resolvidosCount' : current.indicator, name: displayName(id, current.name), unit: unitOf(id, current.unit) });
   }
+  return rules;
+}
+
+function recordsForPeriod(local, options, period) {
   const rows = (local.rows ?? []).filter((row) => row.userId);
   const monthRows = (options.ledger?.records ?? []).filter((row) => row.userId && (!period.periodKey || monthOf(row.periodKey) === monthOf(period.periodKey)));
-  const records = rows.length ? rows : monthRows;
+  return rows.length ? rows : monthRows;
+}
+
+function interpretKnown(source, options, mode) {
+  const people = options.people ?? [];
+  const local = localExtract(source, people);
+  const period = readGoalPeriod(source).ok ? readGoalPeriod(source) : local.period;
+  const selected = selectedPreset(source, options);
+  const bank = rulesFromBank(options.managementGoals, period.periodKey);
+  const rules = rulesForSelected(source, local, bank, selected);
+  const records = recordsForPeriod(local, options, period);
+  const missing = [];
+  if (!period.periodLabel) missing.push('o período com mês e ano');
+  for (const id of selected) {
+    if (!ruleForIndicator(rules, id)) missing.push(`a meta cadastrada de ${displayName(id)} (${overallField(id).unit.trim() || 'valor'})`);
+  }
+  if (wantsPeople(source) && !records.length) missing.push('os resultados individuais dos colaboradores citados');
+  for (const person of records) {
+    if (!person.userId) missing.push(`o cadastro da Equipe de ${person.name || person.sourceName}`);
+    for (const id of selected) {
+      if (resultValue(person, id) == null) missing.push(`o resultado de ${displayName(id)} de ${person.name || person.sourceName}`);
+    }
+  }
+  if (missing.length) return clarify(missing);
+  const conference = toConference({ source, period, rules, rows: records, mode: 'preset', overall: null });
+  if (!conference.goals.length && !conference.people.length) return clarify(['as metas e os resultados dos indicadores predefinidos']);
+  return conferenceResponse(conference);
+}
+
+function interpretOverall(source, options) {
+  const people = options.people ?? [];
+  const local = localExtract(source, people);
+  const period = readGoalPeriod(source).ok ? readGoalPeriod(source) : local.period;
+  const selected = selectedOverall(source, options);
+  const packed = packOverallWeights(selected);
+  const bank = rulesFromBank(options.managementGoals, period.periodKey);
+  const rules = rulesForSelected(source, local, bank, selected);
+  const records = recordsForPeriod(local, options, period);
   const missing = [];
   if (!period.periodLabel) missing.push('o período com mês e ano');
   if (packed.error) missing.push(...packed.error);
   for (const id of selected) {
-    if (!ruleForIndicator(rules, id)) missing.push(overallField(id).ask);
+    if (!ruleForIndicator(rules, id)) missing.push(`a condição de entrada de ${displayName(id)} (${overallField(id).ask.replace(/^a |^o |^os /, '')})`);
   }
   if (wantsPeople(source) && !records.length) missing.push('os resultados individuais dos colaboradores citados');
   for (const person of records) {
@@ -727,7 +806,8 @@ export async function interpretGoalsCenter(text, options = {}) {
   const source = String(text ?? '').trim();
   if (!source) return { kind: 'clarify', questions: ['Escreva as metas e os resultados.'], reply: 'Escreva as metas e os resultados.', conference: null };
   const people = options.people ?? [];
-  const mode = options.mode === 'preset' || options.mode === 'overall' ? options.mode : 'custom';
+  const requested = options.mode === 'preset' || options.mode === 'overall' || options.mode === 'custom' ? options.mode : 'custom';
+  const mode = resolveCenterMode(source, requested);
   const podium = readPodiumRequest(source);
   if (podium.kind === 'ask') return clarify([podium.missing]);
   if (podium.kind === 'apply') {
@@ -739,9 +819,9 @@ export async function interpretGoalsCenter(text, options = {}) {
       reply: 'Atualizei só o critério do pódio. As metas e o Banco dos relatórios não foram alterados.',
     };
   }
-  if (mode === 'overall' || wantsOverall(source, mode)) {
-    return interpretOverall(combinedSource(source, options.history), { ...options, mode: 'overall' });
-  }
+  const joined = combinedSource(source, options.history);
+  if (mode === 'overall') return interpretOverall(joined, { ...options, mode: 'overall' });
+  if (mode === 'preset') return interpretKnown(joined, { ...options, mode: 'preset' }, 'preset');
   const local = localExtract(source, people);
   let parsed = null;
   let modelError = '';
@@ -782,11 +862,28 @@ export function saveGoalsCenter(store, conference, people, now = new Date()) {
   const mark = fingerprint(conference);
   if (seen.includes(mark)) return { store, duplicate: true };
   const saved = applyGoalsReview(store, conferenceToReview(conference), people, now);
+  const reviews = [...(store.overallReviews ?? [])];
+  if (conference.mode === 'overall' && conference.overall) {
+    const entry = {
+      id: conference.id,
+      periodKey: conference.period?.key || '',
+      periodLabel: conference.period?.label || '',
+      selected: conference.overall.selected ?? [],
+      excluded: conference.overall.excluded ?? [],
+      weights: conference.overall.weights ?? {},
+      scores: conference.overall.scores ?? [],
+      savedAt: now.toISOString(),
+    };
+    const next = reviews.filter((item) => !(item.periodKey === entry.periodKey && JSON.stringify(item.selected) === JSON.stringify(entry.selected)));
+    next.push(entry);
+    reviews.splice(0, reviews.length, ...next.slice(-50));
+  }
   return {
     store: {
       ...saved.store,
       criterion: store.criterion,
       centerFingerprints: [...seen, mark].slice(-50),
+      overallReviews: reviews,
     },
   };
 }
