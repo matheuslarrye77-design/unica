@@ -582,7 +582,7 @@ export const GoalsCenter: FC = () => {
       title: 'Critérios Predefinidos',
       text: 'Compara os números reais com as metas já cadastradas. Dá para usar 1, 2, 3 ou 4 indicadores conhecidos, sem nota percentual.',
       icon: BarChart3,
-      points: ['Tickets resolvidos: maior percentual', 'Tickets transferidos: só se a gestão definir meta', 'Primeira resposta: menor tempo', 'Tempo médio de resolução: menor tempo'],
+      points: ['Tickets resolvidos', 'Tickets transferidos', 'Tempo de primeira resposta', 'Tempo médio de resolução'],
     },
     {
       id: 'custom' as const,
