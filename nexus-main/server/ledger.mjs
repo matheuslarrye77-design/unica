@@ -16,7 +16,7 @@ function blankValues() {
 }
 
 function usefulRows(parsed) {
-  return parsed.rows.filter((row) => FIELDS.some((field) => row.values[field] !== null && row.values[field] !== undefined));
+  return parsed.rows.filter((row) => Object.values(row.values ?? {}).some((value) => value !== null && value !== undefined));
 }
 
 function identityOf(row) {
@@ -29,15 +29,16 @@ function periodLabel(key) {
 
 function mergeValues(before, incoming) {
   const next = { ...blankValues(), ...(before ?? {}) };
-  for (const field of FIELDS) {
-    if (incoming[field] !== null && incoming[field] !== undefined) next[field] = incoming[field];
+  for (const [field, value] of Object.entries(incoming ?? {})) {
+    if (value !== null && value !== undefined) next[field] = value;
   }
   return next;
 }
 
 function diffValues(before, after) {
   const changes = {};
-  for (const field of FIELDS) {
+  const fields = [...new Set([...FIELDS, ...Object.keys(before ?? {}), ...Object.keys(after ?? {})])];
+  for (const field of fields) {
     const left = before?.[field] ?? null;
     const right = after?.[field] ?? null;
     if (left === right) changes[field] = right === null ? 'empty' : 'same';
@@ -175,7 +176,7 @@ export function ingestReport(store, text, people, options = {}) {
     return { kind: 'clarify', reply: 'O texto cita mais de um período. Não substituí nenhum dado. Diga se os números são da semana ou do mês.', store };
   }
   const inherited = [...(store.templates ?? [])].reverse().find((item) => item.periodKey)?.periodKey || '';
-  const periodKey = periods[0] ?? inherited;
+  const periodKey = periods[0] ?? inherited ?? parsed.periodKey ?? '';
   const existing = store.ledger?.records ?? [];
   if (!periodKey) {
     const unclear = rows.filter((row) => existing.some((record) => record.identity === identityOf(row) && record.periodKey));
@@ -201,7 +202,7 @@ export function ingestReport(store, text, people, options = {}) {
     const previous = index >= 0 ? records[index] : null;
     const values = mergeValues(previous?.values, row.values);
     const changes = diffValues(previous?.values, values);
-    const changed = FIELDS.some((field) => changes[field] === 'new' || changes[field] === 'updated');
+    const changed = Object.values(changes).some((mark) => mark === 'new' || mark === 'updated');
     const record = {
       id,
       identity,
@@ -273,8 +274,21 @@ export function applyGoalsReview(store, review, people, now = new Date()) {
       rules: review.rules,
       updatedAt: now.toISOString(),
     };
-    const others = next.managementGoals.filter((item) => item.periodKey !== entry.periodKey);
-    next = { ...next, managementGoals: [...others, entry] };
+    const current = next.managementGoals.find((item) => item.periodKey === entry.periodKey);
+    if (current) {
+      const rules = [...(current.rules ?? [])];
+      for (const rule of entry.rules) {
+        const index = rules.findIndex((item) => item.indicator === rule.indicator);
+        if (index >= 0) rules[index] = { ...rules[index], ...rule };
+        else rules.push(rule);
+      }
+      next = {
+        ...next,
+        managementGoals: next.managementGoals.map((item) => item.periodKey === entry.periodKey ? { ...item, ...entry, id: current.id, rules } : item),
+      };
+    } else {
+      next = { ...next, managementGoals: [...next.managementGoals, entry] };
+    }
   }
   if (Array.isArray(review?.rows) && review.rows.length) {
     const ingested = ingestReport(next, review.sourceText || '', people, {

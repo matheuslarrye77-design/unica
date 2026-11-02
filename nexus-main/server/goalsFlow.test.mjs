@@ -126,7 +126,9 @@ test('a interface do banco mostra mês/ano, gestão e resultados separados', () 
   assert.match(ui, /messages\.slice\(-6\)/);
   assert.match(ui, /interpretar metas gerais da gestão/);
   assert.match(ui, /saving\.current/);
+  assert.match(ui, /regra personalizada/);
   assert.equal(ui.includes('Olá! Envie os relatórios da equipe'), false);
+  assert.equal(ui.includes('Escreva com suas palavras como o pódio deve funcionar'), false);
   assert.equal(ui.includes('O pódio passa a usar esta regra'), false);
 });
 
@@ -467,5 +469,58 @@ test('a rota exclusiva não monta conferência incompleta e só grava depois de 
   assert.equal(parallel[0].body.ledger.records.length, records);
   assert.equal(parallel[1].body.ledger.records.length, records);
 });
+
+const QUALITY_MESSAGE = 'Quero uma meta personalizada chamada Índice de qualidade no atendimento: pelo menos 90% em janeiro de 2027. O Rafael Oliveira ficou com 88% e o Felipe Costa ficou com 94%. Conferir antes de salvar. Não alterar o pódio.';
+const COMBINED_MESSAGE = 'Critério personalizado para janeiro de 2027: primeira resposta no máximo 5 minutos e tempo médio de resolução no máximo 8 minutos. O Rafael Oliveira ficou com 4 minutos de primeira resposta e 9 minutos de TMA. O Felipe Costa ficou com 3 minutos de primeira resposta e 7 minutos de TMA. Conferir antes de salvar. Não alterar o pódio.';
+
+test('critério personalizado aceita indicador novo sem exigir as quatro metas core', async () => {
+  const persist = memoryGoalsStore();
+  const first = await postCenter({ text: NATURAL_MESSAGE, mode: 'preset' }, { store: persist });
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: first.body.conference }, { store: persist });
+  const quality = await postCenter({ text: QUALITY_MESSAGE, mode: 'custom' }, { store: persist });
+  assert.equal(quality.body.kind, 'conference');
+  assert.equal(quality.body.conference.goals.length, 1);
+  assert.equal(quality.body.conference.goals[0].indicator, 'c:indice-de-qualidade-no-atendimento');
+  assert.equal(quality.body.conference.goals[0].value, 90);
+  assert.equal(quality.body.conference.period.label, 'Janeiro/2027');
+  assert.equal(quality.body.conference.people.length, 2);
+  const rafa = quality.body.conference.people.find((row) => row.userId === 'tm-8');
+  const feli = quality.body.conference.people.find((row) => row.userId === 'tm-4');
+  assert.equal(rafa.results[0].value, 88);
+  assert.equal(rafa.results[0].status, 'Abaixo da meta');
+  assert.equal(feli.results[0].value, 94);
+  assert.equal(feli.results[0].status, 'Atingiu');
+  const saved = await postCenter({ action: 'confirm', text: 'confirmar', conference: quality.body.conference }, { store: persist });
+  assert.equal(saved.body.criterion.mode, 'preset');
+  assert.equal((saved.body.ledger.applied ?? []).length, 0);
+  const november = saved.body.bank.periods.find((item) => item.key === '2026-11');
+  const january = saved.body.bank.periods.find((item) => item.key === '2027-01');
+  assert.equal(november.goals.length, 4);
+  assert.equal(january.goals.length, 1);
+  assert.equal(january.people.find((row) => row.userId === 'tm-8').indicators.find((item) => item.field === 'c:indice-de-qualidade-no-atendimento').value, 88);
+});
+
+test('critério personalizado combina dois indicadores conhecidos', async () => {
+  const result = await postCenter({ text: COMBINED_MESSAGE, mode: 'custom' });
+  assert.equal(result.body.kind, 'conference');
+  assert.equal(result.body.conference.goals.length, 2);
+  assert.deepEqual(result.body.conference.goals.map((item) => item.indicator).sort(), ['primeira', 'resolucao']);
+  assert.equal(result.body.conference.people[0].results.length, 2);
+});
+
+test('desempenho geral usa pesos, piso e não inclui transferidos nem muda o pódio', async () => {
+  const persist = memoryGoalsStore();
+  const first = await postCenter({ text: NATURAL_MESSAGE, mode: 'preset' }, { store: persist });
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: first.body.conference }, { store: persist });
+  const overall = await postCenter({ text: 'Calcule o desempenho geral de novembro de 2026 com os pesos atuais. Não alterar o pódio.', mode: 'overall' }, { store: persist });
+  assert.equal(overall.body.kind, 'conference');
+  assert.ok(overall.body.conference.overall.scores.length >= 2);
+  assert.equal(overall.body.conference.overall.excludes.includes('transferidos'), true);
+  assert.equal(overall.body.conference.overall.weights.resolvidos, 40);
+  const saved = await postCenter({ action: 'confirm', text: 'confirmar', conference: overall.body.conference }, { store: persist });
+  assert.equal(saved.body.criterion.mode, 'preset');
+  assert.equal((saved.body.ledger.applied ?? []).length, 0);
+});
+
 
 

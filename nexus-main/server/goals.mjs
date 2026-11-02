@@ -1373,11 +1373,12 @@ export function reportBankSnapshot(store) {
         .filter((item) => monthBucketOf(item.periodKey) === bucket)
         .flatMap((item) => (item.rules ?? []).map((rule) => ({
           indicator: rule.indicator,
-          name: BANK_FIELDS.find(([field]) => field === rule.indicator)?.[1] ?? rule.indicator,
+          name: BANK_FIELDS.find(([field]) => field === rule.indicator)?.[1] ?? rule.name ?? rule.indicator,
           value: rule.value,
           op: rule.op,
           periodLabel: item.periodLabel || label,
         })));
+      const fields = [...BANK_FIELDS, ...goals.filter((goal) => !BANK_FIELDS.some(([field]) => field === goal.indicator)).map((goal) => [goal.indicator, goal.name])];
       const people = records.filter((record) => record.userId && monthBucketOf(record.periodKey) === bucket).map((record) => ({
         userId: record.userId,
         name: record.name || record.sourceName,
@@ -1385,7 +1386,7 @@ export function reportBankSnapshot(store) {
         periodLabel: record.periodLabel || label,
         pending: false,
         history: record.history ?? [],
-        indicators: BANK_FIELDS.map(([field, name]) => {
+        indicators: fields.map(([field, name]) => {
           const value = record.values?.[field];
           if (value === null || value === undefined) return null;
           const rule = goals.find((item) => item.indicator === field);

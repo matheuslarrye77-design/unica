@@ -222,6 +222,11 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
       const interpreted = await interpretGoalsCenter(String(body.text ?? ''), {
         people,
         history: Array.isArray(body.history) ? body.history : [],
+        mode: String(body.mode ?? store.criterion?.mode ?? 'custom'),
+        weights: store.weights,
+        criterion: store.criterion,
+        managementGoals: store.managementGoals,
+        ledger: store.ledger,
         env: options.env ?? process.env,
         generate: options.generate,
       });

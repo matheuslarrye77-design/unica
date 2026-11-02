@@ -75,9 +75,11 @@ type ConferenceGoal = { indicator: string; name: string; op: string; value: numb
 type GoalsConference = {
   id: string;
   sourceText: string;
+  mode?: string;
   period: { kind: string; key: string; label: string };
   goals: ConferenceGoal[];
   people: ConferencePerson[];
+  overall?: { weights?: { resolvidos: number; primeira: number; resolucao: number; floor: number }; excludes?: string[]; scores?: { userId: string; name: string; score: number; place: number; capped?: boolean; worst?: number }[] } | null;
   fingerprint?: string;
 };
 type Criterion = { mode: 'preset' | 'custom' | 'overall'; indicator?: string; templateId?: string };
@@ -148,7 +150,7 @@ function ruleConference(rule: Rule, periodLabel?: string) {
 }
 
 type ChatMessage = { id: string; from: 'bot' | 'user'; text: string };
-type Phase = 'idle' | 'preset' | 'custom';
+type Phase = 'idle' | 'preset' | 'custom' | 'overall';
 
 function headers() {
   return { ...authHeaders(), ...(LOGIN_REQUIRED ? {} : { 'x-unica-demo': getDemoId() }) };
@@ -204,6 +206,7 @@ type Board = {
   choose: (next: Criterion, silent?: boolean) => Promise<void>;
   startPreset: () => void;
   startCustom: () => void;
+  startOverall: () => void;
   pickPreset: (indicator: string) => void;
   talk: (text: string) => Promise<void>;
   approveWith: (reportText: string) => Promise<void>;
@@ -272,7 +275,12 @@ export const GoalsProvider: FC<{
 
   function startCustom() {
     setPhase('custom');
-    say('bot', 'Escreva com suas palavras como o pódio deve funcionar. Eu interpreto o pedido e só aplico depois que você confirmar.');
+    say('bot', 'Escreva a regra personalizada: indicadores conhecidos ou novos, condições (pelo menos, no máximo, entre) e, se quiser, os resultados. Só gravo depois da conferência. O pódio não muda, a menos que você peça isso explicitamente.');
+  }
+
+  function startOverall() {
+    setPhase('overall');
+    say('bot', 'Vou calcular o desempenho geral com os pesos configurados (resolvidos, primeira resposta e TMA), aplicar o piso e deixar tickets transferidos de fora. Envie os resultados ou peça para usar o que já está no banco. O pódio só muda se você confirmar isso.');
   }
 
   function cancelProposal() {
@@ -307,7 +315,11 @@ export const GoalsProvider: FC<{
     setBusy(true);
     try {
       const history = messages.slice(-6).map((message) => ({ text: message.text }));
-      const data = await send('/api/goals/center', 'POST', { text: source, history });
+      const data = await send('/api/goals/center', 'POST', {
+        text: source,
+        history,
+        mode: phase === 'idle' ? (selected.mode || 'custom') : phase,
+      });
       if (data.kind === 'unavailable' || data.kind === 'quota' || data.kind === 'auth' || data.kind === 'permission' || data.kind === 'model' || data.kind === 'invalid' || data.kind === 'clarify' || data.kind === 'storage') setDraft(source);
       else setDraft('');
       if (data.kind === 'conference' && data.conference) {
@@ -445,6 +457,7 @@ export const GoalsProvider: FC<{
     choose,
     startPreset,
     startCustom,
+    startOverall,
     pickPreset,
     talk,
     approveWith,
@@ -460,7 +473,7 @@ export const GoalsProvider: FC<{
 
 export const GoalsCenter: FC = () => {
   const board = useBoard();
-  const { goals, selected, phase, preview, periodKey, replace, setPeriodKey, setReplace, busy, choose, startPreset, startCustom, patchRow, approveWith } = board;
+  const { goals, selected, phase, preview, periodKey, replace, setPeriodKey, setReplace, busy, startPreset, startCustom, startOverall, patchRow, approveWith } = board;
 
   const cards = [
     {
@@ -473,7 +486,7 @@ export const GoalsCenter: FC = () => {
     {
       id: 'custom' as const,
       title: 'Critérios Personalizados',
-      text: 'Crie um pódio com a regra que você escrever no chat, com números e condições.',
+      text: 'Crie uma regra nova no chat, com indicadores conhecidos ou inéditos, números e condições.',
       icon: Settings2,
       points: ['Maior, menor, igual ou entre valores', 'Dá para combinar mais de um indicador', 'Salva a regra para usar de novo'],
     },
@@ -495,7 +508,7 @@ export const GoalsCenter: FC = () => {
       startCustom();
       return;
     }
-    void choose({ mode: 'overall' });
+    startOverall();
   }
 
   return (
@@ -518,7 +531,7 @@ export const GoalsCenter: FC = () => {
         <div className="mt-3 grid items-stretch gap-3 md:grid-cols-3">
           {cards.map((card) => {
             const committed = phase === 'idle' && selected.mode === card.id;
-            const pending = (card.id === 'preset' && phase === 'preset') || (card.id === 'custom' && phase === 'custom');
+            const pending = (card.id === 'preset' && phase === 'preset') || (card.id === 'custom' && phase === 'custom') || (card.id === 'overall' && phase === 'overall');
             const Icon = card.icon;
             return (
               <article key={card.id} className={cn('relative flex h-full flex-col rounded-[22px] border bg-white p-4 shadow-[0_8px_22px_rgba(80,40,120,0.05)]', committed || pending ? 'border-[#8E35B8]' : 'border-[#EDE4F5]')}>
@@ -952,11 +965,11 @@ export const GoalsAssistant: FC = () => {
             ))}
           </div>
         ) : null}
-        {phase === 'custom' && !pendingRules ? (
+        {phase === 'custom' && !pendingRules && !conference ? (
           <div className="grid gap-1.5">
             {[
-              'Reconhecer quem resolveu pelo menos 250 tickets no mês, com tempo médio abaixo de 18 minutos.',
-              'Pódio para quem ficou abaixo de 5 minutos na primeira resposta.',
+              'Meta personalizada: primeira resposta no máximo 5 minutos e TMA no máximo 8 minutos em janeiro de 2027.',
+              'Índice de qualidade no atendimento pelo menos 90% em janeiro de 2027.',
             ].map((example) => (
               <button key={example} type="button" onClick={() => void talk(example)} className="rounded-xl border border-[#E7DFF0] px-3 py-2 text-left text-[12.5px] text-[#6A228C] hover:bg-[#FBF8FC]">
                 {example}
@@ -975,6 +988,17 @@ export const GoalsAssistant: FC = () => {
                 <ul className="grid gap-1 text-[12.5px] leading-5 break-words text-[#5C5168]">
                   {conference.goals.map((goal, index) => (
                     <li key={`${goal.indicator}-${index}`}>{ruleConference(goal, conference.period.label)}</li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {conference.overall?.scores?.length ? (
+              <>
+                <p className="text-[12px] font-medium text-[#4A1C73]">Desempenho geral</p>
+                <p className="text-[11px] text-[#8A7C98]">Pesos: resolvidos {conference.overall.weights?.resolvidos}%, primeira {conference.overall.weights?.primeira}%, TMA {conference.overall.weights?.resolucao}%. Piso {conference.overall.weights?.floor}. Transferidos fora.</p>
+                <ul className="grid gap-1 text-[12.5px] leading-5 break-words text-[#5C5168]">
+                  {conference.overall.scores.map((item) => (
+                    <li key={item.userId}>{item.place}º {item.name}: {item.score}{item.capped ? ' (piso aplicado)' : ''}</li>
                   ))}
                 </ul>
               </>
