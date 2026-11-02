@@ -690,6 +690,25 @@ const MODE_LABEL = {
   custom: 'Critérios personalizados',
 };
 const MODE_RANK = { overall: 0, preset: 1, custom: 2 };
+const PODIUM_CHANNELS = ['Ligação', 'Chat', 'E-mail'];
+const SKIP_FUNCOES = new Set(['Líder', 'Supervisor']);
+const CHANNEL_RANK = { Ligação: 0, Chat: 1, 'E-mail': 2 };
+
+function personFromRoster(people, userId, name) {
+  const roster = Array.isArray(people) ? people : [];
+  return roster.find((item) => item.id && item.id === userId)
+    || roster.find((item) => fold(item.name) === fold(name));
+}
+
+function podiumChannelOf(person) {
+  const funcao = String(person?.funcao ?? '');
+  if (SKIP_FUNCOES.has(funcao)) return '';
+  return PODIUM_CHANNELS.includes(funcao) ? funcao : '';
+}
+
+function recordsForChannel(records, people, channel) {
+  return (records ?? []).filter((row) => podiumChannelOf(personFromRoster(people, row.userId, row.name)) === channel);
+}
 const OP_LABEL = { gt: 'maior que', gte: 'pelo menos', lt: 'menor que', lte: 'no máximo', eq: 'igual a', between: 'entre' };
 
 function isCustomIndicator(indicator) {
@@ -900,7 +919,7 @@ function customMetrics(record, evaluation) {
   });
 }
 
-function buildModePodium(store, month, monthRecords, evaluation, now) {
+function buildModePodium(store, month, monthRecords, evaluation, now, channel = '') {
   const label = formatPeriodLabel(month);
   const stamp = (now ?? new Date()).toISOString();
   const mode = evaluation.mode === 'overall' || evaluation.mode === 'custom' ? evaluation.mode : 'preset';
@@ -920,6 +939,7 @@ function buildModePodium(store, month, monthRecords, evaluation, now) {
     periodLabel: label,
     mode,
     modeLabel: modeTitle(mode, evaluation, label),
+    channel,
     selected,
     weights: {},
     detailsAvailable: !detailsPartial,
@@ -972,13 +992,15 @@ function buildModePodium(store, month, monthRecords, evaluation, now) {
   return { ...shell, ranking: [] };
 }
 
-export function attachBankPodiums(store, now = new Date()) {
+export function attachBankPodiums(store, now = new Date(), people = []) {
   const records = Array.isArray(store?.ledger?.records) ? store.ledger.records : [];
   const confirmed = records.filter((row) => row.userId);
   const liveKeys = [...new Set(confirmed.map((row) => monthOf(row.periodKey)).filter(Boolean))];
   const live = liveKeys.flatMap((key) => {
     const monthRecords = confirmed.filter((row) => monthOf(row.periodKey) === key);
-    return evaluationsFor(store, key, monthRecords).map((evaluation) => buildModePodium(store, key, monthRecords, evaluation, now));
+    return evaluationsFor(store, key, monthRecords).flatMap((evaluation) => PODIUM_CHANNELS.map((channel) => (
+      buildModePodium(store, key, recordsForChannel(monthRecords, people, channel), evaluation, now, channel)
+    )));
   });
   const liveIndex = new Set(live.map((item) => `${item.periodKey}:${item.mode}`));
   const history = (Array.isArray(store?.podiums) ? store.podiums : []).filter((item) => {
@@ -1006,7 +1028,9 @@ export function attachBankPodiums(store, now = new Date()) {
     podiums: [...live, ...history].sort((left, right) => {
       const byPeriod = String(right.periodKey).localeCompare(String(left.periodKey));
       if (byPeriod) return byPeriod;
-      return (MODE_RANK[left.mode] ?? 9) - (MODE_RANK[right.mode] ?? 9);
+      const byMode = (MODE_RANK[left.mode] ?? 9) - (MODE_RANK[right.mode] ?? 9);
+      if (byMode) return byMode;
+      return (CHANNEL_RANK[left.channel] ?? 9) - (CHANNEL_RANK[right.channel] ?? 9);
     }),
   };
 }
@@ -1254,6 +1278,6 @@ export function saveGoalsCenter(store, conference, people, now = new Date()) {
       centerFingerprints: [...seen, mark].slice(-50),
       overallReviews: reviews,
       evaluations: evaluations.slice(-80),
-    }, now),
+    }, now, people),
   };
 }

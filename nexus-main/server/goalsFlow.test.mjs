@@ -770,6 +770,10 @@ async function getGoals(store) {
   return res;
 }
 
+function podiumAt(body, key, mode, channel = 'E-mail') {
+  return (body.podiums ?? []).find((item) => item.periodKey === key && item.mode === mode && item.channel === channel);
+}
+
 test('pódio é montado pelos resultados já gravados no banco, sem nova avaliação', async () => {
   const persist = memoryGoalsStore();
   const pending = await postCenter({ text: NATURAL_MESSAGE, mode: 'preset' }, { store: persist });
@@ -778,7 +782,7 @@ test('pódio é montado pelos resultados já gravados no banco, sem nova avalia�
   assert.equal((before.body.podiums ?? []).length, 0);
   await postCenter({ action: 'confirm', text: 'confirmar', conference: pending.body.conference }, { store: persist });
   const loaded = await getGoals(persist);
-  const november = loaded.body.podiums.find((item) => item.periodKey === '2026-11');
+  const november = podiumAt(loaded.body, '2026-11', 'preset');
   assert.ok(november);
   assert.equal(november.periodLabel, 'Novembro/2026');
   assert.equal(november.ranking[0].userId, 'tm-4');
@@ -801,8 +805,8 @@ Conferir antes de salvar. Não alterar o pódio.`;
   const march = await postCenter({ text: marchText, mode: 'preset' }, { store: persist });
   await postCenter({ action: 'confirm', text: 'confirmar', conference: march.body.conference }, { store: persist });
   const loaded = await getGoals(persist);
-  const nov = loaded.body.podiums.find((item) => item.periodKey === '2026-11');
-  const mar = loaded.body.podiums.find((item) => item.periodKey === '2027-03');
+  const nov = podiumAt(loaded.body, '2026-11', 'preset');
+  const mar = podiumAt(loaded.body, '2027-03', 'preset');
   assert.equal(nov.ranking[0].userId, 'tm-4');
   assert.equal(mar.ranking[0].userId, 'tm-8');
   assert.equal(nov.ranking[0].score, 100);
@@ -812,7 +816,7 @@ Conferir antes de salvar. Não alterar o pódio.`;
 test('empate no pódio usa o nome e registro pendente não entra', async () => {
   const persist = memoryGoalsStore();
   const text = `Metas de maio de 2027: tickets resolvidos pelo menos 10.
-Camila Souza ficou com 20 tickets. Felipe Costa ficou com 20 tickets.
+Camila Souza ficou com 20 tickets. Lucas Pereira ficou com 20 tickets.
 Conferir antes de salvar. Não alterar o pódio.`;
   const first = await postCenter({ text, mode: 'preset' }, { store: persist });
   await postCenter({ action: 'confirm', text: 'confirmar', conference: first.body.conference }, { store: persist });
@@ -834,8 +838,8 @@ Conferir antes de salvar. Não alterar o pódio.`;
     },
   }));
   const view = await getGoals(persist);
-  const may = view.body.podiums.find((item) => item.periodKey === '2027-05');
-  assert.deepEqual(may.ranking.map((row) => row.userId), ['tm-3', 'tm-4']);
+  const may = podiumAt(view.body, '2027-05', 'preset', 'Chat');
+  assert.deepEqual(may.ranking.map((row) => row.userId), ['tm-3', 'tm-6']);
   assert.equal(may.ranking[0].score, may.ranking[1].score);
   assert.equal(may.ranking.some((row) => row.name === 'Pessoa sem cadastro'), false);
 });
@@ -844,12 +848,12 @@ test('novos resultados gravados atualizam o pódio do mesmo período', async () 
   const persist = memoryGoalsStore();
   const first = await postCenter({ text: NATURAL_MESSAGE, mode: 'preset' }, { store: persist });
   await postCenter({ action: 'confirm', text: 'confirmar', conference: first.body.conference }, { store: persist });
-  const before = (await getGoals(persist)).body.podiums.find((item) => item.periodKey === '2026-11');
+  const before = podiumAt((await getGoals(persist)).body, '2026-11', 'preset');
   assert.equal(before.ranking[0].userId, 'tm-4');
   const update = 'Novembro de 2026. Rafael Oliveira ficou com 400 tickets resolvidos, 10 tickets transferidos, 2 minutos de primeira resposta e 6 minutos de TMA. Conferir antes de salvar. Não alterar o pódio.';
   const next = await postCenter({ text: update, mode: 'preset' }, { store: persist });
   await postCenter({ action: 'confirm', text: 'confirmar', conference: next.body.conference }, { store: persist });
-  const after = (await getGoals(persist)).body.podiums.find((item) => item.periodKey === '2026-11');
+  const after = podiumAt((await getGoals(persist)).body, '2026-11', 'preset');
   assert.equal(after.ranking[0].userId, 'tm-8');
   assert.equal(after.ranking[0].score, 100);
   assert.equal(after.ranking[1].userId, 'tm-4');
@@ -860,7 +864,7 @@ test('pódio predefinido detalha só os indicadores da avaliação, com unidades
   const pending = await postCenter({ text: NATURAL_MESSAGE, mode: 'preset' }, { store: persist });
   await postCenter({ action: 'confirm', text: 'confirmar', conference: pending.body.conference }, { store: persist });
   const loaded = await getGoals(persist);
-  const november = loaded.body.podiums.find((item) => item.periodKey === '2026-11' && item.mode === 'preset');
+  const november = podiumAt(loaded.body, '2026-11', 'preset');
   assert.equal(november.basis.modeLabel, 'Critérios predefinidos');
   assert.match(november.basis.origin, /Supabase|Banco de Dados/i);
   const felipe = november.ranking[0];
@@ -890,7 +894,7 @@ Conferir. Não alterar o pódio.`;
   assert.equal(overall.body.persist, false);
   await postCenter({ action: 'confirm', text: 'confirmar', conference: overall.body.conference }, { store: persist });
   const loaded = await getGoals(persist);
-  const march = loaded.body.podiums.find((item) => item.periodKey === '2027-03' && item.mode === 'overall');
+  const march = podiumAt(loaded.body, '2027-03', 'overall');
   assert.equal(march.ranking[0].userId, 'tm-4');
   assert.equal(march.ranking[0].displayScore, '100%');
   const tickets = march.ranking[0].metrics.find((item) => item.id === 'resolvidosCount');
@@ -908,7 +912,7 @@ test('pódio personalizado mostra a regra, o valor real e se cumpriu', async () 
   const quality = await postCenter({ text: QUALITY_MESSAGE, mode: 'custom' }, { store: persist });
   await postCenter({ action: 'confirm', text: 'confirmar', conference: quality.body.conference }, { store: persist });
   const loaded = await getGoals(persist);
-  const january = loaded.body.podiums.find((item) => item.periodKey === '2027-01' && item.mode === 'custom');
+  const january = podiumAt(loaded.body, '2027-01', 'custom');
   assert.equal(january.modeLabel, 'Critério personalizado - Qualidade no Atendimento - Janeiro/2027');
   assert.equal(january.basis.modeLabel, 'Critério personalizado - Qualidade no Atendimento - Janeiro/2027');
   assert.equal(january.ranking[0].userId, 'tm-4');
@@ -925,7 +929,7 @@ test('pódio predefinido mostra o resultado bruto do indicador prioritário, sem
   const pending = await postCenter({ text: NATURAL_MESSAGE, mode: 'preset' }, { store: persist });
   await postCenter({ action: 'confirm', text: 'confirmar', conference: pending.body.conference }, { store: persist });
   const loaded = await getGoals(persist);
-  const november = loaded.body.podiums.find((item) => item.periodKey === '2026-11' && item.mode === 'preset');
+  const november = podiumAt(loaded.body, '2026-11', 'preset');
   assert.equal(november.ranking[0].userId, 'tm-4');
   assert.equal(november.ranking[1].userId, 'tm-8');
   assert.equal(november.ranking[0].score, 100);
@@ -958,7 +962,7 @@ test('pódio predefinido escolhe o indicador prioritário em todas as combinaç�
       },
     }));
     const view = await getGoals(persist);
-    const podium = view.body.podiums.find((item) => item.periodKey === '2026-11' && item.mode === 'preset');
+    const podium = podiumAt(view.body, '2026-11', 'preset');
     const felipe = podium.ranking.find((row) => row.userId === 'tm-4');
     const rafael = podium.ranking.find((row) => row.userId === 'tm-8');
     assert.equal(felipe.displayScore, shown[priority]['tm-4']);
@@ -988,12 +992,68 @@ test('pódio predefinido não inventa zero quando falta o indicador prioritário
     },
   }));
   const view = await getGoals(persist);
-  const podium = view.body.podiums.find((item) => item.periodKey === '2026-11' && item.mode === 'preset');
+  const podium = podiumAt(view.body, '2026-11', 'preset');
   const rafael = podium.ranking.find((row) => row.userId === 'tm-8');
   const felipe = podium.ranking.find((row) => row.userId === 'tm-4');
   assert.equal(felipe.displayScore, '350');
   assert.equal(rafael.displayScore, '');
   assert.notEqual(rafael.displayScore, '0');
+});
+
+test('dezembro separa ligação, chat e e-mail e exclui líder e supervisor', async () => {
+  const persist = memoryGoalsStore();
+  const text = `Metas de dezembro de 2026: tickets resolvidos pelo menos 10.
+Gabriela Lima ficou com 200 tickets resolvidos.
+Juliana Fernandes ficou com 180 tickets resolvidos.
+Camila Souza ficou com 150 tickets resolvidos.
+Lucas Pereira ficou com 120 tickets resolvidos.
+Felipe Costa ficou com 390 tickets resolvidos.
+Rafael Oliveira ficou com 360 tickets resolvidos.
+Alexandra Mitchell ficou com 999 tickets resolvidos.
+Bruno Almeida ficou com 888 tickets resolvidos.
+Conferir antes de salvar. Não alterar o pódio.`;
+  const pending = await postCenter({ text, mode: 'preset' }, { store: persist });
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: pending.body.conference }, { store: persist });
+  const loaded = await getGoals(persist);
+  const call = podiumAt(loaded.body, '2026-12', 'preset', 'Ligação');
+  const chat = podiumAt(loaded.body, '2026-12', 'preset', 'Chat');
+  const mail = podiumAt(loaded.body, '2026-12', 'preset', 'E-mail');
+  assert.deepEqual(call.ranking.map((row) => row.userId), ['tm-5', 'tm-9']);
+  assert.equal(call.ranking[0].displayScore, '200');
+  assert.deepEqual(chat.ranking.map((row) => row.userId), ['tm-3', 'tm-6']);
+  assert.equal(chat.ranking[0].displayScore, '150');
+  assert.deepEqual(mail.ranking.map((row) => row.userId), ['tm-4', 'tm-8']);
+  assert.equal(mail.ranking[0].displayScore, '390');
+  assert.equal(mail.ranking[1].displayScore, '360');
+  const names = [...call.ranking, ...chat.ranking, ...mail.ranking].map((row) => row.name);
+  assert.equal(names.includes('Alexandra Mitchell'), false);
+  assert.equal(names.includes('Bruno Almeida'), false);
+  assert.equal(call.ranking.some((row) => row.userId === 'tm-4'), false);
+  assert.equal(chat.ranking.some((row) => row.userId === 'tm-4'), false);
+  const overall = await postCenter({
+    text: `Desempenho geral de dezembro de 2026.
+Gabriela Lima: 200 tickets. Juliana Fernandes: 180 tickets. Camila Souza: 150 tickets. Lucas Pereira: 120 tickets. Felipe Costa: 390 tickets. Rafael Oliveira: 360 tickets. Alexandra Mitchell: 999 tickets. Conferir. Não alterar o pódio.`,
+    mode: 'overall',
+  }, { store: persist });
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: overall.body.conference }, { store: persist });
+  const overallMail = podiumAt((await getGoals(persist)).body, '2026-12', 'overall', 'E-mail');
+  const overallCall = podiumAt((await getGoals(persist)).body, '2026-12', 'overall', 'Ligação');
+  assert.equal(overallMail.ranking[0].userId, 'tm-4');
+  assert.equal(overallMail.ranking.some((row) => row.userId === 'tm-5' || row.userId === 'tm-3' || row.userId === 'tm-1'), false);
+  assert.equal(overallCall.ranking[0].userId, 'tm-5');
+  assert.equal(overallCall.ranking.some((row) => row.userId === 'tm-4'), false);
+  const quality = await postCenter({
+    text: 'Quero uma meta personalizada chamada Índice de qualidade no atendimento: pelo menos 90% em dezembro de 2026. A Gabriela Lima ficou com 91%, a Camila Souza ficou com 93%, o Felipe Costa ficou com 94% e a Alexandra Mitchell ficou com 99%. Conferir antes de salvar. Não alterar o pódio.',
+    mode: 'custom',
+  }, { store: persist });
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: quality.body.conference }, { store: persist });
+  const customMail = podiumAt((await getGoals(persist)).body, '2026-12', 'custom', 'E-mail');
+  const customChat = podiumAt((await getGoals(persist)).body, '2026-12', 'custom', 'Chat');
+  const customCall = podiumAt((await getGoals(persist)).body, '2026-12', 'custom', 'Ligação');
+  assert.equal(customMail.ranking[0].userId, 'tm-4');
+  assert.equal(customChat.ranking[0].userId, 'tm-3');
+  assert.equal(customCall.ranking[0].userId, 'tm-5');
+  assert.equal(customMail.ranking.some((row) => row.userId === 'tm-1'), false);
 });
 
 test('desempenho geral pede só a meta do indicador selecionado que faltar', async () => {

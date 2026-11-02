@@ -1457,6 +1457,7 @@ function presentPodium(item) {
     periodLabel: String(source.periodLabel ?? ''),
     mode: source.mode === 'overall' || source.mode === 'custom' ? source.mode : 'preset',
     modeLabel: String(source.modeLabel ?? ''),
+    channel: source.channel === 'Ligação' || source.channel === 'Chat' || source.channel === 'E-mail' ? source.channel : '',
     selected: Array.isArray(source.selected) ? source.selected.map((id) => String(id)) : [],
     weights: source.weights && typeof source.weights === 'object' ? source.weights : {},
     detailsAvailable: source.detailsAvailable !== false,

@@ -110,6 +110,7 @@ export type GoalsPayload = {
     periodLabel: string;
     mode?: 'preset' | 'overall' | 'custom';
     modeLabel?: string;
+    channel?: 'Ligação' | 'Chat' | 'E-mail' | '';
     selected?: string[];
     weights?: Record<string, number>;
     detailsAvailable?: boolean;

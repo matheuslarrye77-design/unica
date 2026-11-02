@@ -67,7 +67,7 @@ function storageBody() {
 }
 
 function publicView(store, user, people) {
-  const synced = attachBankPodiums(store);
+  const synced = attachBankPodiums(store, new Date(), people);
   const body = { ...publicStore(synced), canManage: isLeader(user), people: viewPeople(people, store) };
   if (!isLeader(user)) {
     body.ledger = { records: [], ranking: [], applied: synced.ledger?.applied ?? [] };
@@ -259,7 +259,7 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
       const intent = String(body.intent ?? '');
       const history = Array.isArray(body.history) ? body.history : [];
       if (body.review && /^(confirmar|aprovar)( metas| resultados| conferencia)?$/.test(fold(text))) {
-        const result = await commit((current) => ({ store: attachBankPodiums(applyGoalsReview(current, body.review, people, new Date()).store) }));
+        const result = await commit((current) => ({ store: attachBankPodiums(applyGoalsReview(current, body.review, people, new Date()).store, new Date(), people) }));
         if (!result) return true;
         send(res, 200, { ...publicView(result.store, user, people), kind: 'ledger', reply: 'Gravei as metas e os resultados no Banco dos relatórios. O pódio não foi alterado.' });
         return true;
@@ -288,7 +288,7 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
       if (outcome.kind === 'ledger') {
         const result = await commit((current) => {
           const outcome = ingestReport(current, text, people, { now: new Date(), parsed });
-          return outcome.store ? { ...outcome, store: attachBankPodiums(outcome.store) } : outcome;
+          return outcome.store ? { ...outcome, store: attachBankPodiums(outcome.store, new Date(), people) } : outcome;
         });
         if (!result) return true;
         send(res, 200, { ...publicView(result.store, user, people), kind: 'ledger', reply: result.reply, proposal: result.proposal });

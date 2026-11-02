@@ -15,6 +15,11 @@ const STEP = {
 } as const;
 
 const MODE_ORDER = ['overall', 'preset', 'custom'] as const;
+const CATEGORIES = [
+  { id: 'Ligação', mark: '📞' },
+  { id: 'Chat', mark: '💬' },
+  { id: 'E-mail', mark: '💌' },
+] as const;
 
 const TOOLTIP_LABEL: Record<string, string> = {
   resolvidosCount: 'Tickets resolvidos',
@@ -113,12 +118,13 @@ export const PodiumStage: FC<{
     }));
   }, [podiums]);
   const periodIndex = periods.findIndex((item) => item.key === periodKey);
-  const forPeriod = podiums.filter((item) => item.periodKey === periodKey);
+  const [channel, setChannel] = useState<(typeof CATEGORIES)[number]['id']>('Ligação');
+  const forPeriod = podiums.filter((item) => item.periodKey === periodKey && item.channel === channel);
   const modes = MODE_ORDER.filter((mode) => forPeriod.some((item) => item.mode === mode));
   const [mode, setMode] = useState(modes[0] || 'preset');
   useEffect(() => {
     if (!modes.includes(mode as typeof MODE_ORDER[number])) setMode(modes[0] || 'preset');
-  }, [periodKey, modes.join('|')]);
+  }, [periodKey, channel, modes.join('|')]);
   const active = forPeriod.find((item) => item.mode === mode) ?? forPeriod[0];
   const standing = active?.ranking ?? [];
   const subtitle = active
@@ -135,17 +141,34 @@ export const PodiumStage: FC<{
             <p className="text-[12.5px] text-[#8A7C98]">{subtitle}</p>
           </div>
         </div>
-        {periods.length > 0 ? (
-          <div className="inline-flex items-center gap-1 rounded-full border border-[#E7DFF0] bg-white px-1.5 py-1 text-[12.5px] font-medium text-[#5C5168]">
-            <button type="button" aria-label="Período anterior" disabled={periodIndex <= 0} onClick={() => onPeriod(periods[periodIndex - 1].key)} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button>
-            <span className="inline-flex items-center gap-1.5 px-1"><Calendar className="h-3.5 w-3.5 text-[#8E35B8]" /> {active?.periodLabel || monthTitle()}</span>
-            <button type="button" aria-label="Período seguinte" disabled={periodIndex < 0 || periodIndex >= periods.length - 1} onClick={() => onPeriod(periods[periodIndex + 1].key)} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button>
+        <div className="flex flex-col items-end gap-2">
+          {periods.length > 0 ? (
+            <div className="inline-flex items-center gap-1 rounded-full border border-[#E7DFF0] bg-white px-1.5 py-1 text-[12.5px] font-medium text-[#5C5168]">
+              <button type="button" aria-label="Período anterior" disabled={periodIndex <= 0} onClick={() => onPeriod(periods[periodIndex - 1].key)} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button>
+              <span className="inline-flex items-center gap-1.5 px-1"><Calendar className="h-3.5 w-3.5 text-[#8E35B8]" /> {active?.periodLabel || monthTitle()}</span>
+              <button type="button" aria-label="Período seguinte" disabled={periodIndex < 0 || periodIndex >= periods.length - 1} onClick={() => onPeriod(periods[periodIndex + 1].key)} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button>
+            </div>
+          ) : (
+            <p className="inline-flex items-center gap-1.5 rounded-full border border-[#E7DFF0] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#5C5168]">
+              <Calendar className="h-3.5 w-3.5 text-[#8E35B8]" /> {monthTitle()}
+            </p>
+          )}
+          <div className="inline-flex items-center gap-1.5">
+            {CATEGORIES.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                title={item.id}
+                aria-label={item.id}
+                aria-pressed={channel === item.id}
+                onClick={() => setChannel(item.id)}
+                className={cn('grid h-9 w-9 place-items-center rounded-full text-[16px] leading-none transition', channel === item.id ? 'bg-[#8E35B8] text-white shadow-[0_8px_16px_rgba(142,53,184,0.28)]' : 'border border-[#E7DFF0] bg-white text-[#6A228C] hover:bg-[#FBF8FC]')}
+              >
+                <span aria-hidden="true">{item.mark}</span>
+              </button>
+            ))}
           </div>
-        ) : (
-          <p className="inline-flex items-center gap-1.5 rounded-full border border-[#E7DFF0] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#5C5168]">
-            <Calendar className="h-3.5 w-3.5 text-[#8E35B8]" /> {monthTitle()}
-          </p>
-        )}
+        </div>
       </div>
       {modes.length > 1 ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
