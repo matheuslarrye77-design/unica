@@ -266,6 +266,8 @@ export function commitTemplate(store, proposal, { name, confirm, description }) 
     name: cleanText(name, 80) || 'Pódio personalizado',
     description: cleanText(description || proposal.explanation, 500),
     period: proposal.period === 'month' || proposal.period === 'mixed' ? proposal.period : 'week',
+    periodKey: cleanText(proposal.periodKey, 32),
+    periodLabel: cleanText(proposal.periodLabel, 80),
     combine: proposal.combine === 'any' ? 'any' : 'all',
     subsetor: CHANNELS.includes(proposal.subsetor) ? proposal.subsetor : '',
     weights: proposal.weights ?? null,

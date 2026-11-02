@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 type Rule = { indicator: string; op: string; value: number; valueTo?: number; period?: string };
 type PendingRules = {
   period: string;
+  periodKey?: string;
   periodLabel?: string;
   rules: Rule[];
   name: string;
@@ -56,7 +57,15 @@ type LedgerRecord = {
   history: { at: string; values: LedgerValues }[];
 };
 type Person = { id: string; name: string; funcao: string; role: string; aliases: string[] };
-type Template = { id: string; name: string; description: string; period: string; rules: Rule[] };
+type Template = { id: string; name: string; description: string; period: string; periodKey?: string; periodLabel?: string; rules: Rule[] };
+type BankIndicator = { field: string; name: string; value: number; met: boolean | null; target?: number | null; op?: string };
+type BankPeriod = {
+  key: string;
+  label: string;
+  goals: { indicator: string; name: string; value: number; op: string; periodLabel: string }[];
+  people: { userId: string; name: string; periodKey: string; periodLabel: string; pending: boolean; history: { at: string; values: LedgerValues }[]; indicators: BankIndicator[] }[];
+  pending: { id: string; sourceName: string; periodLabel: string; pending: boolean; indicators: BankIndicator[] }[];
+};
 type Criterion = { mode: 'preset' | 'custom' | 'overall'; indicator?: string; templateId?: string };
 export type GoalsPayload = {
   canManage: boolean;
@@ -72,6 +81,7 @@ export type GoalsPayload = {
     ranking: { place: number; userId: string; name: string; values: LedgerValues; count?: number | string }[];
     applied?: { place: number; userId: string; name: string; values: LedgerValues; count?: number | string }[];
   };
+  bank?: { periods: BankPeriod[] };
 };
 
 const LEDGER_FIELDS = [
@@ -288,6 +298,7 @@ export const GoalsProvider: FC<{
         if (data.proposal?.rules?.length) {
           setPendingRules({
             period: data.proposal.period,
+            periodKey: String(data.proposal.periodKey ?? ''),
             periodLabel: String(data.proposal.periodLabel ?? ''),
             rules: data.proposal.rules,
             name: '',
@@ -310,6 +321,7 @@ export const GoalsProvider: FC<{
       if (data.kind === 'proposal') {
         setPendingRules({
           period: data.period,
+          periodKey: String(data.periodKey ?? ''),
           periodLabel: String(data.periodLabel ?? ''),
           rules: data.rules,
           name: '',
@@ -388,16 +400,16 @@ export const GoalsProvider: FC<{
         description: pendingRules.explanation,
         rules: pendingRules.rules,
         period: pendingRules.period,
+        periodKey: pendingRules.periodKey,
+        periodLabel: pendingRules.periodLabel,
         combine: pendingRules.combine,
         subsetor: pendingRules.subsetor,
         weights: pendingRules.weights,
       });
       onChange({ ...data, canManage: goals.canManage, people: goals.people });
-      const template = data.templates?.at(-1);
-      if (template?.id) await choose({ mode: 'custom', indicator: selected.indicator, templateId: template.id });
       setPendingRules(null);
       setPhase('idle');
-      say('bot', 'Critério confirmado. O pódio passa a usar esta regra.');
+      say('bot', 'Metas da gestão gravadas. O pódio não foi alterado.');
     } catch {
       say('bot', 'Não consegui salvar. O pódio continua como estava.');
     } finally {
@@ -637,7 +649,7 @@ function monthTitle(bucket: string) {
   const [year, month] = bucket.split('-');
   const name = MONTH_NAMES[Number(month) - 1];
   if (!name || !year) return 'Período a confirmar';
-  return `${name.charAt(0).toUpperCase()}${name.slice(1)} de ${year}`;
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)}/${year}`;
 }
 
 function ruleDirection(op: string) {
@@ -674,24 +686,48 @@ function StatusText({ met }: { met: boolean | null }) {
 
 function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => void }) {
   const records = goals.ledger?.records ?? [];
-  const buckets = [...new Set(records.map((record) => monthBucket(record.periodKey)).filter(Boolean))].sort().reverse();
+  const bankPeriods = goals.bank?.periods ?? [];
+  const buckets = [...new Set([
+    ...bankPeriods.map((item) => item.key),
+    ...records.map((record) => monthBucket(record.periodKey)),
+    ...goals.templates.map((template) => monthBucket(template.periodKey || '')),
+  ].filter(Boolean))].sort().reverse();
   const openKeys = records.some((record) => !record.periodKey) ? [...buckets, ''] : buckets;
   const [selected, setSelected] = useState(openKeys[0] ?? '');
   const [openId, setOpenId] = useState('');
+  const bankPeriod = bankPeriods.find((item) => item.key === selected);
 
   const periodRecords = records.filter((record) => monthBucket(record.periodKey) === selected);
-  const shownTemplates = goals.templates.filter((template) => selected ? template.period !== 'week' : true);
+  const shownTemplates = goals.templates.filter((template) => {
+    const key = monthBucket(template.periodKey || '');
+    if (selected) return key === selected || (!key && template.period !== 'week');
+    return true;
+  });
   const importGoals = goals.imports.filter((item) => monthBucket(item.periodKey) === selected);
 
   const identified = periodRecords.filter((record) => record.userId && !record.pending);
-  const pending = periodRecords.filter((record) => !record.userId || record.pending);
-  const peopleCards = [
-    ...goals.people.map((person) => ({ person, record: identified.find((record) => record.userId === person.id) })).filter((item) => item.record),
-    ...identified.filter((record) => !goals.people.some((person) => person.id === record.userId)).map((record) => ({
-      person: { id: record.userId, name: record.name || record.sourceName, funcao: '', role: '', aliases: [] },
-      record,
-    })),
-  ].sort((left, right) => left.person.name.localeCompare(right.person.name, 'pt'));
+  const pending = bankPeriod?.pending.length
+    ? periodRecords.filter((record) => bankPeriod.pending.some((item) => item.id === record.id || item.sourceName === record.sourceName))
+    : periodRecords.filter((record) => !record.userId || record.pending);
+  const peopleCards = (bankPeriod?.people.length
+    ? bankPeriod.people.map((row) => ({
+      person: goals.people.find((item) => item.id === row.userId) ?? { id: row.userId, name: row.name, funcao: '', role: '', aliases: [] as string[] },
+      record: identified.find((record) => record.userId === row.userId),
+      indicators: row.indicators,
+      periodLabel: row.periodLabel,
+      history: row.history,
+    }))
+    : [
+      ...goals.people.map((person) => ({ person, record: identified.find((record) => record.userId === person.id), indicators: null as BankIndicator[] | null, periodLabel: '', history: [] as { at: string; values: LedgerValues }[] })).filter((item) => item.record),
+      ...identified.filter((record) => !goals.people.some((person) => person.id === record.userId)).map((record) => ({
+        person: { id: record.userId, name: record.name || record.sourceName, funcao: '', role: '', aliases: [] as string[] },
+        record,
+        indicators: null as BankIndicator[] | null,
+        periodLabel: record.periodLabel,
+        history: record.history,
+      })),
+    ]
+  ).sort((left, right) => left.person.name.localeCompare(right.person.name, 'pt'));
 
   function metaFor(field: string) {
     const fromTemplate = shownTemplates.flatMap((template) => template.rules).find((rule) => rule.indicator === field);
@@ -721,7 +757,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
                 onClick={() => setSelected(bucket)}
                 className={cn('rounded-full px-3 py-1.5 text-[12px] font-semibold', selected === bucket ? 'bg-[#8E35B8] text-white' : 'bg-white text-[#6A228C] border border-[#E7DFF0]')}
               >
-                {bucket ? monthTitle(bucket) : 'Período a confirmar'}
+                {bucket ? (bankPeriods.find((item) => item.key === bucket)?.label || monthTitle(bucket)) : 'Período a confirmar'}
               </button>
             ))}
           </div>
@@ -738,8 +774,8 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
         </section>
 
         <section className="rounded-2xl border border-[#EDE4F5] bg-white p-3">
-          <h4 className="text-[13px] font-semibold text-[#4A1C73]">Metas definidas</h4>
-          <p className="mt-0.5 text-[12px] text-[#8A7C98]">{selected ? monthTitle(selected) : 'Período a confirmar'}</p>
+          <h4 className="text-[13px] font-semibold text-[#4A1C73]">Metas definidas pela gestão</h4>
+          <p className="mt-0.5 text-[12px] text-[#8A7C98]">{bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar')}</p>
           {shownTemplates.length === 0 && importGoals.length === 0 ? (
             <p className="mt-2 text-[12.5px] text-[#8A7C98]">Nenhuma meta cadastrada para este período.</p>
           ) : (
@@ -749,7 +785,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
                   <p className="text-[12.5px] font-semibold text-[#241B33]">{RULE_NAMES[rule.indicator] ?? rule.indicator}</p>
                   <p className="text-[12px] text-[#5C5168]">Valor da meta: {rule.indicator === 'primeira' || rule.indicator === 'resolucao' ? `${ruleTarget(rule)} min` : rule.indicator === 'resolvidos' || rule.indicator === 'satisfacao' ? `${ruleTarget(rule)}%` : ruleTarget(rule)}</p>
                   <p className="text-[12px] text-[#5C5168]">Regra: {ruleDirection(rule.op)}</p>
-                  <p className="text-[12px] text-[#5C5168]">Período de validade: {template.period === 'week' ? 'Semana' : 'Mês'}{selected ? ` · ${monthTitle(selected)}` : ''}</p>
+                  <p className="text-[12px] text-[#5C5168]">Período de validade: {template.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar')}</p>
                 </li>
               )))}
               {importGoals.flatMap((item) => item.goals.flatMap((entry) => LEDGER_FIELDS.map(([field, label]) => {
@@ -769,45 +805,44 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
         </section>
 
         <section className="grid gap-2">
-          <h4 className="text-[13px] font-semibold text-[#4A1C73]">Metas e resultados dos colaboradores</h4>
+          <h4 className="text-[13px] font-semibold text-[#4A1C73]">Resultados individuais</h4>
           {peopleCards.length === 0 && pending.length === 0 ? <p className="text-[12.5px] text-[#8A7C98]">Nenhum resultado armazenado neste período.</p> : null}
-          {peopleCards.map(({ person, record }) => {
+          {peopleCards.map(({ person, record, indicators, periodLabel, history }) => {
             const open = openId === (record?.id || person.id);
+            const shownHistory = history?.length ? history : record?.history ?? [];
             return (
               <article key={person.id} className="overflow-hidden rounded-2xl border border-[#EDE4F5] bg-white">
                 <button type="button" onClick={() => setOpenId(open ? '' : (record?.id || person.id))} className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left">
                   <span>
                     <span className="block text-[13px] font-semibold text-[#241B33]">{person.name}</span>
-                    <span className="block text-[11.5px] text-[#8A7C98]">{person.funcao || person.role} · {record?.periodLabel || (selected ? monthTitle(selected) : 'Período a confirmar')}</span>
+                    <span className="block text-[11.5px] text-[#8A7C98]">{person.funcao || person.role} · {periodLabel || record?.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar')}</span>
                   </span>
                   <ChevronDown className={cn('h-4 w-4 shrink-0 text-[#8A7C98] transition', open ? 'rotate-180' : '')} />
                 </button>
-                {open && record ? (
+                {open && (record || indicators?.length) ? (
                   <div className="border-t border-[#F3EAF8] px-3 py-3">
                     <ul className="grid gap-2">
-                      {LEDGER_FIELDS.map(([field, label]) => {
-                        const value = record.values[field];
+                      {(indicators ?? LEDGER_FIELDS.map(([field, label]) => {
+                        const value = record?.values[field];
                         if (value === null || value === undefined) return null;
                         const meta = metaFor(field);
-                        const met = goalMet(value, meta.rule, meta.importGoal);
-                        const target = meta.rule ? meta.rule.value : meta.importGoal?.target;
-                        return (
-                          <li key={field} className="rounded-xl bg-[#FBF8FC] px-3 py-2">
-                            <p className="text-[12.5px] font-semibold text-[#241B33]">{label}</p>
+                        return { field, name: label, value, met: goalMet(value, meta.rule, meta.importGoal), target: meta.rule ? meta.rule.value : meta.importGoal?.target, op: meta.rule?.op ?? '' };
+                      }).filter(Boolean) as BankIndicator[]).map((item) => (
+                          <li key={item.field} className="rounded-xl bg-[#FBF8FC] px-3 py-2">
+                            <p className="text-[12.5px] font-semibold text-[#241B33]">{item.name}</p>
                             <div className="mt-1 grid gap-0.5 text-[12px] text-[#5C5168]">
-                              <p>Resultado alcançado: {ledgerText(field, value)}</p>
-                              {target != null ? <p>Meta estabelecida: {meta.rule && (field === 'primeira' || field === 'resolucao') ? `${ruleTarget(meta.rule)} min` : meta.rule ? ruleTarget(meta.rule) : ledgerText(field, target)}</p> : null}
-                              <StatusText met={met} />
+                              <p>Resultado alcançado: {ledgerText(item.field, item.value)}</p>
+                              {item.target != null ? <p>Meta estabelecida: {item.field === 'primeira' || item.field === 'resolucao' ? `${item.target} min` : item.field === 'resolvidos' || item.field === 'satisfacao' ? `${item.target}%` : String(item.target)}</p> : null}
+                              <StatusText met={item.met} />
                             </div>
                           </li>
-                        );
-                      })}
+                      ))}
                     </ul>
-                    {record.history.length ? (
+                    {shownHistory.length ? (
                       <details className="mt-3 rounded-xl border border-[#EDE4F5] px-3 py-2">
                         <summary className="cursor-pointer text-[12px] font-medium text-[#6A228C]">Histórico de atualizações</summary>
                         <ul className="mt-2 grid gap-2">
-                          {record.history.map((item, index) => (
+                          {shownHistory.map((item, index) => (
                             <li key={`${item.at}-${index}`} className="rounded-lg bg-white px-2 py-2 text-[12px] text-[#8A7C98]">
                               <p className="font-medium text-[#5C5168]">{clock(item.at) || `Versão ${index + 1}`}</p>
                               <p>{LEDGER_FIELDS.filter(([field]) => item.values[field] !== null && item.values[field] !== undefined).map(([field, label]) => `${label}: ${ledgerText(field, item.values[field] ?? null)}`).join(' · ') || 'Sem indicadores nesta versão.'}</p>
@@ -927,7 +962,7 @@ export const GoalsAssistant: FC = () => {
             <p className="text-[12px] text-[#8A7C98]">{pendingRules.combine === 'any' ? 'Basta uma condição.' : 'Todas as condições são obrigatórias.'}{pendingRules.subsetor ? ` Subsetor ${pendingRules.subsetor}.` : ''}</p>
             <input value={pendingRules.name} onChange={(event) => setPendingRules({ ...pendingRules, name: event.target.value })} placeholder="Nome do pódio" className="h-9 w-full rounded-lg border border-[#E7DFF0] bg-white px-2 text-[13px]" />
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" disabled={busy} onClick={() => void saveTemplate()} className="h-9 rounded-full bg-[#8E35B8] text-[12.5px] font-semibold text-white disabled:bg-[#C9A6DC]">Confirmar</button>
+              <button type="button" disabled={busy} onClick={() => void saveTemplate()} className="h-9 rounded-full bg-[#8E35B8] text-[12.5px] font-semibold text-white disabled:bg-[#C9A6DC]">Confirmar metas</button>
               <button type="button" disabled={busy} onClick={cancelProposal} className="h-9 rounded-full border border-[#E7DFF0] text-[12.5px] font-semibold text-[#6A228C]">Cancelar</button>
             </div>
           </div>

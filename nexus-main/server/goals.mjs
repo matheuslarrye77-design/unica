@@ -192,7 +192,11 @@ function readToken(part) {
   if (!text) return null;
   const percent = text.match(/([\d.,]+)\s*%/);
   const minutes = text.match(/([\d.,]+)\s*min/i);
+  const tickets = text.match(/(\d[\d.]*)\s+tickets?/i);
   const leading = text.match(/^([\d.,]+)/);
+  if (tickets) {
+    return { count: countFrom(tickets[1]), ...(percent ? { percent: numberFrom(percent[1]) } : {}) };
+  }
   if (leading && percent) {
     const count = numberFrom(leading[1]);
     const percentValue = numberFrom(percent[1]);
@@ -315,6 +319,18 @@ export function weekLabel(key) {
   return `${format(range.start)} – ${format(range.end)}`;
 }
 
+const MONTH_TITLES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+export function formatPeriodLabel(key) {
+  const month = /^(?:month:)?(\d{4})-(\d{2})$/.exec(String(key ?? ''));
+  if (month) {
+    const name = MONTH_TITLES[Number(month[2]) - 1];
+    return name ? `${name}/${month[1]}` : 'Período a confirmar';
+  }
+  if (/^\d{4}-W\d{2}$/.test(String(key ?? ''))) return weekLabel(key);
+  return 'Período a confirmar';
+}
+
 function periodFromText(text) {
   const dates = [...text.matchAll(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/g)].map((match) => {
     const year = match[3] ? Number(match[3].length === 2 ? `20${match[3]}` : match[3]) : new Date().getFullYear();
@@ -345,12 +361,7 @@ export function readGoalPeriod(text, now = new Date()) {
     const month = MONTH_NUMBERS[named[1]];
     const year = named[2] ? Number(named[2]) : now.getFullYear();
     const key = `month:${year}-${String(month).padStart(2, '0')}`;
-    const titles = {
-      janeiro: 'Janeiro', fevereiro: 'Fevereiro', marco: 'Março', abril: 'Abril', maio: 'Maio', junho: 'Junho',
-      julho: 'Julho', agosto: 'Agosto', setembro: 'Setembro', outubro: 'Outubro', novembro: 'Novembro', dezembro: 'Dezembro',
-    };
-    const label = `${titles[named[1]]}/${year}`;
-    return { ok: true, period: 'month', periodKey: key, periodLabel: label };
+    return { ok: true, period: 'month', periodKey: key, periodLabel: formatPeriodLabel(key) };
   }
   if (monthWord) {
     const key = monthKey(now);
@@ -505,6 +516,20 @@ function personValues(line) {
   return { name: label, values };
 }
 
+function personHeading(line) {
+  const cleaned = cleanLine(line);
+  if (!cleaned) return '';
+  const named = cleaned.match(/^([^:]{2,80}):\s*(.*)$/);
+  const label = cleanName(named ? named[1] : cleaned);
+  if (!label || metricOf(label) || /^metas?\b|^resultados?\b|^indicador|^validade/i.test(label)) return '';
+  if (named && String(named[2] ?? '').trim()) return '';
+  if (/\d/.test(label)) return '';
+  const words = fold(label).split(' ').filter(Boolean);
+  if (words.length < 2 || words.length > 6) return '';
+  if (channelOf(label)) return '';
+  return label;
+}
+
 export function parseReport(text, people) {
   const lines = String(text ?? '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const goals = { '*': blankGoal() };
@@ -533,6 +558,13 @@ export function parseReport(text, people) {
       ensure(currentName);
       continue;
     }
+    if (/crie uma meta|monte o podio|\breconhec/.test(fold(line))) currentName = '';
+    const heading = personHeading(line);
+    if (heading) {
+      currentName = heading;
+      ensure(currentName);
+      continue;
+    }
     const personLine = personValues(line);
     if (personLine) {
       const entry = ensure(personLine.name);
@@ -545,10 +577,11 @@ export function parseReport(text, people) {
     const metric = metricOf(line);
     if (metric) {
       const main = line.split('|')[0];
-      const token = readToken(main.split(':').slice(1).join(':'));
+      const token = readToken(main.split(':').slice(1).join(':')) ?? readToken(cleanLine(line));
       const target = readTarget(metric, line);
       const bucket = currentName ? ensure(currentName) : null;
       if (bucket) {
+        applyPhrase(bucket.values, cleanLine(line));
         pushValue(bucket.values, metric, token);
         if (target) bucket.ownTargets = { ...(bucket.ownTargets ?? {}), [metric]: target };
       } else if (target) {
@@ -1043,6 +1076,73 @@ export function presentLedger(store) {
   };
 }
 
+function monthBucketOf(key) {
+  const month = /^(?:month:)?(\d{4})-(\d{2})$/.exec(String(key ?? ''));
+  if (month) return `${month[1]}-${month[2]}`;
+  const range = weekRange(key);
+  if (!range) return '';
+  return `${range.start.getUTCFullYear()}-${String(range.start.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+const BANK_FIELDS = [
+  ['resolvidosCount', 'Tickets resolvidos'],
+  ['resolvidos', 'Tickets resolvidos (%)'],
+  ['transferidos', 'Tickets transferidos'],
+  ['primeira', 'Primeira resposta'],
+  ['resolucao', 'Tempo médio de resolução'],
+  ['satisfacao', 'Satisfação'],
+];
+
+export function reportBankSnapshot(store) {
+  const templates = Array.isArray(store?.templates) ? store.templates : [];
+  const records = Array.isArray(store?.ledger?.records) ? store.ledger.records : [];
+  const buckets = [...new Set([
+    ...templates.map((item) => monthBucketOf(item.periodKey)).filter(Boolean),
+    ...records.map((item) => monthBucketOf(item.periodKey)).filter(Boolean),
+  ])].sort().reverse();
+  return {
+    periods: buckets.map((bucket) => {
+      const label = formatPeriodLabel(bucket);
+      const goals = templates
+        .filter((item) => monthBucketOf(item.periodKey) === bucket)
+        .flatMap((item) => (item.rules ?? []).map((rule) => ({
+          indicator: rule.indicator,
+          name: BANK_FIELDS.find(([field]) => field === rule.indicator)?.[1] ?? rule.indicator,
+          value: rule.value,
+          op: rule.op,
+          periodLabel: item.periodLabel || label,
+        })));
+      const people = records.filter((record) => record.userId && monthBucketOf(record.periodKey) === bucket).map((record) => ({
+        userId: record.userId,
+        name: record.name || record.sourceName,
+        periodKey: record.periodKey,
+        periodLabel: record.periodLabel || label,
+        pending: false,
+        history: record.history ?? [],
+        indicators: BANK_FIELDS.map(([field, name]) => {
+          const value = record.values?.[field];
+          if (value === null || value === undefined) return null;
+          const rule = goals.find((item) => item.indicator === field);
+          const met = rule ? passesRules({ ...record.values, [field]: value }, [{ indicator: field, op: rule.op, value: rule.value, valueTo: rule.valueTo }]) : null;
+          return { field, name, value, met, target: rule?.value ?? null, op: rule?.op ?? '' };
+        }).filter(Boolean),
+      }));
+      const pending = records.filter((record) => !record.userId && (monthBucketOf(record.periodKey) === bucket || (!record.periodKey && !bucket))).map((record) => ({
+        id: record.id,
+        sourceName: record.sourceName || record.name,
+        periodLabel: record.periodLabel || label,
+        pending: true,
+        indicators: BANK_FIELDS.map(([field, name]) => {
+          const value = record.values?.[field];
+          if (value === null || value === undefined) return null;
+          return { field, name, value, met: null };
+        }).filter(Boolean),
+      }));
+      return { key: bucket, label, goals, people, pending };
+    }),
+  };
+}
+
 export function publicStore(store) {
   const criterion = readCriterion(store.criterion);
   return {
@@ -1052,6 +1152,7 @@ export function publicStore(store) {
     templates: store.templates,
     criterion,
     ledger: presentLedger(store),
+    bank: reportBankSnapshot(store),
     currentKey: latestPeriod(store),
     imports: store.imports.map((item) => ({
       id: item.id,
@@ -1076,7 +1177,7 @@ export function looksLikeReport(text) {
   const hasMetric = /tickets?\s+resolvid|tickets?\s+transferid|primeira\s+resposta|tempo medio|ate resolu/.test(folded);
   const lines = String(text ?? '').split(/\n+/);
   const hasPeople = /ola |resultados da semana|resultados do mes/.test(folded)
-    || lines.some((line) => isPersonResultLine(line));
+    || lines.some((line) => isPersonResultLine(line) || personHeading(line));
   return hasMetric && hasPeople;
 }
 
@@ -1182,7 +1283,11 @@ export function runAssistant({ text, store, people, preview, periodKey, intent }
     return { kind: 'ids', reply: pending.length ? `Faltam ${pending.length} identificação(ões): ${pending.map((row) => row.sourceName).join(', ')}.` : 'Todos os nomes desta conferência estão ligados a um cadastro da Equipe.' };
   }
 
-  if (/tickets resolvid|primeira resposta|tempo medio|transferid/.test(folded) && /podio|usar|criterio predefinid/.test(folded)) {
+  if (/\bpodio\b/.test(folded) && /primeira resposta|tickets resolvid|tempo medio|transferid/.test(folded) && /usar|predefinid|aplicar/.test(folded) && !/pelo menos|no maximo|no minimo|maior ou igual|menor ou igual/.test(folded)) {
+    return { kind: 'ask', reply: 'Para mudar o pódio, confirme explicitamente: "Confirmar pódio com primeira resposta" (ou o indicador desejado). Nada foi alterado.' };
+  }
+
+  if (/^confirmar podio(?: com| usando)? (tickets resolvidos|primeira resposta|tempo medio(?: de resolucao)?|tickets transferidos)$/.test(folded)) {
     const indicator = /transferid/.test(folded) ? 'transferidos' : /primeira/.test(folded) ? 'primeira' : /resolu/.test(folded) && !/resolvid/.test(folded) ? 'resolucao' : 'resolvidos';
     return { kind: 'criterion', criterion: { mode: 'preset', indicator, templateId: '' }, reply: `Vou usar ${indicator} como critério predefinido do pódio.` };
   }

@@ -240,6 +240,8 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
         explanation: String(body.description ?? ''),
         questions: [],
         period: period === 'mixed' ? '' : period,
+        periodKey: String(body.periodKey ?? ''),
+        periodLabel: String(body.periodLabel ?? ''),
         combine: body.combine === 'any' ? 'any' : 'all',
         subsetor: body.subsetor ?? '',
         weights: body.weights ?? null,

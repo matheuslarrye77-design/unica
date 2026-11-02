@@ -275,8 +275,8 @@ test('colar no chat não envia a mensagem sozinho', () => {
   assert.equal(ui.includes('onPaste'), false);
   assert.equal(ui.includes('void talk(pasted)'), false);
   assert.equal(ui.includes('Abrir banco de dados dos relatórios'), true);
-  assert.equal(ui.includes('Metas definidas'), true);
-  assert.equal(ui.includes('Metas e resultados dos colaboradores'), true);
+  assert.equal(ui.includes('Metas definidas pela gestão'), true);
+  assert.equal(ui.includes('Resultados individuais'), true);
   assert.equal(ui.includes('Aguardando identificação'), true);
   assert.equal(ui.includes('Atingiu a meta'), true);
   assert.equal(ui.includes('Histórico de atualizações'), true);

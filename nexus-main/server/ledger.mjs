@@ -1,4 +1,4 @@
-import { fold, isoWeekKey, mentionedPeriods, metricOf, monthKey, parseCustomRequest, parseReport, passesRules, weekLabel } from './goals.mjs';
+import { fold, formatPeriodLabel, isoWeekKey, mentionedPeriods, metricOf, monthKey, parseCustomRequest, parseReport, passesRules } from './goals.mjs';
 
 const FIELDS = ['resolvidosCount', 'resolvidos', 'transferidos', 'primeira', 'resolucao', 'satisfacao'];
 const NAMES = {
@@ -11,8 +11,6 @@ const NAMES = {
 };
 const OPS = { gt: 'maior que', gte: 'pelo menos', lt: 'menor que', lte: 'no máximo', eq: 'igual a', between: 'entre' };
 const MARKS = { new: 'NOVO', updated: 'ATUALIZADO', same: 'SEM ALTERAÇÃO' };
-const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-
 function blankValues() {
   return { resolvidos: null, resolvidosCount: null, transferidos: null, primeira: null, resolucao: null, satisfacao: null };
 }
@@ -26,11 +24,7 @@ function identityOf(row) {
 }
 
 function periodLabel(key) {
-  if (!key) return 'Período a confirmar';
-  const month = /^month:(\d{4})-(\d{2})$/.exec(key);
-  if (month) return `${MONTHS[Number(month[2]) - 1] || month[2]} de ${month[1]}`;
-  if (/^\d{4}-W\d{2}$/.test(key)) return weekLabel(key);
-  return 'Período a confirmar';
+  return formatPeriodLabel(key);
 }
 
 function mergeValues(before, incoming) {
@@ -150,6 +144,8 @@ function proposalFrom(text, records, preferredKey, now) {
   return {
     unclear: false,
     period: custom.period,
+    periodKey: custom.periodKey || periodKey,
+    periodLabel: custom.periodLabel || formatPeriodLabel(custom.periodKey || periodKey),
     rules,
     combine: 'all',
     subsetor: '',
@@ -178,7 +174,8 @@ export function ingestReport(store, text, people, options = {}) {
   if (periods.length > 1) {
     return { kind: 'clarify', reply: 'O texto cita mais de um período. Não substituí nenhum dado. Diga se os números são da semana ou do mês.', store };
   }
-  const periodKey = periods[0] ?? '';
+  const inherited = [...(store.templates ?? [])].reverse().find((item) => item.periodKey)?.periodKey || '';
+  const periodKey = periods[0] ?? inherited;
   const existing = store.ledger?.records ?? [];
   if (!periodKey) {
     const unclear = rows.filter((row) => existing.some((record) => record.identity === identityOf(row) && record.periodKey));
@@ -243,6 +240,8 @@ export function ingestReport(store, text, people, options = {}) {
     reply: lines.join('\n'),
     proposal: proposal && !proposal.unclear ? {
       period: proposal.period,
+      periodKey: proposal.periodKey,
+      periodLabel: proposal.periodLabel,
       rules: proposal.rules,
       combine: proposal.combine,
       subsetor: proposal.subsetor,
@@ -277,6 +276,8 @@ export function proposeFromLedger(store, text, now = new Date()) {
     kind: 'proposal',
     reply,
     period: proposal.period,
+    periodKey: proposal.periodKey,
+    periodLabel: proposal.periodLabel,
     rules: proposal.rules,
     combine: 'all',
     subsetor: '',
