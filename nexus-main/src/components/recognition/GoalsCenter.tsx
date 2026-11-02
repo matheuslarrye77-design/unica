@@ -198,6 +198,8 @@ type Board = {
   pendingRules: PendingRules | null;
   setPendingRules: (value: PendingRules | null) => void;
   conference: GoalsConference | null;
+  pendingPodium: Criterion | null;
+  confirmPodium: (next?: Criterion) => Promise<void>;
   cancelProposal: () => void;
   messages: ChatMessage[];
   draft: string;
@@ -239,6 +241,7 @@ export const GoalsProvider: FC<{
   const [phase, setPhase] = useState<Phase>('idle');
   const [pendingRules, setPendingRules] = useState<PendingRules | null>(null);
   const [conference, setConference] = useState<GoalsConference | null>(null);
+  const [pendingPodium, setPendingPodium] = useState<Criterion | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: 'hello',
     from: 'bot',
@@ -270,29 +273,42 @@ export const GoalsProvider: FC<{
 
   function startPreset() {
     setPhase('preset');
-    say('bot', 'Qual indicador predefinido entra no pódio desta semana? Escolha um dos quatro abaixo.');
+    setPendingPodium(null);
+    say('bot', 'Estamos nos critérios predefinidos: tickets resolvidos, satisfação, primeira resposta e TMA. Envie as metas e os resultados desses indicadores. Se a intenção for só o pódio, escolha o indicador e confirme — as metas não mudam.');
   }
 
   function startCustom() {
     setPhase('custom');
+    setPendingPodium(null);
     say('bot', 'Escreva a regra personalizada: indicadores conhecidos ou novos, condições (pelo menos, no máximo, entre) e, se quiser, os resultados. Só gravo depois da conferência. O pódio não muda, a menos que você peça isso explicitamente.');
   }
 
   function startOverall() {
     setPhase('overall');
+    setPendingPodium(null);
     say('bot', 'Vou calcular o desempenho geral com os pesos configurados (resolvidos, primeira resposta e TMA), aplicar o piso e deixar tickets transferidos de fora. Envie os resultados ou peça para usar o que já está no banco. O pódio só muda se você confirmar isso.');
   }
 
   function cancelProposal() {
     setPendingRules(null);
     setConference(null);
+    setPendingPodium(null);
     say('bot', 'Cancelei esta conferência. O pódio não foi alterado.');
   }
 
   async function pickPreset(indicator: string) {
-    await choose({ mode: 'preset', indicator });
     const label = METRICS.find((item) => item[0] === indicator)?.[1] ?? indicator;
-    say('bot', `Pódio predefinido: ${label}. Agora cole os relatórios para eu calcular.`);
+    setPendingPodium({ mode: 'preset', indicator, templateId: '' });
+    say('bot', `${label} ficou marcado só para o pódio. As metas não mudam. Confirme o pódio abaixo se for isso, ou escreva as metas predefinidas no chat.`);
+  }
+
+  async function confirmPodium(next?: Criterion) {
+    const criterion = next ?? pendingPodium;
+    if (!criterion) return;
+    await choose(criterion);
+    const label = criterion.mode === 'overall' ? 'desempenho geral' : METRICS.find((item) => item[0] === criterion.indicator)?.[1] ?? criterion.indicator;
+    setPendingPodium(null);
+    say('bot', `Pódio atualizado para ${label}. As metas e o Banco dos relatórios não foram alterados.`);
   }
 
   async function talk(text: string) {
@@ -303,6 +319,12 @@ export const GoalsProvider: FC<{
       say('user', source);
       setDraft('');
       await saveTemplate();
+      return;
+    }
+    if (pendingPodium && /^(confirmar|confirmar podio|aprovar)$/.test(normalized)) {
+      say('user', source);
+      setDraft('');
+      await confirmPodium();
       return;
     }
     if ((conference || pendingRules) && /^(cancelar|descartar)$/.test(normalized)) {
@@ -325,6 +347,14 @@ export const GoalsProvider: FC<{
       if (data.kind === 'conference' && data.conference) {
         setConference(data.conference);
         setPendingRules(null);
+        setPendingPodium(null);
+      } else if (data.kind === 'podium') {
+        onChange({ ...data, canManage: goals.canManage, people: data.people ?? goals.people });
+        setPendingPodium(null);
+        setConference(null);
+        setPendingRules(null);
+        setPhase('idle');
+        say('bot', String(data.reply ?? 'Pódio atualizado. As metas não foram alteradas.'));
       } else {
         say('bot', String(data.reply ?? ''));
         if (data.kind === 'clarify') {
@@ -450,6 +480,8 @@ export const GoalsProvider: FC<{
     pendingRules,
     setPendingRules,
     conference,
+    pendingPodium,
+    confirmPodium,
     messages,
     draft,
     setDraft,
@@ -466,7 +498,7 @@ export const GoalsProvider: FC<{
     cancelProposal,
     onFile,
     lastReport: lastReport.current,
-  }), [goals, selected, phase, preview, periodKey, replace, pendingRules, conference, messages, draft, busy]);
+  }), [goals, selected, phase, preview, periodKey, replace, pendingRules, conference, pendingPodium, messages, draft, busy]);
 
   return <BoardContext.Provider value={value}>{children}</BoardContext.Provider>;
 };
@@ -479,7 +511,7 @@ export const GoalsCenter: FC = () => {
     {
       id: 'preset' as const,
       title: 'Critérios Predefinidos',
-      text: 'Use um indicador já medido no relatório para definir o 1º, 2º e 3º lugares.',
+      text: 'Use os indicadores já cadastrados para metas e resultados. O pódio só muda com confirmação explícita.',
       icon: BarChart3,
       points: ['Tickets resolvidos: maior percentual', 'Tickets transferidos: só se a gestão definir meta', 'Primeira resposta: menor tempo', 'Tempo médio de resolução: menor tempo'],
     },
@@ -517,17 +549,17 @@ export const GoalsCenter: FC = () => {
         <div className="relative flex items-start gap-3">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/70 text-[#8E35B8]"><Target className="h-6 w-6" /></span>
           <div>
-            <h2 className="flex items-center gap-2 text-[20px] font-semibold text-[#4A1C73]">Central Inteligente de Metas <Hint text="Defina o critério dos pódios e deixe o sistema calcular os resultados automaticamente." /></h2>
-            <p className="mt-0.5 text-[13px] text-[#8A5AA0]">Defina o critério dos pódios e deixe o sistema calcular os resultados automaticamente.</p>
+            <h2 className="flex items-center gap-2 text-[20px] font-semibold text-[#4A1C73]">Central Inteligente de Metas <Hint text="Três modos: predefinidos, personalizados e desempenho geral. Metas e pódio são fluxos separados." /></h2>
+            <p className="mt-0.5 text-[13px] text-[#8A5AA0]">Interprete metas e resultados nos três modos. O pódio só muda com pedido explícito e confirmação.</p>
           </div>
         </div>
       </section>
 
       <section>
         <h3 className="flex items-center gap-2 text-[15px] font-semibold text-[#241B33]">
-          <Trophy className="h-4 w-4 text-[#8E35B8]" /> Escolha o critério de reconhecimento
+          <Trophy className="h-4 w-4 text-[#8E35B8]" /> Escolha o modo da Central
         </h3>
-        <p className="mt-0.5 text-[12.5px] text-[#8A7C98]">Selecione como deseja montar os pódios desta semana:</p>
+        <p className="mt-0.5 text-[12.5px] text-[#8A7C98]">O modo orienta a interpretação. Você pode mudar de assunto no chat a qualquer momento.</p>
         <div className="mt-3 grid items-stretch gap-3 md:grid-cols-3">
           {cards.map((card) => {
             const committed = phase === 'idle' && selected.mode === card.id;
@@ -923,7 +955,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
 
 export const GoalsAssistant: FC = () => {
   const board = useBoard();
-  const { goals, messages, draft, setDraft, busy, talk, phase, pickPreset, pendingRules, setPendingRules, conference, saveTemplate, cancelProposal } = board;
+  const { goals, messages, draft, setDraft, busy, talk, phase, pickPreset, pendingRules, setPendingRules, conference, pendingPodium, confirmPodium, saveTemplate, cancelProposal } = board;
   const thread = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [bankOpen, setBankOpen] = useState(false);
@@ -963,6 +995,16 @@ export const GoalsAssistant: FC = () => {
                 {label}
               </button>
             ))}
+          </div>
+        ) : null}
+        {pendingPodium ? (
+          <div className="grid gap-2 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
+            <p className="text-[12px] font-semibold text-[#4A1C73]">Só o pódio. As metas não mudam.</p>
+            <p className="text-[12.5px] text-[#5C5168]">Critério: {pendingPodium.mode === 'overall' ? 'Desempenho geral' : METRICS.find((item) => item[0] === pendingPodium.indicator)?.[1] ?? pendingPodium.indicator}</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" disabled={busy} onClick={() => void confirmPodium()} className="h-9 rounded-full bg-[#8E35B8] text-[12.5px] font-semibold text-white disabled:bg-[#C9A6DC]">Confirmar pódio</button>
+              <button type="button" disabled={busy} onClick={cancelProposal} className="h-9 rounded-full border border-[#E7DFF0] text-[12.5px] font-semibold text-[#6A228C]">Cancelar</button>
+            </div>
           </div>
         ) : null}
         {phase === 'custom' && !pendingRules && !conference ? (

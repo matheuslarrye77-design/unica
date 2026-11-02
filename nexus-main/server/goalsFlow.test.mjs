@@ -127,8 +127,11 @@ test('a interface do banco mostra mês/ano, gestão e resultados separados', () 
   assert.match(ui, /interpretar metas gerais da gestão/);
   assert.match(ui, /saving\.current/);
   assert.match(ui, /regra personalizada/);
+  assert.match(ui, /pendingPodium/);
+  assert.match(ui, /Confirmar pódio/);
   assert.equal(ui.includes('Olá! Envie os relatórios da equipe'), false);
   assert.equal(ui.includes('Escreva com suas palavras como o pódio deve funcionar'), false);
+  assert.equal(ui.includes('Qual indicador predefinido entra no pódio desta semana'), false);
   assert.equal(ui.includes('O pódio passa a usar esta regra'), false);
 });
 
@@ -506,6 +509,34 @@ test('critério personalizado combina dois indicadores conhecidos', async () => 
   assert.equal(result.body.conference.goals.length, 2);
   assert.deepEqual(result.body.conference.goals.map((item) => item.indicator).sort(), ['primeira', 'resolucao']);
   assert.equal(result.body.conference.people[0].results.length, 2);
+});
+
+test('critério personalizado aceita indicador inédito sem a palavra qualidade', async () => {
+  const text = 'Quero uma meta personalizada chamada Nota de empatia: pelo menos 80% em março de 2027. O Rafael Oliveira ficou com 75% e o Felipe Costa ficou com 91%. Conferir antes de salvar. Não alterar o pódio.';
+  const result = await postCenter({ text, mode: 'custom' });
+  assert.equal(result.body.kind, 'conference');
+  assert.equal(result.body.conference.goals.length, 1);
+  assert.equal(result.body.conference.goals[0].indicator, 'c:nota-de-empatia');
+  assert.equal(result.body.conference.goals[0].value, 80);
+  assert.equal(result.body.conference.period.label, 'Março/2027');
+  assert.equal(result.body.conference.people.length, 2);
+  const reply = JSON.stringify(result.body);
+  assert.equal(reply.includes('Tickets resolvidos'), false);
+  assert.equal(reply.includes('Satisfação'), false);
+});
+
+test('confirmar pódio não altera metas nem resultados', async () => {
+  const persist = memoryGoalsStore();
+  const first = await postCenter({ text: NATURAL_MESSAGE, mode: 'preset' }, { store: persist });
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: first.body.conference }, { store: persist });
+  const podium = await postCenter({ text: 'Confirmar pódio com primeira resposta', mode: 'preset' }, { store: persist });
+  assert.equal(podium.body.kind, 'podium');
+  assert.equal(podium.body.criterion.indicator, 'primeira');
+  assert.equal(podium.body.criterion.mode, 'preset');
+  const month = podium.body.bank.periods.find((item) => item.key === '2026-11');
+  assert.equal(month.goals.length, 4);
+  assert.equal(month.people.length, 2);
+  assert.equal((podium.body.ledger.applied ?? []).length, 0);
 });
 
 test('desempenho geral usa pesos, piso e não inclui transferidos nem muda o pódio', async () => {

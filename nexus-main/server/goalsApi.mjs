@@ -230,6 +230,21 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
         env: options.env ?? process.env,
         generate: options.generate,
       });
+      if (interpreted.kind === 'podium' && interpreted.criterion) {
+        const result = await commit((current) => ({
+          store: applyLedgerRanking(applyCriterion(current, interpreted.criterion, String(body.periodKey ?? ''))),
+        }));
+        if (!result) return true;
+        send(res, 200, {
+          ...publicView(result.store, user, people),
+          kind: 'podium',
+          persist: true,
+          conference: null,
+          criterion: result.store.criterion,
+          reply: interpreted.reply,
+        });
+        return true;
+      }
       send(res, 200, interpreted);
       return true;
     }

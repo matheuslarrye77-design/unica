@@ -150,12 +150,22 @@ function unitOf(indicator, unit) {
 
 function citedKnown(source) {
   const folded = fold(source);
+  const named = Boolean(namedIndicator(source));
   return {
-    resolvidosCount: /ticket|resolvido/.test(folded) && !/qualidade/.test(folded),
-    satisfacao: /satisfa/.test(folded),
+    resolvidosCount: /ticket|resolvido/.test(folded) && !named && !/qualidade/.test(folded),
+    satisfacao: /satisfa/.test(folded) && !named,
     primeira: /primeira resposta/.test(folded),
-    resolucao: /\btma\b|tempo medio|tempo medio de resolucao/.test(folded),
+    resolucao: /\btma\b|tempo medio/.test(folded),
   };
+}
+
+function namedIndicator(source) {
+  const text = String(source ?? '');
+  const hit = text.match(/chamad[oa]\s+([^:.\n]+)/i)
+    || text.match(/indicador(?:\s+novo)?[:\s]+([^:.\n]+)/i)
+    || text.match(/meta personalizada(?:\s+chamada)?\s+([^:.\n]+)/i);
+  if (!hit) return '';
+  return hit[1].replace(/\s+(pelo menos|no m[ií]nimo|no m[aá]ximo|at[eé]|maior que|menor que|igual a).*/i, '').replace(/[:.]+$/, '').trim();
 }
 
 function wantsGoals(text) {
@@ -172,10 +182,26 @@ function wantsOverall(text, mode) {
   return /desempenho geral|nota geral|pontuacao geral/.test(folded);
 }
 
-function wantsPodium(text) {
+export function readPodiumRequest(text) {
   const folded = fold(text);
-  if (/nao alterar o podio|nao mude o podio|nao mexa no podio|nao mexe no podio|sem alterar o podio/.test(folded)) return false;
-  return /confirmar podio|usar no podio|aplicar ao podio|mudar o podio|criterio do podio/.test(folded);
+  if (/nao alterar o podio|nao mude o podio|nao mexa no podio|nao mexe no podio|sem alterar o podio/.test(folded)) return { kind: 'keep' };
+  const mentions = /\bpodio\b/.test(folded) && /confirmar|usar|aplicar|mudar|criterio do podio/.test(folded);
+  if (!mentions) return { kind: 'none' };
+  if (!/confirmar podio/.test(folded)) {
+    return { kind: 'ask', missing: 'a confirmação explícita do pódio, por exemplo: Confirmar pódio com primeira resposta. As metas não serão alteradas' };
+  }
+  if (/desempenho geral|nota geral/.test(folded)) return { kind: 'apply', criterion: { mode: 'overall', indicator: 'resolvidos', templateId: '' } };
+  const indicator = /transferid/.test(folded)
+    ? 'transferidos'
+    : /primeira/.test(folded)
+      ? 'primeira'
+      : /\btma\b|tempo medio|resolucao/.test(folded)
+        ? 'resolucao'
+        : /ticket|resolvid/.test(folded)
+          ? 'resolvidos'
+          : '';
+  if (!indicator) return { kind: 'ask', missing: 'o indicador do pódio (tickets resolvidos, primeira resposta, TMA ou transferidos) ou desempenho geral' };
+  return { kind: 'apply', criterion: { mode: 'preset', indicator, templateId: '' } };
 }
 
 export function toConference({ source, period, rules, rows, mode, overall }) {
@@ -191,7 +217,11 @@ export function toConference({ source, period, rules, rows, mode, overall }) {
   const people = (rows ?? []).map((row) => {
     const keys = [...new Set([
       ...goals.map((item) => item.indicator),
-      ...Object.keys(row.values ?? {}).filter((field) => row.values[field] != null),
+      ...Object.keys(row.values ?? {}).filter((field) => {
+        if (row.values[field] == null) return false;
+        if (String(field).startsWith('c:')) return true;
+        return !goals.length && KNOWN.includes(field);
+      }),
     ])];
     const results = keys.map((indicator) => {
       const value = row.values?.[indicator];
@@ -236,8 +266,12 @@ export function toConference({ source, period, rules, rows, mode, overall }) {
   };
 }
 
-function missingParts(conference, source) {
+function missingParts(conference, source, mode = '') {
   const missing = [];
+  if (conference.overall?.scores?.length && (mode === 'overall' || wantsOverall(source, mode))) {
+    if (!conference.period?.label) missing.push('o período com mês e ano');
+    return missing;
+  }
   const cited = citedKnown(source);
   const needed = CORE.filter((field) => cited[field]);
   if (wantsGoals(source) && !conference.goals.length && !conference.overall) missing.push('a regra da meta (indicador, condição, valor e período)');
@@ -347,20 +381,42 @@ function fill(primary, extra) {
   return { rules, rows };
 }
 
+function clauseOp(folded) {
+  if (/entre /.test(folded)) return 'between';
+  if (/pelo menos|no minimo|maior ou igual|>=/.test(folded)) return 'gte';
+  if (/no maximo|ate |menor ou igual|<=/.test(folded)) return 'lte';
+  if (/maior que|acima de/.test(folded)) return 'gt';
+  if (/menor que|abaixo de/.test(folded)) return 'lt';
+  if (/igual a|igual /.test(folded)) return 'eq';
+  return '';
+}
+
 function localCustomRules(source, period) {
   const folded = fold(source);
-  if (!/qualidade/.test(folded)) return [];
-  const match = folded.match(/pelo menos (\d+)|no minimo (\d+)/);
-  const value = finite(match?.[1] ?? match?.[2]);
-  if (value === null || !inSource(value, source)) return [];
+  let name = namedIndicator(source);
+  if (!name && /qualidade/.test(folded)) name = 'Índice de qualidade no atendimento';
+  if (!name) return [];
+  const indicator = normalizeIndicator('', name);
+  if (!indicator || KNOWN.includes(indicator)) return [];
+  const op = clauseOp(folded);
+  if (op === 'between') {
+    const between = folded.match(/entre (\d+[^\d]*) e (\d+)/);
+    const value = finite(between?.[1]);
+    const valueTo = finite(between?.[2]);
+    if (value === null || valueTo === null || !inSource(value, source) || !inSource(valueTo, source)) return [];
+    return [{ indicator, name, op, value, valueTo, period: period.period || 'month', unit: '%' }];
+  }
+  const match = folded.match(/pelo menos (\d+)|no minimo (\d+)|no maximo (\d+)|maior que (\d+)|menor que (\d+)|igual a (\d+)/);
+  const value = finite(match?.slice(1).find(Boolean));
+  if (!op || value === null || !inSource(value, source)) return [];
   return [{
-    indicator: 'c:indice-de-qualidade-no-atendimento',
-    name: 'Índice de qualidade no atendimento',
-    op: 'gte',
+    indicator,
+    name,
+    op,
     value,
     valueTo: null,
     period: period.period || 'month',
-    unit: '%',
+    unit: /%|percent/.test(folded) || String(indicator).startsWith('c:') ? '%' : '',
   }];
 }
 
@@ -391,12 +447,12 @@ function localExtract(source, people) {
   const knownRows = parsed.rows.filter((row) => row.userId && KNOWN.some((field) => row.values[field] != null));
   const custom = localCustomRules(source, period.ok ? period : { period: 'month', periodKey: '', periodLabel: '' });
   const customRows = custom.length ? localCustomPeople(source, people, custom[0].indicator) : [];
+  const knownRules = goals.ok ? goals.rules.map((rule) => ({ ...rule, name: NAMES[rule.indicator], unit: UNITS[rule.indicator] ?? '', period: goals.period })) : [];
   return {
-    rules: [
-      ...(goals.ok ? goals.rules.map((rule) => ({ ...rule, name: NAMES[rule.indicator], unit: UNITS[rule.indicator] ?? '', period: goals.period })) : []),
-      ...custom,
-    ],
-    rows: custom.length ? customRows : knownRows,
+    rules: fill({ rules: knownRules, rows: [] }, { rules: custom, rows: [] }).rules,
+    rows: custom.length && !knownRules.length
+      ? customRows
+      : fill({ rules: [], rows: knownRows }, { rules: [], rows: customRows }).rows,
     period: period.ok ? period : { period: '', periodKey: '', periodLabel: '' },
   };
 }
@@ -519,8 +575,16 @@ export async function interpretGoalsCenter(text, options = {}) {
   if (!source) return { kind: 'clarify', questions: ['Escreva as metas e os resultados.'], reply: 'Escreva as metas e os resultados.', conference: null };
   const people = options.people ?? [];
   const mode = options.mode === 'preset' || options.mode === 'overall' ? options.mode : 'custom';
-  if (wantsPodium(source) && !/confirmar podio/.test(fold(source))) {
-    return clarify(['a confirmação explícita do pódio, por exemplo: Confirmar pódio com desempenho geral. As metas não serão alteradas']);
+  const podium = readPodiumRequest(source);
+  if (podium.kind === 'ask') return clarify([podium.missing]);
+  if (podium.kind === 'apply') {
+    return {
+      kind: 'podium',
+      persist: true,
+      conference: null,
+      criterion: podium.criterion,
+      reply: 'Atualizei só o critério do pódio. As metas e o Banco dos relatórios não foram alterados.',
+    };
   }
   const local = localExtract(source, people);
   let parsed = null;
@@ -555,7 +619,7 @@ export async function interpretGoalsCenter(text, options = {}) {
     overall = overallFor(records, rules, options.weights, period);
   }
   const conference = toConference({ source, period, rules: merged.rules, rows: merged.rows, mode, overall });
-  const missing = missingParts(conference, source);
+  const missing = missingParts(conference, source, mode);
   if (!conference.goals.length && !conference.people.length && !overall?.scores?.length) {
     if (missing.length) return clarify(missing);
     if (modelError) return failure(modelError);
@@ -566,7 +630,7 @@ export async function interpretGoalsCenter(text, options = {}) {
 }
 
 export function saveGoalsCenter(store, conference, people, now = new Date()) {
-  const missing = missingParts(conference, conference.sourceText || '');
+  const missing = missingParts(conference, conference.sourceText || '', conference.mode || '');
   if (missing.length) return { error: 'incomplete', store };
   const seen = store.centerFingerprints ?? [];
   const mark = fingerprint(conference);
