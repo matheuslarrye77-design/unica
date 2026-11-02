@@ -692,10 +692,10 @@ function isCustomIndicator(indicator) {
 
 function shownValue(indicator, value, unit) {
   if (value == null) return '';
-  const extra = unitOf(indicator, unit);
+  const extra = String(unitOf(indicator, unit) ?? '').trim();
   if (indicator === 'satisfacao' || indicator === 'resolvidos' || extra === '%') return `${value}%`;
-  if (indicator === 'primeira' || indicator === 'resolucao' || String(extra).includes('min')) return `${value} minutos`;
-  if (extra) return `${value}${extra}`;
+  if (indicator === 'primeira' || indicator === 'resolucao' || extra.includes('min')) return `${value} minutos`;
+  if (extra) return `${value} ${extra}`;
   return String(value);
 }
 
