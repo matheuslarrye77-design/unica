@@ -648,11 +648,22 @@ export function parsePeopleFromText(text, people) {
 }
 
 function compareRowToRules(row, rules) {
-  return (rules ?? []).map((rule) => {
+  const list = Array.isArray(rules) ? rules : [];
+  const seen = new Set();
+  const items = [];
+  for (const rule of list) {
     const value = row.values?.[rule.indicator];
     const met = value === null || value === undefined ? null : passesRules(row.values, [rule]);
-    return { indicator: rule.indicator, value: value ?? null, target: rule.value, op: rule.op, met };
-  });
+    seen.add(rule.indicator);
+    items.push({ indicator: rule.indicator, value: value ?? null, target: rule.value, op: rule.op, met });
+  }
+  for (const field of ['resolvidosCount', 'satisfacao', 'resolvidos', 'transferidos', 'primeira', 'resolucao']) {
+    if (seen.has(field)) continue;
+    const value = row.values?.[field];
+    if (value === null || value === undefined) continue;
+    items.push({ indicator: field, value, target: null, op: '', met: null });
+  }
+  return items;
 }
 
 function describeIndicatorLine(item) {

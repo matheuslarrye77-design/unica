@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { buildGoalsReview } from './goals.mjs';
 import { citedNumbers, goalsTurnPrompt, interpretGoalsTurn } from './goalsTurn.mjs';
 
 const people = [
@@ -93,6 +94,26 @@ test('número inventado pelo Gemini é descartado', async () => {
     }),
   });
   assert.equal(result.rules.find((rule) => rule.indicator === 'resolvidosCount').value, 320);
+});
+
+test('conferência mostra os valores mesmo quando a meta ainda não casou', () => {
+  const review = buildGoalsReview({
+    source: 'teste',
+    rules: [],
+    rows: [{
+      sourceName: 'Rafael Oliveira',
+      userId: 'tm-8',
+      name: 'Rafael Oliveira',
+      values: { resolvidos: null, resolvidosCount: 300, transferidos: null, primeira: 4, resolucao: 9, satisfacao: 94 },
+    }],
+    period: '',
+    periodKey: '',
+    periodLabel: '',
+  });
+  assert.match(review.reply, /300/);
+  assert.match(review.reply, /94/);
+  assert.match(review.reply, /Rafael Oliveira/);
+  assert.equal(review.comparisons[0].indicators.length, 4);
 });
 
 test('se o Gemini falha, a extração local ainda monta a conferência', async () => {
