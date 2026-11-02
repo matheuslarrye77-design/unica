@@ -1,7 +1,8 @@
 import { isLeader } from './auth/permissions.mjs';
 import { commitTemplate, interpretCriteria, normalizeProposal } from './criteria.mjs';
+import { interpretGoalsTurn } from './goalsTurn.mjs';
 import { applyGoalsReview, applyLedgerRanking, ingestReport, proposeFromLedger } from './ledger.mjs';
-import { applyCriterion, buildApproval, emptyStore, fold, goalState, INDICATORS, isGoalsConferenceTalk, looksLikeReport, overallScore, parseReport, publicStore, readCriterion, relinkLedger, runAssistant, understandGoalsMessage } from './goals.mjs';
+import { applyCriterion, buildApproval, emptyStore, fold, goalState, INDICATORS, looksLikeReport, overallScore, parseReport, publicStore, readCriterion, relinkLedger, runAssistant } from './goals.mjs';
 import { STORAGE_REPLY, createGoalsStore } from './goalsStore.mjs';
 
 function redactLabels(colleagues, aliases, teamRoster) {
@@ -206,8 +207,13 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
         send(res, 200, { ...publicView(result.store, user, people), kind: 'ledger', reply: 'Gravei as metas e os resultados no Banco dos relatórios. O pódio não foi alterado.' });
         return true;
       }
-      const understood = understandGoalsMessage(text, people);
-      if ((understood.kind === 'review' || understood.kind === 'proposal') && (!looksLikeReport(text) || isGoalsConferenceTalk(text) || understood.kind === 'review')) {
+      const understood = await interpretGoalsTurn(text, {
+        people,
+        history,
+        env: options.env ?? process.env,
+        generate: options.generate,
+      });
+      if (understood.kind === 'review' || understood.kind === 'proposal' || understood.kind === 'clarify' || understood.kind === 'quota' || understood.kind === 'auth' || understood.kind === 'permission' || understood.kind === 'model' || understood.kind === 'invalid' || understood.kind === 'unavailable') {
         send(res, 200, {
           ...understood,
           combine: understood.combine ?? 'all',

@@ -20,6 +20,7 @@ export function emptyStore() {
     imports: [],
     criterion: defaultCriterion(),
     ledger: { records: [], ranking: [], applied: [] },
+    managementGoals: [],
   };
 }
 
@@ -698,43 +699,58 @@ export function understandGoalsMessage(text, people) {
     };
   }
   if (rows.length && !goals.ok && !hold) return { kind: 'ingest', rows };
-  const comparisons = rows.map((row) => ({
+  return buildGoalsReview({
+    source,
+    rules: goals.ok ? goals.rules : [],
+    rows,
+    period: goals.ok ? goals.period : '',
+    periodKey: goals.ok ? goals.periodKey : '',
+    periodLabel: goals.ok ? goals.periodLabel : '',
+  });
+}
+
+export function buildGoalsReview({ source, rules, rows, period, periodKey, periodLabel }) {
+  const list = Array.isArray(rules) ? rules : [];
+  const peopleRows = Array.isArray(rows) ? rows : [];
+  const comparisons = peopleRows.map((row) => ({
     userId: row.userId,
     name: row.name || row.sourceName,
     sourceName: row.sourceName,
     values: row.values,
-    indicators: compareRowToRules(row, goals.ok ? goals.rules : []),
+    indicators: compareRowToRules(row, list),
   }));
   const lines = ['Conferência. Nada foi salvo e o pódio não foi alterado.'];
-  if (goals.ok) {
-    lines.push('', `Metas da gestão — ${goals.periodLabel || 'período a confirmar'}`);
-    for (const rule of goals.rules) {
+  if (list.length) {
+    lines.push('', `Metas da gestão — ${periodLabel || 'período a confirmar'}`);
+    for (const rule of list) {
       const unit = rule.indicator === 'satisfacao' || rule.indicator === 'resolvidos' ? '%' : rule.indicator === 'primeira' || rule.indicator === 'resolucao' ? ' min' : '';
       const sign = rule.op === 'gte' ? '>=' : rule.op === 'lte' ? '<=' : rule.op;
-      lines.push(`• ${rule.indicator === 'resolvidosCount' ? 'Tickets resolvidos' : rule.indicator === 'satisfacao' ? 'Satisfação' : rule.indicator === 'primeira' ? 'Primeira resposta' : rule.indicator === 'resolucao' ? 'Tempo médio de resolução' : rule.indicator} | ${rule.value}${unit} | ${sign} | ${goals.periodLabel}`);
+      lines.push(`• ${rule.indicator === 'resolvidosCount' ? 'Tickets resolvidos' : rule.indicator === 'satisfacao' ? 'Satisfação' : rule.indicator === 'primeira' ? 'Primeira resposta' : rule.indicator === 'resolucao' ? 'Tempo médio de resolução' : rule.indicator} | ${rule.value}${unit} | ${sign} | ${periodLabel}`);
     }
   }
   if (comparisons.length) {
     lines.push('', 'Resultados individuais');
     for (const person of comparisons) {
       lines.push(`${person.name}${person.userId ? ' — cadastro da Equipe' : ' — aguardando identificação'}`);
-      for (const item of person.indicators.filter((entry) => entry.value !== null)) {
-        lines.push(`• ${describeIndicatorLine(item)}`);
-      }
+      const shown = person.indicators.filter((entry) => entry.value !== null);
+      for (const item of shown.length ? shown : person.indicators) lines.push(`• ${describeIndicatorLine(item)}`);
     }
   }
   lines.push('', 'Escreva Confirmar para gravar no Banco dos relatórios. O pódio permanece como está.');
   return {
     kind: 'review',
     reply: lines.join('\n'),
-    period: goals.ok ? goals.period : '',
-    periodKey: goals.ok ? goals.periodKey : '',
-    periodLabel: goals.ok ? goals.periodLabel : '',
-    rules: goals.ok ? goals.rules : [],
-    rows,
+    period: period || '',
+    periodKey: periodKey || '',
+    periodLabel: periodLabel || '',
+    rules: list,
+    rows: peopleRows,
     comparisons,
     sourceText: source,
     persist: false,
+    combine: 'all',
+    subsetor: '',
+    weights: null,
   };
 }
 
@@ -1330,16 +1346,18 @@ const BANK_FIELDS = [
 ];
 
 export function reportBankSnapshot(store) {
+  const managed = Array.isArray(store?.managementGoals) ? store.managementGoals : [];
   const templates = Array.isArray(store?.templates) ? store.templates : [];
   const records = Array.isArray(store?.ledger?.records) ? store.ledger.records : [];
+  const goalSource = managed.length ? managed : templates;
   const buckets = [...new Set([
-    ...templates.map((item) => monthBucketOf(item.periodKey)).filter(Boolean),
+    ...goalSource.map((item) => monthBucketOf(item.periodKey)).filter(Boolean),
     ...records.map((item) => monthBucketOf(item.periodKey)).filter(Boolean),
   ])].sort().reverse();
   return {
     periods: buckets.map((bucket) => {
       const label = formatPeriodLabel(bucket);
-      const goals = templates
+      const goals = goalSource
         .filter((item) => monthBucketOf(item.periodKey) === bucket)
         .flatMap((item) => (item.rules ?? []).map((rule) => ({
           indicator: rule.indicator,

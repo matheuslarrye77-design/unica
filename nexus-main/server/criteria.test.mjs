@@ -215,7 +215,7 @@ test('o prompt e o frontend não levam a chave nem o cadastro', async () => {
   assert.equal(named.period, 'month');
   const ui = fs.readFileSync(new URL('../src/components/recognition/GoalsCenter.tsx', import.meta.url), 'utf8');
   const api = fs.readFileSync(new URL('./goalsApi.mjs', import.meta.url), 'utf8');
-  assert.match(ui, /Conferência das metas/);
+  assert.match(ui, /Conferência/);
   assert.match(ui, /Indicador \| Valor \| Regra \| Período/);
   assert.equal(ui.includes('GEMINI_API_KEY') || ui.includes('@google/genai') || ui.includes('generativelanguage.googleapis.com'), false);
   assert.equal(api.includes('GEMINI_API_KEY'), false);

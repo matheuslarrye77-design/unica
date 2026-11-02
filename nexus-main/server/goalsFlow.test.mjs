@@ -119,6 +119,8 @@ test('a interface do banco mostra mês/ano, gestão e resultados separados', () 
   assert.match(ui, /Confirmar metas/);
   assert.match(ui, /O pódio não foi alterado/);
   assert.match(ui, /Novembro\/\$\{year\}|\/\$\{year\}/);
+  assert.match(ui, /pendingRules\.comparisons/);
+  assert.match(ui, /messages\.slice\(-6\)/);
   assert.equal(ui.includes('O pódio passa a usar esta regra'), false);
 });
 
@@ -243,7 +245,8 @@ function memoryGoalsStore() {
   });
 }
 
-async function postAssistant(payload, req = {}) {
+async function postAssistant(payload, req = {}, generate) {
+  const persist = req.store ?? memoryGoalsStore();
   const res = { status: 0, body: null };
   await handleGoals(
     { method: 'POST', url: '/api/goals/assistant', ...req },
@@ -254,8 +257,9 @@ async function postAssistant(payload, req = {}) {
     teamRoster,
     (_response, status, body) => { res.status = status; res.body = body; },
     async () => Buffer.from(Object.prototype.hasOwnProperty.call(req, 'raw') ? req.raw : JSON.stringify(payload)),
-    { store: memoryGoalsStore() },
+    { store: persist, generate: generate ?? (async () => ({ error: 'unconfigured' })) },
   );
+  res.store = persist;
   return res;
 }
 
@@ -295,5 +299,64 @@ test('a rota real reconhece a mensagem em tópicos sem gravar nem mudar o pódio
   const text = NATURAL_VARIATIONS[1];
   const result = await postAssistant({ text, intent: 'idle', preview: null, periodKey: '', history: [] });
   assertApiReview(result);
+});
+
+test('a rota chama o Gemini, confere e só grava depois de confirmar, sem pódio', async () => {
+  let prompts = 0;
+  const generate = async () => {
+    prompts += 1;
+    return { error: 'unconfigured' };
+  };
+  const persist = memoryGoalsStore();
+  const first = await postAssistant({ text: NATURAL_MESSAGE, intent: 'idle', history: [{ text: 'oi' }] }, { store: persist }, generate);
+  assert.equal(prompts, 1);
+  assertApiReview(first);
+  const saved = await postAssistant({
+    text: 'confirmar',
+    review: {
+      period: first.body.period,
+      periodKey: first.body.periodKey,
+      periodLabel: first.body.periodLabel,
+      rules: first.body.rules,
+      rows: first.body.rows,
+      sourceText: NATURAL_MESSAGE,
+    },
+  }, { store: persist }, generate);
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.kind, 'ledger');
+  assert.equal(saved.body.criterion.mode, 'preset');
+  assert.equal((saved.body.ledger.applied ?? []).length, 0);
+  const month = saved.body.bank.periods.find((item) => item.key === '2026-11');
+  assert.equal(month.label, 'Novembro/2026');
+  assert.equal(month.goals.length, 4);
+  assert.equal(month.people.length, 2);
+  const reload = { status: 0, body: null };
+  await handleGoals({ method: 'GET', url: '/api/goals' }, {}, leader, process.cwd(), [], teamRoster, (_r, status, body) => { reload.status = status; reload.body = body; }, async () => Buffer.from('{}'), { store: persist, generate });
+  const again = reload.body.bank.periods.find((item) => item.key === '2026-11');
+  assert.equal(again.people.length, 2);
+  assert.equal(again.goals.length, 4);
+  assert.equal(reload.body.criterion.mode, 'preset');
+});
+
+test('correção de resultado atualiza o mesmo colaborador no mesmo período', async () => {
+  const persist = memoryGoalsStore();
+  const first = await postAssistant({ text: NATURAL_MESSAGE, intent: 'idle' }, { store: persist });
+  await postAssistant({
+    text: 'confirmar',
+    review: { period: first.body.period, periodKey: first.body.periodKey, periodLabel: first.body.periodLabel, rules: first.body.rules, rows: first.body.rows, sourceText: NATURAL_MESSAGE },
+  }, { store: persist });
+  const fix = 'O Rafael Oliveira no novembro de 2026 ficou com 310 tickets resolvidos, 94% de satisfação, 4 minutos de primeira resposta e 9 minutos de TMA. Conferir antes de salvar. Não alterar o pódio.';
+  const review = await postAssistant({ text: fix, intent: 'idle' }, { store: persist });
+  assert.equal(review.body.kind, 'review');
+  assert.equal(review.body.rows.find((row) => row.userId === 'tm-8').values.resolvidosCount, 310);
+  await postAssistant({
+    text: 'confirmar',
+    review: { period: review.body.period, periodKey: review.body.periodKey, periodLabel: review.body.periodLabel, rules: review.body.rules, rows: review.body.rows, sourceText: fix },
+  }, { store: persist });
+  const reload = { status: 0, body: null };
+  await handleGoals({ method: 'GET', url: '/api/goals' }, {}, leader, process.cwd(), [], teamRoster, (_r, status, body) => { reload.status = status; reload.body = body; }, async () => Buffer.from('{}'), { store: persist, generate: async () => ({ error: 'unconfigured' }) });
+  const rafa = reload.body.bank.periods.find((item) => item.key === '2026-11').people.find((row) => row.userId === 'tm-8');
+  assert.equal(rafa.indicators.find((item) => item.field === 'resolvidosCount').value, 310);
+  assert.equal(reload.body.criterion.mode, 'preset');
 });
 

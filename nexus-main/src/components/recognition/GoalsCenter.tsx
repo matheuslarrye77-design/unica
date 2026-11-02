@@ -18,6 +18,7 @@ type PendingRules = {
   weights: { resolvidos: number; primeira: number; resolucao: number } | null;
   rows?: Row[];
   sourceText?: string;
+  comparisons?: { userId: string; name: string; sourceName: string; values: Values; indicators: { indicator: string; value: number | null; target: number; op: string; met: boolean | null }[] }[];
 };
 type Values = { resolvidos: number | null; resolvidosCount: number | null; transferidos: number | null; primeira: number | null; resolucao: number | null; satisfacao?: number | null };
 type Row = {
@@ -290,7 +291,7 @@ export const GoalsProvider: FC<{
     say('user', source);
     setBusy(true);
     try {
-      const history = phase === 'custom' ? messages.slice(-6).map((message) => ({ text: message.text })) : [];
+      const history = messages.slice(-6).map((message) => ({ text: message.text }));
       const data = await send('/api/goals/assistant', 'POST', { text: source, preview: phase === 'custom' ? undefined : preview, periodKey: periodKey || week || goals.currentKey, intent: phase, history });
       if (data.kind === 'unavailable' || data.kind === 'quota' || data.kind === 'auth' || data.kind === 'permission' || data.kind === 'model' || data.kind === 'invalid' || data.kind === 'clarify' || data.kind === 'storage') setDraft(source);
       else setDraft('');
@@ -333,6 +334,7 @@ export const GoalsProvider: FC<{
           weights: null,
           rows: Array.isArray(data.rows) ? data.rows : [],
           sourceText: source,
+          comparisons: Array.isArray(data.comparisons) ? data.comparisons : [],
         });
         setPhase('custom');
       }
@@ -412,11 +414,11 @@ export const GoalsProvider: FC<{
     const name = pendingRules.name.trim() || 'Metas da gestão';
     setBusy(true);
     try {
-      if (pendingRules.rows?.length) {
+      if (pendingRules.sourceText || pendingRules.rows?.length) {
         const data = await send('/api/goals/assistant', 'POST', {
           text: 'confirmar',
           review: {
-            name,
+            name: 'Metas da gestão',
             period: pendingRules.period,
             periodKey: pendingRules.periodKey,
             periodLabel: pendingRules.periodLabel,
@@ -990,15 +992,43 @@ export const GoalsAssistant: FC = () => {
         ) : null}
         {pendingRules ? (
           <div className="grid gap-2 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
-            <p className="text-[12px] font-semibold text-[#4A1C73]">Conferência das metas. Confirme antes de aplicar.</p>
-            <p className="text-[11px] text-[#8A7C98]">Indicador | Valor | Regra | Período</p>
-            <ul className="grid gap-1 text-[12.5px] leading-5 break-words text-[#5C5168]">
-              {pendingRules.rules.map((rule, index) => (
-                <li key={`${rule.indicator}-${index}`}>{ruleConference(rule, pendingRules.periodLabel)}</li>
-              ))}
-            </ul>
-            <p className="text-[12px] text-[#8A7C98]">{pendingRules.combine === 'any' ? 'Basta uma condição.' : 'Todas as condições são obrigatórias.'}{pendingRules.subsetor ? ` Subsetor ${pendingRules.subsetor}.` : ''}</p>
-            <input value={pendingRules.name} onChange={(event) => setPendingRules({ ...pendingRules, name: event.target.value })} placeholder="Nome do pódio" className="h-9 w-full rounded-lg border border-[#E7DFF0] bg-white px-2 text-[13px]" />
+            <p className="text-[12px] font-semibold text-[#4A1C73]">Conferência. Nada foi salvo e o pódio não foi alterado.</p>
+            {pendingRules.rules.length ? (
+              <>
+                <p className="text-[12px] font-medium text-[#4A1C73]">Metas da gestão — {pendingRules.periodLabel || 'período a confirmar'}</p>
+                <p className="text-[11px] text-[#8A7C98]">Indicador | Valor | Regra | Período</p>
+                <ul className="grid gap-1 text-[12.5px] leading-5 break-words text-[#5C5168]">
+                  {pendingRules.rules.map((rule, index) => (
+                    <li key={`${rule.indicator}-${index}`}>{ruleConference(rule, pendingRules.periodLabel)}</li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {(pendingRules.comparisons?.length || pendingRules.rows?.length) ? (
+              <>
+                <p className="text-[12px] font-medium text-[#4A1C73]">Resultados individuais</p>
+                <ul className="grid gap-2 text-[12.5px] leading-5 break-words text-[#5C5168]">
+                  {(pendingRules.comparisons?.length ? pendingRules.comparisons : pendingRules.rows ?? []).map((person) => (
+                    <li key={person.userId || person.sourceName || person.name}>
+                      <p className="font-medium text-[#241B33]">{person.name || person.sourceName}{person.userId ? ' — cadastro da Equipe' : ''}</p>
+                      {person.indicators?.length
+                        ? person.indicators.filter((item) => item.value !== null).map((item) => (
+                          <p key={item.indicator}>{ruleConference({ indicator: item.indicator, op: item.op, value: item.value ?? 0 }, item.met === true ? 'Atingiu' : item.met === false ? 'Não atingiu' : 'Sem meta')}</p>
+                        ))
+                        : person.values
+                          ? Object.entries(person.values).filter(([, value]) => value !== null && value !== undefined).map(([field, value]) => (
+                            <p key={field}>{RULE_NAMES[field] ?? field}: {String(value)}</p>
+                          ))
+                          : null}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            <p className="text-[12px] text-[#8A7C98]">{pendingRules.sourceText || pendingRules.rows?.length ? 'O pódio permanece como está.' : pendingRules.combine === 'any' ? 'Basta uma condição.' : 'Todas as condições são obrigatórias.'}{pendingRules.subsetor ? ` Subsetor ${pendingRules.subsetor}.` : ''}</p>
+            {pendingRules.sourceText || pendingRules.rows?.length ? null : (
+              <input value={pendingRules.name} onChange={(event) => setPendingRules({ ...pendingRules, name: event.target.value })} placeholder="Nome do pódio" className="h-9 w-full rounded-lg border border-[#E7DFF0] bg-white px-2 text-[13px]" />
+            )}
             <div className="grid grid-cols-2 gap-2">
               <button type="button" disabled={busy} onClick={() => void saveTemplate()} className="h-9 rounded-full bg-[#8E35B8] text-[12.5px] font-semibold text-white disabled:bg-[#C9A6DC]">Confirmar metas</button>
               <button type="button" disabled={busy} onClick={cancelProposal} className="h-9 rounded-full border border-[#E7DFF0] text-[12.5px] font-semibold text-[#6A228C]">Cancelar</button>

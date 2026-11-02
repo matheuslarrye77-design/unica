@@ -1,4 +1,3 @@
-import { commitTemplate } from './criteria.mjs';
 import { fold, formatPeriodLabel, isoWeekKey, mentionedPeriods, metricOf, monthKey, parseCustomRequest, parseReport, passesRules } from './goals.mjs';
 
 const FIELDS = ['resolvidosCount', 'resolvidos', 'transferidos', 'primeira', 'resolucao', 'satisfacao'];
@@ -264,27 +263,25 @@ export function applyLedgerRanking(store, now = new Date()) {
 }
 
 export function applyGoalsReview(store, review, people, now = new Date()) {
-  let next = store;
+  let next = { ...store, criterion: store.criterion, templates: [...(store.templates ?? [])], managementGoals: [...(store.managementGoals ?? [])] };
   if (Array.isArray(review?.rules) && review.rules.length) {
-    const saved = commitTemplate(next, {
-      ok: true,
+    const entry = {
+      id: `meta-${review.periodKey || Date.now()}`,
       period: review.period || 'month',
       periodKey: review.periodKey || '',
       periodLabel: review.periodLabel || '',
-      combine: review.combine === 'any' ? 'any' : 'all',
-      subsetor: '',
-      weights: review.weights ?? null,
       rules: review.rules,
-      explanation: review.explanation || 'Metas da gestão',
-    }, { confirm: true, name: review.name || 'Metas da gestão' });
-    if (saved.saved) next = saved.store;
+      updatedAt: now.toISOString(),
+    };
+    const others = next.managementGoals.filter((item) => item.periodKey !== entry.periodKey);
+    next = { ...next, managementGoals: [...others, entry] };
   }
   if (Array.isArray(review?.rows) && review.rows.length) {
     const ingested = ingestReport(next, review.sourceText || '', people, {
       now,
       parsed: { rows: review.rows, periodKey: review.periodKey || '', warnings: [] },
     });
-    if (ingested.kind === 'ledger') next = ingested.store;
+    if (ingested.kind === 'ledger') next = { ...ingested.store, criterion: next.criterion, templates: next.templates, managementGoals: next.managementGoals };
   }
   return { store: next };
 }
