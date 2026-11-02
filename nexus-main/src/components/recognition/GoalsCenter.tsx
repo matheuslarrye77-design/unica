@@ -645,7 +645,7 @@ function ruleTarget(rule: Rule) {
   return String(rule.value);
 }
 
-function goalMet(field: string, value: number | null | undefined, rule?: Rule, importGoal?: { target?: number | null; direction?: string }) {
+function goalMet(value: number | null | undefined, rule?: Rule, importGoal?: { target?: number | null; direction?: string }) {
   if (value === null || value === undefined) return null;
   if (rule) {
     if (rule.op === 'gt') return value > rule.value;
@@ -782,7 +782,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
                         const value = record.values[field];
                         if (value === null || value === undefined) return null;
                         const meta = metaFor(field);
-                        const met = goalMet(field, value, meta.rule, meta.importGoal);
+                        const met = goalMet(value, meta.rule, meta.importGoal);
                         const target = meta.rule ? meta.rule.value : meta.importGoal?.target;
                         return (
                           <li key={field} className="rounded-xl bg-[#FBF8FC] px-3 py-2">
@@ -803,7 +803,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
                           {record.history.map((item, index) => (
                             <li key={`${item.at}-${index}`} className="rounded-lg bg-white px-2 py-2 text-[12px] text-[#8A7C98]">
                               <p className="font-medium text-[#5C5168]">{clock(item.at) || `Versão ${index + 1}`}</p>
-                              <p>{LEDGER_FIELDS.filter(([field]) => item.values[field] !== null && item.values[field] !== undefined).map(([field, label]) => `${label}: ${ledgerText(field, item.values[field])}`).join(' · ') || 'Sem indicadores nesta versão.'}</p>
+                              <p>{LEDGER_FIELDS.filter(([field]) => item.values[field] !== null && item.values[field] !== undefined).map(([field, label]) => `${label}: ${ledgerText(field, item.values[field] ?? null)}`).join(' · ') || 'Sem indicadores nesta versão.'}</p>
                             </li>
                           ))}
                         </ul>
