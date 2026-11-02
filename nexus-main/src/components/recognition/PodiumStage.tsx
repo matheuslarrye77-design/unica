@@ -1,6 +1,6 @@
 import { teamRoster } from '@/data/team';
 import { cn } from '@/lib/utils';
-import { Calendar, ChevronLeft, ChevronRight, Crown, Trophy } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Crown, Mail, MessageCircle, Phone, Trophy, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import type { GoalsPayload } from '@/components/recognition/GoalsCenter';
 
@@ -15,11 +15,11 @@ const STEP = {
 } as const;
 
 const MODE_ORDER = ['overall', 'preset', 'custom'] as const;
-const CATEGORIES = [
-  { id: 'Ligação', mark: '📞' },
-  { id: 'Chat', mark: '💬' },
-  { id: 'E-mail', mark: '💌' },
-] as const;
+const CATEGORIES: { id: 'Ligação' | 'Chat' | 'E-mail'; Icon: LucideIcon }[] = [
+  { id: 'Ligação', Icon: Phone },
+  { id: 'Chat', Icon: MessageCircle },
+  { id: 'E-mail', Icon: Mail },
+];
 
 const TOOLTIP_LABEL: Record<string, string> = {
   resolvidosCount: 'Tickets resolvidos',
@@ -162,9 +162,9 @@ export const PodiumStage: FC<{
                 aria-label={item.id}
                 aria-pressed={channel === item.id}
                 onClick={() => setChannel(item.id)}
-                className={cn('grid h-9 w-9 place-items-center rounded-full text-[16px] leading-none transition', channel === item.id ? 'bg-[#8E35B8] text-white shadow-[0_8px_16px_rgba(142,53,184,0.28)]' : 'border border-[#E7DFF0] bg-white text-[#6A228C] hover:bg-[#FBF8FC]')}
+                className={cn('grid h-9 w-9 place-items-center rounded-full transition', channel === item.id ? 'bg-[#8E35B8] text-white shadow-[0_8px_16px_rgba(142,53,184,0.28)]' : 'border border-[#E7DFF0] bg-white text-[#8E35B8] hover:bg-[#FBF8FC]')}
               >
-                <span aria-hidden="true">{item.mark}</span>
+                <item.Icon className="h-4 w-4" aria-hidden="true" strokeWidth={2} />
               </button>
             ))}
           </div>
