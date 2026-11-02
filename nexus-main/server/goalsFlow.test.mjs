@@ -855,6 +855,68 @@ test('novos resultados gravados atualizam o pódio do mesmo período', async () 
   assert.equal(after.ranking[1].userId, 'tm-4');
 });
 
+test('pódio predefinido detalha só os indicadores da avaliação, com unidades reais', async () => {
+  const persist = memoryGoalsStore();
+  const pending = await postCenter({ text: NATURAL_MESSAGE, mode: 'preset' }, { store: persist });
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: pending.body.conference }, { store: persist });
+  const loaded = await getGoals(persist);
+  const november = loaded.body.podiums.find((item) => item.periodKey === '2026-11' && item.mode === 'preset');
+  assert.equal(november.basis.modeLabel, 'Critérios predefinidos');
+  assert.match(november.basis.origin, /Supabase|Banco de Dados/i);
+  const felipe = november.ranking[0];
+  assert.equal(felipe.userId, 'tm-4');
+  const tickets = felipe.metrics.find((item) => item.id === 'resolvidosCount');
+  const sat = felipe.metrics.find((item) => item.id === 'satisfacao');
+  const first = felipe.metrics.find((item) => item.id === 'primeira');
+  assert.equal(tickets.value, 350);
+  assert.equal(tickets.shown, '350 tickets');
+  assert.equal(sat.shown, '97%');
+  assert.equal(first.shown, '3 minutos');
+  assert.equal(felipe.metrics.some((item) => item.id === 'transferidos'), false);
+  assert.equal(pending.body.persist, false);
+});
+
+test('pódio de desempenho geral mostra peso, pontuação e elegibilidade', async () => {
+  const persist = memoryGoalsStore();
+  const goals = await postCenter({ text: MARCH_GOALS, mode: 'preset' }, { store: persist });
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: goals.body.conference }, { store: persist });
+  const overallText = `Desempenho geral de março de 2027.
+Rafael Oliveira: 300 tickets, 94% de satisfação, 4 min de primeira resposta e TMA 9 min.
+Felipe Costa: 350 tickets, 97% de satisfação, 3 min de primeira resposta e TMA 7 min.
+Conferir. Não alterar o pódio.`;
+  const overall = await postCenter({ text: overallText, mode: 'overall' }, { store: persist });
+  assert.equal(overall.body.persist, false);
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: overall.body.conference }, { store: persist });
+  const loaded = await getGoals(persist);
+  const march = loaded.body.podiums.find((item) => item.periodKey === '2027-03' && item.mode === 'overall');
+  assert.equal(march.ranking[0].userId, 'tm-4');
+  assert.equal(march.ranking[0].displayScore, '100%');
+  const tickets = march.ranking[0].metrics.find((item) => item.id === 'resolvidosCount');
+  assert.equal(tickets.value, 350);
+  assert.equal(tickets.weight, 25);
+  assert.equal(tickets.contribution, 25);
+  assert.equal(tickets.eligible, true);
+  const rafa = march.ranking[1].metrics.find((item) => item.id === 'resolvidosCount');
+  assert.equal(rafa.eligible, false);
+  assert.ok(rafa.reason);
+});
+
+test('pódio personalizado mostra a regra, o valor real e se cumpriu', async () => {
+  const persist = memoryGoalsStore();
+  const quality = await postCenter({ text: QUALITY_MESSAGE, mode: 'custom' }, { store: persist });
+  await postCenter({ action: 'confirm', text: 'confirmar', conference: quality.body.conference }, { store: persist });
+  const loaded = await getGoals(persist);
+  const january = loaded.body.podiums.find((item) => item.periodKey === '2027-01' && item.mode === 'custom');
+  assert.equal(january.basis.modeLabel, 'Critérios personalizados');
+  assert.equal(january.ranking[0].userId, 'tm-4');
+  const metric = january.ranking[0].metrics[0];
+  assert.equal(metric.value, 94);
+  assert.equal(metric.shown, '94%');
+  assert.equal(metric.met, true);
+  assert.match(metric.condition, /90/);
+  assert.equal(january.ranking.some((row) => row.userId === 'tm-8'), false);
+});
+
 test('desempenho geral pede só a meta do indicador selecionado que faltar', async () => {
   const result = await postCenter({
     text: 'Desempenho geral de março de 2027. Rafael Oliveira primeira resposta 4 minutos. Felipe Costa primeira resposta 3 minutos. Conferir. Não alterar o pódio.',

@@ -118,7 +118,7 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
   const people = directory(colleagues, store.aliases, teamRoster);
   const labels = redactLabels(colleagues, store.aliases, teamRoster);
   if (req.method === 'GET' && url === '/api/goals') {
-    send(res, 200, { ...publicView(store, user, people), storage: loaded.error ? 'unavailable' : 'ok' });
+    send(res, 200, { ...publicView(store, user, people), storage: loaded.error ? 'unavailable' : 'ok', updatedAt: loaded.version || '' });
     return true;
   }
   if (loaded.error) {

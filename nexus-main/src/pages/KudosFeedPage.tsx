@@ -12,9 +12,10 @@ import { actor, authHeaders, getDemoId } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { createFeedPost } from '@/lib/feed';
 import { GoalsAssistant, GoalsCenter, GoalsProvider, type GoalsPayload } from '@/components/recognition/GoalsCenter';
+import { PodiumStage } from '@/components/recognition/PodiumStage';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
-import { Calendar, ChevronDown, ChevronLeft, ChevronRight, Crown, Heart, Megaphone, Target, Trophy } from 'lucide-react';
-import { useEffect, useState, type FC } from 'react';
+import { ChevronDown, Heart, Megaphone, Target, Trophy } from 'lucide-react';
+import { useEffect, useRef, useState, type FC } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -42,16 +43,9 @@ function face(name: string) {
   return teamRoster.find((person) => person.name === name)?.avatar ?? `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
 }
 
-function monthLabel() {
-  const label = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  return label.charAt(0).toUpperCase() + label.slice(1).replace(' de ', ' ');
+function goalsHeaders() {
+  return { ...authHeaders(), ...(LOGIN_REQUIRED ? {} : { 'x-unica-demo': getDemoId() }) };
 }
-
-const STEP = {
-  1: { strong: '#7C3AED', wash: '#EDE9FE', line: '#C4B5FD', height: 'h-[108px]', avatar: 'h-[68px] w-[68px]' },
-  2: { strong: '#DB2777', wash: '#FCE7F3', line: '#F9A8D4', height: 'h-[78px]', avatar: 'h-12 w-12' },
-  3: { strong: '#818CF8', wash: '#EEF2FF', line: '#C7D2FE', height: 'h-[58px]', avatar: 'h-12 w-12' },
-} as const;
 
 export const KudosFeedPage: FC = () => {
   const { canRecognize } = useInstitution();
@@ -70,23 +64,46 @@ export const KudosFeedPage: FC = () => {
   const [goals, setGoals] = useState<GoalsPayload | null>(null);
   const [week, setWeek] = useState('');
   const [podiumMonth, setPodiumMonth] = useState('');
+  const stamp = useRef('');
   useEffect(() => {
-    void fetch('/api/goals', { credentials: 'include', headers: { ...authHeaders(), ...(LOGIN_REQUIRED ? {} : { 'x-unica-demo': getDemoId() }) } })
-      .then((response) => response.json().catch(() => null) as Promise<GoalsPayload | null>)
-      .then((data) => { if (data && typeof data.canManage === 'boolean') setGoals(data); })
-      .catch(() => undefined);
+    let cancelled = false;
+    let timer = 0;
+    async function pull() {
+      try {
+        const response = await fetch('/api/goals', { credentials: 'include', headers: goalsHeaders() });
+        const data = await response.json().catch(() => null) as GoalsPayload | null;
+        if (cancelled || !data || typeof data.canManage !== 'boolean') return;
+        const version = String(data.updatedAt ?? '');
+        if (version && version === stamp.current) return;
+        stamp.current = version;
+        setGoals(data);
+      } catch {
+        /* reconecta no próximo ciclo */
+      }
+    }
+    void pull();
+    const loop = () => {
+      timer = window.setTimeout(() => {
+        if (document.visibilityState === 'visible') void pull();
+        loop();
+      }, 2500);
+    };
+    loop();
+    const refresh = () => { stamp.current = ''; void pull(); };
+    window.addEventListener('unica-goals-saved', refresh);
+    window.addEventListener('online', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      window.removeEventListener('unica-goals-saved', refresh);
+      window.removeEventListener('online', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, []);
   const activeKey = week || goals?.currentKey || '';
-  const months = [...(goals?.podiums ?? [])].sort((left, right) => left.periodKey.localeCompare(right.periodKey));
-  const podiumKey = podiumMonth || goals?.currentPodiumKey || months[months.length - 1]?.periodKey || '';
-  const activePodium = months.find((item) => item.periodKey === podiumKey) ?? months[months.length - 1];
-  const standing = (activePodium?.ranking ?? []).map((row) => ({
-    place: row.place,
-    name: row.name,
-    role: teamRoster.find((person) => person.id === row.userId || person.name === row.name)?.role ?? '',
-    count: row.score == null ? '' : row.score,
-  }));
-  const monthIndex = months.findIndex((item) => item.periodKey === (activePodium?.periodKey ?? podiumKey));
+  const months = [...new Set((goals?.podiums ?? []).map((item) => item.periodKey))].sort((left, right) => left.localeCompare(right));
+  const podiumKey = podiumMonth || goals?.currentPodiumKey || months[months.length - 1] || '';
   const items = [...extra, ...RECENT].filter((item) => filter === 'Todos' || item.area === filter);
   const canManageGoals = Boolean(goals?.canManage);
   const tab = canManageGoals && params.get('painel') === 'metas' ? 'metas' : 'mural';
@@ -162,68 +179,7 @@ export const KudosFeedPage: FC = () => {
               </div>
             </section>
 
-            <section className="rounded-[22px] border border-[#F0E7F6] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex items-start gap-2.5">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#F3E4FA] text-[#8E35B8]"><Trophy className="h-4 w-4" /></span>
-                  <div>
-                    <h2 className="text-[16px] font-semibold text-[#241B33]">Pódio do mês</h2>
-                    <p className="text-[12.5px] text-[#8A7C98]">{activePodium ? `Resultados confirmados — ${activePodium.periodLabel}` : 'Ainda não há resultados confirmados no Banco de Dados'}</p>
-                  </div>
-                </div>
-                {months.length > 0 ? (
-                  <div className="inline-flex items-center gap-1 rounded-full border border-[#E7DFF0] bg-white px-1.5 py-1 text-[12.5px] font-medium text-[#5C5168]">
-                    <button type="button" aria-label="Período anterior" disabled={monthIndex <= 0} onClick={() => setPodiumMonth(months[monthIndex - 1].periodKey)} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button>
-                    <span className="inline-flex items-center gap-1.5 px-1"><Calendar className="h-3.5 w-3.5 text-[#8E35B8]" /> {activePodium?.periodLabel || monthLabel()}</span>
-                    <button type="button" aria-label="Período seguinte" disabled={monthIndex < 0 || monthIndex >= months.length - 1} onClick={() => setPodiumMonth(months[monthIndex + 1].periodKey)} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button>
-                  </div>
-                ) : (
-                  <p className="inline-flex items-center gap-1.5 rounded-full border border-[#E7DFF0] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#5C5168]">
-                    <Calendar className="h-3.5 w-3.5 text-[#8E35B8]" /> {monthLabel()}
-                  </p>
-                )}
-              </div>
-              <div className="mx-auto mt-5 max-w-xl">
-                <div className="grid grid-cols-3 items-end gap-4">
-                  {([standing.find((row) => row.place === 2), standing.find((row) => row.place === 1), standing.find((row) => row.place === 3)]).map((person, index) => {
-                    if (!person) return <div key={`vazio-${index}`} className="min-h-[120px]" />;
-                    const place = (person.place === 2 || person.place === 3 ? person.place : 1) as 1 | 2 | 3;
-                    const name = person.name;
-                    const role = person.role;
-                    const count = person.count;
-                    const tone = STEP[place];
-                    return (
-                        <div key={`${person.place}-${person.name}`} className="flex min-w-0 flex-col items-center text-center">
-                        <div className="relative">
-                          {place === 1 ? <Crown className="absolute -top-4 left-1/2 h-5 w-5 -translate-x-1/2 text-[#7C3AED]" /> : null}
-                          <img
-                            src={face(person.name)}
-                            alt=""
-                            className={cn('rounded-full bg-white object-cover', tone.avatar)}
-                            style={{ boxShadow: `0 0 0 3px #fff, 0 0 0 5px ${tone.strong}` }}
-                          />
-                        </div>
-                        <p className="mt-2 max-w-full truncate text-[13px] font-semibold text-[#241B33]">{name}</p>
-                        <p className="max-w-full truncate text-[11px] text-[#8A7C98]">{role}</p>
-                        <div className={cn('relative mt-4 w-full max-w-[104px]', tone.height)}>
-                          <span
-                            className="absolute -top-3 left-1/2 z-10 grid h-7 w-7 -translate-x-1/2 place-items-center rounded-full text-[13px] font-semibold text-white"
-                            style={{ background: tone.strong, boxShadow: `0 8px 16px ${tone.strong}55` }}
-                          >
-                            {place}
-                          </span>
-                          <div className="flex h-full flex-col overflow-hidden rounded-[20px] border" style={{ borderColor: tone.line, boxShadow: `0 10px 22px ${tone.strong}22` }}>
-                            <div className="flex-1" style={{ background: `linear-gradient(180deg, #ffffff 0%, ${tone.wash} 100%)` }} />
-                            <div className="flex h-9 items-center justify-center text-[16px] font-semibold text-white" style={{ background: tone.strong }}>{count}</div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="mx-6 mt-2 h-1.5 rounded-full bg-gradient-to-r from-[#F9A8D4] via-[#C4B5FD] to-[#A5B4FC]" />
-              </div>
-            </section>
+            <PodiumStage podiums={goals?.podiums ?? []} periodKey={podiumKey} onPeriod={setPodiumMonth} />
 
             <section className="rounded-[22px] border border-[#F0E7F6] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
               <div className="flex items-center justify-between gap-3">

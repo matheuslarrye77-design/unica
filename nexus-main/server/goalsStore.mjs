@@ -48,6 +48,7 @@ export function normalizeGoals(parsed) {
     managementGoals: Array.isArray(source.managementGoals) ? source.managementGoals : [],
     centerFingerprints: Array.isArray(source.centerFingerprints) ? source.centerFingerprints : [],
     overallReviews: Array.isArray(source.overallReviews) ? source.overallReviews : [],
+    evaluations: Array.isArray(source.evaluations) ? source.evaluations : [],
     podiums: Array.isArray(source.podiums) ? source.podiums : [],
     ledger: {
       records: Array.isArray(source.ledger?.records) ? source.ledger.records : [],

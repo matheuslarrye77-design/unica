@@ -23,6 +23,7 @@ export function emptyStore() {
     managementGoals: [],
     centerFingerprints: [],
     overallReviews: [],
+    evaluations: [],
     podiums: [],
   };
 }
@@ -1425,6 +1426,61 @@ export function reportBankSnapshot(store) {
   };
 }
 
+function presentMetric(item) {
+  const source = item && typeof item === 'object' ? item : {};
+  const metric = {
+    id: String(source.id ?? ''),
+    name: String(source.name ?? ''),
+    value: source.value == null ? null : Number(source.value),
+    unit: String(source.unit ?? ''),
+    shown: source.shown == null ? '' : String(source.shown),
+  };
+  if (source.weight != null) metric.weight = Number(source.weight);
+  if (source.contribution != null) metric.contribution = Number(source.contribution);
+  if (source.eligible === true || source.eligible === false) metric.eligible = source.eligible;
+  if (source.met === true || source.met === false || source.met === null) metric.met = source.met;
+  if (source.reason) metric.reason = String(source.reason);
+  if (source.condition) metric.condition = String(source.condition);
+  if (source.target != null) metric.target = Number(source.target);
+  return metric;
+}
+
+function presentPodium(item) {
+  const source = item && typeof item === 'object' ? item : {};
+  const basis = source.basis && typeof source.basis === 'object' ? source.basis : {};
+  return {
+    periodKey: String(source.periodKey ?? ''),
+    periodLabel: String(source.periodLabel ?? ''),
+    mode: source.mode === 'overall' || source.mode === 'custom' ? source.mode : 'preset',
+    modeLabel: String(source.modeLabel ?? ''),
+    selected: Array.isArray(source.selected) ? source.selected.map((id) => String(id)) : [],
+    weights: source.weights && typeof source.weights === 'object' ? source.weights : {},
+    detailsAvailable: source.detailsAvailable !== false,
+    ranking: (Array.isArray(source.ranking) ? source.ranking : []).slice(0, 3).map((row) => ({
+      place: Number(row.place) || 0,
+      userId: String(row.userId ?? ''),
+      name: String(row.name ?? ''),
+      score: row.score == null ? null : Number(row.score),
+      displayScore: row.displayScore == null ? (row.score == null ? '' : String(row.score)) : String(row.displayScore),
+      detailsAvailable: row.detailsAvailable !== false,
+      metrics: Array.isArray(row.metrics) ? row.metrics.map(presentMetric) : [],
+    })),
+    basis: {
+      origin: String(basis.origin ?? ''),
+      periodLabel: String(basis.periodLabel ?? ''),
+      modeLabel: String(basis.modeLabel ?? ''),
+      summary: String(basis.summary ?? ''),
+      indicators: Array.isArray(basis.indicators) ? basis.indicators.map((entry) => ({
+        id: String(entry.id ?? ''),
+        name: String(entry.name ?? ''),
+        condition: String(entry.condition ?? ''),
+        weight: entry.weight == null ? null : Number(entry.weight),
+      })) : [],
+    },
+    computedAt: String(source.computedAt ?? ''),
+  };
+}
+
 export function publicStore(store) {
   const criterion = readCriterion(store.criterion);
   return {
@@ -1435,19 +1491,7 @@ export function publicStore(store) {
     criterion,
     ledger: presentLedger(store),
     bank: reportBankSnapshot(store),
-    podiums: Array.isArray(store.podiums) ? store.podiums.map((item) => ({
-      periodKey: String(item.periodKey ?? ''),
-      periodLabel: String(item.periodLabel ?? ''),
-      selected: Array.isArray(item.selected) ? item.selected : [],
-      weights: item.weights && typeof item.weights === 'object' ? item.weights : {},
-      ranking: (Array.isArray(item.ranking) ? item.ranking : []).slice(0, 3).map((row) => ({
-        place: Number(row.place) || 0,
-        userId: String(row.userId ?? ''),
-        name: String(row.name ?? ''),
-        score: row.score == null ? null : Number(row.score),
-      })),
-      computedAt: String(item.computedAt ?? ''),
-    })) : [],
+    podiums: Array.isArray(store.podiums) ? store.podiums.map((item) => presentPodium(item)) : [],
     currentKey: latestPeriod(store),
     currentPodiumKey: Array.isArray(store.podiums) && store.podiums[0]?.periodKey ? store.podiums[0].periodKey : '',
     imports: store.imports.map((item) => ({

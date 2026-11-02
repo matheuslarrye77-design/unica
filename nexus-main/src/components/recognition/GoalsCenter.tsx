@@ -108,12 +108,44 @@ export type GoalsPayload = {
   podiums?: {
     periodKey: string;
     periodLabel: string;
+    mode?: 'preset' | 'overall' | 'custom';
+    modeLabel?: string;
     selected?: string[];
     weights?: Record<string, number>;
-    ranking: { place: number; userId: string; name: string; score: number | null }[];
+    detailsAvailable?: boolean;
+    ranking: {
+      place: number;
+      userId: string;
+      name: string;
+      score: number | null;
+      displayScore?: string;
+      detailsAvailable?: boolean;
+      metrics?: {
+        id: string;
+        name: string;
+        value: number | null;
+        unit?: string;
+        shown?: string;
+        weight?: number;
+        contribution?: number;
+        eligible?: boolean;
+        met?: boolean | null;
+        reason?: string;
+        condition?: string;
+        target?: number | null;
+      }[];
+    }[];
+    basis?: {
+      origin?: string;
+      periodLabel?: string;
+      modeLabel?: string;
+      summary?: string;
+      indicators?: { id: string; name: string; condition?: string; weight?: number | null }[];
+    };
     computedAt?: string;
   }[];
   currentPodiumKey?: string;
+  updatedAt?: string;
 };
 
 const LEDGER_FIELDS = [
@@ -383,6 +415,7 @@ export const GoalsProvider: FC<{
         setPendingPodium(null);
       } else if (data.kind === 'podium') {
         onChange({ ...data, canManage: goals.canManage, people: data.people ?? goals.people });
+        window.dispatchEvent(new Event('unica-goals-saved'));
         setPendingPodium(null);
         setConference(null);
         setPendingRules(null);
@@ -450,6 +483,7 @@ export const GoalsProvider: FC<{
       try {
         const data = await send('/api/goals/center', 'POST', { action: 'confirm', text: 'confirmar', conference });
         onChange({ ...data, canManage: goals.canManage, people: data.people ?? goals.people });
+        window.dispatchEvent(new Event('unica-goals-saved'));
         setConference(null);
         setPendingRules(null);
         setPhase('idle');

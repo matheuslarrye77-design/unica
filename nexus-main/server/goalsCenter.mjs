@@ -151,7 +151,10 @@ function displayName(indicator, name) {
 
 function unitOf(indicator, unit) {
   if (unit) return unit;
-  return UNITS[indicator] ?? (String(indicator).startsWith('c:') ? '%' : '');
+  if (UNITS[indicator]) return UNITS[indicator];
+  const field = OVERALL_FIELDS.find((item) => item.id === indicator);
+  if (field?.unit) return field.unit;
+  return String(indicator).startsWith('c:') ? '%' : '';
 }
 
 function citedKnown(source) {
@@ -675,6 +678,41 @@ function rulesForMonth(store, month) {
   return source.flatMap((item) => item.rules ?? []);
 }
 
+const MODE_LABEL = {
+  preset: 'Critérios predefinidos',
+  overall: 'Desempenho geral',
+  custom: 'Critérios personalizados',
+};
+const MODE_RANK = { overall: 0, preset: 1, custom: 2 };
+const OP_LABEL = { gt: 'maior que', gte: 'pelo menos', lt: 'menor que', lte: 'no máximo', eq: 'igual a', between: 'entre' };
+
+function isCustomIndicator(indicator) {
+  return String(indicator ?? '').startsWith('c:') || (indicator && !KNOWN.includes(indicator) && indicator !== 'resolvidos');
+}
+
+function shownValue(indicator, value, unit) {
+  if (value == null) return '';
+  const extra = unitOf(indicator, unit);
+  if (indicator === 'satisfacao' || indicator === 'resolvidos' || extra === '%') return `${value}%`;
+  if (indicator === 'primeira' || indicator === 'resolucao' || String(extra).includes('min')) return `${value} minutos`;
+  if (extra) return `${value}${extra}`;
+  return String(value);
+}
+
+function describeCondition(rule) {
+  if (!rule) return '';
+  const name = displayName(rule.indicator, rule.name);
+  const unit = unitOf(rule.indicator, rule.unit);
+  const shown = rule.op === 'between'
+    ? `${rule.value} e ${rule.valueTo ?? ''}${unit}`
+    : `${rule.value}${unit === '%' ? '%' : unit}`;
+  return `${name} ${OP_LABEL[rule.op] ?? rule.op} ${shown}`.replace(/\s+/g, ' ').trim();
+}
+
+function recordFor(records, userId) {
+  return records.find((row) => row.userId === userId) ?? null;
+}
+
 function rankCustomBank(records, rules) {
   const metric = rules[0]?.indicator;
   const lower = rules[0] && (rules[0].op === 'lt' || rules[0].op === 'lte');
@@ -693,65 +731,249 @@ function rankCustomBank(records, rules) {
   }));
 }
 
-function buildPeriodPodium(store, month, records, now) {
-  const monthRecords = records.filter((row) => monthOf(row.periodKey) === month);
+function evaluationsFor(store, month, monthRecords) {
+  const saved = (Array.isArray(store.evaluations) ? store.evaluations : []).filter((item) => monthOf(item.periodKey) === month);
+  if (saved.length) return saved;
+  const inferred = [];
   const rules = rulesForMonth(store, month);
+  const overall = (Array.isArray(store.overallReviews) ? store.overallReviews : []).filter((item) => monthOf(item.periodKey) === month).at(-1);
+  if (overall?.selected?.length) {
+    inferred.push({
+      mode: 'overall',
+      periodKey: month,
+      selected: overall.selected,
+      rules,
+      weights: overall.weights ?? null,
+      name: '',
+    });
+  }
+  const customRules = rules.filter((rule) => isCustomIndicator(rule.indicator));
+  const knownRules = rules.filter((rule) => !isCustomIndicator(rule.indicator));
+  if (customRules.length) {
+    inferred.push({
+      mode: 'custom',
+      periodKey: month,
+      selected: customRules.map((rule) => rule.indicator),
+      rules: customRules,
+      weights: null,
+      name: customRules[0]?.name || '',
+    });
+  }
+  if (knownRules.length) {
+    inferred.push({
+      mode: 'preset',
+      periodKey: month,
+      selected: knownRules.map((rule) => (rule.indicator === 'resolvidos' ? 'resolvidosCount' : rule.indicator)).filter((id, index, list) => list.indexOf(id) === index),
+      rules: knownRules,
+      weights: null,
+      name: '',
+    });
+  }
+  if (!inferred.length && monthRecords.length) {
+    const selected = OVERALL_FIELDS.filter((field) => monthRecords.some((row) => resultValue(row, field.id) != null)).map((field) => field.id);
+    inferred.push({
+      mode: 'preset',
+      periodKey: month,
+      selected,
+      rules,
+      weights: null,
+      name: '',
+      detailsPartial: !selected.length,
+    });
+  }
+  return inferred;
+}
+
+function basisFor(evaluation, label) {
+  const mode = evaluation.mode === 'overall' || evaluation.mode === 'custom' ? evaluation.mode : 'preset';
+  const rules = evaluation.rules ?? [];
+  return {
+    origin: 'Resultados confirmados no Banco de Dados (Supabase)',
+    periodLabel: label,
+    modeLabel: MODE_LABEL[mode],
+    summary: evaluation.detailsPartial
+      ? 'O detalhamento desta avaliação não está disponível.'
+      : `Pódio de ${MODE_LABEL[mode].toLowerCase()} do período ${label}, gerado só com resultados já gravados.`,
+    indicators: (evaluation.selected?.length ? evaluation.selected : rules.map((rule) => rule.indicator)).map((id) => {
+      const rule = ruleForIndicator(rules, id) || rules.find((item) => item.indicator === id);
+      const field = overallField(id);
+      return {
+        id,
+        name: displayName(id, rule?.name),
+        condition: describeCondition(rule),
+        weight: evaluation.weights && field ? evaluation.weights[field.weightKey] ?? null : null,
+      };
+    }),
+  };
+}
+
+function presetMetrics(record, evaluation) {
+  const rules = evaluation.rules ?? [];
+  const selected = evaluation.selected?.length ? evaluation.selected : rules.map((rule) => rule.indicator);
+  return selected.map((id) => {
+    const rule = ruleForIndicator(rules, id) || rules.find((item) => item.indicator === id);
+    const value = record ? resultValue(record, id) : null;
+    const met = rule ? passes(value, rule) : null;
+    return {
+      id,
+      name: displayName(id, rule?.name),
+      value,
+      unit: unitOf(id, rule?.unit),
+      shown: shownValue(id, value, rule?.unit),
+      met,
+      condition: describeCondition(rule),
+      target: rule?.value ?? null,
+      reason: value == null ? `Sem resultado de ${displayName(id, rule?.name)}` : '',
+    };
+  });
+}
+
+function overallMetrics(scoreRow, evaluation) {
+  const rules = evaluation.rules ?? [];
+  return Object.entries(scoreRow.parts ?? {}).map(([id, part]) => {
+    const rule = ruleForIndicator(rules, id) || rules.find((item) => item.indicator === id);
+    return {
+      id,
+      name: part.name || displayName(id),
+      value: part.value ?? null,
+      unit: unitOf(id, rule?.unit),
+      shown: shownValue(id, part.value, rule?.unit),
+      weight: part.weight,
+      contribution: part.contribution,
+      eligible: part.eligible,
+      reason: part.reason || '',
+      condition: describeCondition(rule),
+      target: rule?.value ?? null,
+    };
+  });
+}
+
+function customMetrics(record, evaluation) {
+  return (evaluation.rules ?? []).map((rule) => {
+    const value = record ? resultValue(record, rule.indicator) : null;
+    const met = passes(value, rule);
+    return {
+      id: rule.indicator,
+      name: displayName(rule.indicator, rule.name),
+      value,
+      unit: unitOf(rule.indicator, rule.unit),
+      shown: shownValue(rule.indicator, value, rule.unit),
+      met,
+      condition: describeCondition(rule),
+      target: rule.value ?? null,
+      reason: met === false ? 'Não cumpriu a condição' : met === true ? '' : `Sem resultado de ${displayName(rule.indicator, rule.name)}`,
+    };
+  });
+}
+
+function buildModePodium(store, month, monthRecords, evaluation, now) {
+  const label = formatPeriodLabel(month);
+  const stamp = (now ?? new Date()).toISOString();
+  const mode = evaluation.mode === 'overall' || evaluation.mode === 'custom' ? evaluation.mode : 'preset';
+  const rules = evaluation.rules?.length ? evaluation.rules : rulesForMonth(store, month);
   const known = rules.filter((rule) => OVERALL_FIELDS.some((field) => field.id === rule.indicator || (field.id === 'resolvidosCount' && rule.indicator === 'resolvidos')));
-  let selected = OVERALL_FIELDS.filter((field) => ruleForIndicator(known, field.id) && monthRecords.some((row) => resultValue(row, field.id) != null)).map((field) => field.id);
+  let selected = (evaluation.selected ?? []).map((id) => (id === 'resolvidos' ? 'resolvidosCount' : id)).filter(Boolean);
   if (!selected.length) {
+    selected = OVERALL_FIELDS.filter((field) => ruleForIndicator(known, field.id) && monthRecords.some((row) => resultValue(row, field.id) != null)).map((field) => field.id);
+  }
+  if (!selected.length && mode !== 'custom') {
     selected = OVERALL_FIELDS.filter((field) => monthRecords.some((row) => resultValue(row, field.id) != null)).map((field) => field.id);
   }
-  const stamp = (now ?? new Date()).toISOString();
-  const label = formatPeriodLabel(month);
-  if (selected.length) {
-    const pack = equalWeights(selected);
-    const scored = overallFor(monthRecords, known, pack, { periodKey: month, periodLabel: label }, selected, true);
-    return {
-      periodKey: month,
-      periodLabel: label,
-      selected: scored.selected,
-      weights: scored.weights,
-      ranking: scored.scores.slice(0, 3).map((row) => ({
-        place: row.place,
-        userId: row.userId,
-        name: row.name,
-        score: row.score,
-      })),
-      computedAt: stamp,
-    };
-  }
-  if (rules.length) {
-    return {
-      periodKey: month,
-      periodLabel: label,
-      selected: rules.map((rule) => rule.indicator),
-      weights: {},
-      ranking: rankCustomBank(monthRecords, rules).slice(0, 3),
-      computedAt: stamp,
-    };
-  }
-  return {
+  const detailsPartial = Boolean(evaluation.detailsPartial);
+  const basis = basisFor({ ...evaluation, mode, selected, rules, detailsPartial }, label);
+  const shell = {
     periodKey: month,
     periodLabel: label,
-    selected: [],
+    mode,
+    modeLabel: MODE_LABEL[mode],
+    selected,
     weights: {},
-    ranking: [],
+    detailsAvailable: !detailsPartial,
+    basis,
     computedAt: stamp,
   };
+  if (mode === 'custom' && rules.length) {
+    const ranked = rankCustomBank(monthRecords, rules).slice(0, 3);
+    return {
+      ...shell,
+      selected: rules.map((rule) => rule.indicator),
+      ranking: ranked.map((row) => {
+        const record = recordFor(monthRecords, row.userId);
+        const metrics = detailsPartial ? [] : customMetrics(record, { ...evaluation, rules });
+        return {
+          ...row,
+          displayScore: row.score == null ? '' : shownValue(rules[0]?.indicator, row.score, rules[0]?.unit),
+          detailsAvailable: !detailsPartial && metrics.some((item) => item.value != null),
+          metrics,
+        };
+      }),
+    };
+  }
+  if (selected.length) {
+    const pack = evaluation.weights && Object.keys(evaluation.weights).length ? evaluation.weights : equalWeights(selected);
+    const scored = overallFor(monthRecords, known, pack, { periodKey: month, periodLabel: label }, selected, true);
+    return {
+      ...shell,
+      selected: scored.selected,
+      weights: scored.weights,
+      ranking: scored.scores.slice(0, 3).map((row) => {
+        const record = recordFor(monthRecords, row.userId);
+        const metrics = detailsPartial
+          ? []
+          : mode === 'overall'
+            ? overallMetrics(row, { ...evaluation, rules: known, weights: scored.weights })
+            : presetMetrics(record, { ...evaluation, selected: scored.selected, rules: known });
+        return {
+          place: row.place,
+          userId: row.userId,
+          name: row.name,
+          score: row.score,
+          displayScore: mode === 'overall' ? `${row.score}%` : String(row.score ?? ''),
+          detailsAvailable: !detailsPartial && metrics.length > 0,
+          metrics,
+        };
+      }),
+    };
+  }
+  return { ...shell, ranking: [] };
 }
 
 export function attachBankPodiums(store, now = new Date()) {
   const records = Array.isArray(store?.ledger?.records) ? store.ledger.records : [];
   const confirmed = records.filter((row) => row.userId);
   const liveKeys = [...new Set(confirmed.map((row) => monthOf(row.periodKey)).filter(Boolean))];
-  const live = liveKeys.map((key) => buildPeriodPodium(store, key, confirmed, now));
+  const live = liveKeys.flatMap((key) => {
+    const monthRecords = confirmed.filter((row) => monthOf(row.periodKey) === key);
+    return evaluationsFor(store, key, monthRecords).map((evaluation) => buildModePodium(store, key, monthRecords, evaluation, now));
+  });
+  const liveIndex = new Set(live.map((item) => `${item.periodKey}:${item.mode}`));
   const history = (Array.isArray(store?.podiums) ? store.podiums : []).filter((item) => {
     const key = monthOf(item.periodKey) || item.periodKey;
-    return key && !liveKeys.includes(key);
-  });
+    const mode = item.mode === 'overall' || item.mode === 'custom' ? item.mode : 'preset';
+    return key && !liveIndex.has(`${key}:${mode}`);
+  }).map((item) => ({
+    ...item,
+    detailsAvailable: item.detailsAvailable === true && Array.isArray(item.ranking) && item.ranking.some((row) => row.metrics?.length),
+    ranking: (item.ranking ?? []).map((row) => ({
+      ...row,
+      detailsAvailable: Boolean(row.metrics?.length),
+      metrics: row.metrics ?? [],
+    })),
+    basis: item.basis ?? {
+      origin: 'Histórico do Banco de Dados',
+      periodLabel: item.periodLabel || '',
+      modeLabel: MODE_LABEL[item.mode === 'overall' || item.mode === 'custom' ? item.mode : 'preset'],
+      summary: 'O detalhamento desta avaliação não está disponível.',
+      indicators: [],
+    },
+  }));
   return {
     ...store,
-    podiums: [...live, ...history].sort((left, right) => String(right.periodKey).localeCompare(String(left.periodKey))),
+    podiums: [...live, ...history].sort((left, right) => {
+      const byPeriod = String(right.periodKey).localeCompare(String(left.periodKey));
+      if (byPeriod) return byPeriod;
+      return (MODE_RANK[left.mode] ?? 9) - (MODE_RANK[right.mode] ?? 9);
+    }),
   };
 }
 
@@ -959,6 +1181,22 @@ export function saveGoalsCenter(store, conference, people, now = new Date()) {
   const mark = fingerprint(conference);
   if (seen.includes(mark)) return { store, duplicate: true };
   const saved = applyGoalsReview(store, conferenceToReview(conference), people, now);
+  const mode = conference.mode === 'overall' || conference.overall ? 'overall' : conference.mode === 'custom' ? 'custom' : 'preset';
+  const month = monthOf(conference.period?.key || '');
+  const evaluation = {
+    id: conference.id || `${mode}-${month}`,
+    mode,
+    periodKey: month || conference.period?.key || '',
+    periodLabel: conference.period?.label || '',
+    selected: conference.overall?.selected ?? (conference.goals ?? []).map((goal) => goal.indicator),
+    rules: conference.goals ?? [],
+    weights: conference.overall?.weights ?? null,
+    name: mode === 'custom' ? displayName(conference.goals?.[0]?.indicator, conference.goals?.[0]?.name) : '',
+    savedAt: now.toISOString(),
+  };
+  const evaluations = [...(saved.store.evaluations ?? store.evaluations ?? [])]
+    .filter((item) => !(monthOf(item.periodKey) === month && item.mode === mode));
+  evaluations.push(evaluation);
   const reviews = [...(store.overallReviews ?? [])];
   if (conference.mode === 'overall' && conference.overall) {
     const entry = {
@@ -981,6 +1219,7 @@ export function saveGoalsCenter(store, conference, people, now = new Date()) {
       criterion: store.criterion,
       centerFingerprints: [...seen, mark].slice(-50),
       overallReviews: reviews,
+      evaluations: evaluations.slice(-80),
     }, now),
   };
 }
