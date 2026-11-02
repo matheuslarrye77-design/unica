@@ -239,9 +239,10 @@ export const GoalsProvider: FC<{
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: 'hello',
     from: 'bot',
-    text: 'Olá! Envie os relatórios da equipe. Eu guardo os dados no banco e só proponho a meta. O pódio muda quando você confirma.',
+    text: 'Olá! Posso interpretar metas gerais da gestão, receber resultados individuais, comparar com as metas, mostrar uma conferência e consultar o histórico. Só registro no Banco dos relatórios depois da sua confirmação. O pódio é independente: só muda se você pedir isso explicitamente e confirmar.',
   }]);
   const lastReport = useRef('');
+  const saving = useRef(false);
   const selected = goals.criterion ?? { mode: 'preset' as const, indicator: 'resolvidos' };
 
   function say(from: ChatMessage['from'], text: string) {
@@ -309,15 +310,15 @@ export const GoalsProvider: FC<{
       const data = await send('/api/goals/center', 'POST', { text: source, history });
       if (data.kind === 'unavailable' || data.kind === 'quota' || data.kind === 'auth' || data.kind === 'permission' || data.kind === 'model' || data.kind === 'invalid' || data.kind === 'clarify' || data.kind === 'storage') setDraft(source);
       else setDraft('');
-      say('bot', String(data.reply ?? ''));
       if (data.kind === 'conference' && data.conference) {
         setConference(data.conference);
         setPendingRules(null);
-        return;
-      }
-      if (data.kind === 'clarify') {
-        setConference(null);
-        setPendingRules(null);
+      } else {
+        say('bot', String(data.reply ?? ''));
+        if (data.kind === 'clarify') {
+          setConference(null);
+          setPendingRules(null);
+        }
       }
     } catch (error) {
       setDraft(source);
@@ -367,7 +368,9 @@ export const GoalsProvider: FC<{
   }
 
   async function saveTemplate() {
+    if (saving.current || busy) return;
     if (conference) {
+      saving.current = true;
       setBusy(true);
       try {
         const data = await send('/api/goals/center', 'POST', { action: 'confirm', text: 'confirmar', conference });
@@ -379,11 +382,13 @@ export const GoalsProvider: FC<{
       } catch {
         say('bot', 'Não consegui salvar. O pódio continua como estava.');
       } finally {
+        saving.current = false;
         setBusy(false);
       }
       return;
     }
     if (!pendingRules) return;
+    saving.current = true;
     const name = pendingRules.name.trim() || 'Metas da gestão';
     setBusy(true);
     try {
@@ -406,6 +411,7 @@ export const GoalsProvider: FC<{
     } catch {
       say('bot', 'Não consegui salvar. O pódio continua como estava.');
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   }
@@ -770,18 +776,32 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
         <section className="rounded-2xl border border-[#EDE4F5] bg-white p-3">
           <h4 className="text-[13px] font-semibold text-[#4A1C73]">Metas definidas pela gestão</h4>
           <p className="mt-0.5 text-[12px] text-[#8A7C98]">{bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar')}</p>
-          {shownTemplates.length === 0 && importGoals.length === 0 ? (
+          {(bankPeriod?.goals.length ? bankPeriod.goals : shownTemplates.flatMap((template) => template.rules)).length === 0 && importGoals.length === 0 ? (
             <p className="mt-2 text-[12.5px] text-[#8A7C98]">Nenhuma meta cadastrada para este período.</p>
           ) : (
             <ul className="mt-2 grid gap-2">
-              {shownTemplates.flatMap((template) => template.rules.map((rule, index) => (
-                <li key={`${template.id}-${rule.indicator}-${index}`} className="rounded-xl bg-[#F7F0FB] px-3 py-2">
-                  <p className="text-[12.5px] font-semibold text-[#241B33]">{RULE_NAMES[rule.indicator] ?? rule.indicator}</p>
-                  <p className="text-[12px] text-[#5C5168]">Valor da meta: {rule.indicator === 'primeira' || rule.indicator === 'resolucao' ? `${ruleTarget(rule)} min` : rule.indicator === 'resolvidos' || rule.indicator === 'satisfacao' ? `${ruleTarget(rule)}%` : ruleTarget(rule)}</p>
-                  <p className="text-[12px] text-[#5C5168]">Regra: {ruleDirection(rule.op)}</p>
-                  <p className="text-[12px] text-[#5C5168]">Período de validade: {template.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar')}</p>
+              {(bankPeriod?.goals.length
+                ? bankPeriod.goals.map((goal, index) => ({
+                  key: `${goal.indicator}-${index}`,
+                  name: goal.name,
+                  value: goal.indicator === 'primeira' || goal.indicator === 'resolucao' ? `${goal.value} min` : goal.indicator === 'resolvidos' || goal.indicator === 'satisfacao' ? `${goal.value}%` : String(goal.value),
+                  direction: ruleDirection(goal.op),
+                  period: goal.periodLabel || bankPeriod.label,
+                }))
+                : shownTemplates.flatMap((template) => template.rules.map((rule, index) => ({
+                  key: `${template.id}-${rule.indicator}-${index}`,
+                  name: RULE_NAMES[rule.indicator] ?? rule.indicator,
+                  value: rule.indicator === 'primeira' || rule.indicator === 'resolucao' ? `${ruleTarget(rule)} min` : rule.indicator === 'resolvidos' || rule.indicator === 'satisfacao' ? `${ruleTarget(rule)}%` : String(ruleTarget(rule)),
+                  direction: ruleDirection(rule.op),
+                  period: template.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar'),
+                })))).map((goal) => (
+                <li key={goal.key} className="rounded-xl bg-[#F7F0FB] px-3 py-2">
+                  <p className="text-[12.5px] font-semibold text-[#241B33]">{goal.name}</p>
+                  <p className="text-[12px] text-[#5C5168]">Valor da meta: {goal.value}</p>
+                  <p className="text-[12px] text-[#5C5168]">Regra: {goal.direction}</p>
+                  <p className="text-[12px] text-[#5C5168]">Período de validade: {goal.period}</p>
                 </li>
-              )))}
+              ))}
               {importGoals.flatMap((item) => item.goals.flatMap((entry) => LEDGER_FIELDS.map(([field, label]) => {
                 const goal = (entry.goal as Record<string, { target?: number | null; direction?: string } | undefined>)[field];
                 if (!goal || goal.target == null) return null;
@@ -909,7 +929,7 @@ export const GoalsAssistant: FC = () => {
       <div className="flex shrink-0 items-center justify-between border-b border-[#F3EAF8] px-3 py-3 pr-10">
         <h3 className="flex items-center gap-2 text-[14px] font-semibold text-[#241B33]">
           <Sparkles className="h-4 w-4 text-[#8E35B8]" /> Fale com o assistente de metas
-          <Hint text="Relatórios entram no banco de dados, neste chat. A meta só vale como proposta até você confirmar, e o pódio oficial não muda antes disso." />
+          <Hint text="A Central interpreta metas e resultados, mostra uma conferência e só grava depois da confirmação. O pódio só muda com pedido explícito e confirmação." />
           <button type="button" aria-label="Abrir banco de dados dos relatórios" title="Banco de dados" onClick={() => setBankOpen(true)} className="grid h-7 w-7 place-items-center rounded-lg text-[#8E35B8] hover:bg-[#F3E4FA]">
             <FileText className="h-4 w-4" />
           </button>

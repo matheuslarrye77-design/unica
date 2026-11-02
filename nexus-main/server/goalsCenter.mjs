@@ -121,28 +121,7 @@ export function toConference({ source, period, rules, rows }) {
   };
 }
 
-function describeConference(conference) {
-  const lines = ['Conferência. Nada foi salvo e o pódio não foi alterado.'];
-  if (conference.period?.label) lines.push('', `Período: ${conference.period.label}`);
-  if (conference.goals.length) {
-    lines.push('', `Metas da gestão — ${conference.period.label}`);
-    for (const goal of conference.goals) {
-      const sign = goal.op === 'gte' ? '>=' : goal.op === 'lte' ? '<=' : goal.op;
-      lines.push(`• ${goal.name} | ${goal.value}${goal.unit} | ${sign} | ${conference.period.label}`);
-    }
-  }
-  if (conference.people.length) {
-    lines.push('', 'Resultados individuais');
-    for (const person of conference.people) {
-      lines.push(`${person.name}${person.identified ? ' — cadastro da Equipe' : ' — aguardando identificação'}`);
-      for (const item of person.results) {
-        lines.push(`• ${item.name}: ${item.value}${item.unit} — ${item.status}`);
-      }
-    }
-  }
-  lines.push('', 'Escreva Confirmar para gravar no Banco dos relatórios. O pódio permanece como está.');
-  return lines.join('\n');
-}
+const CONFERENCE_REPLY = 'Conferência pronta. Confira os dados organizados abaixo. Nada foi salvo e o pódio não foi alterado.';
 
 function missingParts(conference, source) {
   const missing = [];
@@ -245,7 +224,7 @@ function conferenceResponse(conference) {
   return {
     kind: 'conference',
     conference: marked,
-    reply: describeConference(marked),
+    reply: CONFERENCE_REPLY,
     persist: false,
   };
 }

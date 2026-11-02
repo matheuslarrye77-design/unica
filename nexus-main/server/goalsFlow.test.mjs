@@ -124,6 +124,9 @@ test('a interface do banco mostra mês/ano, gestão e resultados separados', () 
   assert.match(ui, /data\.conference/);
   assert.match(ui, /conference\.people/);
   assert.match(ui, /messages\.slice\(-6\)/);
+  assert.match(ui, /interpretar metas gerais da gestão/);
+  assert.match(ui, /saving\.current/);
+  assert.equal(ui.includes('Olá! Envie os relatórios da equipe'), false);
   assert.equal(ui.includes('O pódio passa a usar esta regra'), false);
 });
 
@@ -403,10 +406,9 @@ function assertConference(result) {
   assert.equal(valueOf(feli, 'resolucao'), 7);
   assert.equal(rafa.results.find((item) => item.indicator === 'resolvidosCount').status, 'Abaixo da meta');
   assert.equal(feli.results.find((item) => item.indicator === 'resolucao').status, 'Atingiu');
-  assert.match(result.body.reply, /300/);
-  assert.match(result.body.reply, /350/);
-  assert.match(result.body.reply, /Rafael Oliveira/);
-  assert.match(result.body.reply, /Felipe Costa/);
+  assert.match(result.body.reply, /conferência pronta/i);
+  assert.equal(result.body.reply.includes('Tickets resolvidos | 320'), false);
+  assert.equal(result.body.reply.includes('Rafael Oliveira'), false);
 }
 
 test('a rota exclusiva /api/goals/center monta uma conferência completa da mensagem natural', async () => {
@@ -450,8 +452,20 @@ test('a rota exclusiva não monta conferência incompleta e só grava depois de 
   assert.equal(month.people.length, 2);
   assert.equal(month.people.find((row) => row.userId === 'tm-8').indicators.find((item) => item.field === 'resolvidosCount').value, 300);
   assert.equal(month.people.find((row) => row.userId === 'tm-4').indicators.find((item) => item.field === 'satisfacao').value, 97);
+  const records = saved.body.ledger.records.length;
   const again = await postCenter({ action: 'confirm', text: 'confirmar', conference: first.body.conference }, { store: persist });
   assert.equal(again.body.duplicate, true);
+  assert.equal(again.body.ledger.records.length, records);
+  assert.equal(again.body.bank.periods.find((item) => item.key === '2026-11').goals.length, 4);
+  assert.equal(again.body.criterion.mode, 'preset');
+  assert.equal((again.body.ledger.applied ?? []).length, 0);
+  const parallel = await Promise.all([
+    postCenter({ action: 'confirm', text: 'confirmar', conference: first.body.conference }, { store: persist }),
+    postCenter({ action: 'confirm', text: 'confirmar', conference: first.body.conference }, { store: persist }),
+  ]);
+  assert.equal(parallel.every((item) => item.body.duplicate === true || item.body.kind === 'saved'), true);
+  assert.equal(parallel[0].body.ledger.records.length, records);
+  assert.equal(parallel[1].body.ledger.records.length, records);
 });
 
 
