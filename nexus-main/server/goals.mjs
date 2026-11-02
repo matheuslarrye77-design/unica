@@ -624,14 +624,6 @@ export function parsePeopleFromText(text, people) {
   for (const span of extractPersonSpans(text, people)) {
     const values = {};
     applyPhrase(values, span.slice.replace(span.sourceName, ' '));
-    if (values.resolvidosCount == null && values.transferidos != null && values.primeira != null && values.resolucao != null) {
-      values.resolvidosCount = values.transferidos;
-      values.transferidos = null;
-    }
-    if (values.satisfacao == null && values.resolvidos != null && values.resolvidosCount != null && values.primeira != null && values.resolucao != null) {
-      values.satisfacao = values.resolvidos;
-      values.resolvidos = null;
-    }
     const row = personRowFromValues(span.sourceName, span.person, values);
     if (!row) continue;
     const key = fold(span.person.id || span.person.name);
@@ -993,13 +985,25 @@ function clauseOp(folded, raw = '') {
   if (/>=|≥/.test(raw) || /maior ou igual/.test(folded)) return 'gte';
   if (/<=|≤/.test(raw) || /menor ou igual/.test(folded)) return 'lte';
   if (/entre\s+[\d.,]+\s+e\s+[\d.,]+/.test(folded)) return 'between';
-  if (/\bpelo menos\b|\bno minimo\b|\bminima de\b|\bminimo de\b|\bminimo\b|\bminima\b|\bacima de\b/.test(folded)) return 'gte';
-  if (/\bno maximo\b|\bmaxima de\b|\bmaximo de\b|\bmaximo\b|\bmaxima\b|\babaixo de\b/.test(folded)) return 'lte';
-  if (/\bate\s+[\d.,]+/.test(folded)) return 'lte';
-  if (/\bmaior que\b|\bmais de\b/.test(folded)) return 'gt';
-  if (/\bmenor que\b|\bmenos de\b/.test(folded)) return 'lt';
-  if (/\bigual\b/.test(folded)) return 'eq';
-  return '';
+  if (/>/.test(raw) && !/>=/.test(raw)) return 'gt';
+  if (/</.test(raw) && !/<=/.test(raw)) return 'lt';
+  const hits = [];
+  const add = (op, pattern) => {
+    const copy = new RegExp(pattern.source, 'gi');
+    let match = copy.exec(folded);
+    while (match) {
+      hits.push({ op, index: match.index });
+      match = copy.exec(folded);
+    }
+  };
+  add('gte', /\bpelo menos\b|\bno minimo\b|\bminima de\b|\bminimo de\b|\bminimo\b|\bminima\b|\bacima de\b/);
+  add('lte', /\bno maximo\b|\bmaxima de\b|\bmaximo de\b|\bmaximo\b|\bmaxima\b|\babaixo de\b|\bate\s+[\d.,]+/);
+  add('gt', /\bmaior que\b|\bmais de\b/);
+  add('lt', /\bmenor que\b|\bmenos de\b/);
+  add('eq', /\bigual\b/);
+  if (!hits.length) return '';
+  hits.sort((left, right) => left.index - right.index);
+  return hits[hits.length - 1].op;
 }
 
 function clauseIndicator(folded, raw) {
@@ -1007,7 +1011,7 @@ function clauseIndicator(folded, raw) {
   if (/transferid/.test(folded)) return 'transferidos';
   if (/primeira|\btpr\b/.test(folded)) return 'primeira';
   if ((/tempo\s+medio|\btma\b|medio\s+(de\s+)?(?:resolu|atendimento)|tempo\s+de\s+(?:resolu|atendimento)|ate\s+resolu|\bresolucao\b/.test(folded)) && !/tickets?\s+resolvid/.test(folded)) return 'resolucao';
-  if (/tickets?\s+resolvid/.test(folded) || (/\btickets?\b/.test(folded) && !/satisfa/.test(folded))) {
+  if (/tickets?\s+resolvid/.test(folded) || (/\btickets?\b/.test(folded) && !/satisfa/.test(folded) && !/transferid/.test(folded))) {
     return /%/.test(raw) && !/\d[\d.]*\s+tickets?/.test(folded) ? 'resolvidos' : 'resolvidosCount';
   }
   if (/(?:percentual|taxa)\s+de\s+resolvid/.test(folded)) return 'resolvidos';
@@ -1021,7 +1025,7 @@ function mentionedIndicators(text) {
   if (/transferid/.test(folded) && !/de fora|nao entra|exclu|nao (?:usar|incluir|avaliar)/.test(folded)) found.push('transferidos');
   if (/primeira|\btpr\b/.test(folded)) found.push('primeira');
   if (/tempo\s+medio|\btma\b|medio\s+(de\s+)?(?:resolu|atendimento)|tempo\s+de\s+(?:resolu|atendimento)|\bresolucao\b/.test(folded)) found.push('resolucao');
-  if (/tickets?\s+resolvid|\b\d[\d.]*\s+tickets?\b|\btickets?\b/.test(folded)) found.push('resolvidosCount');
+  if (/tickets?\s+resolvid/.test(folded) || ((/\b\d[\d.]*\s+tickets?\b|\btickets?\b/.test(folded)) && !/transferid/.test(folded))) found.push('resolvidosCount');
   if (/(?:percentual|taxa)\s+de\s+resolvid/.test(folded)) found.push('resolvidos');
   return [...new Set(found)];
 }

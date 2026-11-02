@@ -81,7 +81,7 @@ type GoalsConference = {
   goals: ConferenceGoal[];
   people: ConferencePerson[];
   overall?: {
-    weights?: { resolvidos?: number; satisfacao?: number; primeira?: number; resolucao?: number; floor: number };
+    weights?: { resolvidos?: number; transferidos?: number; satisfacao?: number; primeira?: number; resolucao?: number; floor: number };
     selected?: string[];
     excluded?: string[];
     excludes?: string[];
@@ -179,15 +179,15 @@ const METRICS = [
 
 const OVERALL_OPTIONS = [
   { id: 'resolvidosCount', weightKey: 'resolvidos', label: 'Tickets resolvidos' },
-  { id: 'satisfacao', weightKey: 'satisfacao', label: 'Satisfação' },
-  { id: 'primeira', weightKey: 'primeira', label: 'Primeira resposta' },
-  { id: 'resolucao', weightKey: 'resolucao', label: 'Tempo médio de resolução (TMA)' },
+  { id: 'transferidos', weightKey: 'transferidos', label: 'Tickets transferidos' },
+  { id: 'primeira', weightKey: 'primeira', label: 'Tempo de primeira resposta' },
+  { id: 'resolucao', weightKey: 'resolucao', label: 'Tempo médio de resolução' },
 ] as const;
 
 const RULE_NAMES: Record<string, string> = {
   resolvidos: 'Tickets resolvidos (%)',
   resolvidosCount: 'Tickets resolvidos',
-  primeira: 'Primeira resposta',
+  primeira: 'Tempo de primeira resposta',
   resolucao: 'Tempo médio de resolução',
   transferidos: 'Tickets transferidos',
   satisfacao: 'Satisfação',
@@ -299,7 +299,7 @@ export const GoalsProvider: FC<{
   const [pendingRules, setPendingRules] = useState<PendingRules | null>(null);
   const [conference, setConference] = useState<GoalsConference | null>(null);
   const [pendingPodium, setPendingPodium] = useState<Criterion | null>(null);
-  const [presetOn, setPresetOn] = useState<Record<string, boolean>>({ resolvidosCount: true, satisfacao: true, primeira: true, resolucao: true });
+  const [presetOn, setPresetOn] = useState<Record<string, boolean>>({ resolvidosCount: true, transferidos: true, primeira: true, resolucao: true });
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: 'hello',
     from: 'bot',
@@ -338,13 +338,13 @@ export const GoalsProvider: FC<{
   function startCustom() {
     setPhase('custom');
     setPendingPodium(null);
-    say('bot', 'Critério personalizado é só para criar um indicador que ainda não existe. Escreva o nome, a condição e os resultados. Se forem só tickets, satisfação, primeira resposta ou TMA, uso os critérios predefinidos.');
+    say('bot', 'Critério personalizado é só para criar um indicador que ainda não existe. Escreva o nome, a condição e os resultados. Se forem só tickets resolvidos, tickets transferidos, primeira resposta ou TMA, uso os critérios predefinidos.');
   }
 
   function startOverall() {
     setPhase('overall');
     setPendingPodium(null);
-    say('bot', 'Desempenho geral: envie as condições de entrada e os resultados. Identifico os indicadores na mensagem, distribuo os pesos igualmente e não peço para marcar nada. Quem não cumpre a condição zera aquela parcela; o melhor elegível leva o peso inteiro. Transferidos ficam de fora e o pódio não muda.');
+    say('bot', 'Desempenho geral: envie as condições de entrada e os resultados. Identifico os indicadores na mensagem, distribuo os pesos igualmente e não peço para marcar nada. Quem não cumpre a condição zera aquela parcela; o melhor elegível leva o peso inteiro. O pódio não muda.');
   }
 
   function togglePreset(id: string) {
@@ -1128,7 +1128,7 @@ export const GoalsAssistant: FC = () => {
                 <p className="text-[11px] text-[#8A7C98]">
                   Incluídos: {(conference.overall.selected ?? []).map((id) => OVERALL_OPTIONS.find((item) => item.id === id)?.label ?? id).join(', ') || 'indicadores selecionados'}.
                   {(conference.overall.excluded ?? []).length ? ` Fora: ${(conference.overall.excluded ?? []).map((id) => OVERALL_OPTIONS.find((item) => item.id === id)?.label ?? id).join(', ')}.` : ''}
-                  {' '}Pesos iguais. Transferidos fora.
+                  {' '}Pesos iguais.
                 </p>
                 <ul className="grid gap-1 text-[12.5px] leading-5 break-words text-[#5C5168]">
                   {conference.overall.scores.map((item) => (

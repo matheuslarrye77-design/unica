@@ -5,20 +5,20 @@ import { applyGoalsReview } from './ledger.mjs';
 import { citedNumbers } from './goalsTurn.mjs';
 
 const KNOWN = ['resolvidosCount', 'satisfacao', 'primeira', 'resolucao', 'resolvidos', 'transferidos'];
-const CORE = ['resolvidosCount', 'satisfacao', 'primeira', 'resolucao'];
+const CORE = ['resolvidosCount', 'transferidos', 'primeira', 'resolucao'];
 const OPS = ['gt', 'gte', 'lt', 'lte', 'eq', 'between'];
 const NAMES = {
   resolvidosCount: 'Tickets resolvidos',
   resolvidos: 'Tickets resolvidos (%)',
   satisfacao: 'Satisfação',
-  primeira: 'Primeira resposta',
+  primeira: 'Tempo de primeira resposta',
   resolucao: 'Tempo médio de resolução',
   transferidos: 'Tickets transferidos',
 };
 const UNITS = { resolvidos: '%', satisfacao: '%', primeira: ' min', resolucao: ' min' };
 const OVERALL_FIELDS = [
-  { id: 'resolvidosCount', weightKey: 'resolvidos', higher: true, unit: ' tickets', ask: 'a quantidade de tickets resolvidos da meta' },
-  { id: 'satisfacao', weightKey: 'satisfacao', higher: true, unit: '%', ask: 'o percentual da meta de Satisfação' },
+  { id: 'resolvidosCount', weightKey: 'resolvidos', higher: true, unit: '', ask: 'a quantidade de tickets resolvidos da meta' },
+  { id: 'transferidos', weightKey: 'transferidos', higher: false, unit: '', ask: 'a quantidade de tickets transferidos da meta' },
   { id: 'primeira', weightKey: 'primeira', higher: false, unit: ' min', ask: 'os minutos da meta de Primeira resposta' },
   { id: 'resolucao', weightKey: 'resolucao', higher: false, unit: ' min', ask: 'os minutos da meta de Tempo médio de resolução (TMA)' },
 ];
@@ -161,10 +161,15 @@ function citedKnown(source) {
   const folded = fold(source);
   const named = Boolean(namedIndicator(source));
   return {
-    resolvidosCount: /ticket|resolvido/.test(folded) && !named && !/qualidade/.test(folded),
+    resolvidosCount: !named && !/qualidade/.test(folded) && (
+      /tickets?\s+resolvid/.test(folded)
+      || (/\btickets?\b/.test(folded) && !/transferid/.test(folded))
+      || /\d[\d.]*\s+tickets?(?!\s+transferid)/.test(folded)
+    ),
+    transferidos: /transferid/.test(folded) && !named,
     satisfacao: /satisfa/.test(folded) && !named,
     primeira: /primeira(?:\s+resposta)?|\btpr\b/.test(folded),
-    resolucao: /\btma\b|tempo medio/.test(folded),
+    resolucao: /\btma\b|tempo medio|ate resolu/.test(folded),
   };
 }
 
@@ -174,7 +179,7 @@ function namedIndicator(source) {
     || text.match(/indicador(?:\s+novo)?[:\s]+([^:.\n]+)/i)
     || text.match(/meta personalizada(?:\s+chamada)?\s+([^:.\n]+)/i);
   if (!hit) return '';
-  return hit[1].replace(/\s+(pelo menos|no m[ií]nimo|no m[aá]ximo|at[eé]|maior que|menor que|igual a).*/i, '').replace(/[:.]+$/, '').trim();
+  return hit[1].replace(/\s+(pelo menos|no m[ií]nimo|no m[aá]ximo|\bat[eé]\b|maior que|menor que|igual a).*/i, '').replace(/[:.]+$/, '').trim();
 }
 
 function wantsGoals(text) {
@@ -204,6 +209,7 @@ function parseOverallWeights(source) {
     if (value !== null) found[key] = value;
   };
   take('resolvidos', /tickets?(?:\s+resolvid\w*)?[^.\n]{0,48}peso(?:\s+de)?\s+(\d+)/);
+  take('transferidos', /tickets?\s+transferid\w*[^.\n]{0,48}peso(?:\s+de)?\s+(\d+)/);
   take('satisfacao', /satisfa\w*[^.\n]{0,48}peso(?:\s+de)?\s+(\d+)/);
   take('primeira', /primeira(?:\s+resposta)?[^.\n]{0,48}peso(?:\s+de)?\s+(\d+)/);
   take('resolucao', /(?:\btma\b|tempo medio(?: de (?:atendimento|resolucao))?)[^.\n]{0,48}peso(?:\s+de)?\s+(\d+)/);
@@ -245,7 +251,7 @@ function equalWeights(selected) {
 }
 
 function packOverallWeights(selected) {
-  if (!selected.length) return { error: ['os indicadores desta avaliação (tickets, satisfação, primeira resposta ou TMA), pelos nomes ou pelos resultados enviados'] };
+  if (!selected.length) return { error: ['os indicadores desta avaliação (tickets resolvidos, tickets transferidos, primeira resposta ou TMA), pelos nomes ou pelos resultados enviados'] };
   return { pack: equalWeights(selected) };
 }
 
@@ -666,7 +672,7 @@ function overallFor(records, rules, pack, period, selected, open = false) {
     weights: pack,
     selected: chosen.map((item) => item.id),
     excluded,
-    excludes: ['transferidos', ...excluded],
+    excludes: excluded,
     periodLabel: period?.periodLabel || period?.label || '',
     scores: scores.map((item, index) => ({ ...item, place: index + 1 })),
   };
@@ -693,10 +699,26 @@ function isCustomIndicator(indicator) {
 function shownValue(indicator, value, unit) {
   if (value == null) return '';
   const extra = String(unitOf(indicator, unit) ?? '').trim();
-  if (indicator === 'satisfacao' || indicator === 'resolvidos' || extra === '%') return `${value}%`;
-  if (indicator === 'primeira' || indicator === 'resolucao' || extra.includes('min')) return `${value} minutos`;
-  if (extra) return `${value} ${extra}`;
-  return String(value);
+  const shown = String(value).replace('.', ',');
+  if (indicator === 'satisfacao' || indicator === 'resolvidos' || extra === '%') return `${shown}%`;
+  if (indicator === 'primeira' || indicator === 'resolucao' || extra.includes('min')) return `${shown} min`;
+  return shown;
+}
+
+function prettyCustomName(name) {
+  const raw = String(name || '').replace(/^índice de\s+/i, '').replace(/^indice de\s+/i, '').trim();
+  if (!raw) return 'Critério';
+  return raw.split(/\s+/).map((word, index) => {
+    if (index && /^(de|do|da|dos|das|no|na|em|e)$/i.test(word)) return word.toLowerCase();
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).join(' ');
+}
+
+function modeTitle(mode, evaluation, label) {
+  if (mode === 'custom') {
+    return `Critério personalizado - ${prettyCustomName(evaluation?.name || evaluation?.rules?.[0]?.name)} - ${label}`;
+  }
+  return MODE_LABEL[mode];
 }
 
 function describeCondition(rule) {
@@ -787,10 +809,11 @@ function evaluationsFor(store, month, monthRecords) {
 function basisFor(evaluation, label) {
   const mode = evaluation.mode === 'overall' || evaluation.mode === 'custom' ? evaluation.mode : 'preset';
   const rules = evaluation.rules ?? [];
+  const title = modeTitle(mode, evaluation, label);
   return {
     origin: 'Resultados confirmados no Banco de Dados (Supabase)',
     periodLabel: label,
-    modeLabel: MODE_LABEL[mode],
+    modeLabel: title,
     summary: evaluation.detailsPartial
       ? 'O detalhamento desta avaliação não está disponível.'
       : `Pódio de ${MODE_LABEL[mode].toLowerCase()} do período ${label}, gerado só com resultados já gravados.`,
@@ -854,7 +877,7 @@ function customMetrics(record, evaluation) {
     const met = passes(value, rule);
     return {
       id: rule.indicator,
-      name: displayName(rule.indicator, rule.name),
+      name: prettyCustomName(displayName(rule.indicator, rule.name)),
       value,
       unit: unitOf(rule.indicator, rule.unit),
       shown: shownValue(rule.indicator, value, rule.unit),
@@ -885,7 +908,7 @@ function buildModePodium(store, month, monthRecords, evaluation, now) {
     periodKey: month,
     periodLabel: label,
     mode,
-    modeLabel: MODE_LABEL[mode],
+    modeLabel: modeTitle(mode, evaluation, label),
     selected,
     weights: {},
     detailsAvailable: !detailsPartial,
@@ -1026,7 +1049,7 @@ function centerPrompt(text, history, options) {
   return [
     'Interprete um recado da Central Inteligente de Metas, em português.',
     `Modo da interface: ${mode}. Isso é contexto. Se o pedido for claramente outro assunto, siga o pedido.`,
-    'Critérios predefinidos usam tickets, satisfação, primeira resposta e TMA.',
+    'Critérios predefinidos usam tickets resolvidos, tickets transferidos, primeira resposta e TMA. Satisfação não é critério predefinido. Tickets resolvidos e tickets transferidos são indicadores diferentes e nunca se misturam.',
     'Critérios personalizados servem só para criar indicador inédito. Indicadores já conhecidos são critérios predefinidos.',
     'Desempenho geral compara colaboradores: quem não entra na condição recebe zero na parcela; o melhor elegível leva o peso inteiro; os demais são proporcionais. Pesos iguais entre os selecionados.',
     'Não invente número, indicador, comparador, período ou pessoa.',
