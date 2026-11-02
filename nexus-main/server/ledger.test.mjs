@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
-import { applyCriterion, emptyStore, monthKey, publicStore } from './goals.mjs';
+import { applyCriterion, emptyStore, fold, matchPeople, monthKey, parseReport, publicStore, relinkLedger } from './goals.mjs';
 import { applyLedgerRanking, ingestReport, proposeFromLedger } from './ledger.mjs';
 
 const now = new Date(2026, 10, 1, 12, 0, 0);
@@ -110,9 +110,13 @@ test('teste E: nomes parecidos pedem confirmação', () => {
   assert.match(similar.reply, /Confirme/);
   const filipe = person('filipe', 'Filipe Costa', 'Chat');
   const twins = ingestReport(emptyStore(), 'Filipe Costa: 10 tickets resolvidos.', [felipe, filipe], { now });
-  assert.equal(twins.store.ledger.records[0].userId, '');
-  assert.match(twins.reply, /Felipe Costa/);
-  assert.match(twins.reply, /Filipe Costa/);
+  assert.equal(twins.store.ledger.records[0].userId, 'filipe');
+  assert.equal(twins.store.ledger.records[0].name, 'Filipe Costa');
+  const lastName = ingestReport(emptyStore(), 'Costa: 10 tickets resolvidos.', [felipe, isabela], { now });
+  assert.equal(lastName.store.ledger.records[0].userId, '');
+  assert.match(lastName.reply, /Felipe Costa/);
+  assert.match(lastName.reply, /Isabela Costa/);
+  assert.match(lastName.reply, /Confirme/);
 });
 
 test('teste F: o banco sobrevive a um novo carregamento do arquivo', () => {
@@ -167,9 +171,114 @@ test('teste G: a classificação usa o banco e só quem atende ao critério', ()
   assert.equal(back.ledger.records.length, 4);
 });
 
+test('a Equipe atual e um cadastro novo entram sem lista fixa de nomes', () => {
+  const source = fs.readFileSync(new URL('../src/data/team.ts', import.meta.url), 'utf8');
+  const current = [...source.matchAll(/member\('([^']+)', '([^']+)',/g)].map((match) => ({
+    id: match[1],
+    name: match[2],
+    email: `${fold(match[2]).replace(/ /g, '.')}@company.com`,
+    ramal: '',
+    funcao: 'E-mail',
+    role: 'Atendimento',
+    aliases: [],
+  }));
+  const helena = {
+    id: 'col-new',
+    name: 'Helena Duarte',
+    email: 'helena.duarte@unica.local',
+    ramal: '1099',
+    funcao: 'Chat',
+    role: 'Atendimento',
+    aliases: [],
+  };
+  const roster = [...current, helena];
+  const lines = roster.map((item, index) => `${item.name}: ${200 + index} tickets resolvidos no mês.`);
+  const outcome = ingestReport(emptyStore(), lines.join('\n'), roster, { now });
+  assert.equal(outcome.kind, 'ledger');
+  assert.equal(outcome.store.ledger.records.length, roster.length);
+  assert.equal(outcome.store.ledger.records.every((row) => Boolean(row.userId)), true);
+  assert.equal(outcome.store.ledger.records.some((row) => row.userId === 'col-new'), true);
+  assert.equal(outcome.store.ledger.records.find((row) => row.userId === 'col-new').values.resolvidosCount, 200 + roster.length - 1);
+  assert.equal(outcome.store.ledger.applied.length, 0);
+});
+
+test('acento, e-mail e ramal apontam para o cadastro da Equipe', () => {
+  const joao = { id: 'joao', name: 'João Pereira', email: 'joao.pereira@unica.local', ramal: '2040', funcao: 'Chat', role: 'Atendimento', aliases: [] };
+  const roster = [joao, felipe];
+  const accent = ingestReport(emptyStore(), 'Joao Pereira: 12 tickets resolvidos no mês.', roster, { now });
+  assert.equal(accent.store.ledger.records[0].userId, 'joao');
+  const mail = ingestReport(emptyStore(), 'joao.pereira@unica.local: 14 tickets resolvidos no mês.', roster, { now });
+  assert.equal(mail.store.ledger.records[0].userId, 'joao');
+  const ramal = ingestReport(emptyStore(), '2040: 16 tickets resolvidos no mês.', roster, { now });
+  assert.equal(ramal.store.ledger.records[0].userId, 'joao');
+  assert.deepEqual(matchPeople('JOÃO PEREIRA', roster).map((item) => item.id), ['joao']);
+});
+
+test('indicadores seguem o significado e a ordem do texto', () => {
+  const labeled = parseReport('Felipe Costa: 92% de satisfação, 8 minutos de tempo médio de resolução, 4 minutos de primeira resposta, 320 tickets resolvidos.', [felipe]);
+  assert.equal(labeled.rows[0].userId, 'tm-4');
+  assert.equal(labeled.rows[0].values.resolvidosCount, 320);
+  assert.equal(labeled.rows[0].values.satisfacao, 92);
+  assert.equal(labeled.rows[0].values.primeira, 4);
+  assert.equal(labeled.rows[0].values.resolucao, 8);
+  assert.equal(labeled.rows[0].values.resolvidos, null);
+  const compact = parseReport('Rafael Oliveira: 320 tickets, 92% de satisfação, 4 minutos, 8 minutos.', [rafael]);
+  assert.equal(compact.rows[0].values.resolvidosCount, 320);
+  assert.equal(compact.rows[0].values.satisfacao, 92);
+  assert.equal(compact.rows[0].values.primeira, 4);
+  assert.equal(compact.rows[0].values.resolucao, 8);
+  assert.equal(compact.rows[0].values.resolvidos, null);
+  const mixed = ingestReport(emptyStore(), 'Felipe Costa: 150 tickets resolvidos, 96% na semana.', [felipe], { now });
+  assert.equal(mixed.store.ledger.records[0].values.resolvidosCount, 150);
+  assert.equal(mixed.store.ledger.records[0].values.resolvidos, 96);
+  assert.equal(mixed.store.ledger.records[0].values.satisfacao, null);
+});
+
+test('publicStore preserva satisfação e religa pendente único à Equipe', () => {
+  const store = emptyStore();
+  store.ledger.records = [{
+    id: 'ledger:pending:rafael oliveira:month:2026-11',
+    identity: 'pending:rafael oliveira',
+    userId: '',
+    sourceName: 'Rafael Oliveira',
+    name: 'Rafael Oliveira',
+    periodKey: 'month:2026-11',
+    periodLabel: 'novembro de 2026',
+    values: { resolvidos: null, resolvidosCount: 285, transferidos: null, primeira: 4, resolucao: 8, satisfacao: 92 },
+    changes: {},
+    updatedAt: now.toISOString(),
+    note: 'Não encontrei este nome na Equipe.',
+    candidates: [],
+    history: [],
+  }];
+  const view = publicStore(store);
+  assert.equal(view.ledger.records[0].values.satisfacao, 92);
+  assert.equal(view.ledger.records[0].values.resolvidos, null);
+  const linked = relinkLedger(view.ledger, [rafael, felipe]);
+  assert.equal(linked.records[0].userId, 'tm-8');
+  assert.equal(linked.records[0].pending, false);
+  assert.equal(linked.records[0].name, 'Rafael Oliveira');
+});
+
+test('nova importação aproveita o registro pendente do mesmo nome e período', () => {
+  const pending = ingestReport(emptyStore(), 'Visitante: 10 tickets resolvidos no mês.', [felipe], { now }).store;
+  const named = { id: 'col-9', name: 'Visitante Silva', funcao: 'Chat', role: 'Atendimento', aliases: ['Visitante'] };
+  const linked = ingestReport(pending, 'Visitante: 12 tickets resolvidos no mês.', [named], { now });
+  assert.equal(linked.store.ledger.records.length, 1);
+  assert.equal(linked.store.ledger.records[0].userId, 'col-9');
+  assert.equal(linked.store.ledger.records[0].values.resolvidosCount, 12);
+  assert.equal(linked.store.ledger.records[0].history.length, 1);
+});
+
 test('colar no chat não envia a mensagem sozinho', () => {
   const ui = fs.readFileSync(new URL('../src/components/recognition/GoalsCenter.tsx', import.meta.url), 'utf8');
   assert.equal(ui.includes('onPaste'), false);
   assert.equal(ui.includes('void talk(pasted)'), false);
   assert.equal(ui.includes('Abrir banco de dados dos relatórios'), true);
+  assert.equal(ui.includes('Metas definidas'), true);
+  assert.equal(ui.includes('Metas e resultados dos colaboradores'), true);
+  assert.equal(ui.includes('Aguardando identificação'), true);
+  assert.equal(ui.includes('Atingiu a meta'), true);
+  assert.equal(ui.includes('Histórico de atualizações'), true);
+  assert.equal(ui.includes('pendente de identificação'), false);
 });

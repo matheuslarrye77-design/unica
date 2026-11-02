@@ -93,6 +93,41 @@ function personLabels(person) {
   return [person.name, ...(person.aliases ?? [])].filter(Boolean);
 }
 
+function extraIdentityScore(query, person) {
+  const raw = String(query ?? '').trim().toLowerCase();
+  if (!raw) return 0;
+  const email = String(person.email ?? '').trim().toLowerCase();
+  if (email && raw === email) return 100;
+  if (email.includes('@')) {
+    const local = fold(email.split('@')[0].replace(/[._-]+/g, ' '));
+    if (local && fold(raw) === local) return 95;
+  }
+  const extras = [person.phone, person.ramal].map((value) => String(value ?? '').trim().toLowerCase()).filter((value) => value && value !== fold(person.name));
+  return extras.includes(raw) ? 100 : 0;
+}
+
+function nameScore(query, label) {
+  const text = fold(query);
+  const owned = fold(label);
+  if (!text || !owned) return 0;
+  if (text === owned) return 100;
+  if (wordsInOrder(text, label)) {
+    const wanted = text.split(' ').filter(Boolean);
+    const names = owned.split(' ').filter(Boolean);
+    if (wanted.length === names.length) return 90;
+    return wanted.length >= 2 ? 80 : 70;
+  }
+  if (abbreviated(text, label)) return 60;
+  if (fuzzyName(text, label)) return 45;
+  return 0;
+}
+
+function personScore(query, person) {
+  let score = extraIdentityScore(query, person);
+  for (const label of personLabels(person)) score = Math.max(score, nameScore(query, label));
+  return score;
+}
+
 function editDistance(left, right) {
   const limit = Math.min(left.length, right.length) >= 8 ? 2 : 1;
   if (Math.abs(left.length - right.length) > limit) return limit + 1;
@@ -132,9 +167,16 @@ function fuzzyName(query, name) {
 }
 
 export function matchPeople(query, people) {
-  const text = fold(query);
-  if (!text) return [];
-  return people.filter((person) => personLabels(person).some((label) => fold(label) === text || wordsInOrder(text, label) || abbreviated(text, label) || fuzzyName(text, label)));
+  const raw = String(query ?? '').trim();
+  if (!raw) return [];
+  const scored = (people ?? []).map((person) => ({ person, score: personScore(raw, person) })).filter((item) => item.score > 0);
+  if (!scored.length) return [];
+  scored.sort((left, right) => right.score - left.score);
+  const best = scored[0].score;
+  const chosen = best >= 90
+    ? scored.filter((item) => item.score >= 90)
+    : scored.filter((item) => item.score >= best - 15);
+  return chosen.map((item) => item.person);
 }
 
 function numberFrom(raw) {
@@ -164,10 +206,12 @@ function readToken(part) {
 
 function metricOf(line) {
   const text = fold(line);
-  if (/tickets?\s+resolvid/.test(text)) return 'resolvidos';
+  if (/satisfa|\bcsat\b|\bnps\b/.test(text)) return 'satisfacao';
   if (/tickets?\s+transferid/.test(text)) return 'transferidos';
-  if (/primeira\s+resposta/.test(text)) return 'primeira';
-  if (/tempo\s+medio|ate\s+resolu|media\s+ate\s+resolu/.test(text)) return 'resolucao';
+  if (/tickets?\s+resolvid/.test(text)) return 'resolvidos';
+  if (/\btickets?\b/.test(text) && !/transferid/.test(text)) return 'resolvidos';
+  if (/primeira\s+resposta|\btpr\b/.test(text)) return 'primeira';
+  if (/tempo\s+medio|\btma\b|ate\s+resolu|media\s+ate\s+resolu|tempo\s+de\s+resolu/.test(text)) return 'resolucao';
   return '';
 }
 
@@ -306,6 +350,7 @@ function pushValue(bag, metric, token) {
   } else if (metric === 'transferidos') bag.transferidos = token.count ?? bag.transferidos ?? null;
   else if (metric === 'primeira' && token.minutes !== undefined) bag.primeira = token.minutes;
   else if (metric === 'resolucao' && token.minutes !== undefined) bag.resolucao = token.minutes;
+  else if (metric === 'satisfacao' && token.percent !== undefined) bag.satisfacao = token.percent;
 }
 
 function splitValues(text) {
@@ -341,17 +386,72 @@ function countFrom(raw) {
   return numberFrom(String(raw ?? '').replace(/\./g, ''));
 }
 
+function phraseHint(text) {
+  const folded = fold(text);
+  if (/satisfa|\bcsat\b|\bnps\b/.test(folded)) return 'satisfacao';
+  if (/transferid/.test(folded)) return 'transferidos';
+  if (/primeira|\btpr\b/.test(folded)) return 'primeira';
+  if ((/tempo\s+medio|\btma\b|ate\s+resolu|media\s+ate|medio\s+de\s+resolu|tempo\s+de\s+resolu/.test(folded)) && !/tickets?\s+resolvid/.test(folded)) return 'resolucao';
+  if (/tickets?\s+resolvid/.test(folded) || (/\btickets?\b/.test(folded) && !/transferid/.test(folded))) return 'resolvidosCount';
+  if (/taxa\s+de\s+resol|percentual/.test(folded) && /resolvid/.test(folded)) return 'resolvidos';
+  return '';
+}
+
 function applyPhrase(values, phrase) {
   const text = String(phrase ?? '');
-  const resolved = text.match(/(\d[\d.]*)\s+tickets?\s+resolvid/i);
-  const transferred = text.match(/(\d[\d.]*)\s+tickets?\s+transferid/i);
-  if (resolved) values.resolvidosCount = countFrom(resolved[1]);
-  else if (transferred) values.transferidos = countFrom(transferred[1]);
-  else {
-    const tickets = text.match(/(\d[\d.]*)\s+tickets?\b/i);
-    if (tickets) values.resolvidosCount = countFrom(tickets[1]);
+  const unlabeled = { percents: [], minutes: [], counts: [] };
+  for (const part of splitValues(text)) {
+    const token = readToken(part);
+    const hint = phraseHint(part);
+    if (hint === 'satisfacao' && token?.percent !== undefined) {
+      values.satisfacao = token.percent;
+      continue;
+    }
+    if (hint === 'transferidos') {
+      const count = token?.count ?? countFrom((String(part).match(/(\d[\d.]*)/) ?? [])[1]);
+      if (count !== null && count !== undefined) values.transferidos = count;
+      continue;
+    }
+    if (hint === 'primeira' && (token?.minutes !== undefined || token?.count !== undefined)) {
+      values.primeira = token.minutes ?? token.count;
+      continue;
+    }
+    if (hint === 'resolucao' && (token?.minutes !== undefined || token?.count !== undefined)) {
+      values.resolucao = token.minutes ?? token.count;
+      continue;
+    }
+    if (hint === 'resolvidosCount') {
+      const tickets = String(part).match(/(\d[\d.]*)\s+tickets?/i) || String(part).match(/(\d[\d.]*)/);
+      if (tickets) values.resolvidosCount = countFrom(tickets[1]);
+      if (token?.percent !== undefined) values.resolvidos = token.percent;
+      continue;
+    }
+    if (hint === 'resolvidos' && token?.percent !== undefined) {
+      values.resolvidos = token.percent;
+      continue;
+    }
+    if (!token) continue;
+    if (token.percent !== undefined) unlabeled.percents.push(token.percent);
+    else if (token.minutes !== undefined) unlabeled.minutes.push(token.minutes);
+    else if (token.count !== undefined) unlabeled.counts.push(token.count);
   }
-  assignLoose(values, splitValues(text));
+  const whole = fold(text);
+  const satisfactionPhrase = /satisfa|\bcsat\b|\bnps\b/.test(whole);
+  for (const percent of unlabeled.percents) {
+    if (satisfactionPhrase) {
+      if (values.satisfacao == null) values.satisfacao = percent;
+    } else if (values.resolvidos == null) values.resolvidos = percent;
+  }
+  if (/resolu|\btma\b|tempo\s+medio/.test(whole) && !/primeira/.test(whole) && unlabeled.minutes.length === 1 && values.resolucao == null) {
+    values.resolucao = unlabeled.minutes[0];
+  } else {
+    if (values.primeira == null && unlabeled.minutes[0] !== undefined) values.primeira = unlabeled.minutes[0];
+    if (values.resolucao == null && unlabeled.minutes[1] !== undefined) values.resolucao = unlabeled.minutes[1];
+  }
+  for (const count of unlabeled.counts) {
+    if (values.resolvidosCount == null && /\btickets?\b/.test(whole)) values.resolvidosCount = count;
+    else if (values.transferidos == null) values.transferidos = count;
+  }
 }
 
 function personValues(line) {
@@ -364,24 +464,9 @@ function personValues(line) {
   if (fold(label).length < 2) return null;
   const values = {};
   applyPhrase(values, phrase);
-  const fields = ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao'];
+  const fields = ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao', 'satisfacao'];
   if (!fields.some((field) => values[field] !== undefined && values[field] !== null)) return null;
   return { name: label, values };
-}
-
-function assignLoose(values, parts) {
-  const minutes = [];
-  for (const part of parts) {
-    const token = readToken(part);
-    if (!token) continue;
-    if (token.percent !== undefined) {
-      values.resolvidos = token.percent;
-      if (token.count !== undefined) values.resolvidosCount = token.count;
-    } else if (token.minutes !== undefined) minutes.push(token.minutes);
-    else if (token.count !== undefined && values.transferidos === undefined) values.transferidos = token.count;
-  }
-  if (minutes[0] !== undefined) values.primeira = minutes[0];
-  if (minutes[1] !== undefined) values.resolucao = minutes[1];
 }
 
 export function parseReport(text, people) {
@@ -415,7 +500,7 @@ export function parseReport(text, people) {
     const personLine = personValues(line);
     if (personLine) {
       const entry = ensure(personLine.name);
-      for (const field of ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao']) {
+      for (const field of ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao', 'satisfacao']) {
         if (personLine.values[field] !== undefined && personLine.values[field] !== null) entry.values[field] = personLine.values[field];
       }
       currentName = personLine.name;
@@ -473,6 +558,7 @@ export function parseReport(text, people) {
         transferidos: entry.values.transferidos ?? null,
         primeira: entry.values.primeira ?? null,
         resolucao: entry.values.resolucao ?? null,
+        satisfacao: entry.values.satisfacao ?? null,
       },
       goal,
     };
@@ -577,6 +663,7 @@ export function parseCustomRequest(text) {
   const patterns = [
     { indicator: 'resolvidosCount', re: /(\d[\d.]*)\s+tickets/i },
     { indicator: 'resolvidos', re: /(?:tickets?\s+resolvid|resolvid)[^\d%]{0,48}([\d.,]+)\s*%/i },
+    { indicator: 'satisfacao', re: /(?:satisfa[cç][aã]o|csat|nps)[^\d%]{0,48}([\d.,]+)\s*%/i },
     { indicator: 'primeira', re: /primeira\s+resposta[^\d]{0,48}([\d.,]+)\s*(?:min|minuto)/i },
     { indicator: 'resolucao', re: /(?:tempo\s+m[eé]dio(?:\s+(?:de|at[eé]|ate))?(?:\s+resolu[cç][aã]o)?|resolu[cç][aã]o|tma)[^\d]{0,48}([\d.,]+)\s*(?:min|minuto)/i },
     { indicator: 'transferidos', re: /transferid[^\d]{0,40}([\d.,]+)/i },
@@ -780,6 +867,26 @@ function ledgerValues(values) {
     transferidos: values?.transferidos ?? null,
     primeira: values?.primeira ?? null,
     resolucao: values?.resolucao ?? null,
+    satisfacao: values?.satisfacao ?? null,
+  };
+}
+
+export function relinkLedger(ledger, people) {
+  const source = ledger && typeof ledger === 'object' ? ledger : { records: [], ranking: [], applied: [] };
+  const records = Array.isArray(source.records) ? source.records : [];
+  return {
+    ...source,
+    records: records.map((record) => {
+      if (record.userId) {
+        const person = (people ?? []).find((item) => item.id === record.userId);
+        return { ...record, name: person?.name || record.name, pending: false };
+      }
+      const matches = matchPeople(record.sourceName || record.name, people ?? []);
+      if (matches.length === 1) {
+        return { ...record, userId: matches[0].id, name: matches[0].name, pending: false, note: '', candidates: [] };
+      }
+      return { ...record, pending: true };
+    }),
   };
 }
 

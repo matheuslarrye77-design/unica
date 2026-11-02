@@ -1,19 +1,20 @@
 import { fold, isoWeekKey, mentionedPeriods, monthKey, parseCustomRequest, parseReport, passesRules, weekLabel } from './goals.mjs';
 
-const FIELDS = ['resolvidosCount', 'resolvidos', 'transferidos', 'primeira', 'resolucao'];
+const FIELDS = ['resolvidosCount', 'resolvidos', 'transferidos', 'primeira', 'resolucao', 'satisfacao'];
 const NAMES = {
   resolvidosCount: 'Tickets resolvidos',
   resolvidos: 'Tickets resolvidos (%)',
   transferidos: 'Tickets transferidos',
   primeira: 'Primeira resposta',
   resolucao: 'Tempo médio de resolução',
+  satisfacao: 'Satisfação',
 };
 const OPS = { gt: 'maior que', gte: 'pelo menos', lt: 'menor que', lte: 'no máximo', eq: 'igual a', between: 'entre' };
 const MARKS = { new: 'NOVO', updated: 'ATUALIZADO', same: 'SEM ALTERAÇÃO' };
 const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
 function blankValues() {
-  return { resolvidos: null, resolvidosCount: null, transferidos: null, primeira: null, resolucao: null };
+  return { resolvidos: null, resolvidosCount: null, transferidos: null, primeira: null, resolucao: null, satisfacao: null };
 }
 
 function usefulRows(parsed) {
@@ -59,7 +60,7 @@ function sameMarks(values) {
 }
 
 function formatValue(field, value) {
-  if (field === 'resolvidos') return `${value}%`;
+  if (field === 'resolvidos' || field === 'satisfacao') return `${value}%`;
   if (field === 'primeira' || field === 'resolucao') return `${value} min`;
   return String(value);
 }
@@ -194,7 +195,10 @@ export function ingestReport(store, text, people, options = {}) {
   for (const row of rows) {
     const identity = identityOf(row);
     const id = `ledger:${identity}:${periodKey || 'aberto'}`;
-    const index = records.findIndex((record) => record.id === id);
+    let index = records.findIndex((record) => record.id === id);
+    if (index < 0 && row.userId) {
+      index = records.findIndex((record) => !record.userId && (record.periodKey || 'aberto') === (periodKey || 'aberto') && fold(record.sourceName) === fold(row.sourceName));
+    }
     const previous = index >= 0 ? records[index] : null;
     const values = mergeValues(previous?.values, row.values);
     const changes = diffValues(previous?.values, values);

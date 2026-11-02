@@ -1,7 +1,7 @@
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { authHeaders, getDemoId } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import { BarChart3, Bot, Check, FileText, Info, Paperclip, Pencil, Send, Settings2, Sparkles, Star, Target, Trophy } from 'lucide-react';
+import { BarChart3, Bot, Check, ChevronDown, FileText, Info, Paperclip, Pencil, Send, Settings2, Sparkles, Star, Target, Trophy } from 'lucide-react';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type FC, type FormEvent, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
@@ -15,7 +15,7 @@ type PendingRules = {
   subsetor: string;
   weights: { resolvidos: number; primeira: number; resolucao: number } | null;
 };
-type Values = { resolvidos: number | null; resolvidosCount: number | null; transferidos: number | null; primeira: number | null; resolucao: number | null };
+type Values = { resolvidos: number | null; resolvidosCount: number | null; transferidos: number | null; primeira: number | null; resolucao: number | null; satisfacao?: number | null };
 type Row = {
   sourceName: string;
   userId: string;
@@ -38,7 +38,7 @@ export type GoalImport = {
   approvedBy: string;
   approvedAt: string;
 };
-type LedgerValues = { resolvidos: number | null; resolvidosCount: number | null; transferidos: number | null; primeira: number | null; resolucao: number | null };
+type LedgerValues = { resolvidos: number | null; resolvidosCount: number | null; transferidos: number | null; primeira: number | null; resolucao: number | null; satisfacao?: number | null };
 type LedgerRecord = {
   id: string;
   userId: string;
@@ -79,19 +79,14 @@ const LEDGER_FIELDS = [
   ['transferidos', 'Tickets transferidos'],
   ['primeira', 'Primeira resposta'],
   ['resolucao', 'Tempo médio de resolução'],
+  ['satisfacao', 'Satisfação'],
 ] as const;
 
 function ledgerText(field: string, value: number | null) {
   if (value === null || value === undefined) return '';
-  if (field === 'resolvidos') return `${value}%`;
+  if (field === 'resolvidos' || field === 'satisfacao') return `${value}%`;
   if (field === 'primeira' || field === 'resolucao') return `${value} min`;
   return String(value);
-}
-
-function changeMark(change?: string) {
-  if (change === 'new') return { label: 'NOVO', className: 'text-[#157A3A]' };
-  if (change === 'updated') return { label: 'ATUALIZADO', className: 'text-[#A16207]' };
-  return { label: 'SEM ALTERAÇÃO', className: 'text-[#8A7C98]' };
 }
 
 function clock(iso: string) {
@@ -113,6 +108,7 @@ const RULE_NAMES: Record<string, string> = {
   primeira: 'Primeira resposta',
   resolucao: 'Tempo médio de resolução',
   transferidos: 'Tickets transferidos',
+  satisfacao: 'Satisfação',
 };
 const RULE_OPS: Record<string, string> = { gt: 'maior que', gte: 'pelo menos', lt: 'menor que', lte: 'no máximo', eq: 'igual a', between: 'entre' };
 
@@ -609,54 +605,248 @@ export const GoalsCenter: FC = () => {
   );
 };
 
+const MONTH_NAMES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+function isoWeekDate(year: number, week: number) {
+  const january = new Date(Date.UTC(year, 0, 1));
+  const day = january.getUTCDay() || 7;
+  const monday = new Date(january);
+  monday.setUTCDate(january.getUTCDate() + (day <= 4 ? 1 - day : 8 - day) + (week - 1) * 7);
+  return monday;
+}
+
+function monthBucket(periodKey: string) {
+  const month = /^month:(\d{4})-(\d{2})$/.exec(periodKey);
+  if (month) return `${month[1]}-${month[2]}`;
+  const week = /^(\d{4})-W(\d{2})$/.exec(periodKey);
+  if (week) {
+    const date = isoWeekDate(Number(week[1]), Number(week[2]));
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+  }
+  return '';
+}
+
+function monthTitle(bucket: string) {
+  const [year, month] = bucket.split('-');
+  const name = MONTH_NAMES[Number(month) - 1];
+  if (!name || !year) return 'Período a confirmar';
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)} de ${year}`;
+}
+
+function ruleDirection(op: string) {
+  if (op === 'lt' || op === 'lte') return 'Menor é melhor';
+  if (op === 'between') return 'Faixa';
+  if (op === 'eq') return 'Igual';
+  return 'Maior é melhor';
+}
+
+function ruleTarget(rule: Rule) {
+  if (rule.op === 'between') return `${rule.value} a ${rule.valueTo ?? ''}`;
+  return String(rule.value);
+}
+
+function goalMet(field: string, value: number | null | undefined, rule?: Rule, importGoal?: { target?: number | null; direction?: string }) {
+  if (value === null || value === undefined) return null;
+  if (rule) {
+    if (rule.op === 'gt') return value > rule.value;
+    if (rule.op === 'gte') return value >= rule.value;
+    if (rule.op === 'lt') return value < rule.value;
+    if (rule.op === 'lte') return value <= rule.value;
+    if (rule.op === 'eq') return value === rule.value;
+    if (rule.op === 'between') return value >= rule.value && value <= (rule.valueTo ?? rule.value);
+  }
+  if (importGoal?.target == null) return null;
+  return importGoal.direction === 'lower' ? value <= importGoal.target : value >= importGoal.target;
+}
+
+function StatusText({ met }: { met: boolean | null }) {
+  if (met === true) return <span className="text-[12px] font-medium text-[#157A3A]">Atingiu a meta</span>;
+  if (met === false) return <span className="text-[12px] font-medium text-[#B42318]">Não atingiu a meta</span>;
+  return <span className="text-[12px] text-[#8A7C98]">Sem meta cadastrada</span>;
+}
+
 function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => void }) {
-  const records = [...(goals.ledger?.records ?? [])].sort((left, right) => (left.name || left.sourceName).localeCompare(right.name || right.sourceName, 'pt') || left.periodKey.localeCompare(right.periodKey));
-  const ranking = goals.ledger?.ranking ?? [];
+  const records = goals.ledger?.records ?? [];
+  const buckets = [...new Set(records.map((record) => monthBucket(record.periodKey)).filter(Boolean))].sort().reverse();
+  const openKeys = records.some((record) => !record.periodKey) ? [...buckets, ''] : buckets;
+  const [selected, setSelected] = useState(openKeys[0] ?? '');
+  const [openId, setOpenId] = useState('');
+
+  const periodRecords = records.filter((record) => monthBucket(record.periodKey) === selected);
+  const shownTemplates = goals.templates.filter((template) => selected ? template.period !== 'week' : true);
+  const importGoals = goals.imports.filter((item) => monthBucket(item.periodKey) === selected);
+
+  const identified = periodRecords.filter((record) => record.userId && !record.pending);
+  const pending = periodRecords.filter((record) => !record.userId || record.pending);
+  const peopleCards = [
+    ...goals.people.map((person) => ({ person, record: identified.find((record) => record.userId === person.id) })).filter((item) => item.record),
+    ...identified.filter((record) => !goals.people.some((person) => person.id === record.userId)).map((record) => ({
+      person: { id: record.userId, name: record.name || record.sourceName, funcao: '', role: '', aliases: [] },
+      record,
+    })),
+  ].sort((left, right) => left.person.name.localeCompare(right.person.name, 'pt'));
+
+  function metaFor(field: string) {
+    const fromTemplate = shownTemplates.flatMap((template) => template.rules).find((rule) => rule.indicator === field);
+    const fromImport = importGoals.flatMap((item) => item.goals).map((item) => item.goal)[0];
+    const importRule = field === 'resolvidos' || field === 'primeira' || field === 'resolucao' || field === 'transferidos'
+      ? fromImport?.[field as 'resolvidos' | 'primeira' | 'resolucao' | 'transferidos']
+      : undefined;
+    return { rule: fromTemplate, importGoal: importRule };
+  }
+
   return (
-    <div className="absolute inset-0 z-20 flex flex-col bg-white">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#F3EAF8] px-3 py-3">
-        <h3 className="text-[14px] font-semibold text-[#241B33]">Banco dos relatórios</h3>
+    <div className="absolute inset-0 z-20 flex flex-col bg-[#FBF8FC]">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#F3EAF8] bg-white px-3 py-3">
+        <div>
+          <h3 className="text-[14px] font-semibold text-[#241B33]">Banco dos relatórios</h3>
+          <p className="text-[11.5px] text-[#8A7C98]">Metas da gestão e resultados por colaborador, separados por mês.</p>
+        </div>
         <button type="button" onClick={onClose} className="rounded-full border border-[#E7DFF0] px-3 py-1 text-[12px] font-semibold text-[#6A228C]">Fechar</button>
       </div>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
-        <p className="text-[12px] leading-5 text-[#8A7C98]">Os dados ficam salvos no servidor. <span className="text-[#157A3A]">NOVO</span>, <span className="text-[#A16207]">ATUALIZADO</span> e <span className="text-[#8A7C98]">SEM ALTERAÇÃO</span> mostram só o que mudou na última importação.</p>
-        {ranking.length ? (
-          <section className="rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-3">
-            <p className="text-[12px] font-semibold text-[#4A1C73]">Classificação proposta</p>
-            <ul className="mt-1 grid gap-1 text-[12.5px] text-[#5C5168]">
-              {ranking.map((row) => <li key={`${row.userId}-${row.place}`}>{row.place}º {row.name}{row.values.resolvidosCount !== null ? ` · ${row.values.resolvidosCount} tickets` : ''}</li>)}
-            </ul>
-            <p className="mt-1 text-[11.5px] text-[#8A7C98]">O pódio oficial só muda se você confirmar a regra.</p>
-          </section>
+        {openKeys.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {openKeys.map((bucket) => (
+              <button
+                key={bucket || 'aberto'}
+                type="button"
+                onClick={() => setSelected(bucket)}
+                className={cn('rounded-full px-3 py-1.5 text-[12px] font-semibold', selected === bucket ? 'bg-[#8E35B8] text-white' : 'bg-white text-[#6A228C] border border-[#E7DFF0]')}
+              >
+                {bucket ? monthTitle(bucket) : 'Período a confirmar'}
+              </button>
+            ))}
+          </div>
         ) : null}
-        {records.length === 0 ? <p className="text-[13px] text-[#8A7C98]">Nenhum relatório foi armazenado ainda.</p> : records.map((record) => (
-          <article key={record.id} className="rounded-xl border border-[#EDE4F5] p-3">
-            <p className="text-[13px] font-semibold text-[#241B33]">{record.name || record.sourceName}</p>
-            <p className="text-[12px] text-[#8A7C98]">Cadastro na Equipe: {record.userId || 'pendente de identificação'}</p>
-            <p className="text-[12px] text-[#8A7C98]">{record.periodLabel} · atualizado em {clock(record.updatedAt) || '—'}</p>
-            {record.note ? <p className="mt-1 text-[12px] leading-5 text-[#A16207]">{record.note}</p> : null}
-            <ul className="mt-2 grid gap-1">
-              {LEDGER_FIELDS.map(([field, label]) => {
-                const value = record.values[field];
-                if (value === null || value === undefined) return null;
-                const mark = changeMark(record.changes?.[field]);
-                return <li key={field} className="text-[12.5px] text-[#3C3148]">{label}: {ledgerText(field, value)} <span className={cn('text-[11px] font-semibold', mark.className)}>({mark.label})</span></li>;
-              })}
+
+        <section className="rounded-2xl border border-[#EDE4F5] bg-white p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#8A5AA0]">Legenda</p>
+          <ul className="mt-2 grid gap-1 text-[12px] text-[#5C5168]">
+            <li><span className="font-medium text-[#157A3A]">Atingiu a meta</span> — o resultado ficou dentro da regra cadastrada.</li>
+            <li><span className="font-medium text-[#B42318]">Não atingiu a meta</span> — o resultado ficou fora da regra cadastrada.</li>
+            <li><span className="font-medium text-[#8A7C98]">Sem meta cadastrada</span> — há resultado, mas a gestão não definiu meta para este indicador.</li>
+            <li><span className="font-medium text-[#A16207]">Aguardando identificação</span> — o nome do relatório ainda não foi vinculado a um cadastro da Equipe.</li>
+          </ul>
+        </section>
+
+        <section className="rounded-2xl border border-[#EDE4F5] bg-white p-3">
+          <h4 className="text-[13px] font-semibold text-[#4A1C73]">Metas definidas</h4>
+          <p className="mt-0.5 text-[12px] text-[#8A7C98]">{selected ? monthTitle(selected) : 'Período a confirmar'}</p>
+          {shownTemplates.length === 0 && importGoals.length === 0 ? (
+            <p className="mt-2 text-[12.5px] text-[#8A7C98]">Nenhuma meta cadastrada para este período.</p>
+          ) : (
+            <ul className="mt-2 grid gap-2">
+              {shownTemplates.flatMap((template) => template.rules.map((rule, index) => (
+                <li key={`${template.id}-${rule.indicator}-${index}`} className="rounded-xl bg-[#F7F0FB] px-3 py-2">
+                  <p className="text-[12.5px] font-semibold text-[#241B33]">{RULE_NAMES[rule.indicator] ?? rule.indicator}</p>
+                  <p className="text-[12px] text-[#5C5168]">Valor da meta: {rule.indicator === 'primeira' || rule.indicator === 'resolucao' ? `${ruleTarget(rule)} min` : rule.indicator === 'resolvidos' || rule.indicator === 'satisfacao' ? `${ruleTarget(rule)}%` : ruleTarget(rule)}</p>
+                  <p className="text-[12px] text-[#5C5168]">Regra: {ruleDirection(rule.op)}</p>
+                  <p className="text-[12px] text-[#5C5168]">Período de validade: {template.period === 'week' ? 'Semana' : 'Mês'}{selected ? ` · ${monthTitle(selected)}` : ''}</p>
+                </li>
+              )))}
+              {importGoals.flatMap((item) => item.goals.flatMap((entry) => LEDGER_FIELDS.map(([field, label]) => {
+                const goal = (entry.goal as Record<string, { target?: number | null; direction?: string } | undefined>)[field];
+                if (!goal || goal.target == null) return null;
+                return (
+                  <li key={`${item.id}-${entry.subsetor}-${field}`} className="rounded-xl bg-[#F7F0FB] px-3 py-2">
+                    <p className="text-[12.5px] font-semibold text-[#241B33]">{label}{entry.subsetor ? ` · ${entry.subsetor}` : ''}</p>
+                    <p className="text-[12px] text-[#5C5168]">Valor da meta: {ledgerText(field, goal.target)}</p>
+                    <p className="text-[12px] text-[#5C5168]">Regra: {goal.direction === 'lower' ? 'Menor é melhor' : 'Maior é melhor'}</p>
+                    <p className="text-[12px] text-[#5C5168]">Período de validade: {item.label || monthTitle(selected)}</p>
+                  </li>
+                );
+              })))}
             </ul>
-            {record.history.length ? (
-              <details className="mt-2">
-                <summary className="cursor-pointer text-[12px] font-medium text-[#6A228C]">Histórico das atualizações</summary>
-                <ul className="mt-1 grid gap-1">
-                  {record.history.map((item, index) => (
-                    <li key={`${item.at}-${index}`} className="text-[12px] text-[#8A7C98]">
-                      {clock(item.at) || 'versão anterior'}: {LEDGER_FIELDS.filter(([field]) => item.values[field] !== null && item.values[field] !== undefined).map(([field, label]) => `${label} ${ledgerText(field, item.values[field])}`).join(' · ')}
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            ) : null}
-          </article>
-        ))}
+          )}
+        </section>
+
+        <section className="grid gap-2">
+          <h4 className="text-[13px] font-semibold text-[#4A1C73]">Metas e resultados dos colaboradores</h4>
+          {peopleCards.length === 0 && pending.length === 0 ? <p className="text-[12.5px] text-[#8A7C98]">Nenhum resultado armazenado neste período.</p> : null}
+          {peopleCards.map(({ person, record }) => {
+            const open = openId === (record?.id || person.id);
+            return (
+              <article key={person.id} className="overflow-hidden rounded-2xl border border-[#EDE4F5] bg-white">
+                <button type="button" onClick={() => setOpenId(open ? '' : (record?.id || person.id))} className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left">
+                  <span>
+                    <span className="block text-[13px] font-semibold text-[#241B33]">{person.name}</span>
+                    <span className="block text-[11.5px] text-[#8A7C98]">{person.funcao || person.role} · {record?.periodLabel || (selected ? monthTitle(selected) : 'Período a confirmar')}</span>
+                  </span>
+                  <ChevronDown className={cn('h-4 w-4 shrink-0 text-[#8A7C98] transition', open ? 'rotate-180' : '')} />
+                </button>
+                {open && record ? (
+                  <div className="border-t border-[#F3EAF8] px-3 py-3">
+                    <ul className="grid gap-2">
+                      {LEDGER_FIELDS.map(([field, label]) => {
+                        const value = record.values[field];
+                        if (value === null || value === undefined) return null;
+                        const meta = metaFor(field);
+                        const met = goalMet(field, value, meta.rule, meta.importGoal);
+                        const target = meta.rule ? meta.rule.value : meta.importGoal?.target;
+                        return (
+                          <li key={field} className="rounded-xl bg-[#FBF8FC] px-3 py-2">
+                            <p className="text-[12.5px] font-semibold text-[#241B33]">{label}</p>
+                            <div className="mt-1 grid gap-0.5 text-[12px] text-[#5C5168]">
+                              <p>Resultado alcançado: {ledgerText(field, value)}</p>
+                              {target != null ? <p>Meta estabelecida: {meta.rule && (field === 'primeira' || field === 'resolucao') ? `${ruleTarget(meta.rule)} min` : meta.rule ? ruleTarget(meta.rule) : ledgerText(field, target)}</p> : null}
+                              <StatusText met={met} />
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {record.history.length ? (
+                      <details className="mt-3 rounded-xl border border-[#EDE4F5] px-3 py-2">
+                        <summary className="cursor-pointer text-[12px] font-medium text-[#6A228C]">Histórico de atualizações</summary>
+                        <ul className="mt-2 grid gap-2">
+                          {record.history.map((item, index) => (
+                            <li key={`${item.at}-${index}`} className="rounded-lg bg-white px-2 py-2 text-[12px] text-[#8A7C98]">
+                              <p className="font-medium text-[#5C5168]">{clock(item.at) || `Versão ${index + 1}`}</p>
+                              <p>{LEDGER_FIELDS.filter(([field]) => item.values[field] !== null && item.values[field] !== undefined).map(([field, label]) => `${label}: ${ledgerText(field, item.values[field])}`).join(' · ') || 'Sem indicadores nesta versão.'}</p>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    ) : null}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
+          {pending.map((record) => {
+            const open = openId === record.id;
+            return (
+              <article key={record.id} className="overflow-hidden rounded-2xl border border-[#F3E0C8] bg-white">
+                <button type="button" onClick={() => setOpenId(open ? '' : record.id)} className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left">
+                  <span>
+                    <span className="block text-[13px] font-semibold text-[#241B33]">{record.sourceName || record.name}</span>
+                    <span className="block text-[11.5px] font-medium text-[#A16207]">Aguardando identificação</span>
+                  </span>
+                  <ChevronDown className={cn('h-4 w-4 shrink-0 text-[#8A7C98] transition', open ? 'rotate-180' : '')} />
+                </button>
+                {open ? (
+                  <div className="border-t border-[#F3EAF8] px-3 py-3">
+                    <p className="text-[12px] leading-5 text-[#A16207]">{record.note || 'Este nome ainda não foi vinculado a um cadastro da Equipe. Nenhum colaborador novo foi criado.'}</p>
+                    <ul className="mt-2 grid gap-2">
+                      {LEDGER_FIELDS.map(([field, label]) => {
+                        const value = record.values[field];
+                        if (value === null || value === undefined) return null;
+                        return (
+                          <li key={field} className="rounded-xl bg-[#FBF8FC] px-3 py-2">
+                            <p className="text-[12.5px] font-semibold text-[#241B33]">{label}</p>
+                            <p className="text-[12px] text-[#5C5168]">Resultado alcançado: {ledgerText(field, value)}</p>
+                            <StatusText met={null} />
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
+        </section>
       </div>
     </div>
   );

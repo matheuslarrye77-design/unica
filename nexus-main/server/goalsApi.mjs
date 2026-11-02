@@ -1,7 +1,7 @@
 import { isLeader } from './auth/permissions.mjs';
 import { commitTemplate, interpretCriteria, normalizeProposal } from './criteria.mjs';
 import { applyLedgerRanking, ingestReport, proposeFromLedger } from './ledger.mjs';
-import { applyCriterion, buildApproval, emptyStore, goalState, INDICATORS, looksLikeReport, overallScore, parseReport, publicStore, readCriterion, runAssistant } from './goals.mjs';
+import { applyCriterion, buildApproval, emptyStore, goalState, INDICATORS, looksLikeReport, overallScore, parseReport, publicStore, readCriterion, relinkLedger, runAssistant } from './goals.mjs';
 import { STORAGE_REPLY, createGoalsStore } from './goalsStore.mjs';
 
 function redactLabels(colleagues, aliases, teamRoster) {
@@ -36,6 +36,9 @@ function directory(colleagues, aliases, teamRoster) {
     name: person.name,
     funcao: person.funcao,
     role: person.role,
+    email: person.email,
+    phone: person.phone,
+    ramal: person.ramal,
     aliases: [...(person.reportNames ?? []), ...(aliases[person.id] ?? [])],
   }));
 }
@@ -65,7 +68,9 @@ function publicView(store, user, people) {
   const body = { ...publicStore(store), canManage: isLeader(user), people: viewPeople(people, store) };
   if (!isLeader(user)) {
     body.ledger = { records: [], ranking: [], applied: store.ledger?.applied ?? [] };
+    return body;
   }
+  body.ledger = relinkLedger(body.ledger, people);
   return body;
 }
 
