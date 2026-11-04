@@ -1,7 +1,8 @@
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { authHeaders, getDemoId } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import { BarChart3, Bot, Check, ChevronDown, FileText, Info, Maximize2, Minimize2, Paperclip, Pencil, Send, Settings2, Sparkles, Star, Target, Trophy } from 'lucide-react';
+import { useShell } from '@/components/Sidebar';
+import { ArrowLeftRight, BarChart3, Bot, Calendar, Check, ChevronRight, Clock, FileText, Info, Maximize2, Minimize2, Paperclip, Pencil, Send, Settings2, Smile, Sparkles, Star, Target, Ticket, Timer, Trophy, X } from 'lucide-react';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type FC, type FormEvent, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
@@ -765,12 +766,21 @@ function goalMet(value: number | null | undefined, rule?: Rule, importGoal?: { t
 }
 
 function StatusText({ met }: { met: boolean | null }) {
-  if (met === true) return <span className="text-[12px] font-medium text-[#157A3A]">Atingiu a meta</span>;
-  if (met === false) return <span className="text-[12px] font-medium text-[#B42318]">Não atingiu a meta</span>;
-  return <span className="text-[12px] text-[#8A7C98]">Sem meta cadastrada</span>;
+  if (met === true) return <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[#157A3A]"><span className="h-2 w-2 rounded-full bg-[#22C55E]" />Atingiu a meta</span>;
+  if (met === false) return <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[#DC2626]"><span className="h-2 w-2 rounded-full bg-[#EF4444]" />Não atingiu a meta</span>;
+  return <span className="inline-flex items-center gap-1.5 text-[12.5px] text-[#8A7C98]"><span className="h-2 w-2 rounded-full bg-[#C4B5C8]" />Sem meta cadastrada</span>;
 }
 
-function ReportBank({ goals, onClose, wide, onWide }: { goals: GoalsPayload; onClose: () => void; wide: boolean; onWide: () => void }) {
+function goalIcon(indicator: string) {
+  if (/transfer/.test(indicator)) return ArrowLeftRight;
+  if (/primeira/.test(indicator)) return Timer;
+  if (/resolucao/.test(indicator)) return Clock;
+  if (/satisfa/.test(indicator)) return Smile;
+  if (/resolvid/.test(indicator)) return Ticket;
+  return BarChart3;
+}
+
+function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => void }) {
   const records = goals.ledger?.records ?? [];
   const bankPeriods = goals.bank?.periods ?? [];
   const buckets = [...new Set([
@@ -781,7 +791,17 @@ function ReportBank({ goals, onClose, wide, onWide }: { goals: GoalsPayload; onC
   const openKeys = records.some((record) => !record.periodKey) ? [...buckets, ''] : buckets;
   const [selected, setSelected] = useState(openKeys[0] ?? '');
   const [openId, setOpenId] = useState('');
+  const [openGoal, setOpenGoal] = useState('');
+  const { leftCollapsed } = useShell();
   const bankPeriod = bankPeriods.find((item) => item.key === selected);
+  const selectedYear = selected.slice(0, 4);
+  const selectedMonth = selected.slice(5, 7);
+  const years = [...new Set(openKeys.filter(Boolean).map((key) => key.slice(0, 4)))].sort().reverse();
+  const monthsForYear = openKeys.filter((key) => key.startsWith(`${selectedYear}-`)).map((key) => key.slice(5, 7));
+  const monthChoices = MONTH_NAMES.map((name, index) => {
+    const value = String(index + 1).padStart(2, '0');
+    return { value, label: `${name.charAt(0).toUpperCase()}${name.slice(1)}`, has: monthsForYear.includes(value) };
+  }).filter((item) => item.has || item.value === selectedMonth);
 
   const periodRecords = records.filter((record) => monthBucket(record.periodKey) === selected);
   const shownTemplates = goals.templates.filter((template) => {
@@ -824,131 +844,175 @@ function ReportBank({ goals, onClose, wide, onWide }: { goals: GoalsPayload; onC
     return { rule: fromTemplate, importGoal: importRule };
   }
 
-  return (
-    <div className="absolute inset-0 z-20 flex flex-col bg-[#FBF8FC]">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#F3EAF8] bg-white px-3 py-3">
-        <div>
-          <h3 className="text-[14px] font-semibold text-[#241B33]">Banco dos relatórios</h3>
-          <p className="text-[11.5px] text-[#8A7C98]">Metas da gestão e resultados por colaborador, separados por mês.</p>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button type="button" aria-label={wide ? 'Reduzir painel' : 'Ampliar chat e banco de dados'} title={wide ? 'Reduzir' : 'Ampliar'} onClick={onWide} className="grid h-8 w-8 place-items-center rounded-full border border-[#E7DFF0] text-[#6A228C] hover:bg-[#F3E4FA]">
-            {wide ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </button>
-          <button type="button" onClick={onClose} className="rounded-full border border-[#E7DFF0] px-3 py-1 text-[12px] font-semibold text-[#6A228C]">Fechar</button>
-        </div>
-      </div>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
-        {openKeys.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {openKeys.map((bucket) => (
-              <button
-                key={bucket || 'aberto'}
-                type="button"
-                onClick={() => setSelected(bucket)}
-                className={cn('rounded-full px-3 py-1.5 text-[12px] font-semibold', selected === bucket ? 'bg-[#8E35B8] text-white' : 'bg-white text-[#6A228C] border border-[#E7DFF0]')}
-              >
-                {bucket ? (bankPeriods.find((item) => item.key === bucket)?.label || monthTitle(bucket)) : 'Período a confirmar'}
-              </button>
-            ))}
-          </div>
-        ) : null}
+  const managementGoals = [
+    ...(bankPeriod?.goals.length
+      ? bankPeriod.goals.map((goal, index) => ({
+        key: `${goal.indicator}-${index}`,
+        indicator: goal.indicator,
+        name: goal.name,
+        value: goal.indicator === 'primeira' || goal.indicator === 'resolucao' ? `${goal.value} min` : goal.indicator === 'resolvidos' || goal.indicator === 'satisfacao' ? `${goal.value}%` : String(goal.value),
+        direction: ruleDirection(goal.op),
+        period: goal.periodLabel || bankPeriod.label,
+      }))
+      : shownTemplates.flatMap((template) => template.rules.map((rule, index) => ({
+        key: `${template.id}-${rule.indicator}-${index}`,
+        indicator: rule.indicator,
+        name: RULE_NAMES[rule.indicator] ?? rule.indicator,
+        value: rule.indicator === 'primeira' || rule.indicator === 'resolucao' ? `${ruleTarget(rule)} min` : rule.indicator === 'resolvidos' || rule.indicator === 'satisfacao' ? `${ruleTarget(rule)}%` : String(ruleTarget(rule)),
+        direction: ruleDirection(rule.op),
+        period: template.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar'),
+      })))),
+    ...importGoals.flatMap((item) => item.goals.flatMap((entry) => LEDGER_FIELDS.map(([field, label]) => {
+      const goal = (entry.goal as Record<string, { target?: number | null; direction?: string } | undefined>)[field];
+      if (!goal || goal.target == null) return null;
+      return {
+        key: `${item.id}-${entry.subsetor}-${field}`,
+        indicator: field,
+        name: `${label}${entry.subsetor ? ` · ${entry.subsetor}` : ''}`,
+        value: ledgerText(field, goal.target),
+        direction: goal.direction === 'lower' ? 'Menor é melhor' : 'Maior é melhor',
+        period: item.label || monthTitle(selected),
+      };
+    }))).filter((item): item is NonNullable<typeof item> => Boolean(item)),
+  ];
 
-        <section className="rounded-2xl border border-[#EDE4F5] bg-white p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#8A5AA0]">Legenda</p>
-          <ul className="mt-2 grid gap-1 text-[12px] text-[#5C5168]">
-            <li><span className="font-medium text-[#157A3A]">Atingiu a meta</span> — o resultado ficou dentro da regra cadastrada.</li>
-            <li><span className="font-medium text-[#B42318]">Não atingiu a meta</span> — o resultado ficou fora da regra cadastrada.</li>
-            <li><span className="font-medium text-[#8A7C98]">Sem meta cadastrada</span> — há resultado, mas a gestão não definiu meta para este indicador.</li>
-            <li><span className="font-medium text-[#A16207]">Aguardando identificação</span> — o nome do relatório ainda não foi vinculado a um cadastro da Equipe.</li>
+  return (
+    <div className={cn('fixed inset-0 z-[45] overflow-y-auto bg-[#F6F3F8] [scrollbar-width:thin]', leftCollapsed ? 'lg:left-16' : 'lg:left-[256px]')}>
+      <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
+        <header className="flex flex-col gap-4 rounded-[22px] border border-[#EEE6F4] bg-white px-5 py-4 shadow-[0_8px_24px_rgba(80,40,120,0.05)] sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]"><BarChart3 className="h-6 w-6" /></span>
+            <div className="min-w-0">
+              <h3 className="text-[22px] font-semibold tracking-tight text-[#241B33]">Banco dos relatórios</h3>
+              <p className="mt-0.5 text-[13px] text-[#8A7C98]">Metas da gestão e resultados por colaborador, separados por mês.</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {openKeys.includes('') ? (
+              <button type="button" onClick={() => setSelected('')} className={cn('h-10 rounded-full border px-3 text-[13px]', selected === '' ? 'border-[#8E35B8] bg-[#F3E4FA] text-[#6A228C]' : 'border-[#E7DFF0] bg-white text-[#5C5168]')}>Período a confirmar</button>
+            ) : null}
+            <label className="inline-flex h-10 items-center gap-2 rounded-full border border-[#E7DFF0] bg-white px-3 text-[13px] text-[#5C5168]">
+              <Calendar className="h-4 w-4 text-[#8E35B8]" />
+              <span className="sr-only">Mês</span>
+              <select
+                aria-label="Mês"
+                value={selectedMonth}
+                onChange={(event) => setSelected(`${selectedYear}-${event.target.value}`)}
+                className="max-w-[140px] bg-transparent outline-none"
+              >
+                {monthChoices.map((item) => (
+                  <option key={item.value} value={item.value}>{item.label}{selectedYear ? `/${selectedYear}` : ''}</option>
+                ))}
+              </select>
+            </label>
+            <label className="inline-flex h-10 items-center gap-2 rounded-full border border-[#E7DFF0] bg-white px-3 text-[13px] text-[#5C5168]">
+              <span className="sr-only">Ano</span>
+              <select
+                aria-label="Ano"
+                value={selectedYear}
+                onChange={(event) => {
+                  const year = event.target.value;
+                  const months = openKeys.filter((key) => key.startsWith(`${year}-`));
+                  setSelected(months.find((key) => key.slice(5, 7) === selectedMonth) || months[0] || selected);
+                }}
+                className="bg-transparent outline-none"
+              >
+                {years.map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </label>
+            <button type="button" onClick={onClose} aria-label="Fechar banco dos relatórios" className="grid h-10 w-10 place-items-center rounded-full border border-[#E7DFF0] text-[#6A228C] hover:bg-[#F3E4FA]">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </header>
+
+        <section className="rounded-[22px] border border-[#EEE6F4] bg-white px-5 py-4 shadow-[0_8px_24px_rgba(80,40,120,0.04)]">
+          <div className="flex items-center gap-2 text-[13px] font-semibold text-[#241B33]">
+            <Trophy className="h-4 w-4 text-[#8E35B8]" /> Legenda
+          </div>
+          <ul className="mt-3 flex flex-wrap items-center gap-x-8 gap-y-2 text-[13px] text-[#5C5168]">
+            <li className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#22C55E]" /> Atingiu a meta</li>
+            <li className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#EF4444]" /> Não atingiu a meta</li>
+            <li className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#C4B5C8]" /> Sem meta cadastrada</li>
+            <li className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B]" /> Aguardando identificação</li>
           </ul>
+          <div className="mt-4 h-px bg-[#F0E7F6]" />
         </section>
 
-        <section className="rounded-2xl border border-[#EDE4F5] bg-white p-3">
-          <h4 className="text-[13px] font-semibold text-[#4A1C73]">Metas definidas pela gestão</h4>
-          <p className="mt-0.5 text-[12px] text-[#8A7C98]">{bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar')}</p>
-          {(bankPeriod?.goals.length ? bankPeriod.goals : shownTemplates.flatMap((template) => template.rules)).length === 0 && importGoals.length === 0 ? (
-            <p className="mt-2 text-[12.5px] text-[#8A7C98]">Nenhuma meta cadastrada para este período.</p>
+        <section>
+          <h4 className="mb-3 text-[16px] font-semibold text-[#241B33]">Metas definidas pela gestão</h4>
+          {managementGoals.length === 0 ? (
+            <p className="rounded-[22px] border border-[#EEE6F4] bg-white px-5 py-6 text-[13px] text-[#8A7C98]">Nenhuma meta cadastrada para este período.</p>
           ) : (
-            <ul className="mt-2 grid gap-2">
-              {(bankPeriod?.goals.length
-                ? bankPeriod.goals.map((goal, index) => ({
-                  key: `${goal.indicator}-${index}`,
-                  name: goal.name,
-                  value: goal.indicator === 'primeira' || goal.indicator === 'resolucao' ? `${goal.value} min` : goal.indicator === 'resolvidos' || goal.indicator === 'satisfacao' ? `${goal.value}%` : String(goal.value),
-                  direction: ruleDirection(goal.op),
-                  period: goal.periodLabel || bankPeriod.label,
-                }))
-                : shownTemplates.flatMap((template) => template.rules.map((rule, index) => ({
-                  key: `${template.id}-${rule.indicator}-${index}`,
-                  name: RULE_NAMES[rule.indicator] ?? rule.indicator,
-                  value: rule.indicator === 'primeira' || rule.indicator === 'resolucao' ? `${ruleTarget(rule)} min` : rule.indicator === 'resolvidos' || rule.indicator === 'satisfacao' ? `${ruleTarget(rule)}%` : String(ruleTarget(rule)),
-                  direction: ruleDirection(rule.op),
-                  period: template.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar'),
-                })))).map((goal) => (
-                <li key={goal.key} className="rounded-xl bg-[#F7F0FB] px-3 py-2">
-                  <p className="text-[12.5px] font-semibold text-[#241B33]">{goal.name}</p>
-                  <p className="text-[12px] text-[#5C5168]">Valor da meta: {goal.value}</p>
-                  <p className="text-[12px] text-[#5C5168]">Regra: {goal.direction}</p>
-                  <p className="text-[12px] text-[#5C5168]">Período de validade: {goal.period}</p>
-                </li>
-              ))}
-              {importGoals.flatMap((item) => item.goals.flatMap((entry) => LEDGER_FIELDS.map(([field, label]) => {
-                const goal = (entry.goal as Record<string, { target?: number | null; direction?: string } | undefined>)[field];
-                if (!goal || goal.target == null) return null;
+            <ul className="grid gap-3">
+              {managementGoals.map((goal) => {
+                const Icon = goalIcon(goal.indicator);
+                const open = openGoal === goal.key;
                 return (
-                  <li key={`${item.id}-${entry.subsetor}-${field}`} className="rounded-xl bg-[#F7F0FB] px-3 py-2">
-                    <p className="text-[12.5px] font-semibold text-[#241B33]">{label}{entry.subsetor ? ` · ${entry.subsetor}` : ''}</p>
-                    <p className="text-[12px] text-[#5C5168]">Valor da meta: {ledgerText(field, goal.target)}</p>
-                    <p className="text-[12px] text-[#5C5168]">Regra: {goal.direction === 'lower' ? 'Menor é melhor' : 'Maior é melhor'}</p>
-                    <p className="text-[12px] text-[#5C5168]">Período de validade: {item.label || monthTitle(selected)}</p>
+                  <li key={goal.key} className="overflow-hidden rounded-[20px] border border-[#EEE6F4] bg-white shadow-[0_6px_18px_rgba(80,40,120,0.04)]">
+                    <button type="button" onClick={() => setOpenGoal(open ? '' : goal.key)} className="flex w-full items-center gap-4 px-4 py-4 text-left sm:px-5">
+                      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]"><Icon className="h-6 w-6" /></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[15px] font-semibold text-[#241B33]">{goal.name}</span>
+                        <span className="mt-0.5 block truncate text-[13px] text-[#8A7C98]">Valor da meta: {goal.value} · Regra: {goal.direction} · Período de validade: {goal.period}</span>
+                      </span>
+                      <ChevronRight className={cn('h-5 w-5 shrink-0 text-[#C4B5C8] transition', open ? 'rotate-90' : '')} />
+                    </button>
+                    {open ? (
+                      <div className="grid gap-1 border-t border-[#F3EAF8] px-5 py-4 text-[13px] text-[#5C5168] sm:grid-cols-3">
+                        <p><span className="text-[#8A7C98]">Valor da meta</span><br /><span className="font-medium text-[#241B33]">{goal.value}</span></p>
+                        <p><span className="text-[#8A7C98]">Regra</span><br /><span className="font-medium text-[#241B33]">{goal.direction}</span></p>
+                        <p><span className="text-[#8A7C98]">Período de validade</span><br /><span className="font-medium text-[#241B33]">{goal.period}</span></p>
+                      </div>
+                    ) : null}
                   </li>
                 );
-              })))}
+              })}
             </ul>
           )}
         </section>
 
-        <section className="grid gap-2">
-          <h4 className="text-[13px] font-semibold text-[#4A1C73]">Resultados individuais</h4>
-          {peopleCards.length === 0 && pending.length === 0 ? <p className="text-[12.5px] text-[#8A7C98]">Nenhum resultado armazenado neste período.</p> : null}
+        <section className="pb-8">
+          <h4 className="mb-3 text-[16px] font-semibold text-[#241B33]">Resultados individuais</h4>
+          {peopleCards.length === 0 && pending.length === 0 ? <p className="rounded-[22px] border border-[#EEE6F4] bg-white px-5 py-6 text-[13px] text-[#8A7C98]">Nenhum resultado armazenado neste período.</p> : null}
+          <div className="grid gap-3">
           {peopleCards.map(({ person, record, indicators, periodLabel, history }) => {
             const open = openId === (record?.id || person.id);
             const shownHistory = history?.length ? history : record?.history ?? [];
             return (
-              <article key={person.id} className="overflow-hidden rounded-2xl border border-[#EDE4F5] bg-white">
-                <button type="button" onClick={() => setOpenId(open ? '' : (record?.id || person.id))} className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left">
+              <article key={person.id} className="overflow-hidden rounded-[20px] border border-[#EEE6F4] bg-white shadow-[0_6px_18px_rgba(80,40,120,0.04)]">
+                <button type="button" onClick={() => setOpenId(open ? '' : (record?.id || person.id))} className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left">
                   <span>
-                    <span className="block text-[13px] font-semibold text-[#241B33]">{person.name}</span>
-                    <span className="block text-[11.5px] text-[#8A7C98]">{person.funcao || person.role} · {periodLabel || record?.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar')}</span>
+                    <span className="block text-[15px] font-semibold text-[#241B33]">{person.name}</span>
+                    <span className="mt-0.5 block text-[12.5px] text-[#8A7C98]">{person.funcao || person.role} · {periodLabel || record?.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar')}</span>
                   </span>
-                  <ChevronDown className={cn('h-4 w-4 shrink-0 text-[#8A7C98] transition', open ? 'rotate-180' : '')} />
+                  <ChevronRight className={cn('h-5 w-5 shrink-0 text-[#C4B5C8] transition', open ? 'rotate-90' : '')} />
                 </button>
                 {open && (record || indicators?.length) ? (
-                  <div className="border-t border-[#F3EAF8] px-3 py-3">
-                    <ul className="grid gap-2">
+                  <div className="border-t border-[#F3EAF8] px-5 py-4">
+                    <ul className="grid gap-3">
                       {(indicators ?? LEDGER_FIELDS.map(([field, label]) => {
                         const value = record?.values[field];
                         if (value === null || value === undefined) return null;
                         const meta = metaFor(field);
                         return { field, name: label, value, met: goalMet(value, meta.rule, meta.importGoal), target: meta.rule ? meta.rule.value : meta.importGoal?.target, op: meta.rule?.op ?? '' };
                       }).filter(Boolean) as BankIndicator[]).map((item) => (
-                          <li key={item.field} className="rounded-xl bg-[#FBF8FC] px-3 py-2">
-                            <p className="text-[12.5px] font-semibold text-[#241B33]">{item.name}</p>
-                            <div className="mt-1 grid gap-0.5 text-[12px] text-[#5C5168]">
-                              <p>Resultado alcançado: {ledgerText(item.field, item.value)}</p>
-                              {item.target != null ? <p>Meta estabelecida: {item.field === 'primeira' || item.field === 'resolucao' ? `${item.target} min` : item.field === 'resolvidos' || item.field === 'satisfacao' ? `${item.target}%` : String(item.target)}</p> : null}
-                              <StatusText met={item.met} />
-                            </div>
+                          <li key={item.field} className="grid gap-1 sm:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))] sm:items-center sm:gap-4">
+                            <p className="text-[13.5px] font-semibold text-[#241B33]">{item.name}</p>
+                            <p className="text-[13px] text-[#5C5168]"><span className="text-[#8A7C98]">Resultado </span>{ledgerText(item.field, item.value)}</p>
+                            <p className="text-[13px] text-[#5C5168]"><span className="text-[#8A7C98]">Meta </span>{item.target != null ? (item.field === 'primeira' || item.field === 'resolucao' ? `${item.target} min` : item.field === 'resolvidos' || item.field === 'satisfacao' ? `${item.target}%` : String(item.target)) : '—'}</p>
+                            <StatusText met={item.met} />
                           </li>
                       ))}
                     </ul>
                     {shownHistory.length ? (
-                      <details className="mt-3 rounded-xl border border-[#EDE4F5] px-3 py-2">
-                        <summary className="cursor-pointer text-[12px] font-medium text-[#6A228C]">Histórico de atualizações</summary>
+                      <details className="mt-4">
+                        <summary className="cursor-pointer text-[12.5px] font-medium text-[#6A228C]">Histórico de atualizações</summary>
                         <ul className="mt-2 grid gap-2">
                           {shownHistory.map((item, index) => (
-                            <li key={`${item.at}-${index}`} className="rounded-lg bg-white px-2 py-2 text-[12px] text-[#8A7C98]">
+                            <li key={`${item.at}-${index}`} className="text-[12.5px] text-[#8A7C98]">
                               <p className="font-medium text-[#5C5168]">{clock(item.at) || `Versão ${index + 1}`}</p>
                               <p>{LEDGER_FIELDS.filter(([field]) => item.values[field] !== null && item.values[field] !== undefined).map(([field, label]) => `${label}: ${ledgerText(field, item.values[field] ?? null)}`).join(' · ') || 'Sem indicadores nesta versão.'}</p>
                             </li>
@@ -964,25 +1028,26 @@ function ReportBank({ goals, onClose, wide, onWide }: { goals: GoalsPayload; onC
           {pending.map((record) => {
             const open = openId === record.id;
             return (
-              <article key={record.id} className="overflow-hidden rounded-2xl border border-[#F3E0C8] bg-white">
-                <button type="button" onClick={() => setOpenId(open ? '' : record.id)} className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left">
+              <article key={record.id} className="overflow-hidden rounded-[20px] border border-[#F3E0C8] bg-white shadow-[0_6px_18px_rgba(80,40,120,0.04)]">
+                <button type="button" onClick={() => setOpenId(open ? '' : record.id)} className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left">
                   <span>
-                    <span className="block text-[13px] font-semibold text-[#241B33]">{record.sourceName || record.name}</span>
-                    <span className="block text-[11.5px] font-medium text-[#A16207]">Aguardando identificação</span>
+                    <span className="block text-[15px] font-semibold text-[#241B33]">{record.sourceName || record.name}</span>
+                    <span className="mt-0.5 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[#B45309]"><span className="h-2 w-2 rounded-full bg-[#F59E0B]" />Aguardando identificação</span>
                   </span>
-                  <ChevronDown className={cn('h-4 w-4 shrink-0 text-[#8A7C98] transition', open ? 'rotate-180' : '')} />
+                  <ChevronRight className={cn('h-5 w-5 shrink-0 text-[#C4B5C8] transition', open ? 'rotate-90' : '')} />
                 </button>
                 {open ? (
-                  <div className="border-t border-[#F3EAF8] px-3 py-3">
-                    <p className="text-[12px] leading-5 text-[#A16207]">{record.note || 'Este nome ainda não foi vinculado a um cadastro da Equipe. Nenhum colaborador novo foi criado.'}</p>
-                    <ul className="mt-2 grid gap-2">
+                  <div className="border-t border-[#F3EAF8] px-5 py-4">
+                    <p className="text-[13px] leading-5 text-[#A16207]">{record.note || 'Este nome ainda não foi vinculado a um cadastro da Equipe. Nenhum colaborador novo foi criado.'}</p>
+                    <ul className="mt-3 grid gap-3">
                       {LEDGER_FIELDS.map(([field, label]) => {
                         const value = record.values[field];
                         if (value === null || value === undefined) return null;
                         return (
-                          <li key={field} className="rounded-xl bg-[#FBF8FC] px-3 py-2">
-                            <p className="text-[12.5px] font-semibold text-[#241B33]">{label}</p>
-                            <p className="text-[12px] text-[#5C5168]">Resultado alcançado: {ledgerText(field, value)}</p>
+                          <li key={field} className="grid gap-1 sm:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))] sm:items-center">
+                            <p className="text-[13.5px] font-semibold text-[#241B33]">{label}</p>
+                            <p className="text-[13px] text-[#5C5168]"><span className="text-[#8A7C98]">Resultado </span>{ledgerText(field, value)}</p>
+                            <p className="text-[13px] text-[#8A7C98]">Meta —</p>
                             <StatusText met={null} />
                           </li>
                         );
@@ -993,6 +1058,7 @@ function ReportBank({ goals, onClose, wide, onWide }: { goals: GoalsPayload; onC
               </article>
             );
           })}
+          </div>
         </section>
       </div>
     </div>
@@ -1032,7 +1098,7 @@ export const GoalsAssistant: FC = () => {
           </button>
         </div>
       </div>
-      {bankOpen ? <ReportBank goals={goals} wide={wide} onWide={() => setWide((value) => !value)} onClose={() => setBankOpen(false)} /> : null}
+      {bankOpen ? <ReportBank goals={goals} onClose={() => setBankOpen(false)} /> : null}
       <div ref={thread} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
         {messages.map((message) => (
           <div key={message.id} className={cn('flex gap-2', message.from === 'user' ? 'justify-end' : 'items-start')}>

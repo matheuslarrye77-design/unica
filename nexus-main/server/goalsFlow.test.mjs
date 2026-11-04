@@ -115,6 +115,9 @@ test('primeira resposta nas metas não vira critério do pódio', () => {
 test('a interface do banco mostra mês/ano, gestão e resultados separados', () => {
   const ui = fs.readFileSync(new URL('../src/components/recognition/GoalsCenter.tsx', import.meta.url), 'utf8');
   assert.match(ui, /Metas definidas pela gestão/);
+  assert.match(ui, /aria-label="Mês"/);
+  assert.match(ui, /aria-label="Ano"/);
+  assert.match(ui, /Valor da meta:/);
   assert.match(ui, /Resultados individuais/);
   assert.match(ui, /Confirmar metas/);
   assert.match(ui, /O pódio não foi alterado/);
