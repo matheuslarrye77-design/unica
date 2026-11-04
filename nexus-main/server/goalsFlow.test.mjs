@@ -120,6 +120,9 @@ test('a interface do banco mostra mês/ano, gestão e resultados separados', () 
   assert.match(ui, /createPortal/);
   assert.match(ui, /Valor da meta:/);
   assert.match(ui, /Resultados individuais/);
+  assert.match(ui, /h-\[72px\]/);
+  assert.match(ui, /h-\[68px\]/);
+  assert.match(ui, /md:grid-cols-\[minmax\(0,1\.35fr\)_repeat\(3,minmax\(0,1fr\)\)\]/);
   assert.match(ui, /Confirmar metas/);
   assert.match(ui, /O pódio não foi alterado/);
   assert.match(ui, /Novembro\/\$\{year\}|\/\$\{year\}/);

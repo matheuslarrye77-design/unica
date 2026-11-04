@@ -2,7 +2,7 @@ import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { authHeaders, getDemoId } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { useShell } from '@/components/Sidebar';
-import { ArrowLeftRight, BarChart3, Bot, Calendar, Check, ChevronDown, ChevronRight, Clock, FileText, Info, Maximize2, Minimize2, Paperclip, Pencil, Send, Settings2, Smile, Sparkles, Star, Target, Ticket, Timer, Trophy, X } from 'lucide-react';
+import { ArrowLeftRight, BarChart3, Bot, Calendar, Check, ChevronDown, ChevronRight, ChevronUp, Clock, FileText, Info, Maximize2, Minimize2, Paperclip, Pencil, Send, Settings2, Smile, Sparkles, Star, Target, Ticket, Timer, Trophy, User, X } from 'lucide-react';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type FC, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
@@ -767,9 +767,37 @@ function goalMet(value: number | null | undefined, rule?: Rule, importGoal?: { t
 }
 
 function StatusText({ met }: { met: boolean | null }) {
-  if (met === true) return <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[#157A3A]"><span className="h-2 w-2 rounded-full bg-[#22C55E]" />Atingiu a meta</span>;
-  if (met === false) return <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[#DC2626]"><span className="h-2 w-2 rounded-full bg-[#EF4444]" />Não atingiu a meta</span>;
-  return <span className="inline-flex items-center gap-1.5 text-[12.5px] text-[#8A7C98]"><span className="h-2 w-2 rounded-full bg-[#C4B5C8]" />Sem meta cadastrada</span>;
+  if (met === true) return <span className="inline-flex items-center gap-2 text-[15px] font-medium text-[#2F9E5F]"><span className="h-2.5 w-2.5 rounded-full bg-[#2F9E5F]" />Atingiu a meta</span>;
+  if (met === false) return <span className="inline-flex items-center gap-2 text-[15px] font-medium text-[#C2410C]"><span className="h-2.5 w-2.5 rounded-full bg-[#E11D48]" />Não atingiu a meta</span>;
+  return <span className="inline-flex items-center gap-2 text-[15px] text-[#8A7C98]"><span className="h-2.5 w-2.5 rounded-full bg-[#C4B5C8]" />Sem meta cadastrada</span>;
+}
+
+function indicatorTarget(field: string, target: number | null | undefined) {
+  if (target == null) return '—';
+  if (field === 'primeira' || field === 'resolucao') return `${target} min`;
+  if (field === 'resolvidos' || field === 'satisfacao') return `${target}%`;
+  return String(target);
+}
+
+function IndicatorRows({ rows }: { rows: { field: string; name: string; value: number; met: boolean | null; target?: number | null }[] }) {
+  return (
+    <ul>
+      {rows.map((item, index) => (
+        <li
+          key={item.field}
+          className={cn(
+            'grid min-h-[43px] items-center gap-x-6 gap-y-1 py-2.5 md:grid-cols-[minmax(0,1.35fr)_repeat(3,minmax(0,1fr))] md:py-0',
+            index > 0 && 'border-t border-[#F4ECF8]',
+          )}
+        >
+          <p className="text-[16px] font-semibold text-[#1B1630]">{item.name}</p>
+          <p className="text-[15px] text-[#1B1630]"><span className="text-[#8A7C98]">Resultado </span><span className="font-medium">{ledgerText(item.field, item.value)}</span></p>
+          <p className="text-[15px] text-[#1B1630]"><span className="text-[#8A7C98]">Meta </span><span className="font-medium">{indicatorTarget(item.field, item.target)}</span></p>
+          <StatusText met={item.met} />
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function goalIcon(indicator: string) {
@@ -985,86 +1013,81 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
         </section>
 
         <section className="pb-8">
-          <h4 className="mb-3 text-[16px] font-semibold text-[#241B33]">Resultados individuais</h4>
-          {peopleCards.length === 0 && pending.length === 0 ? <p className="rounded-[22px] border border-[#EEE6F4] bg-white px-5 py-6 text-[13px] text-[#8A7C98]">Nenhum resultado armazenado neste período.</p> : null}
-          <div className="grid gap-3">
+          <div className="mb-6 flex items-center gap-4">
+            <span className="grid h-[72px] w-[72px] shrink-0 place-items-center rounded-[22px] bg-[#F3E4FA] text-[#8E35B8]"><BarChart3 className="h-8 w-8" strokeWidth={1.75} /></span>
+            <h4 className="text-[30px] font-semibold tracking-tight text-[#1B1630]">Resultados individuais</h4>
+          </div>
+          {peopleCards.length === 0 && pending.length === 0 ? <p className="rounded-[26px] bg-white px-6 py-6 text-[15px] text-[#8A7C98] shadow-[0_8px_24px_rgba(80,40,120,0.04)]">Nenhum resultado armazenado neste período.</p> : null}
+          <div className="grid gap-5">
           {peopleCards.map(({ person, record, indicators, periodLabel, history }) => {
             const open = openId === (record?.id || person.id);
             const shownHistory = history?.length ? history : record?.history ?? [];
+            const rows = (indicators ?? LEDGER_FIELDS.map(([field, label]) => {
+              const value = record?.values[field];
+              if (value === null || value === undefined) return null;
+              const meta = metaFor(field);
+              return { field, name: label, value, met: goalMet(value, meta.rule, meta.importGoal), target: meta.rule ? meta.rule.value : meta.importGoal?.target, op: meta.rule?.op ?? '' };
+            }).filter(Boolean) as BankIndicator[]);
             return (
-              <article key={person.id} className="overflow-hidden rounded-[20px] border border-[#EEE6F4] bg-white shadow-[0_6px_18px_rgba(80,40,120,0.04)]">
-                <button type="button" onClick={() => setOpenId(open ? '' : (record?.id || person.id))} className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left">
-                  <span>
-                    <span className="block text-[15px] font-semibold text-[#241B33]">{person.name}</span>
-                    <span className="mt-0.5 block text-[12.5px] text-[#8A7C98]">{person.funcao || person.role} · {periodLabel || record?.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar')}</span>
+              <article key={person.id} className="overflow-hidden rounded-[26px] bg-white shadow-[0_8px_28px_rgba(80,40,120,0.045)]">
+                <button type="button" onClick={() => setOpenId(open ? '' : (record?.id || person.id))} className="flex min-h-[84px] w-full items-center gap-4 px-5 py-3 text-left sm:px-6">
+                  <span className="grid h-[68px] w-[68px] shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8]"><User className="h-8 w-8" strokeWidth={1.75} /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[20px] font-semibold leading-tight text-[#1B1630]">{person.name}</span>
+                    <span className="mt-1 block text-[16px] text-[#8A7C98]">{person.funcao || person.role} · {periodLabel || record?.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar')}</span>
                   </span>
-                  <ChevronRight className={cn('h-5 w-5 shrink-0 text-[#C4B5C8] transition', open ? 'rotate-90' : '')} />
+                  {open ? <ChevronUp className="h-5 w-5 shrink-0 text-[#C4B5C8] transition-transform duration-300" /> : <ChevronDown className="h-5 w-5 shrink-0 text-[#C4B5C8] transition-transform duration-300" />}
                 </button>
-                {open && (record || indicators?.length) ? (
-                  <div className="border-t border-[#F3EAF8] px-5 py-4">
-                    <ul className="grid gap-3">
-                      {(indicators ?? LEDGER_FIELDS.map(([field, label]) => {
-                        const value = record?.values[field];
-                        if (value === null || value === undefined) return null;
-                        const meta = metaFor(field);
-                        return { field, name: label, value, met: goalMet(value, meta.rule, meta.importGoal), target: meta.rule ? meta.rule.value : meta.importGoal?.target, op: meta.rule?.op ?? '' };
-                      }).filter(Boolean) as BankIndicator[]).map((item) => (
-                          <li key={item.field} className="grid gap-1 sm:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))] sm:items-center sm:gap-4">
-                            <p className="text-[13.5px] font-semibold text-[#241B33]">{item.name}</p>
-                            <p className="text-[13px] text-[#5C5168]"><span className="text-[#8A7C98]">Resultado </span>{ledgerText(item.field, item.value)}</p>
-                            <p className="text-[13px] text-[#5C5168]"><span className="text-[#8A7C98]">Meta </span>{item.target != null ? (item.field === 'primeira' || item.field === 'resolucao' ? `${item.target} min` : item.field === 'resolvidos' || item.field === 'satisfacao' ? `${item.target}%` : String(item.target)) : '—'}</p>
-                            <StatusText met={item.met} />
-                          </li>
-                      ))}
-                    </ul>
-                    {shownHistory.length ? (
-                      <details className="mt-4">
-                        <summary className="cursor-pointer text-[12.5px] font-medium text-[#6A228C]">Histórico de atualizações</summary>
-                        <ul className="mt-2 grid gap-2">
-                          {shownHistory.map((item, index) => (
-                            <li key={`${item.at}-${index}`} className="text-[12.5px] text-[#8A7C98]">
-                              <p className="font-medium text-[#5C5168]">{clock(item.at) || `Versão ${index + 1}`}</p>
-                              <p>{LEDGER_FIELDS.filter(([field]) => item.values[field] !== null && item.values[field] !== undefined).map(([field, label]) => `${label}: ${ledgerText(field, item.values[field] ?? null)}`).join(' · ') || 'Sem indicadores nesta versão.'}</p>
-                            </li>
-                          ))}
-                        </ul>
-                      </details>
+                <div className={cn('grid transition-[grid-template-rows] duration-300 ease-out', open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+                  <div className="overflow-hidden">
+                    {(record || indicators?.length) ? (
+                      <div className="px-5 pb-5 sm:px-6 sm:pl-[112px]">
+                        <IndicatorRows rows={rows} />
+                        {shownHistory.length ? (
+                          <details className="mt-4">
+                            <summary className="cursor-pointer text-[13px] font-medium text-[#6A228C]">Histórico de atualizações</summary>
+                            <ul className="mt-2 grid gap-2">
+                              {shownHistory.map((item, index) => (
+                                <li key={`${item.at}-${index}`} className="text-[13px] text-[#8A7C98]">
+                                  <p className="font-medium text-[#5C5168]">{clock(item.at) || `Versão ${index + 1}`}</p>
+                                  <p>{LEDGER_FIELDS.filter(([field]) => item.values[field] !== null && item.values[field] !== undefined).map(([field, label]) => `${label}: ${ledgerText(field, item.values[field] ?? null)}`).join(' · ') || 'Sem indicadores nesta versão.'}</p>
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
-                ) : null}
+                </div>
               </article>
             );
           })}
           {pending.map((record) => {
             const open = openId === record.id;
+            const rows = LEDGER_FIELDS.map(([field, label]) => {
+              const value = record.values[field];
+              if (value === null || value === undefined) return null;
+              return { field, name: label, value, met: null as boolean | null, target: null as number | null };
+            }).filter(Boolean) as { field: string; name: string; value: number; met: boolean | null; target?: number | null }[];
             return (
-              <article key={record.id} className="overflow-hidden rounded-[20px] border border-[#F3E0C8] bg-white shadow-[0_6px_18px_rgba(80,40,120,0.04)]">
-                <button type="button" onClick={() => setOpenId(open ? '' : record.id)} className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left">
-                  <span>
-                    <span className="block text-[15px] font-semibold text-[#241B33]">{record.sourceName || record.name}</span>
-                    <span className="mt-0.5 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[#B45309]"><span className="h-2 w-2 rounded-full bg-[#F59E0B]" />Aguardando identificação</span>
+              <article key={record.id} className="overflow-hidden rounded-[26px] bg-white shadow-[0_8px_28px_rgba(80,40,120,0.045)]">
+                <button type="button" onClick={() => setOpenId(open ? '' : record.id)} className="flex min-h-[84px] w-full items-center gap-4 px-5 py-3 text-left sm:px-6">
+                  <span className="grid h-[68px] w-[68px] shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8]"><User className="h-8 w-8" strokeWidth={1.75} /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[20px] font-semibold leading-tight text-[#1B1630]">{record.sourceName || record.name}</span>
+                    <span className="mt-1 inline-flex items-center gap-1.5 text-[16px] font-medium text-[#B45309]"><span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B]" />Aguardando identificação</span>
                   </span>
-                  <ChevronRight className={cn('h-5 w-5 shrink-0 text-[#C4B5C8] transition', open ? 'rotate-90' : '')} />
+                  {open ? <ChevronUp className="h-5 w-5 shrink-0 text-[#C4B5C8] transition-transform duration-300" /> : <ChevronDown className="h-5 w-5 shrink-0 text-[#C4B5C8] transition-transform duration-300" />}
                 </button>
-                {open ? (
-                  <div className="border-t border-[#F3EAF8] px-5 py-4">
-                    <p className="text-[13px] leading-5 text-[#A16207]">{record.note || 'Este nome ainda não foi vinculado a um cadastro da Equipe. Nenhum colaborador novo foi criado.'}</p>
-                    <ul className="mt-3 grid gap-3">
-                      {LEDGER_FIELDS.map(([field, label]) => {
-                        const value = record.values[field];
-                        if (value === null || value === undefined) return null;
-                        return (
-                          <li key={field} className="grid gap-1 sm:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))] sm:items-center">
-                            <p className="text-[13.5px] font-semibold text-[#241B33]">{label}</p>
-                            <p className="text-[13px] text-[#5C5168]"><span className="text-[#8A7C98]">Resultado </span>{ledgerText(field, value)}</p>
-                            <p className="text-[13px] text-[#8A7C98]">Meta —</p>
-                            <StatusText met={null} />
-                          </li>
-                        );
-                      })}
-                    </ul>
+                <div className={cn('grid transition-[grid-template-rows] duration-300 ease-out', open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+                  <div className="overflow-hidden">
+                    <div className="px-5 pb-5 sm:px-6 sm:pl-[112px]">
+                      <p className="mb-3 text-[14px] leading-5 text-[#A16207]">{record.note || 'Este nome ainda não foi vinculado a um cadastro da Equipe. Nenhum colaborador novo foi criado.'}</p>
+                      <IndicatorRows rows={rows} />
+                    </div>
                   </div>
-                ) : null}
+                </div>
               </article>
             );
           })}
