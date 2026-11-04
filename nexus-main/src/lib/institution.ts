@@ -1,6 +1,6 @@
 import { currentUser, employees, type Employee } from '@/data/mockData';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
-import { actor, getDemoId } from '@/lib/session';
+import { actor, getDemoId, useDemoProfile } from '@/lib/session';
 import { useSyncExternalStore } from 'react';
 
 export type PolicyMode = 'leadership' | 'selected' | 'everyone';
@@ -141,6 +141,7 @@ export async function loadInstitution() {
 
 export function useInstitution() {
   const value = useSyncExternalStore(subscribe, () => snapshot, () => snapshot);
+  useDemoProfile();
   const user = actor();
   return {
     ...value,

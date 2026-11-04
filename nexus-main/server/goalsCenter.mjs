@@ -434,6 +434,9 @@ function failure(kind) {
   const kept = 'Nada foi alterado. O texto que você escreveu continua no campo.';
   if (kind === 'quota') return { kind: 'quota', reply: `O limite gratuito da IA foi atingido agora. ${kept}`, conference: null };
   if (kind === 'auth') return { kind: 'auth', reply: `A chave da IA foi recusada pelo Google. ${kept}`, conference: null };
+  if (kind === 'permission') return { kind: 'permission', reply: `A IA não tem permissão para responder agora. ${kept}`, conference: null };
+  if (kind === 'model') return { kind: 'model', reply: `O modelo da IA não está disponível. ${kept}`, conference: null };
+  if (kind === 'invalid') return { kind: 'invalid', reply: `A IA recusou o pedido. ${kept}`, conference: null };
   if (kind === 'unconfigured') return { kind: 'unavailable', reply: `A inteligência artificial não está disponível com um modelo gratuito agora. ${kept}`, conference: null };
   return { kind: 'unavailable', reply: `A IA não respondeu. ${kept}`, conference: null };
 }
@@ -1124,7 +1127,7 @@ function centerPrompt(text, history, options) {
 function combinedSource(text, history) {
   const prior = (history ?? [])
     .map((item) => (typeof item === 'string' ? item : item?.text))
-    .filter((item) => item && !/olá!|escreva a regra|vou calcular|estamos nos criterios|desempenho geral:|criterios predefinidos:|criterio personalizado e so|transferidos ficam de fora|identifico os indicadores|avalie seus colaboradores/i.test(item));
+    .filter((item) => item && !/olá!|escreva a regra|vou calcular|estamos nos criterios|desempenho geral:|criterios personalizados:|criterios predefinidos:|criterio personalizado e so|transferidos ficam de fora|identifico os indicadores|identifico pelo texto|descreva no chat|avalie seus colaboradores|faltou |conferência pronta/i.test(item));
   return [...prior, text].filter(Boolean).join('\n');
 }
 
@@ -1151,10 +1154,7 @@ function interpretKnown(source, options) {
   return interpretOverall(source, { ...options, mode: 'overall' });
 }
 
-function interpretOverall(source, options) {
-  const people = options.people ?? [];
-  const local = localExtract(source, people);
-  const period = readGoalPeriod(source).ok ? readGoalPeriod(source) : local.period;
+function scoreOverall(source, options, local, period) {
   const bank = rulesFromBank(options.managementGoals, period.periodKey);
   const records = recordsForPeriod(local, options, period);
   const selected = selectedOverall(source, { ...options, localRules: local.rules, localRows: local.rows, bank, records });
@@ -1185,6 +1185,38 @@ function interpretOverall(source, options) {
   return conferenceResponse(conference);
 }
 
+async function interpretOverall(source, options) {
+  const people = options.people ?? [];
+  let local = localExtract(source, people);
+  let period = readGoalPeriod(source).ok ? readGoalPeriod(source) : local.period;
+  const first = scoreOverall(source, options, local, period);
+  if (first.kind === 'conference') return first;
+  let parsed = null;
+  let modelError = '';
+  try {
+    const generated = options.generate
+      ? await options.generate(centerPrompt(source, options.history ?? [], { ...options, mode: 'overall' }))
+      : await completeJson(centerPrompt(source, options.history ?? [], { ...options, mode: 'overall' }), { schema: GOALS_CENTER_SCHEMA, env: options.env });
+    if (generated?.error) modelError = generated.error;
+    else parsed = parseGenerated(generated?.text ?? generated);
+  } catch (error) {
+    modelError = classifyGeminiError(error);
+  }
+  if (!parsed) return first;
+  const modelPeriod = parsed.periodKey
+    ? { ok: true, period: parsed.period || 'month', periodKey: String(parsed.periodKey), periodLabel: String(parsed.periodLabel || formatPeriodLabel(parsed.periodKey)) }
+    : period;
+  period = readGoalPeriod(source).ok ? readGoalPeriod(source) : (modelPeriod.ok ? modelPeriod : local.period);
+  const merged = fill({
+    rules: rulesFromModel(parsed.goals, source, period.period),
+    rows: rowsFromModel(parsed.people, people, source),
+  }, local);
+  local = { ...local, rules: merged.rules, rows: merged.rows, period };
+  const next = scoreOverall(source, options, local, period);
+  if (next.kind === 'conference') return next;
+  return next.kind === 'clarify' ? next : first;
+}
+
 export async function interpretGoalsCenter(text, options = {}) {
   const source = String(text ?? '').trim();
   if (!source) return { kind: 'clarify', questions: ['Escreva as metas e os resultados.'], reply: 'Escreva as metas e os resultados.', conference: null };
@@ -1205,8 +1237,7 @@ export async function interpretGoalsCenter(text, options = {}) {
     };
   }
   const joined = combinedSource(source, options.history);
-  if (mode === 'overall') return interpretOverall(joined, { ...options, mode: 'overall' });
-  if (mode === 'preset') return interpretOverall(joined, { ...options, mode: 'overall' });
+  if (mode === 'overall' || mode === 'preset') return interpretOverall(joined, { ...options, mode: 'overall' });
   const local = localExtract(source, people);
   let parsed = null;
   let modelError = '';

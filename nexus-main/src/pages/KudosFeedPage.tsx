@@ -16,7 +16,7 @@ import { PodiumStage } from '@/components/recognition/PodiumStage';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { ChevronDown, Heart, Megaphone, Target, Trophy } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 type Area = 'Gestão' | 'Suporte';
@@ -50,7 +50,6 @@ function goalsHeaders() {
 export const KudosFeedPage: FC = () => {
   const { canRecognize } = useInstitution();
   const me = actor();
-  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [composer, setComposer] = useState(false);
   const [filter, setFilter] = useState<'Todos' | Area>('Todos');
@@ -125,9 +124,8 @@ export const KudosFeedPage: FC = () => {
       });
       setPosted((current) => ({ ...current, [item.id]: true }));
       toast.success('Reconhecimento publicado no mural.');
-      navigate('/');
     } catch (error) {
-      toast.error(error instanceof Error && error.message === '403' ? 'Você não tem permissão para publicar no mural.' : 'Não foi possível publicar no mural.');
+      toast.error(error instanceof Error && (error.message === '403' || /permissão/i.test(error.message)) ? 'Você não tem permissão para publicar no mural.' : 'Não foi possível publicar no mural.');
     } finally {
       setSending(null);
     }
@@ -260,7 +258,6 @@ export const KudosFeedPage: FC = () => {
                 }, ...current]);
               }
               setComposer(false);
-              navigate('/');
             }}
           />
         </DialogContent>

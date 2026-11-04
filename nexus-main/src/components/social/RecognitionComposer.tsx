@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
-import { directoryPeople, assertPermission } from '@/lib/institution';
+import { assertPermission } from '@/lib/institution';
 import { actor } from '@/lib/session';
 import { createFeedPost } from '@/lib/feed';
+import { teamRoster } from '@/data/team';
 import { type FC, type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -16,7 +17,7 @@ export const RecognitionComposer: FC<{ onCreated: (created?: { name: string; mes
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const person = directoryPeople.find((item) => item.id === personId);
+    const person = teamRoster.find((item) => item.id === personId);
     const text = message.trim();
     if (!person || !text) return;
     setSending(true);
@@ -34,7 +35,7 @@ export const RecognitionComposer: FC<{ onCreated: (created?: { name: string; mes
       onCreated({ name: person.name, message: text, tag });
       toast.success('Reconhecimento publicado no mural.');
     } catch (error) {
-      toast.error(error instanceof Error && error.message === '403' ? 'Você não tem permissão para reconhecer.' : 'Não foi possível publicar o reconhecimento.');
+      toast.error(error instanceof Error && (error.message === '403' || /permissão/i.test(error.message)) ? 'Você não tem permissão para reconhecer.' : (error instanceof Error && error.message && !/^\d+$/.test(error.message) ? error.message : 'Não foi possível publicar o reconhecimento.'));
     } finally {
       setSending(false);
     }
@@ -54,7 +55,7 @@ export const RecognitionComposer: FC<{ onCreated: (created?: { name: string; mes
           Pessoa reconhecida
           <select className="h-9 rounded-md border bg-background px-3 text-sm" value={personId} onChange={(event) => setPersonId(event.target.value)} required>
             <option value="">Selecione</option>
-            {directoryPeople.filter((person) => person.id !== user.id).map((person) => (
+            {teamRoster.filter((person) => person.id !== user.id).map((person) => (
               <option key={person.id} value={person.id}>{person.name}</option>
             ))}
           </select>

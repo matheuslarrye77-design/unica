@@ -124,6 +124,11 @@ export const PodiumStage: FC<{
   }, [podiums]);
   const periodIndex = periods.findIndex((item) => item.key === periodKey);
   const [channel, setChannel] = useState<(typeof CATEGORIES)[number]['id']>('Ligação');
+  useEffect(() => {
+    const filled = CATEGORIES.find((item) => podiums.some((entry) => entry.periodKey === periodKey && entry.channel === item.id && entry.ranking?.length));
+    const currentHasPeople = podiums.some((entry) => entry.periodKey === periodKey && entry.channel === channel && entry.ranking?.length);
+    if (filled && !currentHasPeople) setChannel(filled.id);
+  }, [periodKey, podiums, channel]);
   const forPeriod = podiums.filter((item) => item.periodKey === periodKey && item.channel === channel);
   const modes = MODE_ORDER.filter((mode) => forPeriod.some((item) => podiumMode(item) === mode));
   const [mode, setMode] = useState(modes[0] || 'overall');

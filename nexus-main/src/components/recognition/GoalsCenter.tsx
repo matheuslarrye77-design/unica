@@ -410,7 +410,7 @@ export const GoalsProvider: FC<{
     } catch (error) {
       setDraft(source);
       const data = error && typeof error === 'object' && 'data' in error ? (error as { data?: { kind?: string; reply?: string } }).data : undefined;
-      say('bot', data?.kind === 'storage' && data.reply ? data.reply : 'Não consegui falar com a IA agora. Nada foi alterado e o seu texto continua no campo.');
+      say('bot', data?.reply || 'Não consegui falar com a IA agora. Nada foi alterado e o seu texto continua no campo.');
     } finally {
       setBusy(false);
     }

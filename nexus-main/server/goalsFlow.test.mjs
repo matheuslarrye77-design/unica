@@ -140,6 +140,11 @@ test('a interface do banco mostra mês/ano, gestão e resultados separados', () 
   assert.equal(ui.includes('Escreva com suas palavras como o pódio deve funcionar'), false);
   assert.equal(ui.includes('Qual indicador predefinido entra no pódio desta semana'), false);
   assert.equal(ui.includes('O pódio passa a usar esta regra'), false);
+  const composer = fs.readFileSync(new URL('../src/components/social/RecognitionComposer.tsx', import.meta.url), 'utf8');
+  assert.match(composer, /teamRoster/);
+  assert.equal(composer.includes('directoryPeople'), false);
+  const institution = fs.readFileSync(new URL('../src/lib/institution.ts', import.meta.url), 'utf8');
+  assert.match(institution, /const user = actor\(\)/);
 });
 
 const NATURAL_MESSAGE = 'Preciso definir as metas gerais para novembro de 2026: tickets resolvidos pelo menos 320, tickets transferidos no máximo 40, primeira resposta no máximo 5 minutos e tempo médio de resolução no máximo 8 minutos. O Rafael Oliveira ficou com 300 tickets resolvidos, 35 tickets transferidos, 4 minutos de primeira resposta e 9 minutos de tempo médio de resolução. O Felipe Costa ficou com 350 tickets resolvidos, 20 tickets transferidos, 3 minutos de primeira resposta e 7 minutos de tempo médio de resolução. Compara os resultados de cada um com as metas. Conferir antes de salvar. Não alterar o pódio.';
@@ -1098,6 +1103,16 @@ test('desempenho geral distribui 100, 50, 33,33 e 25 conforme a quantidade de in
       assert.equal(weights[keys[index]], value, `${count}:${keys[index]}`);
     });
   }
+});
+
+test('desempenho geral chama a IA quando o texto local não fecha a conferência', async () => {
+  let called = 0;
+  const result = await postCenter({ text: 'oi', mode: 'overall' }, {}, async () => {
+    called += 1;
+    return { error: 'unconfigured' };
+  });
+  assert.equal(called, 1);
+  assert.equal(result.body.kind, 'clarify');
 });
 
 test('desempenho geral pede só a meta do indicador selecionado que faltar', async () => {
