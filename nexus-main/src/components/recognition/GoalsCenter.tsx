@@ -2,8 +2,9 @@ import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { authHeaders, getDemoId } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { useShell } from '@/components/Sidebar';
-import { ArrowLeftRight, BarChart3, Bot, Calendar, Check, ChevronRight, Clock, FileText, Info, Maximize2, Minimize2, Paperclip, Pencil, Send, Settings2, Smile, Sparkles, Star, Target, Ticket, Timer, Trophy, X } from 'lucide-react';
+import { ArrowLeftRight, BarChart3, Bot, Calendar, Check, ChevronDown, ChevronRight, Clock, FileText, Info, Maximize2, Minimize2, Paperclip, Pencil, Send, Settings2, Smile, Sparkles, Star, Target, Ticket, Timer, Trophy, X } from 'lucide-react';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type FC, type FormEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 
 type Rule = { indicator: string; op: string; value: number; valueTo?: number | null; period?: string };
@@ -780,6 +781,13 @@ function goalIcon(indicator: string) {
   return BarChart3;
 }
 
+function goalValueLabel(indicator: string, value: number | string) {
+  const text = String(value);
+  if (/primeira|resolucao/.test(indicator) && !/min/i.test(text)) return `${text} min`;
+  if (/satisfa/.test(indicator) && !text.includes('%')) return `${text}%`;
+  return text;
+}
+
 function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => void }) {
   const records = goals.ledger?.records ?? [];
   const bankPeriods = goals.bank?.periods ?? [];
@@ -850,7 +858,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
         key: `${goal.indicator}-${index}`,
         indicator: goal.indicator,
         name: goal.name,
-        value: goal.indicator === 'primeira' || goal.indicator === 'resolucao' ? `${goal.value} min` : goal.indicator === 'resolvidos' || goal.indicator === 'satisfacao' ? `${goal.value}%` : String(goal.value),
+        value: goalValueLabel(goal.indicator, goal.value),
         direction: ruleDirection(goal.op),
         period: goal.periodLabel || bankPeriod.label,
       }))
@@ -858,7 +866,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
         key: `${template.id}-${rule.indicator}-${index}`,
         indicator: rule.indicator,
         name: RULE_NAMES[rule.indicator] ?? rule.indicator,
-        value: rule.indicator === 'primeira' || rule.indicator === 'resolucao' ? `${ruleTarget(rule)} min` : rule.indicator === 'resolvidos' || rule.indicator === 'satisfacao' ? `${ruleTarget(rule)}%` : String(ruleTarget(rule)),
+        value: goalValueLabel(rule.indicator, ruleTarget(rule)),
         direction: ruleDirection(rule.op),
         period: template.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar'),
       })))),
@@ -876,9 +884,9 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
     }))).filter((item): item is NonNullable<typeof item> => Boolean(item)),
   ];
 
-  return (
-    <div className={cn('fixed inset-0 z-[45] overflow-y-auto bg-[#F6F3F8] [scrollbar-width:thin]', leftCollapsed ? 'lg:left-16' : 'lg:left-[256px]')}>
-      <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
+  const bank = (
+    <div className={cn('fixed inset-0 z-[80] overflow-y-auto bg-[#F7F4F9] [scrollbar-width:thin]', leftCollapsed ? 'lg:left-16' : 'lg:left-[256px]')}>
+      <div className="mx-auto flex min-h-full w-full flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
         <header className="flex flex-col gap-4 rounded-[22px] border border-[#EEE6F4] bg-white px-5 py-4 shadow-[0_8px_24px_rgba(80,40,120,0.05)] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]"><BarChart3 className="h-6 w-6" /></span>
@@ -889,23 +897,24 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {openKeys.includes('') ? (
-              <button type="button" onClick={() => setSelected('')} className={cn('h-10 rounded-full border px-3 text-[13px]', selected === '' ? 'border-[#8E35B8] bg-[#F3E4FA] text-[#6A228C]' : 'border-[#E7DFF0] bg-white text-[#5C5168]')}>Período a confirmar</button>
+              <button type="button" onClick={() => setSelected('')} className={cn('h-10 rounded-xl border px-3 text-[13px]', selected === '' ? 'border-[#8E35B8] bg-[#F3E4FA] text-[#6A228C]' : 'border-[#E7DFF0] bg-white text-[#5C5168]')}>Período a confirmar</button>
             ) : null}
-            <label className="inline-flex h-10 items-center gap-2 rounded-full border border-[#E7DFF0] bg-white px-3 text-[13px] text-[#5C5168]">
-              <Calendar className="h-4 w-4 text-[#8E35B8]" />
+            <label className="relative inline-flex h-10 items-center gap-2 rounded-xl border border-[#E7DFF0] bg-white pl-3 pr-8 text-[13px] text-[#5C5168]">
+              <Calendar className="h-4 w-4 shrink-0 text-[#8E35B8]" />
               <span className="sr-only">Mês</span>
               <select
                 aria-label="Mês"
                 value={selectedMonth}
                 onChange={(event) => setSelected(`${selectedYear}-${event.target.value}`)}
-                className="max-w-[140px] bg-transparent outline-none"
+                className="appearance-none bg-transparent outline-none"
               >
                 {monthChoices.map((item) => (
-                  <option key={item.value} value={item.value}>{item.label}{selectedYear ? `/${selectedYear}` : ''}</option>
+                  <option key={item.value} value={item.value}>{item.label}</option>
                 ))}
               </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 h-4 w-4 text-[#C4B5C8]" />
             </label>
-            <label className="inline-flex h-10 items-center gap-2 rounded-full border border-[#E7DFF0] bg-white px-3 text-[13px] text-[#5C5168]">
+            <label className="relative inline-flex h-10 items-center gap-2 rounded-xl border border-[#E7DFF0] bg-white pl-3 pr-8 text-[13px] text-[#5C5168]">
               <span className="sr-only">Ano</span>
               <select
                 aria-label="Ano"
@@ -915,14 +924,15 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
                   const months = openKeys.filter((key) => key.startsWith(`${year}-`));
                   setSelected(months.find((key) => key.slice(5, 7) === selectedMonth) || months[0] || selected);
                 }}
-                className="bg-transparent outline-none"
+                className="appearance-none bg-transparent outline-none"
               >
                 {years.map((year) => (
                   <option key={year} value={year}>{year}</option>
                 ))}
               </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 h-4 w-4 text-[#C4B5C8]" />
             </label>
-            <button type="button" onClick={onClose} aria-label="Fechar banco dos relatórios" className="grid h-10 w-10 place-items-center rounded-full border border-[#E7DFF0] text-[#6A228C] hover:bg-[#F3E4FA]">
+            <button type="button" onClick={onClose} aria-label="Fechar banco dos relatórios" className="grid h-10 w-10 place-items-center rounded-xl border border-[#E7DFF0] text-[#6A228C] hover:bg-[#F3E4FA]">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -932,7 +942,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
           <div className="flex items-center gap-2 text-[13px] font-semibold text-[#241B33]">
             <Trophy className="h-4 w-4 text-[#8E35B8]" /> Legenda
           </div>
-          <ul className="mt-3 flex flex-wrap items-center gap-x-8 gap-y-2 text-[13px] text-[#5C5168]">
+          <ul className="mt-3 flex flex-wrap items-center justify-between gap-x-8 gap-y-2 text-[13px] text-[#5C5168]">
             <li className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#22C55E]" /> Atingiu a meta</li>
             <li className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#EF4444]" /> Não atingiu a meta</li>
             <li className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#C4B5C8]" /> Sem meta cadastrada</li>
@@ -1063,6 +1073,8 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
       </div>
     </div>
   );
+
+  return typeof document === 'undefined' ? bank : createPortal(bank, document.body);
 }
 
 export const GoalsAssistant: FC = () => {

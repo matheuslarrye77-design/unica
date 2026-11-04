@@ -117,6 +117,7 @@ test('a interface do banco mostra mês/ano, gestão e resultados separados', () 
   assert.match(ui, /Metas definidas pela gestão/);
   assert.match(ui, /aria-label="Mês"/);
   assert.match(ui, /aria-label="Ano"/);
+  assert.match(ui, /createPortal/);
   assert.match(ui, /Valor da meta:/);
   assert.match(ui, /Resultados individuais/);
   assert.match(ui, /Confirmar metas/);
