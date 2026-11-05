@@ -2,7 +2,7 @@ import { isLeader } from './auth/permissions.mjs';
 import { commitTemplate, interpretCriteria, normalizeProposal } from './criteria.mjs';
 import { attachBankPodiums, interpretGoalsCenter, saveGoalsCenter } from './goalsCenter.mjs';
 import { interpretGoalsTurn } from './goalsTurn.mjs';
-import { applyGoalsReview, applyLedgerRanking, clearReportBank, ingestReport, proposeFromLedger } from './ledger.mjs';
+import { applyGoalsReview, applyLedgerRanking, clearReportBank, ingestReport, proposeFromLedger, saveGoalNotes } from './ledger.mjs';
 import { applyCriterion, buildApproval, emptyStore, fold, goalState, INDICATORS, looksLikeReport, overallScore, parseReport, publicStore, readCriterion, relinkLedger, runAssistant } from './goals.mjs';
 import { STORAGE_REPLY, createGoalsStore } from './goalsStore.mjs';
 
@@ -199,6 +199,20 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
       return true;
     }
     if (req.method === 'POST' && url === '/api/goals/center') {
+      if (body.action === 'notes') {
+        const result = await commit((current) => {
+          const saved = saveGoalNotes(current, String(body.periodKey ?? ''), body.notes);
+          if (saved.error === 'period') return { skip: true, error: 'period' };
+          return { store: attachBankPodiums(saved.store, new Date(), people) };
+        });
+        if (!result) return true;
+        if (result.error === 'period') {
+          send(res, 200, { kind: 'clarify', reply: 'Selecione o mês e o ano das observações.' });
+          return true;
+        }
+        send(res, 200, { ...publicView(result.store, user, people), kind: 'notes', reply: 'Observações da gestão atualizadas.' });
+        return true;
+      }
       if (body.action === 'clear') {
         const all = Boolean(body.all);
         const periodKey = String(body.periodKey ?? '');

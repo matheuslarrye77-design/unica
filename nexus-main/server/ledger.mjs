@@ -291,10 +291,10 @@ export function applyGoalsReview(store, review, people, now = new Date()) {
       }
       next = {
         ...next,
-        managementGoals: next.managementGoals.map((item) => item.periodKey === entry.periodKey ? { ...item, ...entry, id: current.id, rules } : item),
+        managementGoals: next.managementGoals.map((item) => item.periodKey === entry.periodKey ? { ...item, ...entry, id: current.id, rules, notes: current.notes ?? [] } : item),
       };
     } else {
-      next = { ...next, managementGoals: [...next.managementGoals, entry] };
+      next = { ...next, managementGoals: [...next.managementGoals, { ...entry, notes: [] }] };
     }
   }
   if (Array.isArray(review?.rows) && review.rows.length) {
@@ -309,6 +309,59 @@ export function applyGoalsReview(store, review, people, now = new Date()) {
 
 function monthBucket(key) {
   return monthBucketOf(key);
+}
+
+const NOTE_CHANNELS = ['Ligação', 'Chat', 'E-mail'];
+
+export function inferNoteEffect(text, kind = 'note') {
+  if (kind !== 'rule') return 'none';
+  const folded = fold(text);
+  if (/falta/.test(folded) && /perde todas|zera|desclassif|anula/.test(folded)) return 'zero_on_faltas';
+  return 'none';
+}
+
+export function normalizeGoalNotes(notes) {
+  return (Array.isArray(notes) ? notes : []).map((item, index) => {
+    const text = String(item?.text ?? '').trim();
+    const kind = item?.kind === 'rule' ? 'rule' : 'note';
+    const channels = (Array.isArray(item?.channels) ? item.channels : [])
+      .map((channel) => String(channel ?? ''))
+      .filter((channel) => NOTE_CHANNELS.includes(channel));
+    return {
+      id: String(item?.id ?? `note-${index + 1}`),
+      text,
+      kind,
+      channels,
+      effect: item?.effect === 'zero_on_faltas' || inferNoteEffect(text, kind) === 'zero_on_faltas' ? 'zero_on_faltas' : 'none',
+    };
+  }).filter((item) => item.text);
+}
+
+export function noteAppliesToChannel(note, channel) {
+  const channels = note?.channels ?? [];
+  if (!channels.length) return true;
+  return channels.includes(channel);
+}
+
+export function saveGoalNotes(store, periodKey, notes, now = new Date()) {
+  const bucket = monthBucket(periodKey);
+  if (!bucket) return { error: 'period', store };
+  const list = normalizeGoalNotes(notes);
+  const match = (item) => monthBucket(item.periodKey) === bucket;
+  const current = (store.managementGoals ?? []).find(match);
+  const entry = {
+    id: current?.id || `meta-${bucket}`,
+    period: current?.period || 'month',
+    periodKey: current?.periodKey || `month:${bucket}`,
+    periodLabel: current?.periodLabel || formatPeriodLabel(bucket),
+    rules: current?.rules ?? [],
+    notes: list,
+    updatedAt: now.toISOString(),
+  };
+  const managementGoals = current
+    ? store.managementGoals.map((item) => (match(item) ? { ...item, ...entry, id: current.id } : item))
+    : [...(store.managementGoals ?? []), entry];
+  return { store: { ...store, managementGoals } };
 }
 
 export function clearReportBank(store, options = {}) {

@@ -31,7 +31,23 @@ const TOOLTIP_LABEL: Record<string, string> = {
   transferidos: 'Tickets transferidos',
   primeira: 'Tempo de primeira resposta',
   resolucao: 'Tempo médio de resolução',
+  atendidas: 'Ligações atendidas',
+  perdidas: 'Ligações perdidas sem resgate',
+  espera: 'Tempo de espera',
+  duracao: 'Duração da ligação',
+  faltas: 'Faltas sem atestado',
 };
+
+const CALL_METRICS = new Set(['atendidas', 'perdidas', 'espera', 'duracao']);
+const DESK_METRICS = new Set(['resolvidosCount', 'resolvidos', 'transferidos', 'primeira', 'resolucao', 'satisfacao']);
+
+function metricApplies(id: string, funcao: string, channel = '') {
+  if (!id || id === 'faltas' || id.startsWith('c:')) return true;
+  const category = funcao || channel;
+  if (category === 'Ligação') return CALL_METRICS.has(id);
+  if (category === 'Chat' || category === 'E-mail') return DESK_METRICS.has(id);
+  return !CALL_METRICS.has(id);
+}
 
 function face(name: string) {
   return teamRoster.find((person) => person.name === name)?.avatar ?? `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
@@ -58,13 +74,17 @@ function metricLine(item: Metric, mode: string) {
   return `${label} - ${raw}`;
 }
 
-const PersonCard: FC<{ person: Ranking; mode: string }> = ({ person, mode }) => {
+const PersonCard: FC<{ person: Ranking; mode: string; channel?: string }> = ({ person, mode, channel = '' }) => {
   const [open, setOpen] = useState(false);
   const place = (person.place === 2 || person.place === 3 ? person.place : 1) as 1 | 2 | 3;
   const tone = STEP[place];
-  const role = teamRoster.find((item) => item.id === person.userId || item.name === person.name)?.role ?? '';
+  const member = teamRoster.find((item) => item.id === person.userId || item.name === person.name);
+  const role = member?.role ?? '';
+  const funcao = member?.funcao ?? '';
   const touch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
-  const lines = person.detailsAvailable && person.metrics?.length ? person.metrics.map((item) => metricLine(item, mode)) : [];
+  const metrics = (person.metrics ?? []).filter((item) => metricApplies(item.id, funcao, channel));
+  const lines = person.detailsAvailable && metrics.length ? metrics.map((item) => metricLine(item, mode)) : [];
+  if (person.voided) lines.unshift(`Regra: ${person.voided}`);
   if (mode === 'overall' && person.score != null) lines.push(`Total: ${percentText(person.score)}`);
   return (
     <div className="relative z-10 flex min-w-0 flex-col items-center text-center">
@@ -192,7 +212,7 @@ export const PodiumStage: FC<{
       <div className="mx-auto mt-5 max-w-xl overflow-visible">
         <div className="grid grid-cols-3 items-end gap-4 overflow-visible">
           {([standing.find((row) => row.place === 2), standing.find((row) => row.place === 1), standing.find((row) => row.place === 3)]).map((person, index) => (
-            person ? <PersonCard key={`${person.place}-${person.userId}`} person={person} mode={podiumMode(active)} /> : <div key={`vazio-${index}`} className="min-h-[120px]" />
+            person ? <PersonCard key={`${person.place}-${person.userId}`} person={person} mode={podiumMode(active)} channel={channel} /> : <div key={`vazio-${index}`} className="min-h-[120px]" />
           ))}
         </div>
         <div className="mx-6 mt-2 h-1.5 rounded-full bg-gradient-to-r from-[#F9A8D4] via-[#C4B5FD] to-[#A5B4FC]" />

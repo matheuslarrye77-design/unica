@@ -116,7 +116,10 @@ test('a interface do banco mostra mês/ano, gestão e resultados separados', () 
   const ui = fs.readFileSync(new URL('../src/components/recognition/GoalsCenter.tsx', import.meta.url), 'utf8');
   assert.match(ui, /Metas definidas pela gestão/);
   assert.match(ui, /aria-label="Período anterior"/);
-  assert.match(ui, /Limpar banco de relatórios/);
+  assert.match(ui, /<Trash2 className="h-3.5 w-3.5" \/> Limpar/);
+  assert.match(ui, /Observações e regras de avaliação/);
+  assert.match(ui, /aria-label="Metas de Ligação"/);
+  assert.match(ui, /aria-label="Metas de Chat e E-mail"/);
   assert.match(ui, /createPortal/);
   assert.match(ui, /Valor da meta:/);
   assert.match(ui, /Resultados individuais/);
@@ -1263,6 +1266,53 @@ test('maio/2027 avalia cada categoria só com os indicadores aplicáveis e não 
   assert.equal(chatPodium.ranking.every((row) => chat.includes(row.userId)), true);
   assert.equal(mailPodium.ranking.every((row) => mail.includes(row.userId)), true);
   assert.equal(callPodium.ranking.some((row) => row.userId === 'tm-3' || row.userId === 'tm-4'), false);
+  assert.equal(callPodium.ranking.every((row) => !(row.metrics ?? []).some((item) => ['resolvidosCount', 'transferidos', 'primeira', 'resolucao'].includes(item.id))), true);
+  assert.equal(chatPodium.ranking.every((row) => !(row.metrics ?? []).some((item) => ['atendidas', 'perdidas', 'espera', 'duracao'].includes(item.id))), true);
+  assert.equal(mailPodium.ranking.every((row) => !(row.metrics ?? []).some((item) => ['atendidas', 'perdidas', 'espera', 'duracao'].includes(item.id))), true);
+});
+
+test('observações e regras de avaliação persistem e zeram só a categoria marcada', async () => {
+  const persist = memoryGoalsStore();
+  await postCenter({ text: MAY_2027, mode: 'overall' }, { store: persist });
+  const saved = await postCenter({
+    action: 'notes',
+    periodKey: '2027-05',
+    notes: [
+      { id: 'n1', text: 'Equipe alinhada no início do mês.', kind: 'note', channels: [] },
+      { id: 'n2', text: 'Se tiver falta sem justificativa, perde todas as metas.', kind: 'rule', channels: ['Ligação'] },
+    ],
+  }, { store: persist });
+  assert.equal(saved.body.kind, 'notes');
+  const period = saved.body.bank.periods.find((item) => item.key === '2027-05');
+  assert.equal(period.notes.length, 2);
+  assert.equal(period.notes.find((item) => item.id === 'n2').effect, 'zero_on_faltas');
+  const mail = podiumAt(saved.body, '2027-05', 'overall', 'E-mail');
+  const chat = podiumAt(saved.body, '2027-05', 'overall', 'Chat');
+  const call = podiumAt(saved.body, '2027-05', 'overall', 'Ligação');
+  assert.equal(mail.ranking.some((row) => row.userId === 'tm-8' && row.score > 0), true);
+  assert.equal(chat.ranking.some((row) => row.userId === 'tm-10' && row.score > 0), true);
+  assert.equal(call.ranking.every((row) => !row.voided), true);
+
+  const deskRule = await postCenter({
+    action: 'notes',
+    periodKey: '2027-05',
+    notes: [{ id: 'n2', text: 'Se tiver falta sem justificativa, perde todas as metas.', kind: 'rule', channels: ['Chat', 'E-mail'] }],
+  }, { store: persist });
+  const mail2 = podiumAt(deskRule.body, '2027-05', 'overall', 'E-mail');
+  const chat2 = podiumAt(deskRule.body, '2027-05', 'overall', 'Chat');
+  const call2 = podiumAt(deskRule.body, '2027-05', 'overall', 'Ligação');
+  assert.equal(mail2.ranking.some((row) => row.userId === 'tm-8'), false);
+  assert.equal(chat2.ranking.some((row) => row.userId === 'tm-10'), false);
+  assert.equal(call2.ranking.every((row) => !row.voided && row.score > 0), true);
+
+  const edited = await postCenter({
+    action: 'notes',
+    periodKey: '2027-05',
+    notes: [{ id: 'n3', text: 'Lembrar da reunião de quinta.', kind: 'note', channels: ['Ligação'] }],
+  }, { store: persist });
+  assert.equal(edited.body.bank.periods.find((item) => item.key === '2027-05').notes[0].kind, 'note');
+  const removed = await postCenter({ action: 'notes', periodKey: '2027-05', notes: [] }, { store: persist });
+  assert.equal((removed.body.bank.periods.find((item) => item.key === '2027-05').notes ?? []).length, 0);
 });
 
 

@@ -1462,7 +1462,10 @@ export function reportBankSnapshot(store) {
       const overall = (Array.isArray(store?.overallReviews) ? store.overallReviews : [])
         .filter((item) => monthBucketOf(item.periodKey) === bucket)
         .at(-1) ?? null;
-      return { key: bucket, label, goals, people, pending, overall };
+      const notes = managed
+        .filter((item) => monthBucketOf(item.periodKey) === bucket)
+        .flatMap((item) => (Array.isArray(item.notes) ? item.notes : []).filter((note) => String(note?.text ?? '').trim()));
+      return { key: bucket, label, goals, people, pending, overall, notes };
     }),
   };
 }
@@ -1505,6 +1508,7 @@ function presentPodium(item) {
       score: row.score == null ? null : Number(row.score),
       displayScore: row.displayScore == null ? (row.score == null ? '' : String(row.score)) : String(row.displayScore),
       detailsAvailable: row.detailsAvailable !== false,
+      voided: String(row.voided ?? ''),
       metrics: Array.isArray(row.metrics) ? row.metrics.map(presentMetric) : [],
     })),
     basis: {

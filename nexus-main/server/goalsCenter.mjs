@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { classifyGeminiError, completeJson } from './gemini.mjs';
 import { blankPersonSpans, fold, formatPeriodLabel, matchPeople, parseCustomRequest, parsePeopleFromText, readGoalPeriod, subsetorOf, weekRange } from './goals.mjs';
 import { FIELD_NAMES, FIELD_UNITS, OVERALL_FIELD_DEFS, VALUE_FIELDS, fieldApplies } from './indicatorCatalog.mjs';
-import { applyGoalsReview } from './ledger.mjs';
+import { applyGoalsReview, inferNoteEffect, noteAppliesToChannel, normalizeGoalNotes } from './ledger.mjs';
 import { citedNumbers } from './goalsTurn.mjs';
 
 const KNOWN = VALUE_FIELDS;
@@ -652,7 +652,33 @@ function fieldIsHigher(field, rule) {
   return Boolean(field.higher);
 }
 
-function overallFor(records, rules, pack, period, selected, open = false, roster = []) {
+function notesForMonth(store, month) {
+  return (store?.managementGoals ?? [])
+    .filter((item) => monthOf(item.periodKey) === month)
+    .flatMap((item) => normalizeGoalNotes(item.notes));
+}
+
+function applySpecialRules(record, score, parts, notes, channel) {
+  if (!record) return { score, parts, voided: '' };
+  const rules = (notes ?? []).filter((item) => item.kind === 'rule' && noteAppliesToChannel(item, channel));
+  let nextScore = score;
+  let voided = '';
+  const nextParts = { ...parts };
+  for (const rule of rules) {
+    const effect = rule.effect || inferNoteEffect(rule.text, 'rule');
+    if (effect !== 'zero_on_faltas') continue;
+    const faltas = resultValue(record, 'faltas');
+    if (faltas == null || faltas <= 0) continue;
+    voided = rule.text;
+    nextScore = 0;
+    for (const id of Object.keys(nextParts)) {
+      nextParts[id] = { ...nextParts[id], contribution: 0, voided: true, reason: rule.text };
+    }
+  }
+  return { score: nextScore, parts: nextParts, voided };
+}
+
+function overallFor(records, rules, pack, period, selected, open = false, roster = [], notes = []) {
   const wanted = monthOf(period.periodKey || period.key);
   const chosen = (selected ?? []).map((id) => overallField(id)).filter(Boolean);
   const people = [];
@@ -681,18 +707,7 @@ function overallFor(records, rules, pack, period, selected, open = false, roster
     const parts = {};
     let total = 0;
     for (const field of chosen) {
-      if (!applicable.includes(field)) {
-        parts[field.id] = {
-          name: displayName(field.id),
-          value: null,
-          best: null,
-          eligible: false,
-          reason: 'Indicador não se aplica a esta categoria',
-          weight: 0,
-          contribution: 0,
-        };
-        continue;
-      }
+      if (!applicable.includes(field)) continue;
       const rule = ruleForIndicator(rules, field.id);
       const value = resultValue(record, field.id);
       const weight = localPack[field.weightKey] ?? pack[field.weightKey] ?? 0;
@@ -718,11 +733,13 @@ function overallFor(records, rules, pack, period, selected, open = false, roster
         contribution: Math.round(contribution * 100) / 100,
       };
     }
+    const special = applySpecialRules(record, Math.round(total * 100) / 100, parts, notes, channel);
     return {
       userId: record.userId,
       name: record.name,
-      score: Math.round(total * 100) / 100,
-      parts,
+      score: special.score,
+      parts: special.parts,
+      voided: special.voided || '',
     };
   });
   scores.sort((left, right) => right.score - left.score || fold(left.name).localeCompare(fold(right.name), 'pt'));
@@ -940,11 +957,13 @@ function presetMetrics(record, evaluation) {
   });
 }
 
-function overallMetrics(scoreRow, evaluation) {
+function overallMetrics(scoreRow, evaluation, channel = '') {
   const rules = evaluation.rules ?? [];
-  return Object.entries(scoreRow.parts ?? {}).map(([id, part]) => {
+  return Object.entries(scoreRow.parts ?? {}).flatMap(([id, part]) => {
+    if (channel && !fieldApplies(id, channel) && id !== 'faltas' && !String(id).startsWith('c:')) return [];
+    if (part?.reason === 'Indicador não se aplica a esta categoria') return [];
     const rule = ruleForIndicator(rules, id) || rules.find((item) => item.indicator === id);
-    return {
+    return [{
       id,
       name: part.name || displayName(id),
       value: part.value ?? null,
@@ -956,7 +975,7 @@ function overallMetrics(scoreRow, evaluation) {
       reason: part.reason || '',
       condition: describeCondition(rule),
       target: rule?.value ?? null,
-    };
+    }];
   });
 }
 
@@ -998,10 +1017,9 @@ function buildModePodium(store, month, monthRecords, evaluation, now, channel = 
   if (!selected.length && mode !== 'custom') {
     selected = OVERALL_FIELDS.filter((field) => monthRecords.some((row) => resultValue(row, field.id) != null)).map((field) => field.id);
   }
+  selected = selected.filter((id) => !channel || fieldApplies(id, channel) || String(id).startsWith('c:'));
   const detailsPartial = Boolean(evaluation.detailsPartial);
-  const pack = mode === 'custom'
-    ? null
-    : (evaluation.weights && Object.keys(evaluation.weights).length ? evaluation.weights : equalWeights(selected));
+  const pack = mode === 'custom' ? null : equalWeights(selected);
   const basis = basisFor({ ...evaluation, mode, selected, rules, weights: pack || evaluation.weights, detailsPartial }, label);
   const shell = {
     periodKey: month,
@@ -1016,16 +1034,27 @@ function buildModePodium(store, month, monthRecords, evaluation, now, channel = 
     computedAt: stamp,
   };
   if (mode === 'custom' && rules.length) {
-    const ranked = rankCustomBank(monthRecords, rules).slice(0, 3);
+    const notes = notesForMonth(store, month);
+    const ranked = rankCustomBank(monthRecords, rules)
+      .map((row) => {
+        const record = recordFor(monthRecords, row.userId);
+        const person = personFromRoster(people, row.userId, row.name);
+        const rowChannel = podiumChannelOf(person) || channel;
+        const special = applySpecialRules(record, row.score, {}, notes, rowChannel);
+        return { ...row, score: special.voided ? 0 : row.score, voided: special.voided || '' };
+      })
+      .sort((left, right) => Number(right.score ?? 0) - Number(left.score ?? 0) || fold(left.name).localeCompare(fold(right.name), 'pt'))
+      .map((row, index) => ({ ...row, place: index + 1 }))
+      .slice(0, 3);
     return {
       ...shell,
       selected: rules.map((rule) => rule.indicator),
       ranking: ranked.map((row) => {
         const record = recordFor(monthRecords, row.userId);
-        const metrics = detailsPartial ? [] : customMetrics(record, { ...evaluation, rules });
+        const metrics = detailsPartial ? [] : customMetrics(record, { ...evaluation, rules }).filter((item) => !channel || fieldApplies(item.id, channel) || item.id === 'faltas' || String(item.id).startsWith('c:'));
         return {
           ...row,
-          displayScore: row.score == null ? '' : shownValue(rules[0]?.indicator, row.score, rules[0]?.unit),
+          displayScore: row.voided ? '0' : (row.score == null ? '' : shownValue(rules[0]?.indicator, row.score, rules[0]?.unit)),
           detailsAvailable: !detailsPartial && metrics.some((item) => item.value != null),
           metrics,
         };
@@ -1033,7 +1062,7 @@ function buildModePodium(store, month, monthRecords, evaluation, now, channel = 
     };
   }
   if (selected.length) {
-    const scored = overallFor(monthRecords, known, pack || equalWeights(selected), { periodKey: month, periodLabel: label }, selected, true, people);
+    const scored = overallFor(monthRecords, known, pack || equalWeights(selected), { periodKey: month, periodLabel: label }, selected, true, people, notesForMonth(store, month));
     return {
       ...shell,
       selected: scored.selected,
@@ -1042,7 +1071,7 @@ function buildModePodium(store, month, monthRecords, evaluation, now, channel = 
         const record = recordFor(monthRecords, row.userId);
         const metrics = detailsPartial
           ? []
-          : overallMetrics(row, { ...evaluation, rules: known, weights: scored.weights });
+          : overallMetrics(row, { ...evaluation, rules: known, weights: scored.weights }, channel);
         return {
           place: row.place,
           userId: row.userId,
@@ -1050,6 +1079,7 @@ function buildModePodium(store, month, monthRecords, evaluation, now, channel = 
           score: row.score,
           displayScore: percentDisplay(row.score),
           detailsAvailable: !detailsPartial && metrics.length > 0,
+          voided: row.voided || '',
           metrics,
         };
       }),
@@ -1165,6 +1195,9 @@ function centerPrompt(text, history, options) {
     'Se o indicador for novo, use indicator começando com c: e o name completo, por exemplo c:indice-de-qualidade-no-atendimento.',
     '"pelo menos"/"no mínimo" = gte. "no máximo"/"até" = lte. "entre" = between. Combine indicadores com combine=all, salvo se bastar uma condição.',
     saved ? `Metas já gravadas:\n${saved}` : '',
+    (options.managementGoals ?? []).some((item) => (item.notes ?? []).length)
+      ? `Observações e regras da gestão (regras com kind=rule alteram o cálculo; observações não):\n${(options.managementGoals ?? []).flatMap((item) => normalizeGoalNotes(item.notes).map((note) => `${item.periodLabel}: [${note.kind === 'rule' ? 'REGRA' : 'OBSERVAÇÃO'}] ${note.text}`)).join('\n')}`
+      : '',
     prior ? `Conversa anterior:\n${prior}` : '',
     `Pedido atual:\n${text}`,
   ].filter(Boolean).join('\n');
@@ -1228,7 +1261,7 @@ function scoreOverall(source, options, local, period) {
     }
   }
   if (missing.length) return clarify(missing);
-  const overall = overallFor(records, rules, packed.pack, period, selected, false, roster);
+  const overall = overallFor(records, rules, packed.pack, period, selected, false, roster, notesForMonth({ managementGoals: options.managementGoals }, monthOf(period.periodKey || period.key)));
   const conference = toConference({ source, period, rules, rows: records, mode: 'overall', overall });
   if (!conference.goals.length && !conference.people.length) {
     return clarify(['as condições de entrada e os resultados dos indicadores selecionados']);
