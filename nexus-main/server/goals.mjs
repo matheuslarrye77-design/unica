@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { FIELD_NAMES, SERVICE_FUNCOES, VALUE_FIELDS } from './indicatorCatalog.mjs';
+import { CALL_FIELDS, CORE_FIELDS, FIELD_NAMES, SERVICE_FUNCOES, VALUE_FIELDS, fieldApplies } from './indicatorCatalog.mjs';
 
 export const CHANNELS = ['Chat', 'E-mail', 'Ligação', 'Atendimento'];
 export const INDICATORS = ['resolvidos', 'transferidos', 'primeira', 'resolucao'];
@@ -197,6 +197,7 @@ function readToken(part) {
   if (!text) return null;
   const percent = text.match(/([\d.,]+)\s*%/);
   const minutes = text.match(/([\d.,]+)\s*min/i);
+  const seconds = text.match(/([\d.,]+)\s*seg/i);
   const tickets = text.match(/(\d[\d.]*)\s+tickets?/i);
   const leading = text.match(/^([\d.,]+)/);
   if (tickets) {
@@ -208,6 +209,10 @@ function readToken(part) {
     return count === percentValue ? { percent: percentValue } : { count, percent: percentValue };
   }
   if (percent) return { percent: numberFrom(percent[1]) };
+  if (seconds) {
+    const value = numberFrom(seconds[1]);
+    return { minutes: value == null ? null : Math.round((value / 60) * 100) / 100 };
+  }
   if (minutes) return { minutes: numberFrom(minutes[1]), ...(leading ? { count: numberFrom(leading[1]) } : {}) };
   if (leading) {
     const count = numberFrom(leading[1]);
@@ -552,9 +557,11 @@ function applyPhrase(values, phrase) {
       values.resolucao = unlabeled.minutes[0];
     }
   }
+  const callPhrase = /ligac|atendid|perdid|espera|duracao/.test(whole) && !/\btickets?\b/.test(whole);
   for (const count of unlabeled.counts) {
+    if (callPhrase) break;
     if (values.resolvidosCount == null && /\btickets?\b/.test(whole)) values.resolvidosCount = count;
-    else if (values.transferidos == null) values.transferidos = count;
+    else if (values.transferidos == null && /transferid/.test(whole)) values.transferidos = count;
   }
 }
 
@@ -628,7 +635,7 @@ export function blankPersonSpans(text, people) {
 }
 
 function personRowFromValues(sourceName, person, values) {
-  const fields = ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao', 'satisfacao'];
+  const fields = VALUE_FIELDS;
   const filled = Object.fromEntries(fields.map((field) => [field, values[field] ?? null]));
   if (!fields.some((field) => filled[field] !== null)) return null;
   return {
@@ -653,7 +660,7 @@ export function parsePeopleFromText(text, people) {
     const key = fold(span.person.id || span.person.name);
     const current = rows.get(key) || rows.get(fold(span.sourceName));
     if (current) {
-      for (const field of ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao', 'satisfacao']) {
+      for (const field of VALUE_FIELDS) {
         if ((current.values[field] === null || current.values[field] === undefined) && row.values[field] !== null) current.values[field] = row.values[field];
       }
       if (!current.userId && span.person.id) {
@@ -679,7 +686,7 @@ function compareRowToRules(row, rules) {
     seen.add(rule.indicator);
     items.push({ indicator: rule.indicator, value: value ?? null, target: rule.value, op: rule.op, met });
   }
-  for (const field of ['resolvidosCount', 'satisfacao', 'resolvidos', 'transferidos', 'primeira', 'resolucao']) {
+  for (const field of VALUE_FIELDS) {
     if (seen.has(field)) continue;
     const value = row.values?.[field];
     if (value === null || value === undefined) continue;
@@ -712,7 +719,7 @@ export function understandGoalsMessage(text, people) {
   const source = String(text ?? '').trim();
   if (!source) return { kind: 'unknown' };
   const peopleParsed = parsePeopleFromText(source, people);
-  const rows = peopleParsed.rows.filter((row) => ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao', 'satisfacao'].some((field) => row.values[field] !== null && row.values[field] !== undefined));
+  const rows = peopleParsed.rows.filter((row) => VALUE_FIELDS.some((field) => row.values[field] !== null && row.values[field] !== undefined));
   const goals = parseCustomRequest(blankPersonSpans(source, people));
   const hold = isGoalsConferenceTalk(source);
   if (!goals.ok && !rows.length) return { kind: 'unknown' };
@@ -1094,6 +1101,7 @@ function clauseValue(indicator, raw) {
   if (indicator === 'resolvidosCount' && tickets) return countFrom(tickets[1]);
   const percent = source.match(/([\d.,]+)\s*%/);
   const minutes = source.match(/([\d.,]+)\s*(?:min|minuto)/i);
+  const seconds = source.match(/([\d.,]+)\s*(?:seg|segundo)/i);
   const afterOp = source.match(/(?:>=|<=|≥|≤|pelo menos|no m[ií]nimo|no m[aá]ximo|at[eé]|maior ou igual(?: a)?|menor ou igual(?: a)?|acima de|abaixo de|m[ií]nim[oa](?:\s+de)?|m[aá]xim[oa](?:\s+de)?)\s*([.,]*\d[\d.,]*)/i);
   const count = afterOp?.[1] ?? (source.match(/(\d[\d.]*)/) ?? [])[1];
   if (indicator === 'satisfacao' || indicator === 'resolvidos') return percent ? numberFrom(percent[1]) : (afterOp ? numberFrom(afterOp[1]) : null);
@@ -1104,6 +1112,15 @@ function clauseValue(indicator, raw) {
     if (afterLimit) return numberFrom(afterLimit[1]);
     const tailMinutes = tail.match(/([\d.,]+)\s*(?:min|minuto)/i);
     if (tailMinutes) return numberFrom(tailMinutes[1]);
+    const tailSeconds = tail.match(/([\d.,]+)\s*(?:seg|segundo)/i);
+    if (tailSeconds) {
+      const value = numberFrom(tailSeconds[1]);
+      return value == null ? null : Math.round((value / 60) * 100) / 100;
+    }
+    if (seconds) {
+      const value = numberFrom(seconds[1]);
+      return value == null ? null : Math.round((value / 60) * 100) / 100;
+    }
     return minutes ? numberFrom(minutes[1]) : (count ? numberFrom(count) : null);
   }
   return count ? countFrom(count) : null;
@@ -1333,7 +1350,7 @@ export function relinkLedger(ledger, people) {
     records: records.map((record) => {
       if (record.userId) {
         const person = (people ?? []).find((item) => item.id === record.userId);
-        return { ...record, name: person?.name || record.name, pending: false };
+        return { ...record, name: person?.name || record.name, pending: false, subsetor: record.subsetor || person?.funcao || '' };
       }
       const matches = matchPeople(record.sourceName || record.name, people ?? []);
       if (matches.length === 1) {
@@ -1424,6 +1441,8 @@ export function reportBankSnapshot(store) {
         indicators: fields.map(([field, name]) => {
           const value = record.values?.[field];
           if (value === null || value === undefined) return null;
+          if (record.subsetor === 'Ligação' && (CORE_FIELDS.includes(field) || field === 'resolvidos')) return null;
+          if ((record.subsetor === 'Chat' || record.subsetor === 'E-mail') && CALL_FIELDS.includes(field)) return null;
           const rule = goals.find((item) => item.indicator === field);
           const met = rule ? passesRules({ ...record.values, [field]: value }, [{ indicator: field, op: rule.op, value: rule.value, valueTo: rule.valueTo }]) : null;
           return { field, name, value, met, target: rule?.value ?? null, op: rule?.op ?? '' };

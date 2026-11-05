@@ -165,10 +165,12 @@ const LEDGER_FIELDS = [
   ['faltas', 'Faltas sem atestado'],
 ] as const;
 const CALL_ONLY_FIELDS = new Set(['atendidas', 'perdidas', 'espera', 'duracao']);
+const TICKET_FIELDS = new Set(['resolvidosCount', 'resolvidos', 'transferidos', 'primeira', 'resolucao']);
 
 function fieldForPerson(field: string, funcao: string) {
-  if (CALL_ONLY_FIELDS.has(field)) return funcao === 'Ligação';
-  return true;
+  if (funcao === 'Ligação') return CALL_ONLY_FIELDS.has(field) || field === 'faltas';
+  if (funcao === 'Chat' || funcao === 'E-mail') return TICKET_FIELDS.has(field) || field === 'faltas' || field.startsWith('c:');
+  return !CALL_ONLY_FIELDS.has(field);
 }
 
 function ledgerText(field: string, value: number | null) {

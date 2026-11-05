@@ -348,6 +348,7 @@ export function toConference({ source, period, rules, rows, mode, overall }) {
     period: rule.period || period.period,
   }));
   const people = (rows ?? []).map((row) => {
+    const channel = row.subsetor || '';
     const keys = [...new Set([
       ...goals.map((item) => item.indicator),
       ...Object.keys(row.values ?? {}).filter((field) => {
@@ -355,7 +356,7 @@ export function toConference({ source, period, rules, rows, mode, overall }) {
         if (String(field).startsWith('c:')) return true;
         return !goals.length && KNOWN.includes(field);
       }),
-    ])];
+    ])].filter((field) => !channel || fieldApplies(field, channel));
     const results = keys.map((indicator) => {
       const value = row.values?.[indicator];
       if (value === null || value === undefined) return null;
@@ -372,16 +373,23 @@ export function toConference({ source, period, rules, rows, mode, overall }) {
         status: statusOf(met, rule?.op ?? ''),
       };
     }).filter(Boolean);
+    const values = { ...row.values };
+    if (channel) {
+      for (const field of Object.keys(values)) {
+        if (values[field] == null || String(field).startsWith('c:')) continue;
+        if (!fieldApplies(field, channel)) values[field] = null;
+      }
+    }
     return {
       userId: row.userId || '',
       name: row.name || row.sourceName,
       sourceName: row.sourceName || row.name,
-      subsetor: row.subsetor || '',
+      subsetor: channel,
       identified: Boolean(row.userId),
-      values: { ...row.values },
+      values,
       results,
     };
-  }).filter((row) => row.results.length);
+  }).filter((row) => row.results.length || row.identified);
   return {
     id: `conf-${period.periodKey || Date.now()}`,
     sourceText: source,
@@ -411,15 +419,24 @@ function missingParts(conference, source, mode = '') {
   if (wantsGoals(source) && !conference.goals.length && !conference.overall) missing.push('a regra da meta (indicador, condição, valor e período)');
   if (conference.goals.length && !conference.period?.label) missing.push('o período com mês e ano');
   for (const field of needed) {
+    const someone = (conference.people ?? []).some((person) => fieldApplies(field, person.subsetor));
+    if ((conference.people ?? []).length && !someone) continue;
     if (!conference.goals.some((goal) => goal.indicator === field)) missing.push(`a meta de ${NAMES[field]}`);
   }
   if (wantsPeople(source) && !(conference.people ?? []).length) missing.push('os resultados individuais dos colaboradores citados');
   const expected = conference.goals.map((goal) => goal.indicator);
   for (const person of conference.people ?? []) {
-    for (const field of expected) {
-      if (!person.results.some((item) => item.indicator === field)) missing.push(`o resultado de ${displayName(field)} de ${person.name}`);
+    if (!person.identified) {
+      missing.push(`o cadastro da Equipe de ${person.name}`);
+      continue;
     }
-    if (!person.identified) missing.push(`o cadastro da Equipe de ${person.name}`);
+    const channel = person.subsetor || '';
+    for (const field of expected) {
+      if (!fieldApplies(field, channel)) continue;
+      if (!person.results.some((item) => item.indicator === field || (field === 'resolvidos' && item.indicator === 'resolvidosCount'))) {
+        missing.push(`o resultado de ${displayName(field)} de ${person.name}`);
+      }
+    }
   }
   return missing;
 }

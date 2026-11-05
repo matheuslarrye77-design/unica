@@ -203,6 +203,7 @@ export function ingestReport(store, text, people, options = {}) {
       name: row.name || row.sourceName,
       periodKey,
       periodLabel: periodLabel(periodKey),
+      subsetor: row.subsetor || previous?.subsetor || '',
       values,
       changes,
       updatedAt: previous && !changed ? previous.updatedAt : now.toISOString(),

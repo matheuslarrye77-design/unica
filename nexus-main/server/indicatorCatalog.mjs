@@ -41,10 +41,10 @@ export const FIELD_UNITS = {
 };
 
 export const OVERALL_FIELD_DEFS = [
-  { id: 'resolvidosCount', weightKey: 'resolvidos', higher: true, unit: '', ask: 'a quantidade de tickets resolvidos da meta', channels: SERVICE_FUNCOES },
-  { id: 'transferidos', weightKey: 'transferidos', higher: false, unit: '', ask: 'a quantidade de tickets transferidos da meta', channels: SERVICE_FUNCOES },
-  { id: 'primeira', weightKey: 'primeira', higher: false, unit: ' min', ask: 'os minutos da meta de Primeira resposta', channels: SERVICE_FUNCOES },
-  { id: 'resolucao', weightKey: 'resolucao', higher: false, unit: ' min', ask: 'os minutos da meta de Tempo médio de resolução (TMA)', channels: SERVICE_FUNCOES },
+  { id: 'resolvidosCount', weightKey: 'resolvidos', higher: true, unit: '', ask: 'a quantidade de tickets resolvidos da meta', channels: ['Chat', 'E-mail'] },
+  { id: 'transferidos', weightKey: 'transferidos', higher: false, unit: '', ask: 'a quantidade de tickets transferidos da meta', channels: ['Chat', 'E-mail'] },
+  { id: 'primeira', weightKey: 'primeira', higher: false, unit: ' min', ask: 'os minutos da meta de Primeira resposta', channels: ['Chat', 'E-mail'] },
+  { id: 'resolucao', weightKey: 'resolucao', higher: false, unit: ' min', ask: 'os minutos da meta de Tempo médio de resolução (TMA)', channels: ['Chat', 'E-mail'] },
   { id: 'atendidas', weightKey: 'atendidas', higher: true, unit: '', ask: 'a quantidade da meta de ligações atendidas', channels: ['Ligação'] },
   { id: 'perdidas', weightKey: 'perdidas', higher: false, unit: '', ask: 'a quantidade da meta de ligações perdidas sem resgate', channels: ['Ligação'] },
   { id: 'espera', weightKey: 'espera', higher: false, unit: ' min', ask: 'os minutos da meta de tempo de espera', channels: ['Ligação'] },
@@ -57,13 +57,15 @@ export function blankValues() {
 }
 
 export function indicatorsForFuncao(funcao) {
-  if (funcao === 'Ligação') return [...CORE_FIELDS, ...CALL_FIELDS, ...SHARED_FIELDS];
+  if (funcao === 'Ligação') return [...CALL_FIELDS, ...SHARED_FIELDS];
   if (funcao === 'Chat' || funcao === 'E-mail') return [...CORE_FIELDS, ...SHARED_FIELDS];
-  return [...CORE_FIELDS];
+  return [];
 }
 
 export function fieldApplies(field, funcao) {
-  return indicatorsForFuncao(funcao).includes(field);
+  const id = field === 'resolvidos' ? 'resolvidosCount' : field;
+  if (String(id).startsWith('c:')) return Boolean(funcao);
+  return indicatorsForFuncao(funcao).includes(id);
 }
 
 export function formatFieldValue(field, value) {

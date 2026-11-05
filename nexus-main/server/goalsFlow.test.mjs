@@ -1023,8 +1023,7 @@ Conferir antes de salvar. Não alterar o pódio.`;
   const call = podiumAt(loaded.body, '2026-12', 'overall', 'Ligação');
   const chat = podiumAt(loaded.body, '2026-12', 'overall', 'Chat');
   const mail = podiumAt(loaded.body, '2026-12', 'overall', 'E-mail');
-  assert.deepEqual(call.ranking.map((row) => row.userId), ['tm-5', 'tm-9']);
-  assert.equal(call.ranking[0].displayScore, `${String(call.ranking[0].score).replace('.', ',')}%`);
+  assert.equal((call?.ranking ?? []).length, 0);
   assert.deepEqual(chat.ranking.map((row) => row.userId), ['tm-3', 'tm-6']);
   assert.equal(chat.ranking[0].displayScore, `${String(chat.ranking[0].score).replace('.', ',')}%`);
   assert.deepEqual(mail.ranking.map((row) => row.userId), ['tm-4', 'tm-8']);
@@ -1045,8 +1044,7 @@ Gabriela Lima: 200 tickets. Juliana Fernandes: 180 tickets. Camila Souza: 150 ti
   const overallCall = podiumAt((await getGoals(persist)).body, '2026-12', 'overall', 'Ligação');
   assert.equal(overallMail.ranking[0].userId, 'tm-4');
   assert.equal(overallMail.ranking.some((row) => row.userId === 'tm-5' || row.userId === 'tm-3' || row.userId === 'tm-1'), false);
-  assert.equal(overallCall.ranking[0].userId, 'tm-5');
-  assert.equal(overallCall.ranking.some((row) => row.userId === 'tm-4'), false);
+  assert.equal((overallCall?.ranking ?? []).some((row) => row.userId === 'tm-4'), false);
   const quality = await postCenter({
     text: 'Quero uma meta personalizada chamada Índice de qualidade no atendimento: pelo menos 90% em dezembro de 2026. A Gabriela Lima ficou com 91%, a Camila Souza ficou com 93%, o Felipe Costa ficou com 94% e a Alexandra Mitchell ficou com 99%. Conferir antes de salvar. Não alterar o pódio.',
     mode: 'custom',
@@ -1197,6 +1195,76 @@ test('substitui o mesmo colaborador no período sem duplicar', async () => {
   assert.equal(month.people.find((row) => row.userId === 'tm-4').indicators.find((item) => item.field === 'resolvidosCount').value, 350);
   assert.ok((rafaRecords[0].history ?? []).length >= 1);
 });
+
+const MAY_2027 = `Metas de maio de 2027: tickets resolvidos pelo menos 10, tickets transferidos no máximo 40, primeira resposta no máximo 5 minutos, TMA no máximo 15 minutos, ligações atendidas pelo menos 50, ligações perdidas sem resgate no máximo 20, tempo de espera no máximo 1 minuto, duração da ligação no máximo 10 minutos e faltas sem atestado no máximo 1.
+
+Camila Souza: 40 tickets resolvidos, 10 tickets transferidos, 3 minutos de primeira resposta, 8 minutos de TMA e 0 faltas sem atestado.
+Lucas Pereira: 35 tickets resolvidos, 12 tickets transferidos, 4 minutos de primeira resposta, 9 minutos de TMA e 0 faltas sem atestado.
+Thiago Martins: 32 tickets resolvidos, 11 tickets transferidos, 3 minutos de primeira resposta, 7 minutos de TMA e 1 falta sem atestado.
+Larissa Rocha: 28 tickets resolvidos, 9 tickets transferidos, 2 minutos de primeira resposta, 6 minutos de TMA e 0 faltas sem atestado.
+Isabela Costa: 30 tickets resolvidos, 8 tickets transferidos, 4 minutos de primeira resposta, 10 minutos de TMA e 0 faltas sem atestado.
+
+Felipe Costa: 50 tickets resolvidos, 15 tickets transferidos, 3 minutos de primeira resposta, 7 minutos de TMA e 0 faltas sem atestado.
+Mariana Alves: 42 tickets resolvidos, 14 tickets transferidos, 4 minutos de primeira resposta, 8 minutos de TMA e 0 faltas sem atestado.
+Rafael Oliveira: 45 tickets resolvidos, 13 tickets transferidos, 2 minutos de primeira resposta, 6 minutos de TMA e 1 falta sem atestado.
+Beatriz Nunes: 38 tickets resolvidos, 16 tickets transferidos, 5 minutos de primeira resposta, 9 minutos de TMA e 0 faltas sem atestado.
+Rodrigo Alves: 41 tickets resolvidos, 12 tickets transferidos, 3 minutos de primeira resposta, 8 minutos de TMA e 0 faltas sem atestado.
+
+Gabriela Lima: 410 ligações atendidas, 12 perdidas sem resgate, 35 segundos de espera, 6 minutos de duração e 0 faltas sem atestado.
+Juliana Fernandes: 390 ligações atendidas, 10 perdidas sem resgate, 40 segundos de espera, 5 minutos de duração e 0 faltas sem atestado.
+Gustavo Silva: 360 ligações atendidas, 15 perdidas sem resgate, 50 segundos de espera, 7 minutos de duração e 1 falta sem atestado.
+Pedro Henrique: 340 ligações atendidas, 18 perdidas sem resgate, 45 segundos de espera, 8 minutos de duração e 0 faltas sem atestado.
+Fernanda Dias: 400 ligações atendidas, 11 perdidas sem resgate, 30 segundos de espera, 6 minutos de duração e 0 faltas sem atestado.
+
+Não alterar o pódio.`;
+
+test('maio/2027 avalia cada categoria só com os indicadores aplicáveis e não cobra tickets de Ligação', async () => {
+  const persist = memoryGoalsStore();
+  const saved = await postCenter({ text: MAY_2027, mode: 'overall' }, { store: persist });
+  assert.equal(saved.body.kind, 'conference', saved.body.reply);
+  assert.doesNotMatch(saved.body.reply, /pendências/);
+  assert.doesNotMatch(saved.body.reply, /Tickets resolvidos de Gabriela/i);
+  const may = saved.body.bank.periods.find((item) => item.key === '2027-05');
+  const byId = (id) => may.people.find((row) => row.userId === id);
+  const fieldsOf = (id) => (byId(id)?.indicators ?? []).map((item) => item.field);
+  const chat = ['tm-3', 'tm-6', 'tm-10', 'tm-11', 'tm-15'];
+  const mail = ['tm-4', 'tm-7', 'tm-8', 'tm-13', 'tm-16'];
+  const call = ['tm-5', 'tm-9', 'tm-12', 'tm-14', 'tm-17'];
+  assert.equal(chat.every((id) => byId(id)), true);
+  assert.equal(mail.every((id) => byId(id)), true);
+  assert.equal(call.every((id) => byId(id)), true);
+  for (const id of [...chat, ...mail]) {
+    assert.equal(fieldsOf(id).includes('resolvidosCount'), true, id);
+    assert.equal(fieldsOf(id).includes('faltas'), true, id);
+    assert.equal(fieldsOf(id).includes('atendidas'), false, id);
+  }
+  for (const id of call) {
+    assert.equal(fieldsOf(id).includes('atendidas'), true, id);
+    assert.equal(fieldsOf(id).includes('perdidas'), true, id);
+    assert.equal(fieldsOf(id).includes('espera'), true, id);
+    assert.equal(fieldsOf(id).includes('duracao'), true, id);
+    assert.equal(fieldsOf(id).includes('faltas'), true, id);
+    assert.equal(fieldsOf(id).includes('resolvidosCount'), false, id);
+    assert.equal(fieldsOf(id).includes('transferidos'), false, id);
+    assert.equal(fieldsOf(id).includes('primeira'), false, id);
+  }
+  const gabi = byId('tm-5');
+  assert.equal(gabi.indicators.find((item) => item.field === 'atendidas').value, 410);
+  assert.equal(gabi.indicators.find((item) => item.field === 'perdidas').value, 12);
+  assert.equal(gabi.indicators.find((item) => item.field === 'duracao').value, 6);
+  assert.equal(gabi.indicators.find((item) => item.field === 'faltas').value, 0);
+  assert.equal(gabi.indicators.some((item) => item.field === 'resolvidosCount'), false);
+  const conferenceGabi = saved.body.conference.people.find((row) => row.userId === 'tm-5');
+  assert.equal(conferenceGabi.results.some((item) => item.indicator === 'resolvidosCount' || item.indicator === 'resolvidos'), false);
+  const callPodium = podiumAt(saved.body, '2027-05', 'overall', 'Ligação');
+  const chatPodium = podiumAt(saved.body, '2027-05', 'overall', 'Chat');
+  const mailPodium = podiumAt(saved.body, '2027-05', 'overall', 'E-mail');
+  assert.equal(callPodium.ranking.every((row) => call.includes(row.userId)), true);
+  assert.equal(chatPodium.ranking.every((row) => chat.includes(row.userId)), true);
+  assert.equal(mailPodium.ranking.every((row) => mail.includes(row.userId)), true);
+  assert.equal(callPodium.ranking.some((row) => row.userId === 'tm-3' || row.userId === 'tm-4'), false);
+});
+
 
 
 
