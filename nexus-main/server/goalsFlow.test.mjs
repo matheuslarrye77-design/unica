@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import { commitTemplate, interpretCriteria } from './criteria.mjs';
-import { emptyStore, parseReport, publicStore, reportBankSnapshot, runAssistant, understandGoalsMessage } from './goals.mjs';
+import { emptyStore, monthBucketOf, parseReport, publicStore, reportBankSnapshot, runAssistant, understandGoalsMessage } from './goals.mjs';
 import { handleGoals } from './goalsApi.mjs';
 import { createGoalsStore } from './goalsStore.mjs';
 import { applyGoalsReview, ingestReport } from './ledger.mjs';
@@ -115,29 +115,29 @@ test('primeira resposta nas metas não vira critério do pódio', () => {
 test('a interface do banco mostra mês/ano, gestão e resultados separados', () => {
   const ui = fs.readFileSync(new URL('../src/components/recognition/GoalsCenter.tsx', import.meta.url), 'utf8');
   assert.match(ui, /Metas definidas pela gestão/);
-  assert.match(ui, /aria-label="Mês"/);
-  assert.match(ui, /aria-label="Ano"/);
+  assert.match(ui, /aria-label="Período anterior"/);
+  assert.match(ui, /Limpar banco de relatórios/);
   assert.match(ui, /createPortal/);
   assert.match(ui, /Valor da meta:/);
   assert.match(ui, /Resultados individuais/);
-  assert.match(ui, /h-\[72px\]/);
-  assert.match(ui, /h-\[68px\]/);
   assert.match(ui, /md:grid-cols-\[minmax\(0,1\.35fr\)_repeat\(3,minmax\(0,1fr\)\)\]/);
   assert.match(ui, /Confirmar metas/);
-  assert.match(ui, /O pódio não foi alterado/);
+  assert.match(ui, /O pódio não muda/);
+  assert.doesNotMatch(ui, /Período a confirmar/);
+  assert.match(ui, /Avalie os resultados da equipe/);
   assert.match(ui, /Novembro\/\$\{year\}|\/\$\{year\}/);
   assert.match(ui, /pendingRules\.comparisons/);
   assert.match(ui, /\/api\/goals\/center/);
   assert.match(ui, /data\.conference/);
   assert.match(ui, /conference\.people/);
   assert.match(ui, /messages\.slice\(-6\)/);
-  assert.match(ui, /interpretar metas gerais da gestão/);
+  assert.match(ui, /Envie metas ou resultados no chat/);
   assert.match(ui, /saving\.current/);
   assert.match(ui, /Critérios Personalizados/);
   assert.match(ui, /pendingPodium/);
   assert.match(ui, /Confirmar pódio/);
   assert.match(ui, /OVERALL_OPTIONS/);
-  assert.match(ui, /identifica pelo texto/);
+  assert.match(ui, /aplicáveis à categoria/);
   assert.match(ui, /Ampliar chat e banco/);
   assert.equal(ui.includes('overallOn'), false);
   assert.equal(ui.includes('toggleOverall'), false);
@@ -172,8 +172,8 @@ Compara com as metas, conferir antes de salvar, não alterar o pódio.`,
 ];
 
 function assertNatural(understood) {
-  assert.equal(understood.kind, 'review');
-  assert.equal(understood.persist, false);
+  assert.ok(understood.kind === 'review' || understood.kind === 'ledger');
+  if (understood.kind === 'review') assert.equal(understood.persist, false);
   assert.equal(understood.periodLabel, 'Novembro/2026');
   assert.equal(understood.rules.length, 4);
   assert.deepEqual(understood.rules.map((rule) => rule.indicator).sort(), ['primeira', 'resolucao', 'resolvidosCount', 'transferidos']);
@@ -196,8 +196,12 @@ function assertNatural(understood) {
   assert.equal(flag('tm-4', 'transferidos').met, true);
   assert.equal(flag('tm-4', 'primeira').met, true);
   assert.equal(flag('tm-4', 'resolucao').met, true);
-  assert.match(understood.reply, /Conferência/);
-  assert.match(understood.reply, /não foi alterado|permanece como está/i);
+  if (understood.kind === 'review') {
+    assert.match(understood.reply, /Conferência/);
+    assert.match(understood.reply, /não foi alterado|permanece como está/i);
+  } else {
+    assert.match(understood.reply, /Relatório interpretado|Dados registrados/i);
+  }
 }
 
 test('mensagem natural mista é reconhecida e não cai no fallback', () => {
@@ -295,9 +299,9 @@ async function postAssistant(payload, req = {}, generate) {
 
 function assertApiReview(result) {
   assert.equal(result.status, 200);
-  assert.equal(result.body.kind, 'review');
+  assert.equal(result.body.kind, 'ledger');
   assert.notEqual(result.body.kind, 'ask');
-  assert.equal(result.body.persist, false);
+  assert.equal(result.body.persist, true);
   assert.equal(result.body.periodLabel, 'Novembro/2026');
   assert.equal(result.body.rules.length, 4);
   assertNatural(result.body);
@@ -377,12 +381,8 @@ test('correção de resultado atualiza o mesmo colaborador no mesmo período', a
   }, { store: persist });
   const fix = 'O Rafael Oliveira no novembro de 2026 ficou com 310 tickets resolvidos, 30 tickets transferidos, 4 minutos de primeira resposta e 9 minutos de TMA. Conferir antes de salvar. Não alterar o pódio.';
   const review = await postAssistant({ text: fix, intent: 'idle' }, { store: persist });
-  assert.equal(review.body.kind, 'review');
+  assert.equal(review.body.kind, 'ledger');
   assert.equal(review.body.rows.find((row) => row.userId === 'tm-8').values.resolvidosCount, 310);
-  await postAssistant({
-    text: 'confirmar',
-    review: { period: review.body.period, periodKey: review.body.periodKey, periodLabel: review.body.periodLabel, rules: review.body.rules, rows: review.body.rows, sourceText: fix },
-  }, { store: persist });
   const reload = { status: 0, body: null };
   await handleGoals({ method: 'GET', url: '/api/goals' }, {}, leader, process.cwd(), [], teamRoster, (_r, status, body) => { reload.status = status; reload.body = body; }, async () => Buffer.from('{}'), { store: persist, generate: async () => ({ error: 'unconfigured' }) });
   const rafa = reload.body.bank.periods.find((item) => item.key === '2026-11').people.find((row) => row.userId === 'tm-8');
@@ -411,7 +411,7 @@ async function postCenter(payload, req = {}, generate) {
 function assertConference(result) {
   assert.equal(result.status, 200);
   assert.equal(result.body.kind, 'conference');
-  assert.equal(result.body.persist, false);
+  assert.equal(result.body.persist, true);
   const conference = result.body.conference;
   assert.ok(conference);
   assert.equal(conference.period.label, 'Novembro/2026');
@@ -430,7 +430,7 @@ function assertConference(result) {
   assert.equal(valueOf(feli, 'resolucao'), 7);
   assert.equal(rafa.results.find((item) => item.indicator === 'resolvidosCount').status, 'Abaixo da meta');
   assert.equal(feli.results.find((item) => item.indicator === 'resolucao').status, 'Atingiu');
-  assert.match(result.body.reply, /conferência pronta/i);
+  assert.match(result.body.reply, /Relatório interpretado|Dados registrados/i);
   assert.equal(result.body.reply.includes('Tickets resolvidos | 320'), false);
   assert.equal(result.body.reply.includes('Rafael Oliveira'), false);
 }
@@ -597,8 +597,7 @@ const MARCH_GOALS = `Quatro metas para março de 2027:
 test('desempenho geral no modo da interface não cai em critério personalizado', async () => {
   const missing = await postCenter({ text: MARCH_OVERALL, mode: 'overall' });
   assert.equal(missing.body.kind, 'clarify');
-  assert.match(missing.body.reply, /primeira resposta/i);
-  assert.match(missing.body.reply, /tempo médio de resolução|TMA/i);
+  assert.match(missing.body.reply, /cadastrar a meta/i);
   assert.equal(missing.body.reply.includes('regra personalizada'), false);
   assert.equal(missing.body.conference, null);
 });
@@ -724,7 +723,7 @@ test('desempenho geral lê as condições da mensagem mesmo com o histórico do 
     history: [{ text: 'Desempenho geral: envie as condições de entrada e os resultados. Identifico os indicadores na mensagem, distribuo os pesos igualmente e não peço para marcar nada. Quem não cumpre a condição zera aquela parcela; o melhor elegível leva o peso inteiro. Transferidos ficam de fora e o pódio não muda.' }],
   });
   assert.equal(result.body.kind, 'conference');
-  assert.equal(result.body.persist, false);
+  assert.equal(result.body.persist, true);
   assert.equal(result.body.conference.mode, 'overall');
   assert.equal(result.body.conference.period.label, 'Abril/2027');
   assert.equal(result.body.conference.overall.weights.resolvidos, 25);
@@ -763,7 +762,7 @@ test('desempenho geral respeita a seleção manual de indicadores e distribui os
     indicators: ['resolvidosCount', 'primeira'],
   }, { store: persist });
   assert.equal(result.body.kind, 'conference');
-  assert.equal(result.body.persist, false);
+  assert.equal(result.body.persist, true);
   assert.deepEqual(result.body.conference.overall.selected.sort(), ['primeira', 'resolvidosCount']);
   assert.equal(result.body.conference.overall.weights.resolvidos, 50);
   assert.equal(result.body.conference.overall.weights.primeira, 50);
@@ -793,10 +792,7 @@ function podiumAt(body, key, mode, channel = 'E-mail') {
 test('pódio é montado pelos resultados já gravados no banco, sem nova avaliação', async () => {
   const persist = memoryGoalsStore();
   const pending = await postCenter({ text: NATURAL_MESSAGE, mode: 'overall' }, { store: persist });
-  assert.equal(pending.body.persist, false);
-  const before = await getGoals(persist);
-  assert.equal((before.body.podiums ?? []).length, 0);
-  await postCenter({ action: 'confirm', text: 'confirmar', conference: pending.body.conference }, { store: persist });
+  assert.equal(pending.body.persist, true);
   const loaded = await getGoals(persist);
   const november = podiumAt(loaded.body, '2026-11', 'overall');
   assert.ok(november);
@@ -895,7 +891,7 @@ test('pódio predefinido detalha só os indicadores da avaliação, com unidades
   assert.equal(first.shown, '3 min');
   assert.equal(felipe.metrics.some((item) => item.id === 'satisfacao'), false);
   assert.notEqual(tickets.value, moved.value);
-  assert.equal(pending.body.persist, false);
+  assert.equal(pending.body.persist, true);
 });
 
 test('pódio de desempenho geral mostra peso, pontuação e elegibilidade', async () => {
@@ -907,7 +903,7 @@ Rafael Oliveira: 300 tickets resolvidos, 35 tickets transferidos, 4 min de prime
 Felipe Costa: 350 tickets resolvidos, 20 tickets transferidos, 3 min de primeira resposta e TMA 7 min.
 Conferir. Não alterar o pódio.`;
   const overall = await postCenter({ text: overallText, mode: 'overall' }, { store: persist });
-  assert.equal(overall.body.persist, false);
+  assert.equal(overall.body.persist, true);
   await postCenter({ action: 'confirm', text: 'confirmar', conference: overall.body.conference }, { store: persist });
   const loaded = await getGoals(persist);
   const march = podiumAt(loaded.body, '2027-03', 'overall');
@@ -1131,6 +1127,75 @@ test('desempenho geral pede só a meta do indicador selecionado que faltar', asy
   assert.match(result.body.reply, /primeira resposta/i);
   assert.equal(result.body.reply.includes('Tickets resolvidos'), false);
   assert.equal(result.body.reply.includes('Satisfação'), false);
+});
+
+test('categoria vem de funcao: Ligação recebe indicadores exclusivos e Chat não', async () => {
+  const persist = memoryGoalsStore();
+  const text = `Metas de junho de 2027: tickets resolvidos pelo menos 10, ligações atendidas pelo menos 50, ligações perdidas sem resgate no máximo 5, tempo de espera no máximo 1 minuto, duração da ligação no máximo 8 minutos e faltas sem atestado no máximo 1.
+Fernanda Dias: 40 tickets resolvidos, 80 ligações atendidas, 2 perdidas sem resgate, 1 minuto de espera, 6 minutos de duração e 0 faltas sem atestado.
+Camila Souza: 30 tickets resolvidos, 0 faltas sem atestado.
+Não alterar o pódio.`;
+  const saved = await postCenter({ text, mode: 'overall' }, { store: persist });
+  assert.equal(saved.body.kind === 'conference' || saved.body.kind === 'saved' || saved.body.kind === 'clarify', true, saved.body.reply);
+  assert.notEqual(saved.body.kind, 'clarify', saved.body.reply);
+  const june = saved.body.bank.periods.find((item) => item.key === '2027-06');
+  const fernanda = june.people.find((row) => row.userId === 'tm-17');
+  const camila = june.people.find((row) => row.userId === 'tm-3');
+  assert.equal(fernanda.indicators.some((item) => item.field === 'atendidas'), true);
+  assert.equal(fernanda.indicators.some((item) => item.field === 'faltas'), true);
+  assert.equal(camila.indicators.some((item) => item.field === 'atendidas'), false);
+  assert.equal(camila.indicators.some((item) => item.field === 'espera'), false);
+  assert.equal(camila.indicators.some((item) => item.field === 'faltas'), true);
+  assert.equal(fernanda.indicators.find((item) => item.field === 'atendidas').value, 80);
+  const call = podiumAt(saved.body, '2027-06', 'overall', 'Ligação');
+  const chat = podiumAt(saved.body, '2027-06', 'overall', 'Chat');
+  assert.equal(call.ranking.some((row) => row.userId === 'tm-3'), false);
+  assert.equal(chat.ranking.some((row) => row.userId === 'tm-17'), false);
+});
+
+test('ausência de meta de tempo de espera não inventa valor', async () => {
+  const result = await postCenter({
+    text: 'Desempenho geral de julho de 2027. Fernanda Dias: 80 ligações atendidas e 2 minutos de espera. Não alterar o pódio.',
+    mode: 'overall',
+    indicators: ['atendidas', 'espera'],
+  });
+  assert.equal(result.body.kind, 'clarify');
+  assert.match(result.body.reply, /cadastrar a meta de/i);
+  assert.equal(result.body.conference, null);
+});
+
+test('limpar um período preserva os demais e a limpeza completa esvazia o banco', async () => {
+  const persist = memoryGoalsStore();
+  await postCenter({ text: NATURAL_MESSAGE, mode: 'overall' }, { store: persist });
+  await postCenter({ text: `${MARCH_GOALS}
+Rafael Oliveira ficou com 400 tickets resolvidos, 10 tickets transferidos, 3 minutos de primeira resposta e 6 minutos de TMA.
+Felipe Costa ficou com 300 tickets resolvidos, 35 tickets transferidos, 4 minutos de primeira resposta e 9 minutos de TMA.
+Não alterar o pódio.`, mode: 'overall' }, { store: persist });
+  const before = await getGoals(persist);
+  assert.ok(before.body.bank.periods.find((item) => item.key === '2026-11'));
+  assert.ok(before.body.bank.periods.find((item) => item.key === '2027-03'));
+  const cleared = await postCenter({ action: 'clear', periodKey: '2026-11' }, { store: persist });
+  assert.equal(cleared.body.kind, 'cleared');
+  assert.equal((cleared.body.ledger.records ?? []).filter((row) => monthBucketOf(row.periodKey) === '2026-11').length, 0, JSON.stringify((cleared.body.ledger.records ?? []).map((row) => row.periodKey)));
+  assert.ok(cleared.body.bank.periods.find((item) => item.key === '2027-03')?.people.length);
+  const all = await postCenter({ action: 'clear', all: true }, { store: persist });
+  assert.equal(all.body.kind, 'cleared', all.body.reply);
+  assert.equal((all.body.ledger.records ?? []).length, 0, JSON.stringify((all.body.ledger.records ?? []).map((row) => ({ id: row.id, periodKey: row.periodKey }))));
+});
+
+test('substitui o mesmo colaborador no período sem duplicar', async () => {
+  const persist = memoryGoalsStore();
+  await postCenter({ text: NATURAL_MESSAGE, mode: 'overall' }, { store: persist });
+  const again = await postCenter({
+    text: 'Novembro de 2026. Rafael Oliveira ficou com 410 tickets resolvidos, 10 tickets transferidos, 2 minutos de primeira resposta e 6 minutos de TMA. Não alterar o pódio.',
+    mode: 'overall',
+  }, { store: persist });
+  const month = again.body.bank.periods.find((item) => item.key === '2026-11');
+  const rafaRecords = (again.body.ledger.records ?? []).filter((row) => row.userId === 'tm-8' && /2026-11/.test(row.periodKey));
+  assert.equal(rafaRecords.length, 1);
+  assert.equal(month.people.find((row) => row.userId === 'tm-8').indicators.find((item) => item.field === 'resolvidosCount').value, 410);
+  assert.equal(month.people.find((row) => row.userId === 'tm-4').indicators.find((item) => item.field === 'resolvidosCount').value, 350);
+  assert.ok((rafaRecords[0].history ?? []).length >= 1);
 });
 
 

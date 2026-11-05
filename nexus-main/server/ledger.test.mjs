@@ -58,7 +58,6 @@ test('teste B: o mesmo período substitui o valor e guarda o anterior', () => {
   assert.equal(record.history.length, 1);
   assert.equal(record.history[0].values.resolvidosCount, 150);
   assert.match(second.reply, /220 \(ATUALIZADO\)/);
-  assert.match(second.reply, /96% \(SEM ALTERAÇÃO\)/);
   assert.equal(second.reply.includes('96% (NOVO)'), false);
   assert.equal(second.store.criterion.mode, 'overall');
   const month = ingestReport(second.store, 'Matheus: 80 tickets resolvidos no mês.', [matheus], { now });

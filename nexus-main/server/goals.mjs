@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { FIELD_NAMES, SERVICE_FUNCOES, VALUE_FIELDS } from './indicatorCatalog.mjs';
 
 export const CHANNELS = ['Chat', 'E-mail', 'Ligação', 'Atendimento'];
 export const INDICATORS = ['resolvidos', 'transferidos', 'primeira', 'resolucao'];
@@ -45,9 +46,8 @@ export function applyCriterion(store, value, periodKey) {
 }
 
 export function subsetorOf(person) {
-  if (CHANNELS.includes(person.funcao)) return person.funcao;
-  if (CHANNELS.includes(person.role)) return person.role;
-  return '';
+  const funcao = String(person?.funcao ?? '');
+  return SERVICE_FUNCOES.includes(funcao) ? funcao : '';
 }
 
 export function fold(value) {
@@ -208,14 +208,23 @@ function readToken(part) {
     return count === percentValue ? { percent: percentValue } : { count, percent: percentValue };
   }
   if (percent) return { percent: numberFrom(percent[1]) };
-  if (minutes) return { minutes: numberFrom(minutes[1]) };
-  if (leading && /^[\d.,]+$/.test(text.replace(/\s/g, ''))) return { count: numberFrom(leading[1]) };
+  if (minutes) return { minutes: numberFrom(minutes[1]), ...(leading ? { count: numberFrom(leading[1]) } : {}) };
+  if (leading) {
+    const count = numberFrom(leading[1]);
+    if (count >= 1900 && count <= 2100) return null;
+    return { count };
+  }
   return null;
 }
 
 export function metricOf(line) {
   const text = fold(line);
   if (/satisfa|\bcsat\b|\bnps\b/.test(text)) return 'satisfacao';
+  if (/faltas?\s+sem\s+atestado|\bfaltas?\b/.test(text) && !/ticket/.test(text)) return 'faltas';
+  if (/perdidas?\s+sem\s+resgate|ligac\w*\s+perdid/.test(text)) return 'perdidas';
+  if (/ligac\w*\s+atendid|\batendidas\b/.test(text)) return 'atendidas';
+  if (/tempo\s+de\s+espera|\bespera\b/.test(text) && !/primeira/.test(text)) return 'espera';
+  if (/duracao(?:\s+da\s+ligacao)?/.test(text)) return 'duracao';
   if (/tickets?\s+transferid/.test(text)) return 'transferidos';
   if (/tickets?\s+resolvid/.test(text)) return 'resolvidos';
   if (/\btickets?\b/.test(text) && !/transferid/.test(text)) return 'resolvidos';
@@ -405,6 +414,8 @@ function pushValue(bag, metric, token) {
   else if (metric === 'primeira' && token.minutes !== undefined) bag.primeira = token.minutes;
   else if (metric === 'resolucao' && token.minutes !== undefined) bag.resolucao = token.minutes;
   else if (metric === 'satisfacao' && token.percent !== undefined) bag.satisfacao = token.percent;
+  else if ((metric === 'espera' || metric === 'duracao') && (token.minutes !== undefined || token.count !== undefined)) bag[metric] = token.minutes ?? token.count;
+  else if ((metric === 'atendidas' || metric === 'perdidas' || metric === 'faltas') && (token.count !== undefined || token.minutes !== undefined)) bag[metric] = token.count ?? token.minutes;
 }
 
 function splitValues(text) {
@@ -448,6 +459,11 @@ function phraseHint(text) {
   if ((/tempo\s+medio|\btma\b|ate\s+resolu|media\s+ate|medio\s+de\s+(?:resolu|atendimento)|tempo\s+de\s+(?:resolu|atendimento)|\bresolucao\b/.test(folded)) && !/tickets?\s+resolvid/.test(folded)) return 'resolucao';
   if (/tickets?\s+resolvid/.test(folded) || (/\btickets?\b/.test(folded) && !/transferid/.test(folded))) return 'resolvidosCount';
   if (/taxa\s+de\s+resol|percentual/.test(folded) && /resolvid/.test(folded)) return 'resolvidos';
+  if (/faltas?\s+sem\s+atestado|\bfaltas?\b/.test(folded) && !/ticket/.test(folded)) return 'faltas';
+  if (/perdidas?\s+sem\s+resgate|ligac\w*\s+perdid/.test(folded)) return 'perdidas';
+  if (/ligac\w*\s+atendid|\batendidas\b/.test(folded)) return 'atendidas';
+  if (/tempo\s+de\s+espera/.test(folded) || (/\bespera\b/.test(folded) && !/primeira/.test(folded))) return 'espera';
+  if (/duracao(?:\s+da\s+ligacao)?/.test(folded)) return 'duracao';
   return '';
 }
 
@@ -490,6 +506,14 @@ function applyPhrase(values, phrase) {
     }
     if (hint === 'resolvidos' && token?.percent !== undefined) {
       values.resolvidos = token.percent;
+      continue;
+    }
+    if ((hint === 'espera' || hint === 'duracao') && (token?.minutes !== undefined || token?.count !== undefined)) {
+      values[hint] = token.minutes ?? token.count;
+      continue;
+    }
+    if ((hint === 'atendidas' || hint === 'perdidas' || hint === 'faltas') && (token?.count !== undefined || token?.minutes !== undefined)) {
+      values[hint] = token.count ?? token.minutes;
       continue;
     }
     if (!token) {
@@ -544,7 +568,7 @@ function personValues(line) {
   if (fold(label).length < 2 || fold(label).split(' ').filter(Boolean).length > 6) return null;
   const values = {};
   applyPhrase(values, phrase);
-  const fields = ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao', 'satisfacao'];
+  const fields = VALUE_FIELDS;
   if (!fields.some((field) => values[field] !== undefined && values[field] !== null)) return null;
   return { name: label, values };
 }
@@ -823,7 +847,7 @@ export function parseReport(text, people) {
     const personLine = personValues(line);
     if (personLine) {
       const entry = ensure(personLine.name);
-      for (const field of ['resolvidos', 'resolvidosCount', 'transferidos', 'primeira', 'resolucao', 'satisfacao']) {
+      for (const field of VALUE_FIELDS) {
         if (personLine.values[field] !== undefined && personLine.values[field] !== null) entry.values[field] = personLine.values[field];
       }
       currentName = personLine.name;
@@ -876,14 +900,7 @@ export function parseReport(text, people) {
       name: person?.name ?? '',
       subsetor,
       ambiguous: matches.length > 1 ? matches.map((item) => ({ id: item.id, name: item.name, subsetor: subsetorOf(item) })) : [],
-      values: {
-        resolvidos: entry.values.resolvidos ?? null,
-        resolvidosCount: entry.values.resolvidosCount ?? null,
-        transferidos: entry.values.transferidos ?? null,
-        primeira: entry.values.primeira ?? null,
-        resolucao: entry.values.resolucao ?? null,
-        satisfacao: entry.values.satisfacao ?? null,
-      },
+      values: Object.fromEntries(VALUE_FIELDS.map((field) => [field, entry.values[field] ?? null])),
       goal,
     };
   });
@@ -1015,6 +1032,11 @@ function clauseIndicator(folded, raw) {
     return /%/.test(raw) && !/\d[\d.]*\s+tickets?/.test(folded) ? 'resolvidos' : 'resolvidosCount';
   }
   if (/(?:percentual|taxa)\s+de\s+resolvid/.test(folded)) return 'resolvidos';
+  if (/ligac\w*\s+atendid|\batendidas\b/.test(folded)) return 'atendidas';
+  if (/perdidas?\s+sem\s+resgate|ligac\w*\s+perdid/.test(folded)) return 'perdidas';
+  if (/tempo\s+de\s+espera|\bespera\b/.test(folded) && !/primeira/.test(folded)) return 'espera';
+  if (/duracao(?:\s+da\s+ligacao)?/.test(folded)) return 'duracao';
+  if (/faltas?\s+sem\s+atestado|\bfaltas?\b/.test(folded)) return 'faltas';
   return '';
 }
 
@@ -1027,6 +1049,11 @@ function mentionedIndicators(text) {
   if (/tempo\s+medio|\btma\b|medio\s+(de\s+)?(?:resolu|atendimento)|tempo\s+de\s+(?:resolu|atendimento)|\bresolucao\b/.test(folded)) found.push('resolucao');
   if (/tickets?\s+resolvid/.test(folded) || ((/\b\d[\d.]*\s+tickets?\b|\btickets?\b/.test(folded)) && !/transferid/.test(folded))) found.push('resolvidosCount');
   if (/(?:percentual|taxa)\s+de\s+resolvid/.test(folded)) found.push('resolvidos');
+  if (/ligac\w*\s+atendid|\batendidas\b/.test(folded)) found.push('atendidas');
+  if (/perdidas?\s+sem\s+resgate|ligac\w*\s+perdid/.test(folded)) found.push('perdidas');
+  if (/tempo\s+de\s+espera|\bespera\b/.test(folded)) found.push('espera');
+  if (/duracao(?:\s+da\s+ligacao)?/.test(folded)) found.push('duracao');
+  if (/faltas?\s+sem\s+atestado|\bfaltas?\b/.test(folded)) found.push('faltas');
   return [...new Set(found)];
 }
 
@@ -1041,12 +1068,12 @@ function isPersonResultLine(line) {
 
 function splitGoalClauses(text) {
   return String(text ?? '')
-    .split(/\n+|;\s+|\*\s+|,\s+(?=[A-Za-zÀ-ÿ*•])|\s+e\s+(?=(?:o\s+)?(?:tempo|tma|satisfa|primeira|tickets|csat|tpr|quantidade))/i)
+    .split(/\n+|;\s+|\*\s+|,\s+(?=[A-Za-zÀ-ÿ*•])|\s+e\s+(?=(?:o\s+)?(?:tempo|tma|satisfa|primeira|tickets|csat|tpr|quantidade|ligac|faltas|duracao|espera))/i)
     .map((line) => cleanLine(line))
     .filter((line) => line.length > 2 && !isPersonResultLine(line));
 }
 
-const INDICATOR_SPAN = /satisfa(?:ção|cao)?|\bcsat\b|\bnps\b|tickets?\s+transferid\w*|quantidade\s+de\s+tickets?|tickets?\s+resolvid\w*|\btickets?\b|primeira\s+resposta|\btpr\b|tempo\s+m[eé]dio(?:\s+de\s+(?:resolu[cç][aã]o|atendimento))?|\btma\b|tempo\s+(?:m[eé]dio\s+)?(?:at[eé]\s+)?resolu[cç][aã]o|\bresolu[cç][aã]o\b/gi;
+const INDICATOR_SPAN = /satisfa(?:ção|cao)?|\bcsat\b|\bnps\b|tickets?\s+transferid\w*|quantidade\s+de\s+tickets?|tickets?\s+resolvid\w*|\btickets?\b|primeira\s+resposta|\btpr\b|tempo\s+m[eé]dio(?:\s+de\s+(?:resolu[cç][aã]o|atendimento))?|\btma\b|tempo\s+(?:m[eé]dio\s+)?(?:at[eé]\s+)?resolu[cç][aã]o|\bresolu[cç][aã]o\b|liga[cç][oõ]es?\s+atendidas?|\batendidas\b|liga[cç][oõ]es?\s+perdidas?|perdidas?\s+sem\s+resgate|tempo\s+de\s+espera|\bespera\b|dura[cç][aã]o(?:\s+da\s+liga[cç][aã]o)?|faltas?\s+sem\s+atestado|\bfaltas?\b/gi;
 
 function clauseWindows(clause) {
   const matches = [...String(clause).matchAll(INDICATOR_SPAN)];
@@ -1070,8 +1097,8 @@ function clauseValue(indicator, raw) {
   const afterOp = source.match(/(?:>=|<=|≥|≤|pelo menos|no m[ií]nimo|no m[aá]ximo|at[eé]|maior ou igual(?: a)?|menor ou igual(?: a)?|acima de|abaixo de|m[ií]nim[oa](?:\s+de)?|m[aá]xim[oa](?:\s+de)?)\s*([.,]*\d[\d.,]*)/i);
   const count = afterOp?.[1] ?? (source.match(/(\d[\d.]*)/) ?? [])[1];
   if (indicator === 'satisfacao' || indicator === 'resolvidos') return percent ? numberFrom(percent[1]) : (afterOp ? numberFrom(afterOp[1]) : null);
-  if (indicator === 'primeira' || indicator === 'resolucao') {
-    const pivot = source.search(indicator === 'primeira' ? /primeira|\btpr\b/i : /resolu|\btma\b|tempo\s+m[eé]dio/i);
+  if (indicator === 'primeira' || indicator === 'resolucao' || indicator === 'espera' || indicator === 'duracao') {
+    const pivot = source.search(indicator === 'primeira' ? /primeira|\btpr\b/i : indicator === 'espera' ? /espera/i : indicator === 'duracao' ? /duracao/i : /resolu|\btma\b|tempo\s+m[eé]dio/i);
     const tail = pivot >= 0 ? source.slice(pivot) : source;
     const afterLimit = tail.match(/(?:at[eé]|no m[aá]ximo|no maximo|m[aá]xim[oa](?:\s+de)?)\s*([\d.,]+)/i);
     if (afterLimit) return numberFrom(afterLimit[1]);
@@ -1290,14 +1317,12 @@ export function podiumFor(store, periodKey, display, people) {
 }
 
 function ledgerValues(values) {
-  return {
-    resolvidos: values?.resolvidos ?? null,
-    resolvidosCount: values?.resolvidosCount ?? null,
-    transferidos: values?.transferidos ?? null,
-    primeira: values?.primeira ?? null,
-    resolucao: values?.resolucao ?? null,
-    satisfacao: values?.satisfacao ?? null,
-  };
+  const next = {};
+  for (const field of VALUE_FIELDS) next[field] = values?.[field] ?? null;
+  for (const [field, value] of Object.entries(values ?? {})) {
+    if (!(field in next) && value != null) next[field] = value;
+  }
+  return next;
 }
 
 export function relinkLedger(ledger, people) {
@@ -1357,7 +1382,7 @@ export function presentLedger(store) {
   };
 }
 
-function monthBucketOf(key) {
+export function monthBucketOf(key) {
   const month = /^(?:month:)?(\d{4})-(\d{2})$/.exec(String(key ?? ''));
   if (month) return `${month[1]}-${month[2]}`;
   const range = weekRange(key);
@@ -1365,14 +1390,7 @@ function monthBucketOf(key) {
   return `${range.start.getUTCFullYear()}-${String(range.start.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
-const BANK_FIELDS = [
-  ['resolvidosCount', 'Tickets resolvidos'],
-  ['resolvidos', 'Tickets resolvidos (%)'],
-  ['transferidos', 'Tickets transferidos'],
-  ['primeira', 'Primeira resposta'],
-  ['resolucao', 'Tempo médio de resolução'],
-  ['satisfacao', 'Satisfação'],
-];
+const BANK_FIELDS = VALUE_FIELDS.map((field) => [field, FIELD_NAMES[field]]);
 
 export function reportBankSnapshot(store) {
   const managed = Array.isArray(store?.managementGoals) ? store.managementGoals : [];

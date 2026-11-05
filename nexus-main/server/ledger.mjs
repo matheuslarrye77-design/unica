@@ -1,18 +1,12 @@
-import { fold, formatPeriodLabel, isoWeekKey, mentionedPeriods, metricOf, monthKey, parseCustomRequest, parseReport, passesRules } from './goals.mjs';
+import { fold, formatPeriodLabel, isoWeekKey, mentionedPeriods, metricOf, monthBucketOf, monthKey, parseCustomRequest, parseReport, passesRules } from './goals.mjs';
+import { FIELD_NAMES, VALUE_FIELDS, blankValues as catalogBlank, formatFieldValue } from './indicatorCatalog.mjs';
 
-const FIELDS = ['resolvidosCount', 'resolvidos', 'transferidos', 'primeira', 'resolucao', 'satisfacao'];
-const NAMES = {
-  resolvidosCount: 'Tickets resolvidos',
-  resolvidos: 'Tickets resolvidos (%)',
-  transferidos: 'Tickets transferidos',
-  primeira: 'Primeira resposta',
-  resolucao: 'Tempo médio de resolução',
-  satisfacao: 'Satisfação',
-};
+const FIELDS = VALUE_FIELDS;
+const NAMES = FIELD_NAMES;
 const OPS = { gt: 'maior que', gte: 'pelo menos', lt: 'menor que', lte: 'no máximo', eq: 'igual a', between: 'entre' };
 const MARKS = { new: 'NOVO', updated: 'ATUALIZADO', same: 'SEM ALTERAÇÃO' };
 function blankValues() {
-  return { resolvidos: null, resolvidosCount: null, transferidos: null, primeira: null, resolucao: null, satisfacao: null };
+  return catalogBlank();
 }
 
 function usefulRows(parsed) {
@@ -55,9 +49,7 @@ function sameMarks(values) {
 }
 
 function formatValue(field, value) {
-  if (field === 'resolvidos' || field === 'satisfacao') return `${value}%`;
-  if (field === 'primeira' || field === 'resolucao') return `${value} min`;
-  return String(value);
+  return formatFieldValue(field, value) || String(value);
 }
 
 function describeRule(rule) {
@@ -228,7 +220,21 @@ export function ingestReport(store, text, people, options = {}) {
   const nextRecords = records.map((record) => touchedIds.has(record.id) ? record : { ...record, changes: sameMarks(record.values) });
   const proposal = proposalFrom(text, nextRecords, periodKey, now);
   const ranking = proposal && !proposal.unclear ? proposal.ranking : [];
-  const lines = ['Atualizei o banco de dados. O pódio não foi alterado.', '', ...touched.map(describeRecord)];
+  const updated = touched.filter((record) => Object.values(record.changes ?? {}).some((mark) => mark === 'new' || mark === 'updated')).length;
+  const lines = [`Relatório interpretado. ${updated || touched.length} registro${(updated || touched.length) === 1 ? '' : 's'} atualizado${(updated || touched.length) === 1 ? '' : 's'}. O pódio não foi alterado.`];
+  for (const record of touched) {
+    if (record.candidates?.length) {
+      lines.push(`Não consegui identificar ${record.sourceName || record.name}. Confirme o cadastro: ${record.candidates.map((item) => item.name).join(', ')}.`);
+    } else if (!record.userId) {
+      lines.push(`Não consegui identificar ${record.sourceName || record.name}. Nenhum colaborador novo foi criado.`);
+    }
+  }
+  const changed = touched.filter((record) => Object.values(record.changes ?? {}).some((mark) => mark === 'new' || mark === 'updated'));
+  if (changed.length === 1) {
+    const record = changed[0];
+    const bits = FIELDS.filter((field) => record.changes[field] === 'new' || record.changes[field] === 'updated').map((field) => `${NAMES[field]}: ${formatValue(field, record.values[field])} (${MARKS[record.changes[field]]})`);
+    if (bits.length) lines.push(bits.join('; '));
+  }
   if (proposal?.unclear) {
     lines.push('', 'Os dados foram salvos, mas não transformei o pedido de meta em regra. Diga o indicador, o número e se ele deve ser maior ou menor. O pódio não foi alterado.');
   } else if (proposal) {
@@ -298,6 +304,36 @@ export function applyGoalsReview(store, review, people, now = new Date()) {
     if (ingested.kind === 'ledger') next = { ...ingested.store, criterion: next.criterion, templates: next.templates, managementGoals: next.managementGoals };
   }
   return { store: next };
+}
+
+function monthBucket(key) {
+  return monthBucketOf(key);
+}
+
+export function clearReportBank(store, options = {}) {
+  const all = Boolean(options.all);
+  const wanted = monthBucket(options.periodKey);
+  const keepRecord = (record) => {
+    if (all) return false;
+    const bucket = monthBucket(record.periodKey);
+    return wanted ? bucket !== wanted : true;
+  };
+  const keepPeriod = (key) => {
+    if (all) return false;
+    return wanted ? monthBucket(key) !== wanted : true;
+  };
+  return {
+    ...store,
+    ledger: {
+      records: (store.ledger?.records ?? []).filter(keepRecord),
+      ranking: [],
+      applied: store.ledger?.applied ?? [],
+    },
+    centerFingerprints: all ? [] : (store.centerFingerprints ?? []),
+    overallReviews: (store.overallReviews ?? []).filter((item) => keepPeriod(item.periodKey)),
+    evaluations: (store.evaluations ?? []).filter((item) => keepPeriod(item.periodKey)),
+    podiums: (store.podiums ?? []).filter((item) => keepPeriod(item.periodKey)),
+  };
 }
 
 export function proposeFromLedger(store, text, now = new Date()) {

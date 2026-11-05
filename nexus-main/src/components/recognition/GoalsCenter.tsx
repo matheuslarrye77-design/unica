@@ -2,7 +2,7 @@ import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { authHeaders, getDemoId } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { useShell } from '@/components/Sidebar';
-import { ArrowLeftRight, BarChart3, Bot, Calendar, Check, ChevronDown, ChevronRight, ChevronUp, Clock, FileText, Info, Maximize2, Minimize2, Paperclip, Pencil, Send, Settings2, Smile, Sparkles, Star, Target, Ticket, Timer, Trophy, User, X } from 'lucide-react';
+import { ArrowLeftRight, BarChart3, Bot, Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, FileText, Info, Maximize2, Minimize2, Paperclip, Pencil, Send, Settings2, Smile, Sparkles, Star, Target, Ticket, Timer, Trash2, Trophy, User, X } from 'lucide-react';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type FC, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
@@ -22,7 +22,7 @@ type PendingRules = {
   sourceText?: string;
   comparisons?: { userId: string; name: string; sourceName: string; values: Values; indicators: { indicator: string; value: number | null; target: number; op: string; met: boolean | null }[] }[];
 };
-type Values = { resolvidos: number | null; resolvidosCount: number | null; transferidos: number | null; primeira: number | null; resolucao: number | null; satisfacao?: number | null };
+type Values = { resolvidos: number | null; resolvidosCount: number | null; transferidos: number | null; primeira: number | null; resolucao: number | null; satisfacao?: number | null; atendidas?: number | null; perdidas?: number | null; espera?: number | null; duracao?: number | null; faltas?: number | null };
 type Row = {
   sourceName: string;
   userId: string;
@@ -45,7 +45,7 @@ export type GoalImport = {
   approvedBy: string;
   approvedAt: string;
 };
-type LedgerValues = { resolvidos: number | null; resolvidosCount: number | null; transferidos: number | null; primeira: number | null; resolucao: number | null; satisfacao?: number | null };
+type LedgerValues = Values;
 type LedgerRecord = {
   id: string;
   userId: string;
@@ -158,12 +158,23 @@ const LEDGER_FIELDS = [
   ['primeira', 'Primeira resposta'],
   ['resolucao', 'Tempo médio de resolução'],
   ['satisfacao', 'Satisfação'],
+  ['atendidas', 'Ligações atendidas'],
+  ['perdidas', 'Ligações perdidas sem resgate'],
+  ['espera', 'Tempo de espera'],
+  ['duracao', 'Duração da ligação'],
+  ['faltas', 'Faltas sem atestado'],
 ] as const;
+const CALL_ONLY_FIELDS = new Set(['atendidas', 'perdidas', 'espera', 'duracao']);
+
+function fieldForPerson(field: string, funcao: string) {
+  if (CALL_ONLY_FIELDS.has(field)) return funcao === 'Ligação';
+  return true;
+}
 
 function ledgerText(field: string, value: number | null) {
   if (value === null || value === undefined) return '';
   if (field === 'resolvidos' || field === 'satisfacao') return `${value}%`;
-  if (field === 'primeira' || field === 'resolucao') return `${value} min`;
+  if (field === 'primeira' || field === 'resolucao' || field === 'espera' || field === 'duracao') return `${value} min`;
   return String(value);
 }
 
@@ -185,6 +196,11 @@ const OVERALL_OPTIONS = [
   { id: 'transferidos', weightKey: 'transferidos', label: 'Tickets transferidos' },
   { id: 'primeira', weightKey: 'primeira', label: 'Tempo de primeira resposta' },
   { id: 'resolucao', weightKey: 'resolucao', label: 'Tempo médio de resolução' },
+  { id: 'atendidas', weightKey: 'atendidas', label: 'Ligações atendidas' },
+  { id: 'perdidas', weightKey: 'perdidas', label: 'Ligações perdidas sem resgate' },
+  { id: 'espera', weightKey: 'espera', label: 'Tempo de espera' },
+  { id: 'duracao', weightKey: 'duracao', label: 'Duração da ligação' },
+  { id: 'faltas', weightKey: 'faltas', label: 'Faltas sem atestado' },
 ] as const;
 
 const RULE_NAMES: Record<string, string> = {
@@ -194,9 +210,14 @@ const RULE_NAMES: Record<string, string> = {
   resolucao: 'Tempo médio de resolução',
   transferidos: 'Tickets transferidos',
   satisfacao: 'Satisfação',
+  atendidas: 'Ligações atendidas',
+  perdidas: 'Ligações perdidas sem resgate',
+  espera: 'Tempo de espera',
+  duracao: 'Duração da ligação',
+  faltas: 'Faltas sem atestado',
 };
 const RULE_OPS: Record<string, string> = { gt: '>', gte: '>=', lt: '<', lte: '<=', eq: '=', between: 'entre' };
-const RULE_UNITS: Record<string, string> = { resolvidos: '%', satisfacao: '%', primeira: ' min', resolucao: ' min' };
+const RULE_UNITS: Record<string, string> = { resolvidos: '%', satisfacao: '%', primeira: ' min', resolucao: ' min', espera: ' min', duracao: ' min' };
 
 function ruleConference(rule: Rule & { name?: string }, periodLabel?: string) {
   const name = rule.name || RULE_NAMES[rule.indicator] || rule.indicator.replace(/^c:/, '').replace(/-/g, ' ');
@@ -301,7 +322,7 @@ export const GoalsProvider: FC<{
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: 'hello',
     from: 'bot',
-    text: 'Olá! Posso interpretar metas gerais da gestão, receber resultados individuais, comparar com as metas, mostrar uma conferência e consultar o histórico. Só registro no Banco dos relatórios depois da sua confirmação. O pódio é independente: só muda se você pedir isso explicitamente e confirmar.',
+    text: 'Envie metas ou resultados no chat. Os dados identificados são gravados no Banco dos relatórios. O pódio só muda com pedido explícito e confirmação.',
   }]);
   const lastReport = useRef('');
   const saving = useRef(false);
@@ -332,13 +353,13 @@ export const GoalsProvider: FC<{
   function startCustom() {
     setPhase('custom');
     setPendingPodium(null);
-    say('bot', 'Critérios personalizados: descreva no chat um indicador inédito, com meta, condição e período. Se o texto falar só de tickets resolvidos, transferidos, primeira resposta ou TMA, eu uso o desempenho geral.');
+    say('bot', 'Critérios personalizados: descreva um indicador inédito, a meta, a condição e o período.');
   }
 
   function startOverall() {
     setPhase('overall');
     setPendingPodium(null);
-    say('bot', 'Desempenho geral: descreva no chat as metas e os resultados. Eu identifico pelo texto quais indicadores entram (tickets resolvidos, transferidos, primeira resposta e TMA), distribuo os pesos igualmente e comparo com o melhor da categoria. Quem não cumpre a condição zera só aquela parcela. O pódio não muda até você pedir e confirmar.');
+    say('bot', 'Desempenho geral: envie as metas e os resultados. A pontuação usa os indicadores aplicáveis à categoria do colaborador, com pesos iguais. O pódio não muda até você pedir e confirmar.');
   }
 
   function cancelProposal() {
@@ -390,10 +411,21 @@ export const GoalsProvider: FC<{
       });
       if (data.kind === 'unavailable' || data.kind === 'quota' || data.kind === 'auth' || data.kind === 'permission' || data.kind === 'model' || data.kind === 'invalid' || data.kind === 'clarify' || data.kind === 'storage') setDraft(source);
       else setDraft('');
-      if (data.kind === 'conference' && data.conference) {
+      if (data.kind === 'saved' || data.kind === 'ledger' || data.kind === 'cleared') {
+        onChange({ ...data, canManage: goals.canManage, people: data.people ?? goals.people });
+        window.dispatchEvent(new Event('unica-goals-saved'));
+        setConference(data.conference?.overall ? data.conference : null);
+        setPendingRules(null);
+        say('bot', String(data.reply ?? 'Dados registrados no Banco dos relatórios.'));
+      } else if (data.kind === 'conference' && data.conference) {
+        if (data.persist) {
+          onChange({ ...data, canManage: goals.canManage, people: data.people ?? goals.people });
+          window.dispatchEvent(new Event('unica-goals-saved'));
+        }
         setConference(data.conference);
         setPendingRules(null);
         setPendingPodium(null);
+        say('bot', String(data.reply ?? 'Dados registrados no Banco dos relatórios.'));
       } else if (data.kind === 'podium') {
         onChange({ ...data, canManage: goals.canManage, people: data.people ?? goals.people });
         window.dispatchEvent(new Event('unica-goals-saved'));
@@ -468,7 +500,7 @@ export const GoalsProvider: FC<{
         setConference(null);
         setPendingRules(null);
         setPhase('idle');
-        say('bot', String(data.reply ?? 'Gravei as metas e os resultados no Banco dos relatórios. O pódio não foi alterado.'));
+        say('bot', String(data.reply ?? 'Dados registrados no Banco dos relatórios.'));
       } catch {
         say('bot', 'Não consegui salvar. O pódio continua como estava.');
       } finally {
@@ -557,14 +589,13 @@ export const GoalsCenter: FC = () => {
     {
       id: 'overall' as const,
       title: 'Desempenho Geral',
-      text: 'Avalia a equipe com os indicadores padrão da operação: tickets resolvidos, tickets transferidos, tempo de primeira resposta e TMA. Você descreve no chat quais entram, as metas e os resultados; a IA identifica pelo texto, reparte os pesos igualmente e calcula o percentual de desempenho.',
+      text: 'Avalie os resultados da equipe com base nos indicadores operacionais definidos pela gestão. Selecione os indicadores aplicáveis à categoria de atendimento e ao período da avaliação. A pontuação é calculada proporcionalmente, considerando as metas estabelecidas e o desempenho dos colaboradores.',
       icon: Star,
       points: [
-        'Escreva no chat o recorte: um, dois, três ou os quatro indicadores',
-        'A IA reconhece o pedido pelo texto; não é preciso marcar caixas',
-        'A pontuação é proporcional ao melhor resultado da mesma categoria',
-        'Quem não cumpre a condição zera só aquela parcela, não a avaliação inteira',
-        'O pódio mostra o percentual total; o detalhe de cada indicador fica no tooltip',
+        'Indicadores aplicáveis à categoria do colaborador (Ligação, Chat ou E-mail)',
+        'Pesos iguais entre os indicadores selecionados e aplicáveis',
+        'Quem não atinge a condição zera somente aquela parcela',
+        'O pódio exibe o percentual total, separado por categoria e período',
       ],
     },
     {
@@ -595,7 +626,7 @@ export const GoalsCenter: FC = () => {
         <div className="relative flex items-start gap-3">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/70 text-[#8E35B8]"><Target className="h-6 w-6" /></span>
           <div>
-            <h2 className="flex items-center gap-2 text-[20px] font-semibold text-[#4A1C73]">Central Inteligente de Metas <Hint text="Dois modos: desempenho geral e critérios personalizados. Metas e pódio são fluxos separados." /></h2>
+            <h2 className="flex items-center gap-2 text-[20px] font-semibold text-[#4A1C73]">Central Inteligente de Metas</h2>
             <p className="mt-0.5 text-[13px] text-[#8A5AA0]">Interprete metas e resultados nos dois modos. O pódio só muda com pedido explícito e confirmação.</p>
           </div>
         </div>
@@ -638,9 +669,6 @@ export const GoalsCenter: FC = () => {
             );
           })}
         </div>
-        <p className="mt-3 flex items-start gap-2 rounded-2xl bg-[#F7F0FB] px-3 py-2 text-[12.5px] text-[#6A228C]">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" /> Depois do critério, envie os relatórios no assistente à direita.
-        </p>
       </section>
 
       {preview ? (
@@ -736,7 +764,7 @@ function monthBucket(periodKey: string) {
 function monthTitle(bucket: string) {
   const [year, month] = bucket.split('-');
   const name = MONTH_NAMES[Number(month) - 1];
-  if (!name || !year) return 'Período a confirmar';
+  if (!name || !year) return 'Selecione o mês';
   return `${name.charAt(0).toUpperCase()}${name.slice(1)}/${year}`;
 }
 
@@ -767,14 +795,14 @@ function goalMet(value: number | null | undefined, rule?: Rule, importGoal?: { t
 }
 
 function StatusText({ met }: { met: boolean | null }) {
-  if (met === true) return <span className="inline-flex items-center gap-2 text-[15px] font-medium text-[#2F9E5F]"><span className="h-2.5 w-2.5 rounded-full bg-[#2F9E5F]" />Atingiu a meta</span>;
-  if (met === false) return <span className="inline-flex items-center gap-2 text-[15px] font-medium text-[#C2410C]"><span className="h-2.5 w-2.5 rounded-full bg-[#E11D48]" />Não atingiu a meta</span>;
-  return <span className="inline-flex items-center gap-2 text-[15px] text-[#8A7C98]"><span className="h-2.5 w-2.5 rounded-full bg-[#C4B5C8]" />Sem meta cadastrada</span>;
+  if (met === true) return <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#2F9E5F]"><span className="h-2 w-2 rounded-full bg-[#2F9E5F]" />Atingiu a meta</span>;
+  if (met === false) return <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#C2410C]"><span className="h-2 w-2 rounded-full bg-[#E11D48]" />Não atingiu a meta</span>;
+  return <span className="inline-flex items-center gap-1.5 text-[13px] text-[#8A7C98]"><span className="h-2 w-2 rounded-full bg-[#C4B5C8]" />Sem meta cadastrada</span>;
 }
 
 function indicatorTarget(field: string, target: number | null | undefined) {
   if (target == null) return '—';
-  if (field === 'primeira' || field === 'resolucao') return `${target} min`;
+  if (field === 'primeira' || field === 'resolucao' || field === 'espera' || field === 'duracao') return `${target} min`;
   if (field === 'resolvidos' || field === 'satisfacao') return `${target}%`;
   return String(target);
 }
@@ -790,9 +818,9 @@ function IndicatorRows({ rows }: { rows: { field: string; name: string; value: n
             index > 0 && 'border-t border-[#F4ECF8]',
           )}
         >
-          <p className="text-[16px] font-semibold text-[#1B1630]">{item.name}</p>
-          <p className="text-[15px] text-[#1B1630]"><span className="text-[#8A7C98]">Resultado </span><span className="font-medium">{ledgerText(item.field, item.value)}</span></p>
-          <p className="text-[15px] text-[#1B1630]"><span className="text-[#8A7C98]">Meta </span><span className="font-medium">{indicatorTarget(item.field, item.target)}</span></p>
+          <p className="text-[13.5px] font-semibold text-[#241B33]">{item.name}</p>
+          <p className="text-[13px] text-[#241B33]"><span className="text-[#8A7C98]">Resultado </span><span className="font-medium">{ledgerText(item.field, item.value)}</span></p>
+          <p className="text-[13px] text-[#241B33]"><span className="text-[#8A7C98]">Meta </span><span className="font-medium">{indicatorTarget(item.field, item.target)}</span></p>
           <StatusText met={item.met} />
         </li>
       ))}
@@ -803,15 +831,17 @@ function IndicatorRows({ rows }: { rows: { field: string; name: string; value: n
 function goalIcon(indicator: string) {
   if (/transfer/.test(indicator)) return ArrowLeftRight;
   if (/primeira/.test(indicator)) return Timer;
-  if (/resolucao/.test(indicator)) return Clock;
+  if (/espera/.test(indicator)) return Timer;
+  if (/resolucao|duracao/.test(indicator)) return Clock;
   if (/satisfa/.test(indicator)) return Smile;
-  if (/resolvid/.test(indicator)) return Ticket;
+  if (/faltas/.test(indicator)) return User;
+  if (/resolvid|atendid|perdid/.test(indicator)) return Ticket;
   return BarChart3;
 }
 
 function goalValueLabel(indicator: string, value: number | string) {
   const text = String(value);
-  if (/primeira|resolucao/.test(indicator) && !/min/i.test(text)) return `${text} min`;
+  if (/primeira|resolucao|espera|duracao/.test(indicator) && !/min/i.test(text)) return `${text} min`;
   if (/satisfa/.test(indicator) && !text.includes('%')) return `${text}%`;
   return text;
 }
@@ -824,20 +854,14 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
     ...records.map((record) => monthBucket(record.periodKey)),
     ...goals.templates.map((template) => monthBucket(template.periodKey || '')),
   ].filter(Boolean))].sort().reverse();
-  const openKeys = records.some((record) => !record.periodKey) ? [...buckets, ''] : buckets;
-  const [selected, setSelected] = useState(openKeys[0] ?? '');
+  const [selected, setSelected] = useState(buckets[0] ?? '');
   const [openId, setOpenId] = useState('');
   const [openGoal, setOpenGoal] = useState('');
+  const [clearMode, setClearMode] = useState<'' | 'period' | 'all'>('');
   const { leftCollapsed } = useShell();
   const bankPeriod = bankPeriods.find((item) => item.key === selected);
-  const selectedYear = selected.slice(0, 4);
-  const selectedMonth = selected.slice(5, 7);
-  const years = [...new Set(openKeys.filter(Boolean).map((key) => key.slice(0, 4)))].sort().reverse();
-  const monthsForYear = openKeys.filter((key) => key.startsWith(`${selectedYear}-`)).map((key) => key.slice(5, 7));
-  const monthChoices = MONTH_NAMES.map((name, index) => {
-    const value = String(index + 1).padStart(2, '0');
-    return { value, label: `${name.charAt(0).toUpperCase()}${name.slice(1)}`, has: monthsForYear.includes(value) };
-  }).filter((item) => item.has || item.value === selectedMonth);
+  const periodIndex = buckets.findIndex((key) => key === selected);
+  const periodLabel = bankPeriod?.label || (selected ? monthTitle(selected) : '');
 
   const periodRecords = records.filter((record) => monthBucket(record.periodKey) === selected);
   const shownTemplates = goals.templates.filter((template) => {
@@ -896,7 +920,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
         name: RULE_NAMES[rule.indicator] ?? rule.indicator,
         value: goalValueLabel(rule.indicator, ruleTarget(rule)),
         direction: ruleDirection(rule.op),
-        period: template.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar'),
+        period: template.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : ''),
       })))),
     ...importGoals.flatMap((item) => item.goals.flatMap((entry) => LEDGER_FIELDS.map(([field, label]) => {
       const goal = (entry.goal as Record<string, { target?: number | null; direction?: string } | undefined>)[field];
@@ -924,47 +948,47 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {openKeys.includes('') ? (
-              <button type="button" onClick={() => setSelected('')} className={cn('h-10 rounded-xl border px-3 text-[13px]', selected === '' ? 'border-[#8E35B8] bg-[#F3E4FA] text-[#6A228C]' : 'border-[#E7DFF0] bg-white text-[#5C5168]')}>Período a confirmar</button>
+            {buckets.length ? (
+              <div className="inline-flex items-center gap-1 rounded-full border border-[#E7DFF0] bg-white px-1.5 py-1 text-[12.5px] font-medium text-[#5C5168]">
+                <button type="button" aria-label="Período anterior" disabled={periodIndex <= 0} onClick={() => setSelected(buckets[periodIndex - 1])} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button>
+                <span className="inline-flex items-center gap-1.5 px-1"><Calendar className="h-3.5 w-3.5 text-[#8E35B8]" /> {periodLabel}</span>
+                <button type="button" aria-label="Período seguinte" disabled={periodIndex < 0 || periodIndex >= buckets.length - 1} onClick={() => setSelected(buckets[periodIndex + 1])} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button>
+              </div>
             ) : null}
-            <label className="relative inline-flex h-10 items-center gap-2 rounded-xl border border-[#E7DFF0] bg-white pl-3 pr-8 text-[13px] text-[#5C5168]">
-              <Calendar className="h-4 w-4 shrink-0 text-[#8E35B8]" />
-              <span className="sr-only">Mês</span>
-              <select
-                aria-label="Mês"
-                value={selectedMonth}
-                onChange={(event) => setSelected(`${selectedYear}-${event.target.value}`)}
-                className="appearance-none bg-transparent outline-none"
-              >
-                {monthChoices.map((item) => (
-                  <option key={item.value} value={item.value}>{item.label}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 h-4 w-4 text-[#C4B5C8]" />
-            </label>
-            <label className="relative inline-flex h-10 items-center gap-2 rounded-xl border border-[#E7DFF0] bg-white pl-3 pr-8 text-[13px] text-[#5C5168]">
-              <span className="sr-only">Ano</span>
-              <select
-                aria-label="Ano"
-                value={selectedYear}
-                onChange={(event) => {
-                  const year = event.target.value;
-                  const months = openKeys.filter((key) => key.startsWith(`${year}-`));
-                  setSelected(months.find((key) => key.slice(5, 7) === selectedMonth) || months[0] || selected);
-                }}
-                className="appearance-none bg-transparent outline-none"
-              >
-                {years.map((year) => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 h-4 w-4 text-[#C4B5C8]" />
-            </label>
+            <button type="button" onClick={() => setClearMode((value) => value ? '' : 'period')} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#E7DFF0] px-3 text-[12.5px] font-medium text-[#8A7C98] hover:bg-[#F3E4FA] hover:text-[#6A228C]">
+              <Trash2 className="h-3.5 w-3.5" /> Limpar banco de relatórios
+            </button>
             <button type="button" onClick={onClose} aria-label="Fechar banco dos relatórios" className="grid h-10 w-10 place-items-center rounded-xl border border-[#E7DFF0] text-[#6A228C] hover:bg-[#F3E4FA]">
               <X className="h-4 w-4" />
             </button>
           </div>
         </header>
+        {clearMode ? (
+          <section className="rounded-[22px] border border-[#F3E0C8] bg-white px-5 py-4 text-[13px] text-[#5C5168]">
+            <p className="font-semibold text-[#241B33]">Limpar banco de relatórios</p>
+            <p className="mt-1">Esta ação apaga resultados gravados. Cadastros da Equipe e a estrutura das metas são preservados.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" onClick={() => setClearMode('period')} className={cn('h-9 rounded-full border px-3', clearMode === 'period' ? 'border-[#8E35B8] bg-[#F3E4FA] text-[#6A228C]' : 'border-[#E7DFF0]')}>Limpar {periodLabel || 'este período'}</button>
+              <button type="button" onClick={() => setClearMode('all')} className={cn('h-9 rounded-full border px-3', clearMode === 'all' ? 'border-[#8E35B8] bg-[#F3E4FA] text-[#6A228C]' : 'border-[#E7DFF0]')}>Limpar banco completo</button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  void send('/api/goals/center', 'POST', clearMode === 'all' ? { action: 'clear', all: true } : { action: 'clear', periodKey: selected }).then((data) => {
+                    window.dispatchEvent(new Event('unica-goals-saved'));
+                    setClearMode('');
+                    if (data?.kind === 'cleared' && clearMode === 'all') setSelected('');
+                  });
+                }}
+                className="h-9 rounded-full bg-[#8E35B8] px-4 text-[12.5px] font-semibold text-white"
+              >
+                Confirmar {clearMode === 'all' ? 'limpeza completa' : `limpeza de ${periodLabel}`}
+              </button>
+              <button type="button" onClick={() => setClearMode('')} className="h-9 rounded-full border border-[#E7DFF0] px-4">Cancelar</button>
+            </div>
+          </section>
+        ) : null}
 
         <section className="rounded-[22px] border border-[#EEE6F4] bg-white px-5 py-4 shadow-[0_8px_24px_rgba(80,40,120,0.04)]">
           <div className="flex items-center gap-2 text-[13px] font-semibold text-[#241B33]">
@@ -1013,28 +1037,29 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
         </section>
 
         <section className="pb-8">
-          <div className="mb-6 flex items-center gap-4">
-            <span className="grid h-[72px] w-[72px] shrink-0 place-items-center rounded-[22px] bg-[#F3E4FA] text-[#8E35B8]"><BarChart3 className="h-8 w-8" strokeWidth={1.75} /></span>
-            <h4 className="text-[30px] font-semibold tracking-tight text-[#1B1630]">Resultados individuais</h4>
+          <div className="mb-3 flex items-center gap-3">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]"><BarChart3 className="h-6 w-6" /></span>
+            <h4 className="text-[16px] font-semibold text-[#241B33]">Resultados individuais</h4>
           </div>
           {peopleCards.length === 0 && pending.length === 0 ? <p className="rounded-[26px] bg-white px-6 py-6 text-[15px] text-[#8A7C98] shadow-[0_8px_24px_rgba(80,40,120,0.04)]">Nenhum resultado armazenado neste período.</p> : null}
           <div className="grid gap-5">
           {peopleCards.map(({ person, record, indicators, periodLabel, history }) => {
             const open = openId === (record?.id || person.id);
             const shownHistory = history?.length ? history : record?.history ?? [];
-            const rows = (indicators ?? LEDGER_FIELDS.map(([field, label]) => {
+            const rows = ((indicators ?? LEDGER_FIELDS.map(([field, label]) => {
               const value = record?.values[field];
               if (value === null || value === undefined) return null;
+              if (!fieldForPerson(field, person.funcao)) return null;
               const meta = metaFor(field);
               return { field, name: label, value, met: goalMet(value, meta.rule, meta.importGoal), target: meta.rule ? meta.rule.value : meta.importGoal?.target, op: meta.rule?.op ?? '' };
-            }).filter(Boolean) as BankIndicator[]);
+            }).filter(Boolean) as BankIndicator[])).filter((item) => fieldForPerson(item.field, person.funcao));
             return (
               <article key={person.id} className="overflow-hidden rounded-[26px] bg-white shadow-[0_8px_28px_rgba(80,40,120,0.045)]">
                 <button type="button" onClick={() => setOpenId(open ? '' : (record?.id || person.id))} className="flex min-h-[84px] w-full items-center gap-4 px-5 py-3 text-left sm:px-6">
                   <span className="grid h-[68px] w-[68px] shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8]"><User className="h-8 w-8" strokeWidth={1.75} /></span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[20px] font-semibold leading-tight text-[#1B1630]">{person.name}</span>
-                    <span className="mt-1 block text-[16px] text-[#8A7C98]">{person.funcao || person.role} · {periodLabel || record?.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : 'Período a confirmar')}</span>
+                    <span className="block text-[15px] font-semibold leading-tight text-[#241B33]">{person.name}</span>
+                    <span className="mt-0.5 block text-[13px] text-[#8A7C98]">{person.funcao || person.role} · {periodLabel || record?.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : '')}</span>
                   </span>
                   {open ? <ChevronUp className="h-5 w-5 shrink-0 text-[#C4B5C8] transition-transform duration-300" /> : <ChevronDown className="h-5 w-5 shrink-0 text-[#C4B5C8] transition-transform duration-300" />}
                 </button>
@@ -1075,8 +1100,8 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
                 <button type="button" onClick={() => setOpenId(open ? '' : record.id)} className="flex min-h-[84px] w-full items-center gap-4 px-5 py-3 text-left sm:px-6">
                   <span className="grid h-[68px] w-[68px] shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8]"><User className="h-8 w-8" strokeWidth={1.75} /></span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[20px] font-semibold leading-tight text-[#1B1630]">{record.sourceName || record.name}</span>
-                    <span className="mt-1 inline-flex items-center gap-1.5 text-[16px] font-medium text-[#B45309]"><span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B]" />Aguardando identificação</span>
+                    <span className="block text-[15px] font-semibold leading-tight text-[#241B33]">{record.sourceName || record.name}</span>
+                    <span className="mt-0.5 inline-flex items-center gap-1.5 text-[13px] font-medium text-[#B45309]"><span className="h-2 w-2 rounded-full bg-[#F59E0B]" />Aguardando identificação</span>
                   </span>
                   {open ? <ChevronUp className="h-5 w-5 shrink-0 text-[#C4B5C8] transition-transform duration-300" /> : <ChevronDown className="h-5 w-5 shrink-0 text-[#C4B5C8] transition-transform duration-300" />}
                 </button>
@@ -1122,10 +1147,10 @@ export const GoalsAssistant: FC = () => {
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#F3EAF8] px-3 py-3 pr-10">
         <h3 className="flex min-w-0 items-center gap-2 text-[14px] font-semibold text-[#241B33]">
           <Sparkles className="h-4 w-4 shrink-0 text-[#8E35B8]" /> <span className="truncate">Fale com o assistente de metas</span>
-          <Hint text="A Central interpreta metas e resultados, mostra uma conferência e só grava depois da confirmação. O pódio só muda com pedido explícito e confirmação." />
+          <Hint text="O pódio só muda com pedido explícito e confirmação." />
         </h3>
         <div className="flex shrink-0 items-center gap-0.5">
-          <button type="button" aria-label="Abrir banco de dados dos relatórios" title="Banco de dados" onClick={() => setBankOpen(true)} className="grid h-8 w-8 place-items-center rounded-lg text-[#8E35B8] hover:bg-[#F3E4FA]">
+          <button type="button" aria-label="Abrir banco de dados dos relatórios" title="Banco de dados" onClick={() => { setWide(true); setBankOpen(true); }} className="grid h-8 w-8 place-items-center rounded-lg text-[#8E35B8] hover:bg-[#F3E4FA]">
             <FileText className="h-4 w-4" />
           </button>
           <button type="button" aria-label={wide ? 'Reduzir painel' : 'Ampliar chat e banco de dados'} title={wide ? 'Reduzir' : 'Ampliar chat e banco'} onClick={() => setWide((value) => !value)} className="grid h-8 w-8 place-items-center rounded-lg text-[#8E35B8] hover:bg-[#F3E4FA]">
@@ -1165,7 +1190,7 @@ export const GoalsAssistant: FC = () => {
         ) : null}
         {conference ? (
           <div className="grid gap-2 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
-            <p className="text-[12px] font-semibold text-[#4A1C73]">Conferência. Nada foi salvo e o pódio não foi alterado.</p>
+            <p className="text-[12px] font-semibold text-[#4A1C73]">Resumo do que foi registrado. O pódio não foi alterado.</p>
             {conference.period?.label ? <p className="text-[12px] text-[#5C5168]">Período: {conference.period.label}</p> : null}
             {conference.goals.length ? (
               <>
@@ -1222,7 +1247,7 @@ export const GoalsAssistant: FC = () => {
             <p className="text-[12px] font-semibold text-[#4A1C73]">Conferência. Nada foi salvo e o pódio não foi alterado.</p>
             {pendingRules.rules.length ? (
               <>
-                <p className="text-[12px] font-medium text-[#4A1C73]">Metas da gestão — {pendingRules.periodLabel || 'período a confirmar'}</p>
+                <p className="text-[12px] font-medium text-[#4A1C73]">Metas da gestão — {pendingRules.periodLabel || 'período indefinido'}</p>
                 <p className="text-[11px] text-[#8A7C98]">Indicador | Valor | Regra | Período</p>
                 <ul className="grid gap-1 text-[12.5px] leading-5 break-words text-[#5C5168]">
                   {pendingRules.rules.map((rule, index) => (

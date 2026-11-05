@@ -2,7 +2,7 @@ import { isLeader } from './auth/permissions.mjs';
 import { commitTemplate, interpretCriteria, normalizeProposal } from './criteria.mjs';
 import { attachBankPodiums, interpretGoalsCenter, saveGoalsCenter } from './goalsCenter.mjs';
 import { interpretGoalsTurn } from './goalsTurn.mjs';
-import { applyGoalsReview, applyLedgerRanking, ingestReport, proposeFromLedger } from './ledger.mjs';
+import { applyGoalsReview, applyLedgerRanking, clearReportBank, ingestReport, proposeFromLedger } from './ledger.mjs';
 import { applyCriterion, buildApproval, emptyStore, fold, goalState, INDICATORS, looksLikeReport, overallScore, parseReport, publicStore, readCriterion, relinkLedger, runAssistant } from './goals.mjs';
 import { STORAGE_REPLY, createGoalsStore } from './goalsStore.mjs';
 
@@ -199,6 +199,24 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
       return true;
     }
     if (req.method === 'POST' && url === '/api/goals/center') {
+      if (body.action === 'clear') {
+        const all = Boolean(body.all);
+        const periodKey = String(body.periodKey ?? '');
+        if (!all && !periodKey) {
+          send(res, 200, { kind: 'clarify', reply: 'Selecione o mês e o ano para limpar, ou confirme a limpeza completa.' });
+          return true;
+        }
+        const result = await commit((current) => ({
+          store: attachBankPodiums(clearReportBank(current, { all, periodKey }), new Date(), people),
+        }));
+        if (!result) return true;
+        send(res, 200, {
+          ...publicView(result.store, user, people),
+          kind: 'cleared',
+          reply: all ? 'Banco dos relatórios limpo.' : 'Período removido do Banco dos relatórios.',
+        });
+        return true;
+      }
       if (body.conference && (body.action === 'confirm' || /^(confirmar|aprovar)( metas| resultados| conferencia)?$/.test(fold(String(body.text ?? 'confirmar'))))) {
         const result = await commit((current) => {
           const saved = saveGoalsCenter(current, body.conference, people, new Date());
@@ -215,8 +233,8 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
           kind: 'saved',
           duplicate: Boolean(result.duplicate),
           reply: result.duplicate
-            ? 'Esses dados já estavam no Banco dos relatórios. O pódio não foi alterado.'
-            : 'Gravei as metas e os resultados no Banco dos relatórios. O pódio não foi alterado.',
+            ? 'Dados já estavam no Banco dos relatórios.'
+            : 'Dados registrados no Banco dos relatórios.',
         });
         return true;
       }
@@ -235,6 +253,31 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
         env: options.env ?? process.env,
         generate: options.generate,
       });
+      if (interpreted.kind === 'conference' && interpreted.conference) {
+        const result = await commit((current) => {
+          const saved = saveGoalsCenter(current, interpreted.conference, people, new Date());
+          if (saved.error === 'incomplete') return { skip: true, error: 'incomplete', conference: interpreted.conference };
+          return { store: saved.store, duplicate: saved.duplicate, conference: interpreted.conference };
+        });
+        if (!result) return true;
+        if (result.error === 'incomplete') {
+          send(res, 200, { kind: 'clarify', conference: interpreted.conference, reply: 'A conferência está incompleta. Nada foi gravado.' });
+          return true;
+        }
+        const label = interpreted.conference.period?.label || '';
+        const count = (interpreted.conference.people ?? []).filter((row) => row.userId).length;
+        send(res, 200, {
+          ...publicView(result.store, user, people),
+          kind: 'conference',
+          persist: true,
+          duplicate: Boolean(result.duplicate),
+          conference: interpreted.conference,
+          reply: result.duplicate
+            ? `Dados já estavam no Banco dos relatórios${label ? ` em ${label}` : ''}.`
+            : `Relatório interpretado. ${count} colaborador${count === 1 ? '' : 'es'} identificado${count === 1 ? '' : 's'}${label ? ` em ${label}` : ''}. Dados registrados no Banco dos relatórios.`,
+        });
+        return true;
+      }
       if (interpreted.kind === 'podium' && interpreted.criterion) {
         const result = await commit((current) => ({
           store: applyLedgerRanking(applyCriterion(current, interpreted.criterion, String(body.periodKey ?? ''))),
@@ -261,7 +304,7 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
       if (body.review && /^(confirmar|aprovar)( metas| resultados| conferencia)?$/.test(fold(text))) {
         const result = await commit((current) => ({ store: attachBankPodiums(applyGoalsReview(current, body.review, people, new Date()).store, new Date(), people) }));
         if (!result) return true;
-        send(res, 200, { ...publicView(result.store, user, people), kind: 'ledger', reply: 'Gravei as metas e os resultados no Banco dos relatórios. O pódio não foi alterado.' });
+        send(res, 200, { ...publicView(result.store, user, people), kind: 'ledger', reply: 'Dados registrados no Banco dos relatórios.' });
         return true;
       }
       const understood = await interpretGoalsTurn(text, {
@@ -270,7 +313,19 @@ export async function handleGoals(req, res, user, dir, colleagues, teamRoster, s
         env: options.env ?? process.env,
         generate: options.generate,
       });
-      if (understood.kind === 'review' || understood.kind === 'proposal' || understood.kind === 'clarify' || understood.kind === 'quota' || understood.kind === 'auth' || understood.kind === 'permission' || understood.kind === 'model' || understood.kind === 'invalid' || understood.kind === 'unavailable') {
+      if (understood.kind === 'review') {
+        const result = await commit((current) => ({ store: attachBankPodiums(applyGoalsReview(current, understood, people, new Date()).store, new Date(), people) }));
+        if (!result) return true;
+        send(res, 200, {
+          ...publicView(result.store, user, people),
+          ...understood,
+          kind: 'ledger',
+          persist: true,
+          reply: 'Relatório interpretado. Dados registrados no Banco dos relatórios.',
+        });
+        return true;
+      }
+      if (understood.kind === 'proposal' || understood.kind === 'clarify' || understood.kind === 'quota' || understood.kind === 'auth' || understood.kind === 'permission' || understood.kind === 'model' || understood.kind === 'invalid' || understood.kind === 'unavailable') {
         send(res, 200, {
           ...understood,
           combine: understood.combine ?? 'all',

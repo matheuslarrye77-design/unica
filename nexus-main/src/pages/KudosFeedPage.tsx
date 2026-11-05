@@ -144,21 +144,6 @@ export const KudosFeedPage: FC = () => {
         </div>
         <div className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
           <div className="grid gap-4 pb-4">
-            {canManageGoals ? (
-              <div className="flex gap-5 border-b border-[#EDE6F3]">
-                <button type="button" onClick={() => showTab('mural')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'mural' ? 'border-[#8E35B8] text-[#6A228C]' : 'border-transparent text-[#8A7C98]')}>
-                  <Trophy className="h-3.5 w-3.5" /> Mural de reconhecimento
-                </button>
-                <button type="button" onClick={() => showTab('metas')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'metas' ? 'border-[#8E35B8] text-[#6A228C]' : 'border-transparent text-[#8A7C98]')}>
-                  <Target className="h-3.5 w-3.5" /> Central de Metas
-                </button>
-              </div>
-            ) : null}
-
-            {tab === 'metas' && goals ? <GoalsCenter /> : null}
-
-            {tab === 'mural' ? (
-            <>
             <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#F8EAFB] via-[#F3DDF8] to-[#E7C4F2] px-5 py-4">
               <div className="pointer-events-none absolute -top-8 right-24 h-24 w-24 rounded-full bg-[#D9A6EE]/70" />
               <div className="pointer-events-none absolute right-6 -bottom-10 h-28 w-28 rounded-full bg-[#C084E0]/45" />
@@ -177,6 +162,21 @@ export const KudosFeedPage: FC = () => {
               </div>
             </section>
 
+            {canManageGoals ? (
+              <div className="flex gap-5 border-b border-[#EDE6F3]">
+                <button type="button" onClick={() => showTab('mural')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'mural' ? 'border-[#8E35B8] text-[#6A228C]' : 'border-transparent text-[#8A7C98]')}>
+                  <Trophy className="h-3.5 w-3.5" /> Mural de reconhecimento
+                </button>
+                <button type="button" onClick={() => showTab('metas')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'metas' ? 'border-[#8E35B8] text-[#6A228C]' : 'border-transparent text-[#8A7C98]')}>
+                  <Target className="h-3.5 w-3.5" /> Central de Metas
+                </button>
+              </div>
+            ) : null}
+
+            {tab === 'metas' && goals ? <GoalsCenter /> : null}
+
+            {tab === 'mural' ? (
+            <>
             <PodiumStage podiums={goals?.podiums ?? []} periodKey={podiumKey} onPeriod={setPodiumMonth} />
 
             <section className="rounded-[22px] border border-[#F0E7F6] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">

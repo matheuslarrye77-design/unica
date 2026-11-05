@@ -1,28 +1,17 @@
 import { createHash } from 'node:crypto';
 import { classifyGeminiError, completeJson } from './gemini.mjs';
 import { blankPersonSpans, fold, formatPeriodLabel, matchPeople, parseCustomRequest, parsePeopleFromText, readGoalPeriod, subsetorOf, weekRange } from './goals.mjs';
+import { FIELD_NAMES, FIELD_UNITS, OVERALL_FIELD_DEFS, VALUE_FIELDS, fieldApplies } from './indicatorCatalog.mjs';
 import { applyGoalsReview } from './ledger.mjs';
 import { citedNumbers } from './goalsTurn.mjs';
 
-const KNOWN = ['resolvidosCount', 'satisfacao', 'primeira', 'resolucao', 'resolvidos', 'transferidos'];
-const CORE = ['resolvidosCount', 'transferidos', 'primeira', 'resolucao'];
+const KNOWN = VALUE_FIELDS;
+const CORE = OVERALL_FIELD_DEFS.map((item) => item.id);
 const OPS = ['gt', 'gte', 'lt', 'lte', 'eq', 'between'];
-const NAMES = {
-  resolvidosCount: 'Tickets resolvidos',
-  resolvidos: 'Tickets resolvidos (%)',
-  satisfacao: 'Satisfação',
-  primeira: 'Tempo de primeira resposta',
-  resolucao: 'Tempo médio de resolução',
-  transferidos: 'Tickets transferidos',
-};
-const UNITS = { resolvidos: '%', satisfacao: '%', primeira: ' min', resolucao: ' min' };
-const OVERALL_FIELDS = [
-  { id: 'resolvidosCount', weightKey: 'resolvidos', higher: true, unit: '', ask: 'a quantidade de tickets resolvidos da meta' },
-  { id: 'transferidos', weightKey: 'transferidos', higher: false, unit: '', ask: 'a quantidade de tickets transferidos da meta' },
-  { id: 'primeira', weightKey: 'primeira', higher: false, unit: ' min', ask: 'os minutos da meta de Primeira resposta' },
-  { id: 'resolucao', weightKey: 'resolucao', higher: false, unit: ' min', ask: 'os minutos da meta de Tempo médio de resolução (TMA)' },
-];
-const CONFERENCE_REPLY = 'Conferência pronta. Confira os dados organizados abaixo. Nada foi salvo e o pódio não foi alterado.';
+const NAMES = FIELD_NAMES;
+const UNITS = FIELD_UNITS;
+const OVERALL_FIELDS = OVERALL_FIELD_DEFS;
+const CONFERENCE_REPLY = 'Relatório interpretado. Confira os dados abaixo.';
 
 export const GOALS_CENTER_SCHEMA = {
   type: 'object',
@@ -141,6 +130,11 @@ export function normalizeIndicator(indicator, name = '') {
   if ((/ticket/.test(raw) || /resolvido/.test(raw)) && /%|percent/.test(raw)) return 'resolvidos';
   if (/ticket/.test(raw) || (/resolvido/.test(raw) && !/qualidade/.test(raw))) return 'resolvidosCount';
   if (/qualidade/.test(raw)) return 'c:indice-de-qualidade-no-atendimento';
+  if (/faltas?/.test(raw)) return 'faltas';
+  if (/perdid/.test(raw)) return 'perdidas';
+  if (/atendid/.test(raw)) return 'atendidas';
+  if (/espera/.test(raw)) return 'espera';
+  if (/duracao/.test(raw)) return 'duracao';
   const slug = slugOf(name || indicator);
   return slug ? `c:${slug}` : '';
 }
@@ -170,6 +164,11 @@ function citedKnown(source) {
     satisfacao: /satisfa/.test(folded) && !named,
     primeira: /primeira(?:\s+resposta)?|\btpr\b/.test(folded),
     resolucao: /\btma\b|tempo medio|ate resolu/.test(folded),
+    atendidas: /ligac\w*\s+atendid|\batendidas\b/.test(folded),
+    perdidas: /perdidas?\s+sem\s+resgate|ligac\w*\s+perdid/.test(folded),
+    espera: /tempo\s+de\s+espera|\bespera\b/.test(folded),
+    duracao: /duracao(?:\s+da\s+ligacao)?/.test(folded),
+    faltas: /faltas?\s+sem\s+atestado|\bfaltas?\b/.test(folded),
   };
 }
 
@@ -187,7 +186,7 @@ function wantsGoals(text) {
 }
 
 function wantsPeople(text) {
-  return /resultado|colaborador|ficou com|fez \d|oliveira|costa/.test(fold(text));
+  return /resultado|colaborador|ficou com|fez \d|oliveira|costa|souza|dias|lima|fernandes|pereira/.test(fold(text));
 }
 
 function wantsOverall(text, mode) {
@@ -256,7 +255,7 @@ function equalWeights(selected) {
 }
 
 function packOverallWeights(selected) {
-  if (!selected.length) return { error: ['os indicadores desta avaliação (tickets resolvidos, tickets transferidos, primeira resposta ou TMA), pelos nomes ou pelos resultados enviados'] };
+  if (!selected.length) return { error: ['os indicadores desta avaliação, pelos nomes ou pelos resultados enviados'] };
   return { pack: equalWeights(selected) };
 }
 
@@ -426,8 +425,11 @@ function missingParts(conference, source, mode = '') {
 }
 
 function clarify(missing) {
-  const ask = `Faltou ${missing.join('; ')}. Nada foi gravado e o pódio não mudou.`;
-  return { kind: 'clarify', questions: missing, reply: ask, conference: null };
+  const first = missing[0] || 'informação necessária';
+  let reply = `Falta ${first}.`;
+  if (/cadastro|identificar/.test(first)) reply = `Não consegui identificar 1 colaborador. Selecione o cadastro correspondente para continuar.`;
+  else if (missing.length > 1) reply = `Falta ${first}. Há ${missing.length} pendências.`;
+  return { kind: 'clarify', questions: missing, reply, conference: null };
 }
 
 function failure(kind) {
@@ -623,7 +625,17 @@ function overallEligible(value, rule, open) {
   return Boolean(open);
 }
 
-function overallFor(records, rules, pack, period, selected, open = false) {
+function channelOfRecord(record, roster) {
+  return podiumChannelOf(personFromRoster(roster, record.userId, record.name || record.sourceName));
+}
+
+function fieldIsHigher(field, rule) {
+  if (rule?.op === 'lte' || rule?.op === 'lt') return false;
+  if (rule?.op === 'gte' || rule?.op === 'gt') return true;
+  return Boolean(field.higher);
+}
+
+function overallFor(records, rules, pack, period, selected, open = false, roster = []) {
   const wanted = monthOf(period.periodKey || period.key);
   const chosen = (selected ?? []).map((id) => overallField(id)).filter(Boolean);
   const people = [];
@@ -638,27 +650,44 @@ function overallFor(records, rules, pack, period, selected, open = false) {
   const bestOf = {};
   for (const field of chosen) {
     const rule = ruleForIndicator(rules, field.id);
+    const higher = fieldIsHigher(field, rule);
     const eligible = people
-      .map((row) => ({ row, value: resultValue(row, field.id) }))
-      .filter((item) => overallEligible(item.value, rule, open))
+      .map((row) => ({ row, value: resultValue(row, field.id), channel: channelOfRecord(row, roster) }))
+      .filter((item) => fieldApplies(field.id, item.channel) && overallEligible(item.value, rule, open))
       .map((item) => item.value);
-    bestOf[field.id] = eligible.length ? (field.higher ? Math.max(...eligible) : Math.min(...eligible)) : null;
+    bestOf[field.id] = eligible.length ? (higher ? Math.max(...eligible) : Math.min(...eligible)) : null;
   }
   const scores = people.map((record) => {
+    const channel = channelOfRecord(record, roster);
+    const applicable = chosen.filter((field) => fieldApplies(field.id, channel));
+    const localPack = equalWeights(applicable.map((item) => item.id));
     const parts = {};
     let total = 0;
     for (const field of chosen) {
+      if (!applicable.includes(field)) {
+        parts[field.id] = {
+          name: displayName(field.id),
+          value: null,
+          best: null,
+          eligible: false,
+          reason: 'Indicador não se aplica a esta categoria',
+          weight: 0,
+          contribution: 0,
+        };
+        continue;
+      }
       const rule = ruleForIndicator(rules, field.id);
       const value = resultValue(record, field.id);
-      const weight = pack[field.weightKey] ?? 0;
+      const weight = localPack[field.weightKey] ?? pack[field.weightKey] ?? 0;
       const best = bestOf[field.id];
       const eligible = overallEligible(value, rule, open);
+      const higher = fieldIsHigher(field, rule);
       let contribution = 0;
       let reason = '';
       if (!eligible) {
         reason = value == null ? `Sem resultado de ${displayName(field.id)}` : eligibilityReason(field, rule);
       } else if (best && best !== 0) {
-        const ratio = field.higher ? value / best : best / value;
+        const ratio = higher ? value / best : best / value;
         contribution = Math.min(weight, Math.round(ratio * weight * 100) / 100);
       }
       total += contribution;
@@ -939,7 +968,7 @@ function customMetrics(record, evaluation) {
   });
 }
 
-function buildModePodium(store, month, monthRecords, evaluation, now, channel = '') {
+function buildModePodium(store, month, monthRecords, evaluation, now, channel = '', people = []) {
   const label = formatPeriodLabel(month);
   const stamp = (now ?? new Date()).toISOString();
   const mode = publicEvalMode(evaluation.mode);
@@ -987,7 +1016,7 @@ function buildModePodium(store, month, monthRecords, evaluation, now, channel = 
     };
   }
   if (selected.length) {
-    const scored = overallFor(monthRecords, known, pack || equalWeights(selected), { periodKey: month, periodLabel: label }, selected, true);
+    const scored = overallFor(monthRecords, known, pack || equalWeights(selected), { periodKey: month, periodLabel: label }, selected, true, people);
     return {
       ...shell,
       selected: scored.selected,
@@ -1019,7 +1048,7 @@ export function attachBankPodiums(store, now = new Date(), people = []) {
   const live = liveKeys.flatMap((key) => {
     const monthRecords = confirmed.filter((row) => monthOf(row.periodKey) === key);
     return evaluationsFor(store, key, monthRecords).flatMap((evaluation) => PODIUM_CHANNELS.map((channel) => (
-      buildModePodium(store, key, recordsForChannel(monthRecords, people, channel), evaluation, now, channel)
+      buildModePodium(store, key, recordsForChannel(monthRecords, people, channel), evaluation, now, channel, people)
     )));
   });
   const liveIndex = new Set(live.map((item) => `${item.periodKey}:${item.mode}`));
@@ -1111,11 +1140,11 @@ function centerPrompt(text, history, options) {
     'Interprete um recado da Central Inteligente de Metas, em português.',
     `Modo da interface: ${mode}. Isso é contexto. Se o pedido for claramente outro assunto, siga o pedido.`,
     'Há só dois modos: desempenho geral e critérios personalizados. Não existe mais a modalidade critérios predefinidos.',
-    'Desempenho geral usa de 1 a 4 indicadores conhecidos: tickets resolvidos, tickets transferidos, primeira resposta e TMA. Satisfação não entra. Identifique no texto quais desses indicadores a pessoa citou; não peça para marcar caixa. Se o texto não citar um recorte, use os indicadores com meta ou resultado. Pesos iguais entre os selecionados. Quem não entra na condição zera aquela parcela; o melhor elegível leva o peso inteiro; os demais são proporcionais. O pódio de desempenho geral mostra o percentual total, não a quantidade bruta de tickets.',
+    'Desempenho geral usa indicadores operacionais: tickets resolvidos, tickets transferidos, primeira resposta, TMA, ligações atendidas, ligações perdidas sem resgate, tempo de espera, duração da ligação e faltas sem atestado. Satisfação não entra. Indicadores de ligação só valem para quem tem funcao Ligação na Equipe. Faltas valem para Ligação, Chat e E-mail. A categoria oficial é o campo funcao, nunca role. Pesos iguais entre os indicadores selecionados e aplicáveis. Quem não entra na condição zera só aquela parcela. O pódio mostra percentual e não mistura categorias nem períodos.',
     'Critérios personalizados servem só para criar indicador inédito. Indicadores já conhecidos entram no desempenho geral.',
     'Não invente número, indicador, comparador, período ou pessoa.',
     'changePodium só é true se a pessoa pediu explicitamente para mudar o pódio. Meta, resultado e conferência não mudam o pódio.',
-    'Indicadores conhecidos: resolvidosCount, resolvidos (%), transferidos, primeira, resolucao, satisfacao.',
+    'Indicadores conhecidos: resolvidosCount, resolvidos (%), transferidos, primeira, resolucao, satisfacao, atendidas, perdidas, espera, duracao, faltas.',
     'Se o indicador for novo, use indicator começando com c: e o name completo, por exemplo c:indice-de-qualidade-no-atendimento.',
     '"pelo menos"/"no mínimo" = gte. "no máximo"/"até" = lte. "entre" = between. Combine indicadores com combine=all, salvo se bastar uma condição.',
     saved ? `Metas já gravadas:\n${saved}` : '',
@@ -1163,18 +1192,26 @@ function scoreOverall(source, options, local, period) {
   const missing = [];
   if (!period.periodLabel) missing.push('o período com mês e ano');
   if (packed.error) missing.push(...packed.error);
+  const roster = options.people ?? [];
   for (const id of selected) {
-    if (!ruleForIndicator(rules, id)) missing.push(`a condição de entrada de ${displayName(id)} (${overallField(id).ask.replace(/^a |^o |^os /, '')})`);
+    const used = records.some((row) => fieldApplies(id, channelOfRecord(row, roster) || row.subsetor));
+    if (!used) continue;
+    if (!ruleForIndicator(rules, id)) {
+      const channels = (OVERALL_FIELDS.find((item) => item.id === id)?.channels ?? []).join(', ');
+      missing.push(`cadastrar a meta de ${displayName(id)}${channels ? ` para ${channels}` : ''}${period.periodLabel ? ` em ${period.periodLabel}` : ''}`);
+    }
   }
   if (wantsPeople(source) && !records.length) missing.push('os resultados individuais dos colaboradores citados');
   for (const person of records) {
-    if (!person.userId) missing.push(`o cadastro da Equipe de ${person.name || person.sourceName}`);
+    if (!person.userId) missing.push(`identificar ${person.name || person.sourceName}`);
+    const channel = channelOfRecord(person, roster) || person.subsetor;
     for (const id of selected) {
+      if (!fieldApplies(id, channel)) continue;
       if (resultValue(person, id) == null) missing.push(`o resultado de ${displayName(id)} de ${person.name || person.sourceName}`);
     }
   }
   if (missing.length) return clarify(missing);
-  const overall = overallFor(records, rules, packed.pack, period, selected);
+  const overall = overallFor(records, rules, packed.pack, period, selected, false, roster);
   const conference = toConference({ source, period, rules, rows: records, mode: 'overall', overall });
   if (!conference.goals.length && !conference.people.length) {
     return clarify(['as condições de entrada e os resultados dos indicadores selecionados']);
