@@ -509,7 +509,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   }
 
   return (
-    <section id="calendario" className={cn(page || compact || embedded ? 'scroll-mt-20 shrink-0 overflow-hidden rounded-2xl border bg-card' : 'min-h-screen bg-background', theme !== 'padrao' && `calendar-skin-${theme}`)} style={skinStyle(theme, institution.hasWallpaper, institution.settings.calendar.wallpaperVersion)}>
+    <section id="calendario" className={cn(page || compact || embedded ? 'scroll-mt-20 shrink-0 overflow-hidden rounded-2xl border bg-card' : 'min-h-screen bg-transparent', theme !== 'padrao' && `calendar-skin-${theme}`)} style={skinStyle(theme, institution.hasWallpaper, institution.settings.calendar.wallpaperVersion)}>
       {embedded || compact || page ? null : <Header />}
       <div className={cn('flex', compact || page ? '' : embedded ? 'min-h-[640px]' : 'min-h-[calc(100vh-4rem)]')}>
         {compact || page ? null : <aside id="aniversarios" className={cn('hidden shrink-0 scroll-mt-20 flex-col overflow-hidden border-r bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-out lg:flex', leftOpen ? 'w-60' : 'w-10')}>

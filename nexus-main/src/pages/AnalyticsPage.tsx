@@ -108,7 +108,7 @@ export const AnalyticsPage: FC = () => {
   const [dateRange, setDateRange] = useState('7d');
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-transparent">
       <Header />
       
       <PageWrapper className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">

@@ -66,7 +66,7 @@ export const JournalArticlePage: FC = () => {
 
   if (!article || ((article.status === 'draft' || article.status === 'removed') && !canManage)) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-transparent">
         <Header />
         <div className="mx-auto max-w-3xl px-4 py-10">
           <p className="text-sm text-muted-foreground">Esta publicação não está disponível.</p>

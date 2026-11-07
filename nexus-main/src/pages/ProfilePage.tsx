@@ -10,7 +10,7 @@ export const ProfilePage: FC = () => {
   const ramal = people[user.id]?.ramal;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-transparent">
       <Header />
       <div className="mx-auto max-w-xl px-4 py-6">
         <Card>

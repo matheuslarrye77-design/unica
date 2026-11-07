@@ -2,7 +2,6 @@ import { HomeRail } from '@/components/shell/HomeRail';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { NotificationDropdown } from '@/components/NotificationDropdown';
 import { Profile } from '@/components/Profile';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { GlobalSearch } from '@/components/GlobalSearch';
 import { SocialFeed } from '@/components/social/SocialFeed';
 import { useInstitution } from '@/lib/institution';
@@ -21,7 +20,6 @@ export const Dashboard: FC = () => {
             <GlobalSearch />
           </div>
           <NotificationDropdown />
-          <ThemeToggle />
           <Profile />
         </div>
         <div className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain xl:pr-1">

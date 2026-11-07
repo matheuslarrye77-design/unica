@@ -36,7 +36,7 @@ export const ManagementSettingsPage: FC<{ embedded?: boolean }> = ({ embedded = 
 
   if (!allowed) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-transparent">
         <Header />
         <p className="px-6 py-10 text-sm text-muted-foreground">Esta área é restrita à liderança.</p>
       </div>
@@ -139,7 +139,7 @@ export const ManagementSettingsPage: FC<{ embedded?: boolean }> = ({ embedded = 
 
   if (embedded) return content;
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-transparent">
       <Header />
       {content}
     </div>

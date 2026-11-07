@@ -19,7 +19,7 @@ export const PostPage: FC = () => {
   }, [id]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-transparent">
       <Header />
       <div className="mx-auto max-w-3xl px-4 py-6">
         <Link to="/" className="mb-4 inline-flex text-sm font-medium text-primary">Voltar ao mural</Link>

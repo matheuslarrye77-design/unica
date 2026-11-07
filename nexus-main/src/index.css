@@ -126,17 +126,25 @@
   }
   html {
     font-size: 16px;
+    min-height: 100%;
+    background-color: #efe6fb;
   }
   body {
-    background-color: var(--background);
-    background-image:
-      radial-gradient(720px 280px at -6% -10%, rgba(243, 214, 236, 0.55), transparent 68%),
-      radial-gradient(560px 240px at 104% -6%, rgba(248, 228, 242, 0.75), transparent 64%);
+    min-height: 100%;
+    background-color: #efe6fb;
+    background-image: url('/fundo-unica.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     color: var(--foreground);
     font-family: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "cv11" 1;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+  #root {
+    min-height: 100%;
   }
   ::selection {
     background: #F0D9F6;

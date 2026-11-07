@@ -948,7 +948,7 @@ function ReportBank({ goals, onClose, onChange }: { goals: GoalsPayload; onClose
   ];
 
   const bank = (
-    <div className={cn('fixed inset-0 z-[80] overflow-y-auto bg-[#F7F4F9] [scrollbar-width:thin]', leftCollapsed ? 'lg:left-16' : 'lg:left-[256px]')}>
+    <div className={cn('fixed inset-0 z-[80] overflow-y-auto bg-[url("/fundo-unica.png")] bg-cover bg-fixed bg-center [scrollbar-width:thin]', leftCollapsed ? 'lg:left-16' : 'lg:left-[256px]')}>
       <div className="mx-auto flex min-h-full w-full flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
         <header className="flex flex-col gap-4 rounded-[22px] border border-[#EEE6F4] bg-white px-5 py-4 shadow-[0_8px_24px_rgba(80,40,120,0.05)] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">

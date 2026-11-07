@@ -2,7 +2,6 @@ import { GlobalSearch } from '@/components/GlobalSearch';
 import { NotificationDropdown } from '@/components/NotificationDropdown';
 import { Profile } from '@/components/Profile';
 import { RecognitionComposer } from '@/components/social/RecognitionComposer';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { HomeRail } from '@/components/shell/HomeRail';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -139,7 +138,6 @@ export const KudosFeedPage: FC = () => {
             <GlobalSearch />
           </div>
           <NotificationDropdown />
-          <ThemeToggle />
           <Profile />
         </div>
         <div className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
