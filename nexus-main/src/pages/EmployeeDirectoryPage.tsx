@@ -9,7 +9,8 @@ import { cn } from '@/lib/utils';
 import { isLeader } from '@/lib/institution';
 import { actor, authHeaders, getDemoId } from '@/lib/session';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
-import { ChevronRight, Filter, LayoutGrid, List, Mail, MessageCircle, MoreHorizontal, Phone, Plus, Search, User, UserRound, Users } from 'lucide-react';
+import { ChevronRight, Filter, LayoutGrid, List, Mail, MessageCircle, MoreHorizontal, Phone, Plus, User, UserRound, Users } from 'lucide-react';
+import { usePageSearch } from '@/lib/pageSearch';
 import { useEffect, useMemo, useState, type FC, type FormEvent } from 'react';
 import { toast } from 'sonner';
 
@@ -34,7 +35,7 @@ function RoleBadge({ funcao }: { funcao: TeamFuncao }) {
 const emptyForm = { name: '', email: '', role: '', funcao: 'Chat' as TeamFuncao, phone: '', ramal: '' };
 
 export const EmployeeDirectoryPage: FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const { query: searchQuery, setQuery: setSearchQuery } = usePageSearch();
   const [roles, setRoles] = useState<TeamFuncao[]>([...TEAM_FUNCOES]);
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [colleagues, setColleagues] = useState<TeamMember[]>([]);
@@ -159,15 +160,6 @@ export const EmployeeDirectoryPage: FC = () => {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[220px] flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#B7A8C4]" />
-            <Input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Buscar por nome, ramal ou e-mail..."
-              className="h-10 rounded-full border-[#E7DFF0] bg-white pl-9"
-            />
-          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button type="button" variant="outline" className="h-11 rounded-xl border-[#E7DFF0] bg-white px-4 text-[#5C5168] shadow-none">

@@ -1,4 +1,4 @@
-import { Header } from '@/components/Header';
+import { PageFrame } from '@/components/shell/PageFrame';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { currentUser } from '@/data/mockData';
@@ -36,10 +36,9 @@ export const ManagementSettingsPage: FC<{ embedded?: boolean }> = ({ embedded = 
 
   if (!allowed) {
     return (
-      <div className="min-h-screen bg-transparent">
-        <Header />
-        <p className="px-6 py-10 text-sm text-muted-foreground">Esta área é restrita à liderança.</p>
-      </div>
+      <PageFrame>
+        <p className="text-sm text-muted-foreground">Esta área é restrita à liderança.</p>
+      </PageFrame>
     );
   }
 
@@ -138,12 +137,7 @@ export const ManagementSettingsPage: FC<{ embedded?: boolean }> = ({ embedded = 
   );
 
   if (embedded) return content;
-  return (
-    <div className="min-h-screen bg-transparent">
-      <Header />
-      {content}
-    </div>
-  );
+  return <PageFrame>{content}</PageFrame>;
 };
 
 const PolicyCard: FC<{

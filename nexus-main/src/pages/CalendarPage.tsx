@@ -1,14 +1,14 @@
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Header } from '@/components/Header';
 import { calendarEvents, type CalendarEvent } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { directoryPeople, isLeader, useInstitution, wallpaperUrl, type CalendarTheme } from '@/lib/institution';
-import { Calendar, Cake, ChevronLeft, ChevronRight, MapPin, Plus, Search, X } from 'lucide-react';
+import { Calendar, Cake, ChevronLeft, ChevronRight, MapPin, Plus, X } from 'lucide-react';
 import { CelebrationsCenter } from '@/components/celebrations/CelebrationsCenter';
 import { EventDialog } from '@/components/calendar/EventDialog';
 import { deleteEvent, notifyEvents, parseAgendaDate, useAgendaEvents, type AgendaEvent } from '@/lib/events';
 import { actor } from '@/lib/session';
+import { usePageSearch } from '@/lib/pageSearch';
 import { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -55,7 +55,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   const [params, setParams] = useSearchParams();
   const birthdaysFocus = params.get('tipo') === 'aniversarios';
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [query, setQuery] = useState('');
+  const { query } = usePageSearch();
   const [category, setCategory] = useState('all');
   const [display, setDisplay] = useState<BirthdayDisplay>(loadDisplay);
   const [leftOpen, setLeftOpen] = useState(true);
@@ -619,10 +619,6 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           </button>
           {rightOpen ? (
             <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 pb-4" onClick={(event) => event.stopPropagation()}>
-              <label className="relative block">
-                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar eventos..." className="bg-background pl-9" />
-              </label>
               <div>
                 <p className="mb-1 px-1 text-xs font-medium text-muted-foreground">Categorias</p>
                 <div className="flex flex-col">

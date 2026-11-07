@@ -11,7 +11,8 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { BarChart3, Check, Mail, Plus, Search, Star, Trophy, User, Users } from 'lucide-react';
+import { BarChart3, Check, Mail, Plus, Star, Trophy, User, Users } from 'lucide-react';
+import { usePageSearch } from '@/lib/pageSearch';
 import { type FC, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -25,7 +26,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   ACTIVITY_STATUSES,
   PRIORITY_LABEL,
@@ -46,8 +46,6 @@ import { ActivityCardView } from './ActivityCard';
 import { ActivityColumn } from './ActivityColumn';
 import { ActivityDialog } from './ActivityDialog';
 
-const fieldClass = 'h-9 rounded-full border-[#E7DFF0] bg-white px-4 text-[12.5px] shadow-none';
-
 function SourceMark({ source }: { source: string }) {
   if (source === 'E-mail') return <Mail className="h-3 w-3" />;
   if (source.startsWith('Equipe')) return <Users className="h-3 w-3" />;
@@ -60,7 +58,7 @@ export const ActivityBoard: FC = () => {
   const [store] = useState(loadActivityStore);
   const [activities, setActivities] = useState<Activity[]>(store.activities);
   const [categories, setCategories] = useState<string[]>(store.categories);
-  const [query, setQuery] = useState('');
+  const { query } = usePageSearch();
   const [dragging, setDragging] = useState<Activity | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Activity | null>(null);
@@ -177,10 +175,6 @@ export const ActivityBoard: FC = () => {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[220px] flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#B7A8C4]" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar atividades..." className={cn(fieldClass, 'pl-9')} />
-        </div>
         <Button type="button" onClick={() => openCreate('todo')} className="ml-auto h-9 rounded-full bg-[#8E35B8] px-3.5 text-[13px] hover:bg-[#7A2CA0]">
           <Plus /> Nova atividade
         </Button>

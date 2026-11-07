@@ -4,7 +4,6 @@ import { JournalBadge, JournalRichText } from '@/components/journal/JournalVisua
 import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles, useJournalSaved } from '@/components/journal/useJournal';
 import { Button } from '@/components/ui/button';
-import { Header } from '@/components/Header';
 import { Textarea } from '@/components/ui/textarea';
 import {
   addJournalComment,
@@ -66,13 +65,10 @@ export const JournalArticlePage: FC = () => {
 
   if (!article || ((article.status === 'draft' || article.status === 'removed') && !canManage)) {
     return (
-      <div className="min-h-screen bg-transparent">
-        <Header />
-        <div className="mx-auto max-w-3xl px-4 py-10">
-          <p className="text-sm text-muted-foreground">Esta publicação não está disponível.</p>
-          <Link to="/announcements" className="mt-4 inline-flex text-sm font-medium text-primary">Voltar ao Jornal</Link>
-        </div>
-      </div>
+      <PageFrame>
+        <p className="text-sm text-muted-foreground">Esta publicação não está disponível.</p>
+        <Link to="/announcements" className="mt-4 inline-flex text-sm font-medium text-primary">Voltar ao Jornal</Link>
+      </PageFrame>
     );
   }
 

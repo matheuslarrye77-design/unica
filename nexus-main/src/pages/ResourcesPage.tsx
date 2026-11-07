@@ -27,7 +27,8 @@ import {
 import { currentUser } from '@/data/mockData';
 import { assertPermission, useInstitution } from '@/lib/institution';
 import { cn } from '@/lib/utils';
-import { CalendarDays, ChevronRight, Download, FileText, Filter, MoreHorizontal, Plus, Search, Star } from 'lucide-react';
+import { CalendarDays, ChevronRight, Download, FileText, Filter, MoreHorizontal, Plus, Star } from 'lucide-react';
+import { usePageSearch } from '@/lib/pageSearch';
 import { authHeaders } from '@/lib/session';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { toast } from 'sonner';
@@ -51,7 +52,7 @@ export const ResourcesPage: FC = () => {
   const [documents, setDocuments] = useState<CompanyDocument[]>([]);
   const [category, setCategory] = useState<CategoryFilter>('todos');
   const [system, setSystem] = useState<'todos' | DocumentSystem>('todos');
-  const [query, setQuery] = useState('');
+  const { query } = usePageSearch();
   const [sort, setSort] = useState<SortMode>('az');
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [selected, setSelected] = useState<CompanyDocument | null>(null);
@@ -185,10 +186,6 @@ export const ResourcesPage: FC = () => {
               </div>
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <label className="relative block min-w-[220px] max-w-xl flex-1">
-                <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[#B7A8C4]" />
-                <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Pesquisar documentos..." className="h-11 rounded-xl border-[#E7DFF0] bg-white pl-10 shadow-none" />
-              </label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button type="button" variant="outline" className="h-11 rounded-xl border-[#E7DFF0] bg-white px-4 text-[#5C5168] shadow-none">

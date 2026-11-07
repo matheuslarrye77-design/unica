@@ -1,6 +1,3 @@
-import { GlobalSearch } from '@/components/GlobalSearch';
-import { NotificationDropdown } from '@/components/NotificationDropdown';
-import { Profile } from '@/components/Profile';
 import { RecognitionComposer } from '@/components/social/RecognitionComposer';
 import { HomeRail } from '@/components/shell/HomeRail';
 import { PageFrame } from '@/components/shell/PageFrame';
@@ -8,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { teamRoster } from '@/data/team';
 import { useInstitution } from '@/lib/institution';
 import { actor, authHeaders, getDemoId } from '@/lib/session';
+import { usePageSearch } from '@/lib/pageSearch';
 import { cn } from '@/lib/utils';
 import { createFeedPost } from '@/lib/feed';
 import { GoalsAssistant, GoalsCenter, GoalsProvider, type GoalsPayload } from '@/components/recognition/GoalsCenter';
@@ -48,6 +46,7 @@ function goalsHeaders() {
 
 export const KudosFeedPage: FC = () => {
   const { canRecognize } = useInstitution();
+  const { query } = usePageSearch();
   const me = actor();
   const [params, setParams] = useSearchParams();
   const [composer, setComposer] = useState(false);
@@ -102,7 +101,12 @@ export const KudosFeedPage: FC = () => {
   const activeKey = week || goals?.currentKey || '';
   const months = [...new Set((goals?.podiums ?? []).map((item) => item.periodKey))].sort((left, right) => left.localeCompare(right));
   const podiumKey = podiumMonth || goals?.currentPodiumKey || months[months.length - 1] || '';
-  const items = [...extra, ...RECENT].filter((item) => filter === 'Todos' || item.area === filter);
+  const needle = query.trim().toLowerCase();
+  const items = [...extra, ...RECENT].filter((item) => {
+    if (filter !== 'Todos' && item.area !== filter) return false;
+    if (!needle) return true;
+    return `${item.to} ${item.from} ${item.quote} ${item.area}`.toLowerCase().includes(needle);
+  });
   const canManageGoals = Boolean(goals?.canManage);
   const tab = canManageGoals && params.get('painel') === 'metas' ? 'metas' : 'mural';
 
@@ -133,13 +137,6 @@ export const KudosFeedPage: FC = () => {
   const page = (
     <PageFrame fitViewport fillRail={tab === 'metas'} rail={tab === 'metas' && goals ? <GoalsAssistant /> : <HomeRail />}>
       <div className="flex flex-col gap-2 xl:min-h-0 xl:flex-1">
-        <div className="hidden shrink-0 items-center gap-2 xl:flex">
-          <div className="min-w-0 flex-1">
-            <GlobalSearch />
-          </div>
-          <NotificationDropdown />
-          <Profile />
-        </div>
         <div className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
           <div className="grid gap-4 pb-4">
             <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#F8EAFB] via-[#F3DDF8] to-[#E7C4F2] px-5 py-4">

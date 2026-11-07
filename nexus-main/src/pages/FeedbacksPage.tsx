@@ -2,13 +2,13 @@ import { FeedbackDialog } from '@/components/FeedbackDialog';
 import { ComposerExtras } from '@/components/social/ComposerExtras';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { isLeader, loadFeedback, replyToFeedback, updateFeedbackStatus, type FeedbackItem, type SuggestionStatus } from '@/lib/institution';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { actor, useDemoProfile } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import { ChevronRight, Filter, MessageSquare, Plus, Search } from 'lucide-react';
+import { ChevronRight, Filter, MessageSquare, Plus } from 'lucide-react';
+import { usePageSearch } from '@/lib/pageSearch';
 import { useEffect, useMemo, useRef, useState, type FC, type KeyboardEvent } from 'react';
 import { toast } from 'sonner';
 
@@ -48,7 +48,7 @@ export const FeedbacksPage: FC = () => {
   const [items, setItems] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [query, setQuery] = useState('');
+  const { query, setQuery } = usePageSearch();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<SuggestionStatus | 'todos'>('todos');
   const [authorFilter, setAuthorFilter] = useState('');
@@ -162,7 +162,7 @@ export const FeedbacksPage: FC = () => {
 
   return (
     <PageFrame>
-      <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+      <div className="w-full">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             <span className="mt-0.5 grid h-10 w-10 place-items-center rounded-2xl bg-[#F3E8FF] text-[#7C3AED]">
@@ -179,17 +179,7 @@ export const FeedbacksPage: FC = () => {
         </div>
 
         <div className="mt-5 flex items-center gap-2">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#B7A8C4]" />
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar sugestão..."
-              className="h-11 rounded-xl border-[#EFE6F4] bg-white pl-9"
-              aria-label="Buscar sugestão por título ou conteúdo"
-            />
-          </div>
-          <div className="relative">
+          <div className="relative ml-auto">
             <Button type="button" variant="outline" className="h-11 rounded-xl border-[#EFE6F4] bg-white" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen}>
               <Filter className="h-4 w-4" /> Filtros
             </Button>

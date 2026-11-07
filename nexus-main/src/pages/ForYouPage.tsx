@@ -1,12 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Header } from '@/components/Header';
+import { PageFrame } from '@/components/shell/PageFrame';
 import { PageWrapper, PageSection } from '@/components/PageWrapper';
+import { usePageSearch } from '@/lib/pageSearch';
 import { forYouFeed, type FeedItem } from '@/data/mockData';
 import { formatRelativeTime } from '@/lib/utils';
-import { FileText, Bell, CheckSquare, Info, ArrowLeft, Search, Filter } from 'lucide-react';
+import { FileText, Bell, CheckSquare, Info, ArrowLeft, Filter, Search } from 'lucide-react';
 import { useState, type FC } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -56,7 +56,7 @@ const getTypeBadge = (type: FeedItem['type']) => {
 };
 
 export const ForYouPage: FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const { query: searchQuery } = usePageSearch();
   const [filterType, setFilterType] = useState<string>('all');
 
   // Filter feed items based on search and type
@@ -71,10 +71,8 @@ export const ForYouPage: FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-transparent">
-      <Header />
-      
-      <PageWrapper className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-6">
+    <PageFrame>
+      <PageWrapper className="w-full">
         {/* Header Section */}
         <div className="mb-6">
           <div className="flex items-center gap-4 mb-4">
@@ -101,20 +99,6 @@ export const ForYouPage: FC = () => {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row gap-4">
-              {/* Search Input */}
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search updates, documents, tasks..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              
-              {/* Type Filter */}
               <div className="sm:w-48">
                 <Select value={filterType} onValueChange={setFilterType}>
                   <SelectTrigger className="gap-2">
@@ -209,6 +193,6 @@ export const ForYouPage: FC = () => {
           </div>
         )}
       </PageWrapper>
-    </div>
+    </PageFrame>
   );
 };

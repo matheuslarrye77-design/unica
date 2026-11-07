@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Header } from '@/components/Header';
+import { PageFrame } from '@/components/shell/PageFrame';
+import { usePageSearch } from '@/lib/pageSearch';
 import { PageWrapper, PageSection } from '@/components/PageWrapper';
 import { 
   helpdeskTickets, 
@@ -23,7 +24,6 @@ import {
   Phone, 
   Mail,
   Plus,
-  Search,
   Clock,
   CheckCircle,
   XCircle,
@@ -318,7 +318,7 @@ const NewTicketDialog: FC<{ autoOpen?: boolean; onOpenChange?: (open: boolean) =
 export const HelpDeskPage: FC = () => {
   const [searchParams] = useSearchParams();
   const [ticketFilter, setTicketFilter] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const { query: searchQuery } = usePageSearch();
   const [activeTab, setActiveTab] = useState('tickets');
   const [autoOpenNewTicket, setAutoOpenNewTicket] = useState(false);
   
@@ -357,10 +357,8 @@ export const HelpDeskPage: FC = () => {
   const resolvedTickets = helpdeskTickets.filter(t => t.status === 'resolved').length;
 
   return (
-    <div className="min-h-screen bg-transparent">
-      <Header />
-      
-      <PageWrapper className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+    <PageFrame>
+      <PageWrapper className="w-full">
         {/* Header Section */}
         <PageSection index={0} className="mb-6">
           <div className="flex items-center gap-4 mb-4">
@@ -408,18 +406,6 @@ export const HelpDeskPage: FC = () => {
           </Card>
         </PageSection>
 
-        {/* Search Bar */}
-        <PageSection index={2} className="mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search tickets and knowledge base..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </PageSection>
 
         <PageSection index={3}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -601,6 +587,6 @@ export const HelpDeskPage: FC = () => {
         </Tabs>
         </PageSection>
       </PageWrapper>
-    </div>
+    </PageFrame>
   );
 };

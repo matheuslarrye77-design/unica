@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Header } from '@/components/Header';
+import { PageFrame } from '@/components/shell/PageFrame';
 import { PageWrapper, PageSection } from '@/components/PageWrapper';
 import { 
   analyticsMetrics, 
@@ -108,10 +108,8 @@ export const AnalyticsPage: FC = () => {
   const [dateRange, setDateRange] = useState('7d');
 
   return (
-    <div className="min-h-screen bg-transparent">
-      <Header />
-      
-      <PageWrapper className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+    <PageFrame>
+      <PageWrapper className="w-full">
         {/* Header Section */}
         <PageSection index={0} className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -559,6 +557,6 @@ export const AnalyticsPage: FC = () => {
           </TabsContent>
         </Tabs>
       </PageWrapper>
-    </div>
+    </PageFrame>
   );
 };

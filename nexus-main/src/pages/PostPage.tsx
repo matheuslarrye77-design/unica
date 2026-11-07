@@ -1,5 +1,5 @@
-import { Header } from '@/components/Header';
 import { PostCard } from '@/components/social/PostCard';
+import { PageFrame } from '@/components/shell/PageFrame';
 import { loadFeed } from '@/lib/feed';
 import type { SocialPost } from '@/components/social/types';
 import { type FC, useEffect, useState } from 'react';
@@ -19,26 +19,23 @@ export const PostPage: FC = () => {
   }, [id]);
 
   return (
-    <div className="min-h-screen bg-transparent">
-      <Header />
-      <div className="mx-auto max-w-3xl px-4 py-6">
-        <Link to="/" className="mb-4 inline-flex text-sm font-medium text-primary">Voltar ao mural</Link>
-        {missing ? <p className="text-sm text-muted-foreground">Esta publicação não está disponível.</p> : null}
-        {post ? (
-          <PostCard
-            post={{ ...post, commentsOpen: true }}
-            commentDraft=""
-            onCommentDraft={() => undefined}
-            onLike={() => undefined}
-            onShare={() => undefined}
-            onToggleComments={() => undefined}
-            onAddComment={() => undefined}
-            onLikeComment={() => undefined}
-            onVote={() => undefined}
-            onRepublish={() => undefined}
-          />
-        ) : null}
-      </div>
-    </div>
+    <PageFrame>
+      <Link to="/" className="mb-4 inline-flex text-sm font-medium text-primary">Voltar ao mural</Link>
+      {missing ? <p className="text-sm text-muted-foreground">Esta publicação não está disponível.</p> : null}
+      {post ? (
+        <PostCard
+          post={{ ...post, commentsOpen: true }}
+          commentDraft=""
+          onCommentDraft={() => undefined}
+          onLike={() => undefined}
+          onShare={() => undefined}
+          onToggleComments={() => undefined}
+          onAddComment={() => undefined}
+          onLikeComment={() => undefined}
+          onVote={() => undefined}
+          onRepublish={() => undefined}
+        />
+      ) : null}
+    </PageFrame>
   );
 };

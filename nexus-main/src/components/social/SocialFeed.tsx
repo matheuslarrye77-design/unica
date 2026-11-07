@@ -6,7 +6,7 @@ import { getTimeBasedGreeting } from '@/lib/utils';
 import { cancelRepost, commentFeedPost, createFeedPost, deleteFeedComment, deleteFeedPost, likeFeedComment, likeFeedPost, loadFeed, republishPost, saveFeedPost, shareFeedPost, updateFeedPost, uploadMedia, voteFeedPost, type Repost } from '@/lib/feed';
 import { actor, useDemoProfile } from '@/lib/session';
 import { isLeader, refreshMoods, useInstitution } from '@/lib/institution';
-import { useMuralSearchOptional } from '@/lib/muralSearch';
+import { usePageSearch } from '@/lib/pageSearch';
 import { CreatePost, type NewPostDraft } from './CreatePost';
 import { articleCover, articleSummary, getJournalArticles } from '@/data/journal';
 import { useSearchParams } from 'react-router-dom';
@@ -26,7 +26,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [commentMedia, setCommentMedia] = useState<Record<string, CommentMedia | null>>({});
   const [savedOnly, setSavedOnly] = useState(false);
-  const query = useMuralSearchOptional()?.query ?? '';
+  const query = usePageSearch().query;
   const [feedError, setFeedError] = useState(false);
   const [openCard, setOpenCard] = useState<string | null>(null);
   const [shareId, setShareId] = useState<string | null>(null);

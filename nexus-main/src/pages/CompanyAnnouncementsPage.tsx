@@ -3,11 +3,11 @@ import { JournalRail } from '@/components/journal/JournalRail';
 import { JournalCover, categoryTone } from '@/components/journal/JournalVisual';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles, useJournalSaved } from '@/components/journal/useJournal';
-import { Input } from '@/components/ui/input';
+import { usePageSearch } from '@/lib/pageSearch';
 import { archiveJournalArticle, articleSummary, canManageJournal, deleteJournalArticle, journalPlainText, purgeJournalArticle, readingMinutes, restoreJournalArticle, toggleJournalSave, type JournalArticle, type JournalCategory } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { Bookmark, Calendar, ChevronRight, ClipboardList, Clock, Newspaper, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { Bookmark, Calendar, ChevronRight, ClipboardList, Clock, Newspaper, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useMemo, useState, type FC } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -59,7 +59,7 @@ export const CompanyAnnouncementsPage: FC = () => {
   const savedIds = useJournalSaved();
   const [params, setParams] = useSearchParams();
   const category = params.get('categoria') ?? 'todos';
-  const [search, setSearch] = useState('');
+  const { query: search } = usePageSearch();
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<JournalArticle | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -125,11 +125,6 @@ export const CompanyAnnouncementsPage: FC = () => {
               </div>
             ) : null}
           </div>
-
-          <label className="relative mb-4 block">
-            <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por título ou conteúdo..." className="h-11 rounded-xl border-[#E6DEEF] bg-white pl-10 shadow-[0_1px_2px_rgba(40,20,70,0.04)]" />
-          </label>
 
           {canManage && trashOpen ? (
             <section className="mb-4 rounded-2xl border border-[#E7E0F0] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(40,20,70,0.04)]">
