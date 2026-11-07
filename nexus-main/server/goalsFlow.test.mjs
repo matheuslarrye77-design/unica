@@ -120,6 +120,11 @@ test('a interface do banco mostra mês/ano, gestão e resultados separados', () 
   assert.match(ui, /Observações e regras de avaliação/);
   assert.match(ui, /aria-label="Metas de Ligação"/);
   assert.match(ui, /aria-label="Metas de Chat e E-mail"/);
+  assert.match(ui, /useState<'Ligação' \| 'desk'>\('desk'\)/);
+  assert.match(ui, /setGoalFilter\('Ligação'\)/);
+  assert.match(ui, /setGoalFilter\('desk'\)/);
+  assert.doesNotMatch(ui, /Editar observação/);
+  assert.doesNotMatch(ui, /action: 'notes'/);
   assert.match(ui, /createPortal/);
   assert.match(ui, /Valor da meta:/);
   assert.match(ui, /Resultados individuais/);
@@ -1271,48 +1276,42 @@ test('maio/2027 avalia cada categoria só com os indicadores aplicáveis e não 
   assert.equal(mailPodium.ranking.every((row) => !(row.metrics ?? []).some((item) => ['atendidas', 'perdidas', 'espera', 'duracao'].includes(item.id))), true);
 });
 
-test('observações e regras de avaliação persistem e zeram só a categoria marcada', async () => {
+test('observação no chat vira regra, pede esclarecimento se for ambígua e zera o cálculo', async () => {
   const persist = memoryGoalsStore();
-  await postCenter({ text: MAY_2027, mode: 'overall' }, { store: persist });
-  const saved = await postCenter({
-    action: 'notes',
-    periodKey: '2027-05',
-    notes: [
-      { id: 'n1', text: 'Equipe alinhada no início do mês.', kind: 'note', channels: [] },
-      { id: 'n2', text: 'Se tiver falta sem justificativa, perde todas as metas.', kind: 'rule', channels: ['Ligação'] },
-    ],
-  }, { store: persist });
-  assert.equal(saved.body.kind, 'notes');
+  const withRule = MAY_2027.replace(
+    'Não alterar o pódio.',
+    'Observação: quem tiver falta sem justificativa perde todas as metas, independentemente dos resultados dos demais indicadores.\n\nNão alterar o pódio.',
+  );
+  const saved = await postCenter({ text: withRule, mode: 'overall' }, { store: persist });
+  assert.equal(saved.body.kind, 'conference', saved.body.reply);
+  const rule = (saved.body.conference.notes ?? saved.body.bank.periods.find((item) => item.key === '2027-05')?.notes ?? []).find((item) => item.kind === 'rule');
+  assert.ok(rule, JSON.stringify(saved.body.conference?.notes));
+  assert.equal(rule.effect, 'zero_on_faltas');
   const period = saved.body.bank.periods.find((item) => item.key === '2027-05');
-  assert.equal(period.notes.length, 2);
-  assert.equal(period.notes.find((item) => item.id === 'n2').effect, 'zero_on_faltas');
+  assert.equal(period.notes.some((item) => item.effect === 'zero_on_faltas'), true);
   const mail = podiumAt(saved.body, '2027-05', 'overall', 'E-mail');
   const chat = podiumAt(saved.body, '2027-05', 'overall', 'Chat');
   const call = podiumAt(saved.body, '2027-05', 'overall', 'Ligação');
-  assert.equal(mail.ranking.some((row) => row.userId === 'tm-8' && row.score > 0), true);
-  assert.equal(chat.ranking.some((row) => row.userId === 'tm-10' && row.score > 0), true);
-  assert.equal(call.ranking.every((row) => !row.voided), true);
+  assert.equal(mail.ranking.some((row) => row.userId === 'tm-8'), false);
+  assert.equal(chat.ranking.some((row) => row.userId === 'tm-10'), false);
+  assert.equal(call.ranking.every((row) => !row.voided && row.score > 0), true);
 
-  const deskRule = await postCenter({
-    action: 'notes',
-    periodKey: '2027-05',
-    notes: [{ id: 'n2', text: 'Se tiver falta sem justificativa, perde todas as metas.', kind: 'rule', channels: ['Chat', 'E-mail'] }],
+  const scoped = await postCenter({
+    text: 'Maio de 2027. A regra de faltas vale só para Ligação. Não alterar o pódio.',
+    mode: 'overall',
   }, { store: persist });
-  const mail2 = podiumAt(deskRule.body, '2027-05', 'overall', 'E-mail');
-  const chat2 = podiumAt(deskRule.body, '2027-05', 'overall', 'Chat');
-  const call2 = podiumAt(deskRule.body, '2027-05', 'overall', 'Ligação');
-  assert.equal(mail2.ranking.some((row) => row.userId === 'tm-8'), false);
-  assert.equal(chat2.ranking.some((row) => row.userId === 'tm-10'), false);
-  assert.equal(call2.ranking.every((row) => !row.voided && row.score > 0), true);
+  assert.equal(scoped.body.kind, 'conference', scoped.body.reply);
+  const call2 = podiumAt(scoped.body, '2027-05', 'overall', 'Ligação');
+  const mail2 = podiumAt(scoped.body, '2027-05', 'overall', 'E-mail');
+  assert.equal(mail2.ranking.some((row) => row.userId === 'tm-8' && row.score > 0), true);
+  assert.equal(call2.ranking.every((row) => !row.voided), true);
 
-  const edited = await postCenter({
-    action: 'notes',
-    periodKey: '2027-05',
-    notes: [{ id: 'n3', text: 'Lembrar da reunião de quinta.', kind: 'note', channels: ['Ligação'] }],
+  const ambiguous = await postCenter({
+    text: 'Maio de 2027. Observação: olhar as faltas na avaliação. Não alterar o pódio.',
+    mode: 'overall',
   }, { store: persist });
-  assert.equal(edited.body.bank.periods.find((item) => item.key === '2027-05').notes[0].kind, 'note');
-  const removed = await postCenter({ action: 'notes', periodKey: '2027-05', notes: [] }, { store: persist });
-  assert.equal((removed.body.bank.periods.find((item) => item.key === '2027-05').notes ?? []).length, 0);
+  assert.equal(ambiguous.body.kind, 'clarify', ambiguous.body.reply);
+  assert.match(ambiguous.body.reply, /faltas|zerar|aviso/i);
 });
 
 

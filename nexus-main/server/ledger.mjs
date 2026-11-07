@@ -297,6 +297,31 @@ export function applyGoalsReview(store, review, people, now = new Date()) {
       next = { ...next, managementGoals: [...next.managementGoals, { ...entry, notes: [] }] };
     }
   }
+  if (Array.isArray(review?.notes) && review.notes.length) {
+    const periodKey = review.periodKey || '';
+    const current = next.managementGoals.find((item) => item.periodKey === periodKey)
+      || next.managementGoals.find((item) => monthBucket(item.periodKey) === monthBucket(periodKey));
+    const notes = mergeIncomingNotes(current?.notes, review.notes);
+    if (current) {
+      next = {
+        ...next,
+        managementGoals: next.managementGoals.map((item) => item.id === current.id ? { ...item, notes, updatedAt: now.toISOString() } : item),
+      };
+    } else if (periodKey) {
+      next = {
+        ...next,
+        managementGoals: [...next.managementGoals, {
+          id: `meta-${periodKey}`,
+          period: review.period || 'month',
+          periodKey,
+          periodLabel: review.periodLabel || '',
+          rules: [],
+          notes,
+          updatedAt: now.toISOString(),
+        }],
+      };
+    }
+  }
   if (Array.isArray(review?.rows) && review.rows.length) {
     const ingested = ingestReport(next, review.sourceText || '', people, {
       now,
@@ -341,6 +366,100 @@ export function noteAppliesToChannel(note, channel) {
   const channels = note?.channels ?? [];
   if (!channels.length) return true;
   return channels.includes(channel);
+}
+
+const ZERO_ALL = /perde todas|zera(?:r)?(?:\s+todas)?|desclassif|anula(?:r)?(?:\s+todas)?|fica(?:r)? com zero|pontuacao zero|independente(?:mente)? (?:dos|de) (?:demais |outros )?(?:resultados|indicadores)/;
+const AMBIGUOUS_HINT = /considerar|descontar|penaliz|olhar|levar em conta|influenc|vale (?:na |para a )?avalia|conta (?:na|para)/;
+
+function noteChannelsFrom(text) {
+  const folded = fold(text);
+  const channels = [];
+  if (/ligac|telefon/.test(folded)) channels.push('Ligação');
+  if (/\bchat\b/.test(folded)) channels.push('Chat');
+  if (/e ?mail|email/.test(folded)) channels.push('E-mail');
+  return [...new Set(channels)];
+}
+
+function noteFingerprint(note) {
+  return `${note.kind}:${note.effect || 'none'}:${fold(note.text)}`;
+}
+
+export function mergeIncomingNotes(existing, incoming) {
+  const next = normalizeGoalNotes(existing);
+  for (const note of normalizeGoalNotes(incoming)) {
+    const index = next.findIndex((item) => noteFingerprint(item) === noteFingerprint(note)
+      || (item.kind === 'rule' && note.kind === 'rule' && item.effect === note.effect && note.effect !== 'none'));
+    if (index >= 0) next[index] = { ...next[index], ...note, id: next[index].id };
+    else next.push({ ...note, id: note.id || `note-${next.length + 1}` });
+  }
+  return next;
+}
+
+export function extractGoalNotes(source) {
+  const text = String(source ?? '');
+  const foldedAll = fold(text);
+  const found = [];
+  const questions = [];
+  const labeled = [];
+  const pattern = /(?:^|\n)\s*((?:observa[cç][aã]o(?:es)?|obs\.?|regra(?:s)?(?: especiais?)?)\s*[:\-–]\s*)(.+)/gi;
+  let match;
+  while ((match = pattern.exec(text))) {
+    labeled.push({ label: fold(match[1]), body: String(match[2] ?? '').trim() });
+  }
+  for (const item of labeled) {
+    const body = item.body.replace(/\s+/g, ' ').replace(/[.;]+$/, '').trim();
+    if (!body) continue;
+    const folded = fold(body);
+    const channels = noteChannelsFrom(`${item.label} ${body}`);
+    if (ZERO_ALL.test(folded) && /falta/.test(folded)) {
+      found.push({ text: body, kind: 'rule', channels, effect: 'zero_on_faltas' });
+      continue;
+    }
+    if (/falta/.test(folded) && (AMBIGUOUS_HINT.test(folded) || /avalia|meta|desempenho/.test(folded)) && !ZERO_ALL.test(folded)) {
+      questions.push('se a menção a faltas deve zerar todas as metas ou é só um aviso');
+      continue;
+    }
+    found.push({ text: body, kind: /regra/.test(item.label) ? 'rule' : 'note', channels });
+  }
+  if (!found.some((item) => item.kind === 'rule' && (item.effect === 'zero_on_faltas' || inferNoteEffect(item.text, 'rule') === 'zero_on_faltas'))) {
+    if (/falta/.test(foldedAll) && ZERO_ALL.test(foldedAll)) {
+      const sentence = text.split(/[\n.]+/).map((item) => item.trim()).find((item) => /falta/i.test(item) && ZERO_ALL.test(fold(item)));
+      if (sentence) found.push({ text: sentence.replace(/\s+/g, ' ').trim(), kind: 'rule', channels: noteChannelsFrom(sentence), effect: 'zero_on_faltas' });
+    }
+  }
+  if (!found.length && /observa/.test(foldedAll) && /falta/.test(foldedAll) && AMBIGUOUS_HINT.test(foldedAll) && !ZERO_ALL.test(foldedAll)) {
+    questions.push('se a menção a faltas deve zerar todas as metas ou é só um aviso');
+  }
+  const corrected = applyNoteCorrection(found, text);
+  return {
+    notes: normalizeGoalNotes(corrected.notes.length ? corrected.notes : found),
+    questions: [...new Set([...questions, ...corrected.questions])],
+  };
+}
+
+function applyNoteCorrection(existing, source) {
+  const folded = fold(source);
+  const notes = normalizeGoalNotes(existing);
+  if (/s[oó] para liga|apenas (para )?liga|vale para liga/.test(folded) && /falta|regra/.test(folded)) {
+    return { notes: notes.map((item) => item.kind === 'rule' ? { ...item, channels: ['Ligação'] } : item), questions: [] };
+  }
+  if (/(chat|e ?mail|email)/.test(folded) && /s[oó] para|apenas|vale para/.test(folded) && /falta|regra/.test(folded)) {
+    return { notes: notes.map((item) => item.kind === 'rule' ? { ...item, channels: ['Chat', 'E-mail'] } : item), questions: [] };
+  }
+  if (/n[aã]o zera|s[oó] (um )?aviso|n[aã]o (e|é) regra|apenas observa/.test(folded) && /falta/.test(folded)) {
+    return { notes: notes.map((item) => item.effect === 'zero_on_faltas' ? { ...item, kind: 'note', effect: 'none' } : item), questions: [] };
+  }
+  return { notes, questions: [] };
+}
+
+export function resolveGoalNotes(source, existing = []) {
+  const extracted = extractGoalNotes(source);
+  const folded = fold(source);
+  if (/s[oó] para|apenas|vale para|n[aã]o zera|s[oó] (um )?aviso/.test(folded) && /falta|regra|observa/.test(folded)) {
+    const corrected = applyNoteCorrection(existing.length ? existing : extracted.notes, source);
+    return { notes: mergeIncomingNotes(existing, corrected.notes), questions: corrected.questions };
+  }
+  return { notes: mergeIncomingNotes(existing, extracted.notes), questions: extracted.questions };
 }
 
 export function saveGoalNotes(store, periodKey, notes, now = new Date()) {

@@ -91,6 +91,7 @@ type GoalsConference = {
     scores?: { userId: string; name: string; score: number; place: number; parts?: Record<string, { contribution: number; weight: number; name: string; value?: number | null; best?: number | null; eligible?: boolean; reason?: string; score?: number }> }[];
   } | null;
   fingerprint?: string;
+  notes?: { id: string; text: string; kind: 'note' | 'rule'; channels?: string[]; effect?: string }[];
 };
 type Criterion = { mode: 'preset' | 'custom' | 'overall'; indicator?: string; templateId?: string };
 export type GoalsPayload = {
@@ -284,7 +285,6 @@ type Board = {
   pendingPodium: Criterion | null;
   confirmPodium: (next?: Criterion) => Promise<void>;
   cancelProposal: () => void;
-  applyGoals: (data: GoalsPayload) => void;
   messages: ChatMessage[];
   draft: string;
   setDraft: (value: string) => void;
@@ -579,7 +579,6 @@ export const GoalsProvider: FC<{
     patchRow,
     saveTemplate,
     cancelProposal,
-    applyGoals: (data) => onChange({ ...data, canManage: goals.canManage, people: data.people ?? goals.people }),
     onFile,
     lastReport: lastReport.current,
   }), [goals, selected, phase, preview, periodKey, replace, pendingRules, conference, pendingPodium, messages, draft, busy]);
@@ -852,7 +851,7 @@ function goalValueLabel(indicator: string, value: number | string) {
   return text;
 }
 
-function ReportBank({ goals, onClose, onChange }: { goals: GoalsPayload; onClose: () => void; onChange: (goals: GoalsPayload) => void }) {
+function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => void }) {
   const records = goals.ledger?.records ?? [];
   const bankPeriods = goals.bank?.periods ?? [];
   const buckets = [...new Set([
@@ -864,11 +863,7 @@ function ReportBank({ goals, onClose, onChange }: { goals: GoalsPayload; onClose
   const [openId, setOpenId] = useState('');
   const [openGoal, setOpenGoal] = useState('');
   const [clearMode, setClearMode] = useState<'' | 'period' | 'all'>('');
-  const [goalFilter, setGoalFilter] = useState<'Ligação' | 'desk' | ''>('');
-  const [noteText, setNoteText] = useState('');
-  const [noteKind, setNoteKind] = useState<'note' | 'rule'>('note');
-  const [editingNote, setEditingNote] = useState('');
-  const [savingNotes, setSavingNotes] = useState(false);
+  const [goalFilter, setGoalFilter] = useState<'Ligação' | 'desk'>('desk');
   const { leftCollapsed } = useShell();
   const bankPeriod = bankPeriods.find((item) => item.key === selected);
   const periodIndex = buckets.findIndex((key) => key === selected);
@@ -1023,7 +1018,7 @@ function ReportBank({ goals, onClose, onChange }: { goals: GoalsPayload; onClose
                 title="Metas de Ligação"
                 aria-label="Metas de Ligação"
                 aria-pressed={goalFilter === 'Ligação'}
-                onClick={() => setGoalFilter((value) => value === 'Ligação' ? '' : 'Ligação')}
+                onClick={() => setGoalFilter('Ligação')}
                 className={cn('grid h-7 w-7 place-items-center rounded-full transition', goalFilter === 'Ligação' ? 'bg-[#8E35B8] text-white' : 'border border-[#E7DFF0] bg-white text-[#8E35B8] hover:bg-[#FBF8FC]')}
               >
                 <Phone className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={2} />
@@ -1033,7 +1028,7 @@ function ReportBank({ goals, onClose, onChange }: { goals: GoalsPayload; onClose
                 title="Metas de Chat e E-mail"
                 aria-label="Metas de Chat e E-mail"
                 aria-pressed={goalFilter === 'desk'}
-                onClick={() => setGoalFilter((value) => value === 'desk' ? '' : 'desk')}
+                onClick={() => setGoalFilter('desk')}
                 className={cn('grid h-7 w-7 place-items-center rounded-full transition', goalFilter === 'desk' ? 'bg-[#8E35B8] text-white' : 'border border-[#E7DFF0] bg-white text-[#8E35B8] hover:bg-[#FBF8FC]')}
               >
                 <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={2} />
@@ -1041,7 +1036,6 @@ function ReportBank({ goals, onClose, onChange }: { goals: GoalsPayload; onClose
             </div>
           </div>
           {managementGoals.filter((goal) => {
-            if (!goalFilter) return true;
             if (goal.indicator === 'faltas') return true;
             if (goalFilter === 'Ligação') return CALL_ONLY_FIELDS.has(goal.indicator);
             return TICKET_FIELDS.has(goal.indicator) || String(goal.indicator).startsWith('c:');
@@ -1050,7 +1044,6 @@ function ReportBank({ goals, onClose, onChange }: { goals: GoalsPayload; onClose
           ) : (
             <ul className="grid gap-3">
               {managementGoals.filter((goal) => {
-                if (!goalFilter) return true;
                 if (goal.indicator === 'faltas') return true;
                 if (goalFilter === 'Ligação') return CALL_ONLY_FIELDS.has(goal.indicator);
                 return TICKET_FIELDS.has(goal.indicator) || String(goal.indicator).startsWith('c:');
@@ -1079,85 +1072,30 @@ function ReportBank({ goals, onClose, onChange }: { goals: GoalsPayload; onClose
               })}
             </ul>
           )}
-          <div className="mt-4 rounded-[20px] border border-[#EEE6F4] bg-white px-4 py-4 sm:px-5">
-            <p className="text-[14px] font-semibold text-[#241B33]">Observações e regras de avaliação</p>
-            <p className="mt-1 text-[12.5px] leading-5 text-[#8A7C98]">Observações são informativas. Regras obrigatórias entram no cálculo antes da pontuação e só valem para as categorias marcadas.</p>
-            <ul className="mt-3 grid gap-2">
-              {(bankPeriod?.notes ?? []).filter((note) => {
-                if (!goalFilter) return true;
-                const channels = note.channels ?? [];
-                if (!channels.length) return true;
-                if (goalFilter === 'Ligação') return channels.includes('Ligação');
-                return channels.includes('Chat') || channels.includes('E-mail');
-              }).map((note) => (
-                <li key={note.id} className="rounded-2xl border border-[#F3EAF8] px-3 py-3">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-semibold tracking-wide text-[#8E35B8]">{note.kind === 'rule' ? 'Regra obrigatória' : 'Observação'}{note.effect === 'zero_on_faltas' ? ' · zera todas as metas' : ''}{(note.channels ?? []).length ? ` · ${(note.channels ?? []).join(', ')}` : ''}</p>
-                      <p className="mt-1 text-[13px] leading-5 text-[#241B33]">{note.text}</p>
-                    </div>
-                    <div className="flex gap-1">
-                      <button type="button" aria-label="Editar observação" onClick={() => { setEditingNote(note.id); setNoteText(note.text); setNoteKind(note.kind); }} className="grid h-7 w-7 place-items-center rounded-full text-[#8E35B8] hover:bg-[#F3E4FA]"><Pencil className="h-3.5 w-3.5" /></button>
-                      <button
-                        type="button"
-                        aria-label="Excluir observação"
-                        disabled={savingNotes}
-                        onClick={() => {
-                          const next = (bankPeriod?.notes ?? []).filter((item) => item.id !== note.id);
-                          void (async () => {
-                            setSavingNotes(true);
-                            try {
-                              const data = await send('/api/goals/center', 'POST', { action: 'notes', periodKey: selected, notes: next });
-                              onChange({ ...data, canManage: goals.canManage, people: data.people ?? goals.people });
-                              window.dispatchEvent(new Event('unica-goals-saved'));
-                            } finally {
-                              setSavingNotes(false);
-                            }
-                          })();
-                        }}
-                        className="grid h-7 w-7 place-items-center rounded-full text-[#8A7C98] hover:bg-[#F3E4FA] hover:text-[#B42318]"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <form
-              className="mt-3 grid gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const text = noteText.trim();
-                if (!text || !selected) return;
-                const channels = goalFilter === 'Ligação' ? ['Ligação'] : goalFilter === 'desk' ? ['Chat', 'E-mail'] : [];
-                const current = bankPeriod?.notes ?? [];
-                const next = editingNote
-                  ? current.map((item) => item.id === editingNote ? { ...item, text, kind: noteKind, channels: item.channels?.length ? item.channels : channels } : item)
-                  : [...current, { id: `note-${Date.now()}`, text, kind: noteKind, channels }];
-                void (async () => {
-                  setSavingNotes(true);
-                  try {
-                    const data = await send('/api/goals/center', 'POST', { action: 'notes', periodKey: selected, notes: next });
-                    onChange({ ...data, canManage: goals.canManage, people: data.people ?? goals.people });
-                    window.dispatchEvent(new Event('unica-goals-saved'));
-                    setNoteText('');
-                    setEditingNote('');
-                    setNoteKind('note');
-                  } finally {
-                    setSavingNotes(false);
-                  }
-                })();
-              }}
-            >
-              <textarea value={noteText} onChange={(event) => setNoteText(event.target.value)} rows={2} placeholder={noteKind === 'rule' ? 'Ex.: Se tiver falta sem justificativa, perde todas as metas.' : 'Escreva uma observação da gestão.'} className="min-h-[64px] rounded-xl border border-[#E7DFF0] px-3 py-2 text-[13px] outline-none focus:border-[#8E35B8]" />
-              <div className="flex flex-wrap items-center gap-2">
-                <button type="button" onClick={() => setNoteKind('note')} className={cn('h-8 rounded-full border px-3 text-[12px] font-medium', noteKind === 'note' ? 'border-[#8E35B8] bg-[#F3E4FA] text-[#6A228C]' : 'border-[#E7DFF0] text-[#8A7C98]')}>Observação</button>
-                <button type="button" onClick={() => setNoteKind('rule')} className={cn('h-8 rounded-full border px-3 text-[12px] font-medium', noteKind === 'rule' ? 'border-[#8E35B8] bg-[#F3E4FA] text-[#6A228C]' : 'border-[#E7DFF0] text-[#8A7C98]')}>Regra obrigatória</button>
-                <button type="submit" disabled={savingNotes || !noteText.trim() || !selected} className="ml-auto h-8 rounded-full bg-[#8E35B8] px-4 text-[12.5px] font-semibold text-white disabled:bg-[#C9A6DC]">{editingNote ? 'Salvar alteração' : 'Adicionar'}</button>
-              </div>
-            </form>
-          </div>
+          {(bankPeriod?.notes ?? []).filter((note) => {
+            const channels = note.channels ?? [];
+            if (!channels.length) return true;
+            if (goalFilter === 'Ligação') return channels.includes('Ligação');
+            return channels.includes('Chat') || channels.includes('E-mail');
+          }).length ? (
+            <div className="mt-4 rounded-[20px] border border-[#EEE6F4] bg-white px-4 py-4 sm:px-5">
+              <p className="text-[14px] font-semibold text-[#241B33]">Observações e regras de avaliação</p>
+              <p className="mt-1 text-[12.5px] leading-5 text-[#8A7C98]">Interpretadas pelo chat da Central. Regras obrigatórias entram no cálculo antes da pontuação.</p>
+              <ul className="mt-3 grid gap-2">
+                {(bankPeriod?.notes ?? []).filter((note) => {
+                  const channels = note.channels ?? [];
+                  if (!channels.length) return true;
+                  if (goalFilter === 'Ligação') return channels.includes('Ligação');
+                  return channels.includes('Chat') || channels.includes('E-mail');
+                }).map((note) => (
+                  <li key={note.id} className="rounded-2xl border border-[#F3EAF8] px-3 py-3">
+                    <p className="text-[11px] font-semibold tracking-wide text-[#8E35B8]">{note.kind === 'rule' ? 'Regra obrigatória' : 'Observação'}{note.effect === 'zero_on_faltas' ? ' · zera todas as metas' : ''}{(note.channels ?? []).length ? ` · ${(note.channels ?? []).join(', ')}` : ''}</p>
+                    <p className="mt-1 text-[13px] leading-5 text-[#241B33]">{note.text}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </section>
 
         <section className="pb-8">
@@ -1251,7 +1189,7 @@ function ReportBank({ goals, onClose, onChange }: { goals: GoalsPayload; onClose
 
 export const GoalsAssistant: FC = () => {
   const board = useBoard();
-  const { goals, messages, draft, setDraft, busy, talk, phase, pendingRules, setPendingRules, conference, pendingPodium, confirmPodium, saveTemplate, cancelProposal, applyGoals } = board;
+  const { goals, messages, draft, setDraft, busy, talk, phase, pendingRules, setPendingRules, conference, pendingPodium, confirmPodium, saveTemplate, cancelProposal } = board;
   const thread = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [bankOpen, setBankOpen] = useState(false);
@@ -1282,7 +1220,7 @@ export const GoalsAssistant: FC = () => {
           </button>
         </div>
       </div>
-      {bankOpen ? <ReportBank goals={goals} onClose={() => setBankOpen(false)} onChange={applyGoals} /> : null}
+      {bankOpen ? <ReportBank goals={goals} onClose={() => setBankOpen(false)} /> : null}
       <div ref={thread} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
         {messages.map((message) => (
           <div key={message.id} className={cn('flex gap-2', message.from === 'user' ? 'justify-end' : 'items-start')}>
@@ -1341,6 +1279,16 @@ export const GoalsAssistant: FC = () => {
                       {item.place}º {item.name}: {item.score}%
                       {item.parts ? ` — ${Object.values(item.parts).map((part) => (typeof part === 'number' ? String(part) : `${part.name}: ${part.value ?? '—'} → ${part.contribution}%${part.eligible === false && part.reason ? ` (${part.reason})` : ''}`)).join('; ')}` : ''}
                     </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {conference.notes?.length ? (
+              <>
+                <p className="text-[12px] font-medium text-[#4A1C73]">Observações e regras de avaliação</p>
+                <ul className="grid gap-1 text-[12.5px] leading-5 break-words text-[#5C5168]">
+                  {conference.notes.map((note) => (
+                    <li key={note.id}>{note.kind === 'rule' ? 'Regra' : 'Observação'}: {note.text}</li>
                   ))}
                 </ul>
               </>

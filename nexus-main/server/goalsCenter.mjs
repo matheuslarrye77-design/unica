@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { classifyGeminiError, completeJson } from './gemini.mjs';
 import { blankPersonSpans, fold, formatPeriodLabel, matchPeople, parseCustomRequest, parsePeopleFromText, readGoalPeriod, subsetorOf, weekRange } from './goals.mjs';
 import { FIELD_NAMES, FIELD_UNITS, OVERALL_FIELD_DEFS, VALUE_FIELDS, fieldApplies } from './indicatorCatalog.mjs';
-import { applyGoalsReview, inferNoteEffect, noteAppliesToChannel, normalizeGoalNotes } from './ledger.mjs';
+import { applyGoalsReview, extractGoalNotes, inferNoteEffect, noteAppliesToChannel, normalizeGoalNotes, resolveGoalNotes } from './ledger.mjs';
 import { citedNumbers } from './goalsTurn.mjs';
 
 const KNOWN = VALUE_FIELDS;
@@ -113,6 +113,7 @@ function fingerprint(conference) {
     goals: conference?.goals ?? [],
     people: (conference?.people ?? []).map((row) => ({ userId: row.userId, results: row.results })),
     overall: conference?.overall ?? null,
+    notes: conference?.notes ?? [],
   })).digest('hex');
 }
 
@@ -231,7 +232,7 @@ function selectedOverall(source, options = {}) {
   if (fromText.length) return fromText;
   const cited = citedKnown(source);
   const mentioned = OVERALL_FIELDS.filter((item) => cited[item.id]).map((item) => item.id);
-  if (mentioned.length) return mentioned;
+  if (mentioned.length && !options.noteTurn) return mentioned;
   const fromRules = OVERALL_FIELDS.filter((item) => ruleForIndicator(options.localRules ?? [], item.id)).map((item) => item.id);
   if (fromRules.length) return fromRules;
   const fromRows = fieldsWithValues(options.localRows);
@@ -337,7 +338,7 @@ export function readPodiumRequest(text) {
   return { kind: 'apply', criterion: { mode: 'overall', indicator, templateId: '' } };
 }
 
-export function toConference({ source, period, rules, rows, mode, overall }) {
+export function toConference({ source, period, rules, rows, mode, overall, notes }) {
   const goals = (rules ?? []).map((rule) => ({
     indicator: rule.indicator,
     name: displayName(rule.indicator, rule.name),
@@ -402,6 +403,7 @@ export function toConference({ source, period, rules, rows, mode, overall }) {
     goals,
     people,
     overall: overall ?? null,
+    notes: normalizeGoalNotes(notes),
     changePodium: false,
     fingerprint: '',
   };
@@ -1171,6 +1173,7 @@ export function conferenceToReview(conference) {
       ambiguous: [],
     })),
     sourceText: conference.sourceText || '',
+    notes: conference.notes ?? [],
   };
 }
 
@@ -1189,7 +1192,8 @@ function centerPrompt(text, history, options) {
     'Há só dois modos: desempenho geral e critérios personalizados. Não existe mais a modalidade critérios predefinidos.',
     'Desempenho geral usa indicadores operacionais: tickets resolvidos, tickets transferidos, primeira resposta, TMA, ligações atendidas, ligações perdidas sem resgate, tempo de espera, duração da ligação e faltas sem atestado. Satisfação não entra. Indicadores de ligação só valem para quem tem funcao Ligação na Equipe. Faltas valem para Ligação, Chat e E-mail. A categoria oficial é o campo funcao, nunca role. Pesos iguais entre os indicadores selecionados e aplicáveis. Quem não entra na condição zera só aquela parcela. O pódio mostra percentual e não mistura categorias nem períodos.',
     'Critérios personalizados servem só para criar indicador inédito. Indicadores já conhecidos entram no desempenho geral.',
-    'Não invente número, indicador, comparador, período ou pessoa.',
+    'Não invente número, indicador, comparador, período, pessoa, observação ou regra especial.',
+    'Observações e regras especiais escritas no recado (por exemplo: se tiver falta sem justificativa, perde todas as metas) são interpretadas localmente. Não invente regra. Observação informativa não vira regra sem intenção clara de alterar o cálculo.',
     'changePodium só é true se a pessoa pediu explicitamente para mudar o pódio. Meta, resultado e conferência não mudam o pódio.',
     'Indicadores conhecidos: resolvidosCount, resolvidos (%), transferidos, primeira, resolucao, satisfacao, atendidas, perdidas, espera, duracao, faltas.',
     'Se o indicador for novo, use indicator começando com c: e o name completo, por exemplo c:indice-de-qualidade-no-atendimento.',
@@ -1234,9 +1238,18 @@ function interpretKnown(source, options) {
 }
 
 function scoreOverall(source, options, local, period) {
+  const extracted = extractGoalNotes(source);
+  const folded = fold(source);
+  const correcting = /so para|apenas|vale para|nao zera|so um aviso/.test(folded) && /falta|regra|observa/.test(folded);
+  if (extracted.questions.length && !extracted.notes.some((item) => item.kind === 'rule') && !correcting) {
+    return clarify(extracted.questions);
+  }
+  const resolved = resolveGoalNotes(source, notesForMonth({ managementGoals: options.managementGoals }, monthOf(period.periodKey || period.key)));
+  const notes = resolved.notes;
   const bank = rulesFromBank(options.managementGoals, period.periodKey);
   const records = recordsForPeriod(local, options, period);
-  const selected = selectedOverall(source, { ...options, localRules: local.rules, localRows: local.rows, bank, records });
+  const noteTurn = !(local.rows ?? []).some((row) => row.userId) && !(local.rules ?? []).length && (notes.length || resolved.questions.length);
+  const selected = selectedOverall(source, { ...options, localRules: local.rules, localRows: local.rows, bank, records, noteTurn });
   const packed = packOverallWeights(selected);
   const rules = rulesForSelected(source, local, bank, selected);
   const missing = [];
@@ -1261,8 +1274,8 @@ function scoreOverall(source, options, local, period) {
     }
   }
   if (missing.length) return clarify(missing);
-  const overall = overallFor(records, rules, packed.pack, period, selected, false, roster, notesForMonth({ managementGoals: options.managementGoals }, monthOf(period.periodKey || period.key)));
-  const conference = toConference({ source, period, rules, rows: records, mode: 'overall', overall });
+  const overall = overallFor(records, rules, packed.pack, period, selected, false, roster, notes);
+  const conference = toConference({ source, period, rules, rows: records, mode: 'overall', overall, notes });
   if (!conference.goals.length && !conference.people.length) {
     return clarify(['as condições de entrada e os resultados dos indicadores selecionados']);
   }
@@ -1347,7 +1360,10 @@ export async function interpretGoalsCenter(text, options = {}) {
     ? { rules: rulesFromModel(parsed.goals, source, period.period), rows: rowsFromModel(parsed.people, people, source) }
     : { rules: [], rows: [] };
   const merged = fill(model, local);
-  const conference = toConference({ source, period, rules: merged.rules, rows: merged.rows, mode, overall: null });
+  const extracted = extractGoalNotes(source);
+  if (extracted.questions.length && !extracted.notes.some((item) => item.kind === 'rule')) return clarify(extracted.questions);
+  const resolved = resolveGoalNotes(source, notesForMonth({ managementGoals: options.managementGoals }, monthOf(period.periodKey || period.key)));
+  const conference = toConference({ source, period, rules: merged.rules, rows: merged.rows, mode, overall: null, notes: resolved.notes });
   const missing = missingParts(conference, source, mode);
   if (!conference.goals.length && !conference.people.length) {
     if (missing.length) return clarify(missing);
