@@ -65,7 +65,14 @@ type FeedPost = {
   comments: Comment[];
   bannerTitle?: string;
   recognizedName?: string;
+  recognizedBy?: string;
+  receivedRecognition?: boolean;
+  caption?: string;
+  comment?: string;
   tag?: string;
+  journalCategory?: string;
+  journalExcerpt?: string;
+  nonce?: string;
   poll?: { id: string; label: string; votes: number }[];
   votes?: Record<string, string>;
   eventWhen?: string;
@@ -419,7 +426,13 @@ export function extraApi(): Connect.NextHandleFunction {
       })),
       bannerTitle: post.bannerTitle,
       journalHref: post.journalHref,
+      journalCategory: post.journalCategory,
+      journalExcerpt: post.journalExcerpt,
       recognizedName: post.recognizedName,
+      recognizedBy: post.recognizedBy,
+      receivedRecognition: post.receivedRecognition,
+      caption: post.caption,
+      comment: post.comment,
       tag: post.tag,
       poll: post.poll,
       votedId: post.votes?.[userId] ?? null,
@@ -536,7 +549,7 @@ export function extraApi(): Connect.NextHandleFunction {
 
       if (req.method === 'POST' && url === '/api/feed') {
         try {
-        const body = JSON.parse((await readBody(req)).toString('utf8')) as Partial<FeedPost> & { images?: unknown; blocks?: unknown; journalHref?: string };
+        const body = JSON.parse((await readBody(req)).toString('utf8')) as Partial<FeedPost> & { images?: unknown; blocks?: unknown; journalHref?: string; nonce?: string };
         const blocks = cleanBlocks(body.blocks);
         const text = blocks?.length ? blocks.filter((block) => block.type === 'text').map((block) => block.text).join('\n\n') : String(body.body ?? '').trim();
         const images = blocks?.length ? blocks.filter((block) => block.type === 'image').map((block) => block.url) : cleanImages(body.images ?? (body.image ? [body.image] : []));
@@ -559,11 +572,23 @@ export function extraApi(): Connect.NextHandleFunction {
         if (recognition && !canRecognize(user, dir)) return send(res, 403, { error: 'forbidden' });
         const recognizedName = String(body.recognizedName ?? '').trim();
         if (recognition && !recognizedName) return send(res, 400, { error: 'person' });
+        const recognizedBy = String(body.recognizedBy ?? '').trim();
+        const receivedRecognition = Boolean(body.receivedRecognition);
+        const caption = String(body.caption ?? '').trim().slice(0, 2000);
+        const comment = String(body.comment ?? '').trim().slice(0, 2000);
+        const journalCategory = String(body.journalCategory ?? '').trim().slice(0, 40);
+        const journalExcerpt = String(body.journalExcerpt ?? '').trim().slice(0, 2000);
+        const nonce = String(body.nonce ?? '').trim().slice(0, 80);
         const createdAt = new Date().toISOString();
         const result = await applyFeed(res, (feed) => {
-          const recent = feed.posts.find((item) => item.authorId === user.id && item.body === text && Date.now() - Date.parse(item.createdAt) < 5000);
-          if (recent && recent.images?.join() === images.join()) {
-            return { skip: true, duplicate: recent, store: feed };
+          if (nonce) {
+            const same = feed.posts.find((item) => item.authorId === user.id && item.nonce === nonce);
+            if (same) return { skip: true, duplicate: same, store: feed };
+          } else {
+            const recent = feed.posts.find((item) => item.authorId === user.id && item.body === text && Date.now() - Date.parse(item.createdAt) < 1200);
+            if (recent && recent.images?.join() === images.join()) {
+              return { skip: true, duplicate: recent, store: feed };
+            }
           }
           const post: FeedPost = {
             id: `post-${Date.now()}-${randomBytes(4).toString('hex')}`,
@@ -574,7 +599,7 @@ export function extraApi(): Connect.NextHandleFunction {
             department: user.department,
             avatar: user.avatar,
             time: 'agora',
-            body: text || bannerTitle,
+            body: text || caption || comment || bannerTitle,
             image: images[0],
             images,
             blocks: blocks?.length ? blocks : undefined,
@@ -592,8 +617,15 @@ export function extraApi(): Connect.NextHandleFunction {
                 ? (bannerTitle || `Reconhecimento especial para ${recognizedName.split(' ')[0]}!`)
                 : bannerTitle || undefined,
             journalHref,
+            journalCategory: announcement && journalCategory ? journalCategory : undefined,
+            journalExcerpt: announcement && journalExcerpt ? journalExcerpt : undefined,
             recognizedName: recognition ? recognizedName : undefined,
+            recognizedBy: recognition && recognizedBy ? recognizedBy : undefined,
+            receivedRecognition: recognition ? receivedRecognition : undefined,
+            caption: caption || undefined,
+            comment: comment || undefined,
             tag: recognition ? String(body.tag ?? '').trim() : undefined,
+            nonce: nonce || undefined,
             audience,
             mood,
             moodAudience,

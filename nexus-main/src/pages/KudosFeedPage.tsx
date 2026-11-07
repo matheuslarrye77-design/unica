@@ -1,9 +1,10 @@
 import { RecognitionComposer } from '@/components/social/RecognitionComposer';
+import { recognitionHeadline } from '@/lib/recognitionText';
 import { HomeRail } from '@/components/shell/HomeRail';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { teamRoster } from '@/data/team';
-import { actor, authHeaders, getDemoId } from '@/lib/session';
+import { authHeaders, getDemoId } from '@/lib/session';
 import { usePageSearch } from '@/lib/pageSearch';
 import { cn } from '@/lib/utils';
 import { createFeedPost } from '@/lib/feed';
@@ -25,6 +26,10 @@ type Recognition = {
   quote: string;
   when: string;
   likes: number;
+  received?: boolean;
+  caption?: string;
+  comment?: string;
+  photos?: string[];
 };
 
 
@@ -38,7 +43,7 @@ function readExtra(): Recognition[] {
   try {
     const parsed = JSON.parse(localStorage.getItem(EXTRA_KEY) ?? '[]') as Recognition[];
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item) => item && typeof item.id === 'string' && typeof item.quote === 'string');
+    return parsed.filter((item) => item && typeof item.id === 'string' && typeof item.quote === 'string') as Recognition[];
   } catch {
     return [];
   }
@@ -61,7 +66,6 @@ function goalsHeaders() {
 
 export const KudosFeedPage: FC = () => {
   const { query } = usePageSearch();
-  const me = actor();
   const [params, setParams] = useSearchParams();
   const [composer, setComposer] = useState(false);
   const [filter, setFilter] = useState<'Todos' | Area>('Todos');
@@ -120,7 +124,7 @@ export const KudosFeedPage: FC = () => {
   const items = [...extra, ...RECENT].filter((item) => {
     if (filter !== 'Todos' && item.area !== filter) return false;
     if (!needle) return true;
-    return `${item.to} ${item.from} ${item.quote} ${item.area}`.toLowerCase().includes(needle);
+    return `${item.to} ${item.from} ${item.quote} ${item.area} ${item.caption ?? ''} ${item.comment ?? ''}`.toLowerCase().includes(needle);
   });
   const canManageGoals = Boolean(goals?.canManage);
   const tab = canManageGoals && params.get('painel') === 'metas' ? 'metas' : 'mural';
@@ -137,8 +141,14 @@ export const KudosFeedPage: FC = () => {
         body: item.quote,
         kind: 'recognition',
         recognizedName: item.to,
+        recognizedBy: item.from,
+        receivedRecognition: Boolean(item.received),
         tag: item.area,
-        bannerTitle: `Reconhecimento especial para ${item.to.split(' ')[0]}!`,
+        caption: item.caption,
+        comment: item.comment,
+        images: item.photos,
+        bannerTitle: recognitionHeadline(item.from, item.to, Boolean(item.received)),
+        nonce: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       });
       setPosted((current) => ({ ...current, [item.id]: true }));
       toast.success('Reconhecimento publicado no mural.');
@@ -220,15 +230,22 @@ export const KudosFeedPage: FC = () => {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="truncate text-[16px] font-semibold text-[#241B33]">{item.to}</p>
+                            <p className="text-[15px] font-semibold leading-5 text-[#241B33]">{recognitionHeadline(item.from, item.to, Boolean(item.received))}</p>
                             <p className="mt-0.5 text-[12.5px] text-[#8A7C98]">
-                              <span className="font-medium text-[#5C5168]">{item.from}</span> reconheceu · {item.when}
+                              {item.received ? `${item.to} recebeu de ${item.from}` : `${item.from} reconheceu ${item.to}`} · {item.when}
                             </p>
                           </div>
                           <span className="inline-flex shrink-0 items-center gap-1 text-[12.5px] text-[#8A7C98]"><Heart className="h-3.5 w-3.5 text-[#8E35B8]" /> {item.likes}</span>
                         </div>
                         <span className={cn('mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium', item.area === 'Gestão' ? 'bg-[#F3E4FA] text-[#6A228C]' : 'bg-[#F8E8F0] text-[#8A4A66]')}>{item.area}</span>
                         <p className="mt-2 text-[14.5px] leading-6 text-[#3C3148]">“{item.quote}”</p>
+                        {item.caption ? <p className="mt-2 text-[13.5px] text-[#5C5168]">{item.caption}</p> : null}
+                        {item.comment ? <p className="mt-1 text-[13px] text-[#8A7C98]">{item.comment}</p> : null}
+                        {item.photos?.length ? (
+                          <div className={`mt-3 grid gap-2 ${item.photos.length > 1 ? 'grid-cols-2' : ''}`}>
+                            {item.photos.map((url) => <img key={url} src={url} alt="" className="max-h-48 w-full rounded-xl object-cover" />)}
+                          </div>
+                        ) : null}
                         <button
                           type="button"
                           disabled={posted[item.id] || sending === item.id}
@@ -254,16 +271,21 @@ export const KudosFeedPage: FC = () => {
           </DialogHeader>
           <RecognitionComposer
             publishToFeed={false}
+            onCancel={() => setComposer(false)}
             onCreated={(created) => {
               if (created) {
                 setExtra((current) => [{
                   id: `novo-${Date.now()}`,
-                  from: me.name,
+                  from: created.fromName,
                   to: created.name,
                   area: areaFromTag(created.tag),
                   quote: created.message,
                   when: 'agora',
                   likes: 0,
+                  received: created.received,
+                  caption: created.caption || undefined,
+                  comment: created.comment || undefined,
+                  photos: created.photos,
                 }, ...current]);
               }
               setComposer(false);

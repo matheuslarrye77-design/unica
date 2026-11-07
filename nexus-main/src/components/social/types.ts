@@ -56,7 +56,13 @@ export type SocialPost = {
   commentsOpen: boolean;
   bannerTitle?: string;
   journalHref?: string;
+  journalCategory?: string;
+  journalExcerpt?: string;
   recognizedName?: string;
+  recognizedBy?: string;
+  receivedRecognition?: boolean;
+  caption?: string;
+  comment?: string;
   tag?: string;
   poll?: PollOption[];
   votedId?: string | null;

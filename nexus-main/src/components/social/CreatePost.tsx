@@ -33,6 +33,7 @@ export type NewPostDraft = {
   kind?: 'announcement';
   bannerTitle?: string;
   journalHref?: string;
+  nonce?: string;
 };
 
 function clipboardFile(data: DataTransfer | null) {
@@ -294,24 +295,26 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
         kind: journal ? 'announcement' : undefined,
         bannerTitle: journal?.title,
         journalHref: journal?.href,
+        nonce: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       });
+      setBlocks([{ id: 'texto', type: 'text', text: '' }]);
+      focusId.current = 'texto';
+      clearVideo();
+      setAttachment(undefined);
+      setPollOpen(false);
+      setOptions(['', '']);
+      setMoodId(null);
+      setMenu(null);
+      setAudience('team');
+      setMoodAudience('team');
+      setShareMood(true);
+      onClearJournal?.();
     } catch {
+      /* o mural já mostra o erro */
+    } finally {
       setSending(false);
-      return;
+      setProgress(null);
     }
-    setSending(false);
-    setBlocks([{ id: 'texto', type: 'text', text: '' }]);
-    focusId.current = 'texto';
-    clearVideo();
-    setAttachment(undefined);
-    setPollOpen(false);
-    setOptions(['', '']);
-    setMoodId(null);
-    setMenu(null);
-    setAudience('team');
-    setMoodAudience('team');
-    setShareMood(true);
-    onClearJournal?.();
   }
 
   function insertEmoji(emoji: string) {

@@ -101,6 +101,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
         kind: draft.kind,
         bannerTitle: draft.bannerTitle,
         journalHref: draft.journalHref,
+        nonce: draft.nonce,
       });
       if (draft.mood && draft.shareMood !== false) await refreshMoods().catch(() => undefined);
       holdFeed();

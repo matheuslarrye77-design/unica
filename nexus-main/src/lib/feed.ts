@@ -113,7 +113,7 @@ export function loadFeed() {
   return request<{ posts: SocialPost[]; reposts: Repost[] }>('/api/feed');
 }
 
-export function createFeedPost(body: { body: string; image?: string; images?: string[]; blocks?: SocialPost['blocks']; attachment?: SocialPost['attachment']; poll?: SocialPost['poll']; kind?: 'recognition' | 'announcement'; recognizedName?: string; tag?: string; audience?: 'team' | 'management'; mood?: string; moodAudience?: 'team' | 'management' | 'self'; shareMood?: boolean; bannerTitle?: string; journalHref?: string }) {
+export function createFeedPost(body: { body: string; image?: string; images?: string[]; blocks?: SocialPost['blocks']; attachment?: SocialPost['attachment']; poll?: SocialPost['poll']; kind?: 'recognition' | 'announcement'; recognizedName?: string; recognizedBy?: string; receivedRecognition?: boolean; tag?: string; audience?: 'team' | 'management'; mood?: string; moodAudience?: 'team' | 'management' | 'self'; shareMood?: boolean; bannerTitle?: string; journalHref?: string; journalCategory?: string; journalExcerpt?: string; caption?: string; comment?: string; nonce?: string }) {
   return request<{ post: SocialPost }>('/api/feed', { method: 'POST', body: JSON.stringify(body) });
 }
 
