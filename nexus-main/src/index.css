@@ -257,6 +257,69 @@
   display: none !important;
 }
 
+.unica-page-scroll-handle {
+  position: fixed !important;
+  right: 20px !important;
+  bottom: 12px !important;
+  left: auto !important;
+  top: auto !important;
+  z-index: 100001 !important;
+  display: block;
+  width: 56px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: grab;
+  appearance: none;
+}
+
+.unica-page-scroll-handle::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 4px;
+  width: 48px;
+  height: 4px;
+  border: 1px solid #E4C8EE;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  pointer-events: none;
+}
+
+.unica-page-scroll-handle:active {
+  cursor: grabbing;
+}
+
+.unica-account-follow {
+  display: none;
+  position: fixed !important;
+  top: 10px !important;
+  right: 20px !important;
+  left: auto !important;
+  bottom: auto !important;
+  z-index: 45 !important;
+  align-items: center;
+}
+
+@media (min-width: 1280px) {
+  .unica-account-follow {
+    display: flex;
+  }
+}
+
+@media (max-width: 639px) {
+  .unica-page-scroll-handle {
+    right: 12px !important;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    width: 48px;
+    height: 18px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

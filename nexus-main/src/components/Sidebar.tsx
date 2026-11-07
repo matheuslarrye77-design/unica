@@ -19,6 +19,7 @@ import {
 import { type FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { PageSearchProvider } from '@/lib/pageSearch';
+import { PageScrollHandle } from '@/components/shell/PageScrollHandle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useInstitution } from '@/lib/institution';
 
@@ -127,7 +128,8 @@ export const AppFrame: FC<{ children: ReactNode }> = ({ children }) => {
       <MenuContext.Provider value={() => setOpen(true)}>
         <PageSearchProvider>
         <Sidebar open={open} onClose={() => setOpen(false)} />
-        <div className={cn('transition-[padding-left] duration-300 ease-out', leftCollapsed ? 'lg:pl-16' : 'lg:pl-[256px]')}>{children}</div>
+        <div className={cn('min-h-0', leftCollapsed ? 'lg:pl-16' : 'lg:pl-[256px]')}>{children}</div>
+        <PageScrollHandle />
         </PageSearchProvider>
       </MenuContext.Provider>
     </ShellContext.Provider>

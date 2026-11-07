@@ -1,16 +1,23 @@
 import { useEffect, useState, type FC, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 
-export const PageScrollHandle: FC<{ scroller: HTMLElement | null }> = ({ scroller }) => {
+const HANDLE_ID = 'unica-page-scroll-handle';
+
+function scrollingTarget() {
+  const mains = [...document.querySelectorAll('main')];
+  const overflowing = mains.find((node) => node.scrollHeight > node.clientHeight + 12);
+  if (overflowing) return overflowing;
+  return (document.scrollingElement as HTMLElement | null) ?? document.documentElement;
+}
+
+export const PageScrollHandle: FC = () => {
   const [ready, setReady] = useState(false);
 
   useEffect(() => setReady(true), []);
 
   function grab(event: ReactPointerEvent<HTMLButtonElement>) {
-    const el = scroller && scroller.scrollHeight > scroller.clientHeight + 12
-      ? scroller
-      : document.scrollingElement as HTMLElement | null;
-    if (!el || event.button !== 0) return;
+    if (event.button !== 0) return;
+    const el = scrollingTarget();
     event.preventDefault();
     const startY = event.clientY;
     const startScroll = el.scrollTop;
@@ -27,13 +34,14 @@ export const PageScrollHandle: FC<{ scroller: HTMLElement | null }> = ({ scrolle
     window.addEventListener('pointercancel', stop, true);
   }
 
-  if (!ready) return null;
+  if (!ready || typeof document === 'undefined') return null;
 
   return createPortal(
     <button
+      id={HANDLE_ID}
       type="button"
       aria-label="Arrastar para rolar a tela"
-      className="fixed right-3 bottom-3 z-[100001] h-2 w-[76px] cursor-grab rounded-full bg-[#8A7C98]/70 shadow-[0_1px_8px_rgba(80,40,120,0.22)] active:cursor-grabbing"
+      className="unica-page-scroll-handle"
       onPointerDown={grab}
     />,
     document.body,

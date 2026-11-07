@@ -1,37 +1,40 @@
 import { AccountCluster, Header } from '@/components/Header';
 import { RightSidebar } from '@/components/shell/RightSidebar';
-import { PageScrollHandle } from '@/components/shell/PageScrollHandle';
 import { useShell } from '@/components/Sidebar';
 import { cn } from '@/lib/utils';
-import { useState, type FC, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { type FC, type ReactNode } from 'react';
 
-export const PageFrame: FC<{ children: ReactNode; rail?: ReactNode; fitViewport?: boolean; fillRail?: boolean }> = ({ children, rail, fitViewport = false, fillRail = false }) => {
+const AccountFollow: FC<{ className?: string }> = ({ className }) => {
+  if (typeof document === 'undefined') return null;
+  return createPortal(
+    <div className={cn('unica-account-follow', className)}>
+      <AccountCluster />
+    </div>,
+    document.body,
+  );
+};
+
+export const PageFrame: FC<{ children: ReactNode; rail?: ReactNode; fitViewport?: boolean; fillRail?: boolean }> = ({ children, rail, fillRail = false }) => {
   const { rightCollapsed } = useShell();
-  const [scroller, setScroller] = useState<HTMLElement | null>(null);
   const dockAccount = Boolean(rail) && !rightCollapsed;
 
   return (
-    <div className={cn('flex min-h-svh flex-col overflow-x-clip bg-transparent', fitViewport && 'xl:h-dvh xl:max-h-dvh xl:min-h-0 xl:overflow-hidden')}>
-      <div className={cn('flex min-w-0 flex-1', fitViewport && 'xl:min-h-0 xl:overflow-hidden')}>
-        <div className={cn('flex min-w-0 flex-1 flex-col', fitViewport && 'xl:min-h-0 xl:overflow-hidden')}>
-          <Header trailing={dockAccount ? <div className="xl:hidden"><AccountCluster /></div> : <AccountCluster />} />
-          <main
-            ref={setScroller}
-            className={cn(
-              'relative min-w-0 flex-1 overflow-x-clip px-4 py-3 sm:px-5',
-              fitViewport && 'xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:py-2 xl:pr-2',
-            )}
-          >
+    <div className="flex h-svh max-h-svh min-h-0 flex-col overflow-hidden bg-transparent">
+      <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <Header trailing={<div className="xl:hidden"><AccountCluster /></div>} />
+          <main className="relative min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain px-4 py-3 sm:px-5">
             {children}
           </main>
         </div>
         {rail ? (
-          <RightSidebar locked={fitViewport} fill={fillRail} chrome={dockAccount ? <div className="hidden xl:flex"><AccountCluster /></div> : null}>
+          <RightSidebar locked fill={fillRail} chrome={dockAccount ? <div className="hidden xl:flex"><AccountCluster /></div> : null}>
             {rail}
           </RightSidebar>
         ) : null}
       </div>
-      <PageScrollHandle scroller={scroller} />
+      {dockAccount ? null : <AccountFollow />}
     </div>
   );
 };
