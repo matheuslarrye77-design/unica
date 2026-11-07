@@ -117,6 +117,10 @@ export function createFeedPost(body: { body: string; image?: string; images?: st
   return request<{ post: SocialPost }>('/api/feed', { method: 'POST', body: JSON.stringify(body) });
 }
 
+export function updateFeedPost(id: string, body: { body?: string; bannerTitle?: string; images?: string[]; image?: string; blocks?: SocialPost['blocks'] }) {
+  return request<{ post: SocialPost }>(`/api/feed/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+}
+
 export function likeFeedPost(id: string, kind: 'like' | 'love') {
   return request<{ post: SocialPost }>(`/api/feed/${id}/like`, { method: 'POST', body: JSON.stringify({ kind }) });
 }

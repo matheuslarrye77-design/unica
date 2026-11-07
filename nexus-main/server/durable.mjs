@@ -4,7 +4,6 @@ import { createClient } from '@supabase/supabase-js';
 import { serverSecretKey, supabaseConfigError } from './auth/supabaseStore.mjs';
 
 const FILES = [
-  ['feed', 'feed.json'],
   ['institution', 'institution.json'],
   ['celebrations', 'celebrations.json'],
   ['events', 'events.json'],
@@ -263,15 +262,68 @@ export async function writeStickerFile(id, bytes, contentType) {
 
 const UPLOAD_FILE = /^up-[a-f0-9]{16}$/;
 
+const MURAL_BUCKET = 'unica-mural';
+
+async function writeSupabaseUpload(id, bytes, contentType, meta) {
+  if (!UPLOAD_FILE.test(id) || supabaseConfigError()) return false;
+  try {
+    const db = supabaseClient();
+    await db.storage.createBucket(MURAL_BUCKET, { public: false, fileSizeLimit: '209715200' }).catch(() => undefined);
+    const body = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
+    const file = await db.storage.from(MURAL_BUCKET).upload(`uploads/${id}`, body, { contentType, upsert: true });
+    const info = await db.storage.from(MURAL_BUCKET).upload(`uploads/${id}.json`, Buffer.from(JSON.stringify({
+      name: String(meta?.name || 'arquivo').slice(0, 180),
+      mime: contentType,
+      size: body.length,
+    })), { contentType: 'application/json', upsert: true });
+    if (file.error) {
+      console.error('[unica] media write', file.error.message || 'supabase');
+      return false;
+    }
+    if (info.error) console.error('[unica] media write', info.error.message || 'meta');
+    return true;
+  } catch {
+    console.error('[unica] media write', 'network');
+    return false;
+  }
+}
+
+async function readSupabaseUpload(id) {
+  if (!UPLOAD_FILE.test(id) || supabaseConfigError()) return null;
+  try {
+    const db = supabaseClient();
+    const file = await db.storage.from(MURAL_BUCKET).download(`uploads/${id}`);
+    if (file.error || !file.data) return null;
+    const bytes = Buffer.from(await file.data.arrayBuffer());
+    const info = await db.storage.from(MURAL_BUCKET).download(`uploads/${id}.json`);
+    if (!info.error && info.data) {
+      try {
+        const meta = JSON.parse(await info.data.text());
+        return { bytes, mime: String(meta.mime || file.data.type || 'application/octet-stream'), name: String(meta.name || 'arquivo') };
+      } catch {
+        /* use the file headers */
+      }
+    }
+    return { bytes, mime: file.data.type || 'application/octet-stream', name: 'arquivo' };
+  } catch {
+    return null;
+  }
+}
+
 export async function writeUploadFile(id, bytes, contentType, meta) {
-  if (!UPLOAD_FILE.test(id) || !blobToken()) return false;
+  if (!UPLOAD_FILE.test(id)) return false;
+  const stored = await writeSupabaseUpload(id, bytes, contentType, meta);
+  if (!blobToken()) return stored;
   const file = await putPrivate(`unica/uploads/${id}`, bytes, contentType);
   const info = await putPrivate(`unica/uploads/${id}.json`, Buffer.from(JSON.stringify({ name: String(meta?.name || 'arquivo').slice(0, 180), mime: contentType, size: bytes.length })), 'application/json');
-  return file && info;
+  return stored || (file && info);
 }
 
 export async function readUploadFile(id) {
-  if (!UPLOAD_FILE.test(id) || !blobToken()) return null;
+  if (!UPLOAD_FILE.test(id)) return null;
+  const stored = await readSupabaseUpload(id);
+  if (stored) return stored;
+  if (!blobToken()) return null;
   const info = await getPrivate(`unica/uploads/${id}.json`);
   const file = await getPrivate(`unica/uploads/${id}`);
   if (!info || !file) return null;

@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import type { Connect } from 'vite';
-import { samplePosts } from '../src/components/social/samplePosts.js';
 import { teamRoster } from '../src/data/team.js';
+import { createFeedStore, FEED_LOAD_UNAVAILABLE, FEED_UNAVAILABLE } from './feedStore.mjs';
 import { LOGIN_REQUIRED } from '../src/lib/loginGate.js';
 import { builtinAccounts } from './auth/accounts.js';
 import { hashPassword } from './auth/credentials.mjs';
@@ -150,42 +150,6 @@ function canRecognize(user: { id: string; role: string; department?: string }, d
 
 const accounts: Account[] = builtinAccounts();
 
-function seedPosts(): FeedPost[] {
-  return samplePosts.map((post) => ({
-    id: post.id,
-    kind: post.kind,
-    author: post.author,
-    authorId: accounts.find((account) => account.name === post.author)?.id ?? 'instituicao',
-    role: post.role,
-    department: post.department,
-    avatar: post.avatar,
-    time: post.time,
-    body: post.body,
-    image: post.image,
-    attachment: post.attachment,
-    likes: post.likes,
-    likedBy: [],
-    shares: post.shares,
-    comments: post.comments.map((comment) => ({
-      id: comment.id,
-      author: comment.author,
-      authorId: accounts.find((account) => account.name === comment.author)?.id ?? '',
-      avatar: comment.avatar,
-      body: comment.body,
-      time: comment.time,
-      likes: comment.likes,
-      likedBy: [],
-    })),
-    bannerTitle: post.bannerTitle,
-    recognizedName: post.recognizedName,
-    poll: post.poll,
-    votes: {},
-    eventWhen: post.eventWhen,
-    eventWhere: post.eventWhere,
-    createdAt: new Date().toISOString(),
-  }));
-}
-
 function cleanImage(value: unknown) {
   if (typeof value !== 'string' || !value || value.length > 2_000 || value.includes('..')) return undefined;
   if (value.startsWith('/api/uploads/up-') || value.startsWith('https://') || value.startsWith('http://') || value.startsWith('/')) return value;
@@ -281,8 +245,16 @@ function send(res: ServerResponse, status: number, body: unknown) {
 export function extraApi(): Connect.NextHandleFunction {
   const dir = dataDir();
   const authFile = path.join(dir, 'auth.json');
-  const feedFile = path.join(dir, 'feed.json');
   const eventsFile = path.join(dir, 'events.json');
+  const mural = createFeedStore({ dir });
+
+  function storageFailed(result: { error?: string; kind?: string } | null | undefined) {
+    return Boolean(result && (result.error === 'storage' || result.kind === 'storage'));
+  }
+
+  function failFeed(res: ServerResponse, load = false) {
+    send(res, 503, { error: 'storage', message: load ? FEED_LOAD_UNAVAILABLE : FEED_UNAVAILABLE });
+  }
 
   function loadEvents(): AgendaEvent[] {
     try {
@@ -347,34 +319,27 @@ export function extraApi(): Connect.NextHandleFunction {
     fs.writeFileSync(authFile, JSON.stringify(store, null, 2));
   }
 
-  function loadFeed(): FeedStore {
-    try {
-      const parsed = JSON.parse(fs.readFileSync(feedFile, 'utf8')) as FeedStore;
-      const deleted = new Set(parsed.deletedIds ?? []);
-      const deletedReposts = new Set(parsed.deletedRepostIds ?? []);
-      return {
-        posts: (parsed.posts ?? []).filter((post) => !deleted.has(post.id)),
-        reposts: (parsed.reposts ?? []).filter((item) => !deletedReposts.has(item.id)),
-        saved: parsed.saved ?? {},
-        deletedIds: [...deleted],
-        deletedRepostIds: [...deletedReposts],
-      };
-    } catch {
-      const store = { posts: seedPosts(), reposts: [] };
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(feedFile, JSON.stringify(store));
-      return store;
+  type FeedChange = {
+    store: FeedStore;
+    skip?: boolean;
+    post?: FeedPost;
+    duplicate?: FeedPost;
+    already?: boolean;
+    missing?: boolean;
+    forbidden?: boolean;
+    badOption?: boolean;
+    badBody?: boolean;
+    saved?: string[];
+    repost?: Repost;
+  };
+
+  async function applyFeed(res: ServerResponse, mutator: (feed: FeedStore) => FeedChange | Promise<FeedChange>) {
+    const result = await mural.mutate(mutator as never);
+    if (storageFailed(result)) {
+      failFeed(res);
+      return null;
     }
-  }
-
-  function saveFeed(store: FeedStore) {
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(feedFile, JSON.stringify(store));
-  }
-
-  function remember(store: FeedStore, post?: FeedPost) {
-    if (post) post.updatedAt = new Date().toISOString();
-    saveFeed(store);
+    return result as FeedChange;
   }
 
   function accountFrom(req: IncomingMessage) {
@@ -552,7 +517,12 @@ export function extraApi(): Connect.NextHandleFunction {
       }
 
       if (req.method === 'GET' && url === '/api/feed') {
-        const feed = loadFeed();
+        const loaded = await mural.load();
+        if (storageFailed(loaded)) {
+          failFeed(res, true);
+          return;
+        }
+        const feed = loaded.store as FeedStore;
         const visible = feed.posts.filter((post) => canSeePost(post, user));
         const visibleIds = new Set(visible.map((post) => post.id));
         const saved = (feed.saved?.[user.id] ?? []).filter((id) => visibleIds.has(id));
@@ -589,57 +559,62 @@ export function extraApi(): Connect.NextHandleFunction {
         if (recognition && !canRecognize(user, dir)) return send(res, 403, { error: 'forbidden' });
         const recognizedName = String(body.recognizedName ?? '').trim();
         if (recognition && !recognizedName) return send(res, 400, { error: 'person' });
-        const feed = loadFeed();
-        const recent = feed.posts.find((item) => item.authorId === user.id && item.body === text && Date.now() - Date.parse(item.createdAt) < 5000);
-        if (recent && recent.images?.join() === images.join()) {
-          send(res, 200, { post: publicPost(recent, user, feed.saved?.[user.id] ?? []) });
-          return;
-        }
-        const post: FeedPost = {
-          id: `post-${Date.now()}`,
-          kind: recognition ? 'recognition' : announcement ? 'announcement' : poll ? 'poll' : images.length ? 'image' : 'text',
-          author: user.name,
-          authorId: user.id,
-          role: user.role,
-          department: user.department,
-          avatar: user.avatar,
-          time: 'agora',
-          body: text || bannerTitle,
-          image: images[0],
-          images,
-          blocks: blocks?.length ? blocks : undefined,
-          attachment,
-          likes: 0,
-          likedBy: [],
-          reactions: [],
-          shares: 0,
-          comments: [],
-          poll,
-          votes: {},
-          bannerTitle: announcement
-            ? (bannerTitle || 'Jornal')
-            : recognition
-              ? (bannerTitle || `Reconhecimento especial para ${recognizedName.split(' ')[0]}!`)
-              : undefined,
-          journalHref,
-          recognizedName: recognition ? recognizedName : undefined,
-          tag: recognition ? String(body.tag ?? '').trim() : undefined,
-          audience,
-          mood,
-          moodAudience,
-          shareMood,
-          createdAt: new Date().toISOString(),
-        };
-        feed.posts.unshift(post);
-        remember(feed, post);
-        if (mood && shareMood) {
+        const createdAt = new Date().toISOString();
+        const result = await applyFeed(res, (feed) => {
+          const recent = feed.posts.find((item) => item.authorId === user.id && item.body === text && Date.now() - Date.parse(item.createdAt) < 5000);
+          if (recent && recent.images?.join() === images.join()) {
+            return { skip: true, duplicate: recent, store: feed };
+          }
+          const post: FeedPost = {
+            id: `post-${Date.now()}-${randomBytes(4).toString('hex')}`,
+            kind: recognition ? 'recognition' : announcement ? 'announcement' : poll ? 'poll' : images.length ? 'image' : 'text',
+            author: user.name,
+            authorId: user.id,
+            role: user.role,
+            department: user.department,
+            avatar: user.avatar,
+            time: 'agora',
+            body: text || bannerTitle,
+            image: images[0],
+            images,
+            blocks: blocks?.length ? blocks : undefined,
+            attachment,
+            likes: 0,
+            likedBy: [],
+            reactions: [],
+            shares: 0,
+            comments: [],
+            poll,
+            votes: {},
+            bannerTitle: announcement
+              ? (bannerTitle || 'Jornal')
+              : recognition
+                ? (bannerTitle || `Reconhecimento especial para ${recognizedName.split(' ')[0]}!`)
+                : bannerTitle || undefined,
+            journalHref,
+            recognizedName: recognition ? recognizedName : undefined,
+            tag: recognition ? String(body.tag ?? '').trim() : undefined,
+            audience,
+            mood,
+            moodAudience,
+            shareMood,
+            createdAt,
+            updatedAt: createdAt,
+          };
+          feed.posts.unshift(post);
+          return { store: feed, post };
+        });
+        if (!result) return;
+        const savedPost = result.duplicate ?? result.post;
+        if (!savedPost) return send(res, 500, { error: 'publish' });
+        if (mood && shareMood && !result.duplicate) {
           try {
-            applySharedMood(user.id, mood, moodAudience ?? 'team', post.id);
+            applySharedMood(user.id, mood, moodAudience ?? 'team', savedPost.id);
           } catch {
             /* a publicação já foi gravada; o humor fica como estava */
           }
         }
-        send(res, 201, { post: publicPost(post, user, feed.saved?.[user.id] ?? []) });
+        send(res, result.duplicate ? 200 : 201, { post: publicPost(savedPost, user, result.store.saved?.[user.id] ?? []) });
         } catch {
           if (!res.headersSent) send(res, 500, { error: 'publish' });
         }
@@ -651,74 +626,90 @@ export function extraApi(): Connect.NextHandleFunction {
         const body = JSON.parse((await readBody(req)).toString('utf8') || '{}') as { kind?: string };
         const kind: Reaction['kind'] | '' = body.kind === 'love' ? 'love' : body.kind === 'like' ? 'like' : '';
         if (!kind) return send(res, 400, { error: 'kind' });
-        const feed = loadFeed();
-        const post = openPost(feed, likeMatch[1], user);
-        if (!post) return send(res, 404, { error: 'missing' });
-        const before = reactionsOf(post);
-        const mine = before.filter((item) => item.userId === user.id);
-        const same = mine.some((item) => item.kind === kind);
-        const next = same
-          ? before.filter((item) => item.userId !== user.id)
-          : [...before.filter((item) => item.userId !== user.id), { userId: user.id, name: user.name, kind }];
-        post.reactions = next;
-        post.likedBy = [...new Set(next.map((item) => item.userId))];
-        post.likes = Math.max(0, (typeof post.likes === 'number' ? post.likes : before.length) + next.length - before.length);
-        remember(feed, post);
-        send(res, 200, { post: publicPost(post, user, feed.saved?.[user.id] ?? []) });
+        const result = await applyFeed(res, (feed) => {
+          const post = openPost(feed, likeMatch[1], user);
+          if (!post) return { skip: true, missing: true, store: feed };
+          const before = reactionsOf(post);
+          const mine = before.filter((item) => item.userId === user.id);
+          const same = mine.some((item) => item.kind === kind);
+          const next = same
+            ? before.filter((item) => item.userId !== user.id)
+            : [...before.filter((item) => item.userId !== user.id), { userId: user.id, name: user.name, kind }];
+          post.reactions = next;
+          post.likedBy = [...new Set(next.map((item) => item.userId))];
+          post.likes = Math.max(0, (typeof post.likes === 'number' ? post.likes : before.length) + next.length - before.length);
+          post.updatedAt = new Date().toISOString();
+          return { store: feed, post };
+        });
+        if (!result) return;
+        if (result.missing || !result.post) return send(res, 404, { error: 'missing' });
+        send(res, 200, { post: publicPost(result.post, user, result.store.saved?.[user.id] ?? []) });
         return;
       }
 
       const voteMatch = /^\/api\/feed\/([^/]+)\/vote$/.exec(url);
       if (req.method === 'POST' && voteMatch) {
         const body = JSON.parse((await readBody(req)).toString('utf8')) as { optionId?: string };
-        const feed = loadFeed();
-        const post = openPost(feed, voteMatch[1], user);
-        if (!post?.poll) return send(res, 404, { error: 'missing' });
         const optionId = String(body.optionId ?? '');
-        if (!post.poll.some((item) => item.id === optionId)) return send(res, 400, { error: 'option' });
-        post.votes = post.votes ?? {};
-        const previous = post.votes[user.id];
-        if (previous === optionId) {
-          delete post.votes[user.id];
-          const current = post.poll.find((item) => item.id === optionId);
-          if (current) current.votes = Math.max(0, current.votes - 1);
-        } else {
-          if (previous) {
-            const old = post.poll.find((item) => item.id === previous);
-            if (old) old.votes = Math.max(0, old.votes - 1);
+        const result = await applyFeed(res, (feed) => {
+          const post = openPost(feed, voteMatch[1], user);
+          if (!post?.poll) return { skip: true, missing: true, store: feed };
+          if (!post.poll.some((item) => item.id === optionId)) return { skip: true, badOption: true, store: feed };
+          post.votes = post.votes ?? {};
+          const previous = post.votes[user.id];
+          if (previous === optionId) {
+            delete post.votes[user.id];
+            const current = post.poll.find((item) => item.id === optionId);
+            if (current) current.votes = Math.max(0, current.votes - 1);
+          } else {
+            if (previous) {
+              const old = post.poll.find((item) => item.id === previous);
+              if (old) old.votes = Math.max(0, old.votes - 1);
+            }
+            post.votes[user.id] = optionId;
+            const next = post.poll.find((item) => item.id === optionId);
+            if (next) next.votes += 1;
           }
-          post.votes[user.id] = optionId;
-          const next = post.poll.find((item) => item.id === optionId);
-          if (next) next.votes += 1;
-        }
-        remember(feed, post);
-        send(res, 200, { post: publicPost(post, user, feed.saved?.[user.id] ?? []) });
+          post.updatedAt = new Date().toISOString();
+          return { store: feed, post };
+        });
+        if (!result) return;
+        if (result.missing || !result.post) return send(res, 404, { error: 'missing' });
+        if (result.badOption) return send(res, 400, { error: 'option' });
+        send(res, 200, { post: publicPost(result.post, user, result.store.saved?.[user.id] ?? []) });
         return;
       }
 
       const saveMatch = /^\/api\/feed\/([^/]+)\/save$/.exec(url);
       if (req.method === 'POST' && saveMatch) {
-        const feed = loadFeed();
-        const post = openPost(feed, saveMatch[1], user);
-        if (!post) return send(res, 404, { error: 'missing' });
-        feed.saved = feed.saved ?? {};
-        const list = new Set(feed.saved[user.id] ?? []);
-        if (list.has(post.id)) list.delete(post.id);
-        else list.add(post.id);
-        feed.saved[user.id] = [...list];
-        remember(feed);
-        send(res, 200, { post: publicPost(post, user, feed.saved[user.id]), saved: feed.saved[user.id] });
+        const result = await applyFeed(res, (feed) => {
+          const post = openPost(feed, saveMatch[1], user);
+          if (!post) return { skip: true, missing: true, store: feed };
+          feed.saved = feed.saved ?? {};
+          const list = new Set(feed.saved[user.id] ?? []);
+          if (list.has(post.id)) list.delete(post.id);
+          else list.add(post.id);
+          feed.saved[user.id] = [...list];
+          return { store: feed, post, saved: feed.saved[user.id] };
+        });
+        if (!result) return;
+        if (result.missing || !result.post) return send(res, 404, { error: 'missing' });
+        send(res, 200, { post: publicPost(result.post, user, result.saved ?? []), saved: result.saved ?? [] });
         return;
       }
 
       const shareMatch = /^\/api\/feed\/([^/]+)\/share$/.exec(url);
       if (req.method === 'POST' && shareMatch) {
-        const feed = loadFeed();
-        const post = openPost(feed, shareMatch[1], user);
-        if (!post) return send(res, 404, { error: 'missing' });
-        post.shares += 1;
-        remember(feed, post);
-        send(res, 200, { post: publicPost(post, user, feed.saved?.[user.id] ?? []) });
+        const result = await applyFeed(res, (feed) => {
+          const post = openPost(feed, shareMatch[1], user);
+          if (!post) return { skip: true, missing: true, store: feed };
+          post.shares += 1;
+          post.updatedAt = new Date().toISOString();
+          return { store: feed, post };
+        });
+        if (!result) return;
+        if (result.missing || !result.post) return send(res, 404, { error: 'missing' });
+        send(res, 200, { post: publicPost(result.post, user, result.store.saved?.[user.id] ?? []) });
         return;
       }
 
@@ -729,71 +720,125 @@ export function extraApi(): Connect.NextHandleFunction {
         const media = cleanMedia(body.media);
         if (!text && !media) return send(res, 400, { error: 'body' });
         if (text.length > 2000) return send(res, 400, { error: 'body' });
-        const feed = loadFeed();
-        const post = openPost(feed, commentMatch[1], user);
-        if (!post) return send(res, 404, { error: 'missing' });
-        post.comments.push({
-          id: `c-${Date.now()}`,
-          author: user.name,
-          authorId: user.id,
-          avatar: user.avatar,
-          body: text,
-          time: 'agora',
-          likes: 0,
-          likedBy: [],
-          media,
-          createdAt: new Date().toISOString(),
+        const result = await applyFeed(res, (feed) => {
+          const post = openPost(feed, commentMatch[1], user);
+          if (!post) return { skip: true, missing: true, store: feed };
+          post.comments.push({
+            id: `c-${Date.now()}`,
+            author: user.name,
+            authorId: user.id,
+            avatar: user.avatar,
+            body: text,
+            time: 'agora',
+            likes: 0,
+            likedBy: [],
+            media,
+            createdAt: new Date().toISOString(),
+          });
+          post.updatedAt = new Date().toISOString();
+          return { store: feed, post };
         });
-        remember(feed, post);
-        send(res, 201, { post: publicPost(post, user, feed.saved?.[user.id] ?? []) });
+        if (!result) return;
+        if (result.missing || !result.post) return send(res, 404, { error: 'missing' });
+        send(res, 201, { post: publicPost(result.post, user, result.store.saved?.[user.id] ?? []) });
         return;
       }
 
       const commentLike = /^\/api\/feed\/([^/]+)\/comments\/([^/]+)\/like$/.exec(url);
       if (req.method === 'POST' && commentLike) {
-        const feed = loadFeed();
-        const post = openPost(feed, commentLike[1], user);
-        const comment = post?.comments.find((item) => item.id === commentLike[2]);
-        if (!post || !comment) return send(res, 404, { error: 'missing' });
-        comment.likedBy = comment.likedBy ?? [];
-        const already = comment.likedBy.includes(user.id);
-        comment.likedBy = already ? comment.likedBy.filter((id) => id !== user.id) : [...comment.likedBy, user.id];
-        comment.likes = comment.likedBy.length;
-        remember(feed, post);
-        send(res, 200, { post: publicPost(post, user, feed.saved?.[user.id] ?? []) });
+        const result = await applyFeed(res, (feed) => {
+          const post = openPost(feed, commentLike[1], user);
+          const comment = post?.comments.find((item) => item.id === commentLike[2]);
+          if (!post || !comment) return { skip: true, missing: true, store: feed };
+          comment.likedBy = comment.likedBy ?? [];
+          const already = comment.likedBy.includes(user.id);
+          comment.likedBy = already ? comment.likedBy.filter((id) => id !== user.id) : [...comment.likedBy, user.id];
+          comment.likes = comment.likedBy.length;
+          post.updatedAt = new Date().toISOString();
+          return { store: feed, post };
+        });
+        if (!result) return;
+        if (result.missing || !result.post) return send(res, 404, { error: 'missing' });
+        send(res, 200, { post: publicPost(result.post, user, result.store.saved?.[user.id] ?? []) });
         return;
       }
 
       const deleteComment = /^\/api\/feed\/([^/]+)\/comments\/([^/]+)$/.exec(url);
       if (req.method === 'DELETE' && deleteComment) {
-        const feed = loadFeed();
-        const post = openPost(feed, deleteComment[1], user);
-        if (!post) return send(res, 404, { error: 'missing' });
-        const comment = post.comments.find((item) => item.id === deleteComment[2]);
-        if (!comment) return send(res, 404, { error: 'missing' });
-        const allowed = comment.authorId === user.id || post.authorId === user.id || isLeader(user);
-        if (!allowed) return send(res, 403, { error: 'forbidden' });
-        post.comments = post.comments.filter((item) => item.id !== comment.id);
-        remember(feed, post);
-        send(res, 200, { post: publicPost(post, user, feed.saved?.[user.id] ?? []) });
+        const result = await applyFeed(res, (feed) => {
+          const post = openPost(feed, deleteComment[1], user);
+          if (!post) return { skip: true, missing: true, store: feed };
+          const comment = post.comments.find((item) => item.id === deleteComment[2]);
+          if (!comment) return { skip: true, missing: true, store: feed };
+          const allowed = comment.authorId === user.id || post.authorId === user.id || isLeader(user);
+          if (!allowed) return { skip: true, forbidden: true, store: feed };
+          post.comments = post.comments.filter((item) => item.id !== comment.id);
+          post.updatedAt = new Date().toISOString();
+          return { store: feed, post };
+        });
+        if (!result) return;
+        if (result.forbidden) return send(res, 403, { error: 'forbidden' });
+        if (result.missing || !result.post) return send(res, 404, { error: 'missing' });
+        send(res, 200, { post: publicPost(result.post, user, result.store.saved?.[user.id] ?? []) });
+        return;
+      }
+
+      const editPost = /^\/api\/feed\/([^/]+)$/.exec(url);
+      if (req.method === 'PATCH' && editPost) {
+        const body = JSON.parse((await readBody(req)).toString('utf8') || '{}') as Partial<FeedPost> & { images?: unknown; blocks?: unknown };
+        const result = await applyFeed(res, (feed) => {
+          const post = openPost(feed, editPost[1], user);
+          if (!post) return { skip: true, missing: true, store: feed };
+          if (post.authorId !== user.id && post.author !== user.name) return { skip: true, forbidden: true, store: feed };
+          if (post.kind === 'recognition') return { skip: true, forbidden: true, store: feed };
+          const blocks = body.blocks !== undefined ? cleanBlocks(body.blocks) : post.blocks;
+          const text = blocks?.length
+            ? blocks.filter((block) => block.type === 'text').map((block) => block.text).join('\n\n')
+            : body.body !== undefined ? String(body.body).trim() : post.body;
+          const images = blocks?.length
+            ? blocks.filter((block) => block.type === 'image').map((block) => block.url)
+            : body.images !== undefined || body.image !== undefined
+              ? cleanImages(body.images ?? (body.image ? [body.image] : []))
+              : (post.images ?? []);
+          const bannerTitle = body.bannerTitle !== undefined ? String(body.bannerTitle ?? '').trim().slice(0, 180) : post.bannerTitle;
+          if (!text && images.length === 0 && !post.attachment && !post.poll && post.kind !== 'announcement') {
+            return { skip: true, badBody: true, store: feed };
+          }
+          post.body = text || bannerTitle || post.body;
+          post.images = images;
+          post.image = images[0];
+          post.blocks = blocks?.length ? blocks : undefined;
+          post.bannerTitle = bannerTitle || undefined;
+          post.updatedAt = new Date().toISOString();
+          return { store: feed, post };
+        });
+        if (!result) return;
+        if (result.forbidden) return send(res, 403, { error: 'forbidden' });
+        if (result.badBody) return send(res, 400, { error: 'body' });
+        if (result.missing || !result.post) return send(res, 404, { error: 'missing' });
+        send(res, 200, { post: publicPost(result.post, user, result.store.saved?.[user.id] ?? []) });
         return;
       }
 
       const deletePost = /^\/api\/feed\/([^/]+)$/.exec(url);
       if (req.method === 'DELETE' && deletePost) {
-        const feed = loadFeed();
-        const index = feed.posts.findIndex((item) => item.id === deletePost[1]);
-        if (index < 0) return send(res, 404, { error: 'missing' });
-        const post = feed.posts[index];
-        if (!canSeePost(post, user)) return send(res, 404, { error: 'missing' });
-        const allowed = post.authorId === user.id || post.author === user.name;
-        if (!allowed) return send(res, 403, { error: 'forbidden' });
-        const removedReposts = feed.reposts.filter((item) => item.originalId === post.id).map((item) => item.id);
-        feed.deletedIds = [...new Set([...(feed.deletedIds ?? []), post.id])];
-        feed.deletedRepostIds = [...new Set([...(feed.deletedRepostIds ?? []), ...removedReposts])];
-        feed.posts.splice(index, 1);
-        feed.reposts = feed.reposts.filter((item) => item.originalId !== post.id);
-        saveFeed(feed);
+        const result = await applyFeed(res, (feed) => {
+          const index = feed.posts.findIndex((item) => item.id === deletePost[1]);
+          if (index < 0) return { skip: true, missing: true, store: feed };
+          const post = feed.posts[index];
+          if (!canSeePost(post, user)) return { skip: true, missing: true, store: feed };
+          const allowed = post.authorId === user.id || post.author === user.name;
+          if (!allowed) return { skip: true, forbidden: true, store: feed };
+          const removedReposts = feed.reposts.filter((item) => item.originalId === post.id).map((item) => item.id);
+          feed.deletedIds = [...new Set([...(feed.deletedIds ?? []), post.id])];
+          feed.deletedRepostIds = [...new Set([...(feed.deletedRepostIds ?? []), ...removedReposts])];
+          feed.posts.splice(index, 1);
+          feed.reposts = feed.reposts.filter((item) => item.originalId !== post.id);
+          return { store: feed };
+        });
+        if (!result) return;
+        if (result.forbidden) return send(res, 403, { error: 'forbidden' });
+        if (result.missing) return send(res, 404, { error: 'missing' });
         send(res, 200, { ok: true });
         return;
       }
@@ -801,36 +846,44 @@ export function extraApi(): Connect.NextHandleFunction {
       const repostMatch = /^\/api\/feed\/([^/]+)\/repost$/.exec(url);
       if (req.method === 'POST' && repostMatch) {
         const body = JSON.parse((await readBody(req)).toString('utf8')) as { note?: string };
-        const feed = loadFeed();
-        const original = openPost(feed, repostMatch[1], user);
-        if (!original) return send(res, 404, { error: 'missing' });
-        if (feed.reposts.some((item) => item.userId === user.id && item.originalId === original.id)) {
-          return send(res, 409, { error: 'duplicate' });
-        }
-        const repost: Repost = {
-          id: `repost-${Date.now()}`,
-          userId: user.id,
-          userName: user.name,
-          avatar: user.avatar,
-          originalId: original.id,
-          note: String(body.note ?? '').trim(),
-          createdAt: new Date().toISOString(),
-        };
-        feed.reposts.unshift(repost);
-        saveFeed(feed);
-        send(res, 201, { repost });
+        const result = await applyFeed(res, (feed) => {
+          const original = openPost(feed, repostMatch[1], user);
+          if (!original) return { skip: true, missing: true, store: feed };
+          if (feed.reposts.some((item) => item.userId === user.id && item.originalId === original.id)) {
+            return { skip: true, already: true, store: feed };
+          }
+          const repost: Repost = {
+            id: `repost-${Date.now()}`,
+            userId: user.id,
+            userName: user.name,
+            avatar: user.avatar,
+            originalId: original.id,
+            note: String(body.note ?? '').trim(),
+            createdAt: new Date().toISOString(),
+          };
+          feed.reposts.unshift(repost);
+          return { store: feed, repost };
+        });
+        if (!result) return;
+        if (result.already) return send(res, 409, { error: 'duplicate' });
+        if (result.missing || !result.repost) return send(res, 404, { error: 'missing' });
+        send(res, 201, { repost: result.repost });
         return;
       }
 
       const undo = /^\/api\/reposts\/([^/]+)$/.exec(url);
       if (req.method === 'DELETE' && undo) {
-        const feed = loadFeed();
-        const repost = feed.reposts.find((item) => item.id === undo[1]);
-        if (!repost) return send(res, 404, { error: 'missing' });
-        if (repost.userId !== user.id && !isLeader(user)) return send(res, 403, { error: 'forbidden' });
-        feed.deletedRepostIds = [...new Set([...(feed.deletedRepostIds ?? []), repost.id])];
-        feed.reposts = feed.reposts.filter((item) => item.id !== repost.id);
-        saveFeed(feed);
+        const result = await applyFeed(res, (feed) => {
+          const repost = feed.reposts.find((item) => item.id === undo[1]);
+          if (!repost) return { skip: true, missing: true, store: feed };
+          if (repost.userId !== user.id && !isLeader(user)) return { skip: true, forbidden: true, store: feed };
+          feed.deletedRepostIds = [...new Set([...(feed.deletedRepostIds ?? []), repost.id])];
+          feed.reposts = feed.reposts.filter((item) => item.id !== repost.id);
+          return { store: feed };
+        });
+        if (!result) return;
+        if (result.forbidden) return send(res, 403, { error: 'forbidden' });
+        if (result.missing) return send(res, 404, { error: 'missing' });
         send(res, 200, { ok: true });
         return;
       }

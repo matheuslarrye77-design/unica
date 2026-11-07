@@ -1,9 +1,9 @@
-import { Sun } from 'lucide-react';
+import { Search, Sun } from 'lucide-react';
 import { LilacWash } from './LilacWash';
 import { type FC, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { getTimeBasedGreeting } from '@/lib/utils';
-import { cancelRepost, commentFeedPost, createFeedPost, deleteFeedComment, deleteFeedPost, likeFeedComment, likeFeedPost, loadFeed, republishPost, saveFeedPost, shareFeedPost, uploadMedia, voteFeedPost, type Repost } from '@/lib/feed';
+import { cancelRepost, commentFeedPost, createFeedPost, deleteFeedComment, deleteFeedPost, likeFeedComment, likeFeedPost, loadFeed, republishPost, saveFeedPost, shareFeedPost, updateFeedPost, uploadMedia, voteFeedPost, type Repost } from '@/lib/feed';
 import { actor, useDemoProfile } from '@/lib/session';
 import { isLeader, refreshMoods, useInstitution } from '@/lib/institution';
 import { CreatePost, type NewPostDraft } from './CreatePost';
@@ -25,6 +25,8 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [commentMedia, setCommentMedia] = useState<Record<string, CommentMedia | null>>({});
   const [savedOnly, setSavedOnly] = useState(false);
+  const [query, setQuery] = useState('');
+  const [feedError, setFeedError] = useState(false);
   const [openCard, setOpenCard] = useState<string | null>(null);
   const [shareId, setShareId] = useState<string | null>(null);
   const [repostId, setRepostId] = useState<string | null>(null);
@@ -53,15 +55,18 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
       void loadFeed().then((feed) => {
         if (ticket !== feedTicket.current) return;
         feedWarned.current = false;
+        setFeedError(false);
         setPosts((current) => feed.posts.map((post) => {
           const previous = current.find((item) => item.id === post.id);
           return previous ? { ...post, commentsOpen: previous.commentsOpen } : post;
         }));
         setReposts(feed.reposts);
       }).catch(() => {
-        if (ticket !== feedTicket.current || feedWarned.current) return;
+        if (ticket !== feedTicket.current) return;
+        setFeedError(true);
+        if (feedWarned.current) return;
         feedWarned.current = true;
-        toast.error('Não foi possível abrir o mural.');
+        toast.error('Não foi possível abrir o mural. As publicações já carregadas foram mantidas.');
       });
     };
     refresh();
@@ -101,7 +106,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
       setPosts((current) => [result.post, ...current]);
       toast.success('Publicação enviada.');
     } catch {
-      toast.error('Não foi possível publicar.');
+      toast.error('Não foi possível salvar. A publicação não foi gravada.');
       throw new Error('publish');
     }
   }
@@ -190,7 +195,21 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
     return comment.authorId === user.id || comment.author === user.name || post.authorId === user.id || post.author === user.name || isLeader(user);
   }
 
-  const visiblePosts = (mode === 'recognition' ? posts.filter((post) => post.kind === 'recognition') : posts).filter((post) => !savedOnly || post.saved);
+  function matchesQuery(post: SocialPost) {
+    const needle = query.trim().toLowerCase();
+    if (!needle || mode !== 'mural') return true;
+    const texts = [
+      post.body,
+      post.bannerTitle ?? '',
+      post.author,
+      post.recognizedName ?? '',
+      ...(post.blocks ?? []).flatMap((block) => (block.type === 'text' ? [block.text] : [])),
+      ...(post.comments ?? []).map((comment) => comment.body),
+    ];
+    return texts.join('\n').toLowerCase().includes(needle);
+  }
+
+  const visiblePosts = (mode === 'recognition' ? posts.filter((post) => post.kind === 'recognition') : posts).filter((post) => (!savedOnly || post.saved) && matchesQuery(post));
   function canRemove(post: SocialPost) {
     return post.authorId === user.id || post.author === user.name;
   }
@@ -275,6 +294,17 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
             setNote('');
           }}
           onDelete={!repost && canRemove(post) ? () => void removePost(post) : undefined}
+          onSaveEdit={mode === 'mural' && !repost && canRemove(post) && post.kind !== 'recognition' ? async (draft) => {
+            try {
+              const result = await updateFeedPost(post.id, draft);
+              holdFeed();
+              replace(result.post);
+              toast.success('Publicação atualizada.');
+            } catch {
+              toast.error('Não foi possível salvar. A publicação não foi alterada.');
+              throw new Error('edit');
+            }
+          } : undefined}
           canDeleteComment={(commentId) => canDelete(post, commentId)}
           onDeleteComment={(commentId) => {
             if (!window.confirm('Excluir este comentário?')) return;
@@ -318,9 +348,27 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
       {mode === 'recognition' ? (canRecognize ? <RecognitionComposer onCreated={() => window.dispatchEvent(new Event('unica-feed-refresh'))} /> : null) : <CreatePost onPublish={publish} journal={journalShare} onClearJournal={() => setParams({}, { replace: true })} />}
 
       {mode === 'mural' ? (
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A5AA0]" />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Pesquisar publicações"
+            aria-label="Pesquisar publicações do mural"
+            className="h-10 w-full rounded-full border border-[#E7C4F2] bg-white/80 pl-10 pr-4 text-[13.5px] text-[#3C3952] outline-none placeholder:text-[#8A5AA0] focus:border-[#C084E0]"
+          />
+        </div>
+      ) : null}
+
+      {mode === 'mural' ? (
         <div className="flex justify-end">
           <button type="button" aria-pressed={savedOnly} onClick={() => setSavedOnly((value) => !value)} className={`rounded-full px-3 py-1 text-[13px] ${savedOnly ? 'bg-accent text-primary' : 'text-[#5C5870] hover:bg-accent'}`}>Salvos</button>
         </div>
+      ) : null}
+
+      {mode === 'mural' && feedError && posts.length === 0 ? (
+        <p className="unica-surface px-5 py-8 text-center text-[13px] text-muted-foreground">Não foi possível carregar as publicações. Nada foi apagado do mural.</p>
       ) : null}
 
       {savedOnly && visiblePosts.length === 0 && visibleReposts.length === 0 ? <p className="unica-surface px-5 py-8 text-center text-[13px] text-muted-foreground">Nenhuma publicação salva.</p> : null}

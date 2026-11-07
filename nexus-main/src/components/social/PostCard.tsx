@@ -4,7 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { FileText, Lock, MoreHorizontal } from 'lucide-react';
 import { PhotoGallery } from './PhotoGallery';
 import { ReadMore } from './ReadMore';
-import { useEffect, useRef, type FC } from 'react';
+import { useEffect, useRef, useState, type FC } from 'react';
 import { Link } from 'react-router-dom';
 import { AnnouncementPost } from './AnnouncementPost';
 import { Comments } from './Comments';
@@ -60,6 +60,7 @@ export const PostCard: FC<{
   onVote: (optionId: string) => void;
   onRepublish: () => void;
   onDelete?: () => void;
+  onSaveEdit?: (draft: { body: string; bannerTitle?: string }) => void | Promise<void>;
   republished?: boolean;
   canDeleteComment?: (commentId: string) => boolean;
   onDeleteComment?: (commentId: string) => void;
@@ -70,11 +71,15 @@ export const PostCard: FC<{
   repost?: { name: string; avatar: string; note: string };
   anchorId?: string;
   preview?: boolean;
-}> = ({ post, commentDraft, onCommentDraft, onLike, onReact, onToggleSave, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, republished, canDeleteComment, onDeleteComment, pendingMedia, onMedia, onGifFile, onPasteFile, repost, anchorId }) => {
+}> = ({ post, commentDraft, onCommentDraft, onLike, onReact, onToggleSave, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, onSaveEdit, republished, canDeleteComment, onDeleteComment, pendingMedia, onMedia, onGifFile, onPasteFile, repost, anchorId }) => {
   const plain = post.kind === 'text' || post.kind === 'image' || post.kind === 'leadership';
   const domId = anchorId ?? post.id;
   const blocks = (post.blocks ?? []).filter((block) => !(post.kind === 'poll' && block.type === 'text'));
   const mood = MOODS.find((item) => item.emoji === post.mood);
+  const [editing, setEditing] = useState(false);
+  const [editBody, setEditBody] = useState(post.body);
+  const [editTitle, setEditTitle] = useState(post.bannerTitle ?? '');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   return (
       <article id={domId} className="unica-surface px-4 py-3">
@@ -107,6 +112,15 @@ export const PostCard: FC<{
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onRepublish}>{republished ? 'Desfazer republicação' : 'Republicar'}</DropdownMenuItem>
             <DropdownMenuItem onClick={onShare}>Compartilhar</DropdownMenuItem>
+            {onSaveEdit && !repost ? (
+              <DropdownMenuItem onSelect={() => {
+                setEditBody(post.body);
+                setEditTitle(post.bannerTitle ?? '');
+                setEditing(true);
+              }}>
+                Editar
+              </DropdownMenuItem>
+            ) : null}
             {onDelete ? (
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
@@ -121,7 +135,26 @@ export const PostCard: FC<{
         </DropdownMenu>
       </header>
 
-      {blocks.length > 0 ? (
+      {editing && onSaveEdit ? (
+        <form
+          className="mt-3 space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (savingEdit) return;
+            setSavingEdit(true);
+            void Promise.resolve(onSaveEdit({ body: editBody.trim(), bannerTitle: editTitle.trim() || undefined }))
+              .then(() => setEditing(false))
+              .finally(() => setSavingEdit(false));
+          }}
+        >
+          <input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} className="w-full rounded-lg border bg-background px-3 py-2 text-sm" placeholder="Título (opcional)" />
+          <textarea value={editBody} onChange={(event) => setEditBody(event.target.value)} className="min-h-[88px] w-full rounded-lg border bg-background px-3 py-2 text-sm" />
+          <div className="flex gap-2">
+            <button type="submit" disabled={savingEdit} className="rounded-lg bg-primary px-3 py-1.5 text-sm text-primary-foreground">{savingEdit ? 'Salvando...' : 'Salvar'}</button>
+            <button type="button" className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground" onClick={() => setEditing(false)}>Cancelar</button>
+          </div>
+        </form>
+      ) : blocks.length > 0 ? (
         <div className="mt-2 space-y-2">
           {blocks.map((block, index) => {
             if (block.type === 'text') return <ReadMore key={`${domId}-texto-${index}`} id={`${domId}-texto-${index}`} text={block.text} className="text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90" />;

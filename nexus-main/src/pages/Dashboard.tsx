@@ -2,7 +2,6 @@ import { HomeRail } from '@/components/shell/HomeRail';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { NotificationDropdown } from '@/components/NotificationDropdown';
 import { Profile } from '@/components/Profile';
-import { GlobalSearch } from '@/components/GlobalSearch';
 import { SocialFeed } from '@/components/social/SocialFeed';
 import { useInstitution } from '@/lib/institution';
 import { type FC } from 'react';
@@ -15,10 +14,7 @@ export const Dashboard: FC = () => {
   return (
     <PageFrame fitViewport rail={<HomeRail />}>
       <div className="flex flex-col gap-2 xl:min-h-0 xl:flex-1">
-        <div className="hidden shrink-0 items-center gap-2 xl:flex">
-          <div className="min-w-0 flex-1">
-            <GlobalSearch />
-          </div>
+        <div className="hidden shrink-0 items-center justify-end gap-2 xl:flex">
           <NotificationDropdown />
           <Profile />
         </div>

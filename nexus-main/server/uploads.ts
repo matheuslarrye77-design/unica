@@ -110,12 +110,9 @@ async function finishUpload(meta: Meta, dataFile: string, metaFile: string) {
   }
   meta.done = true;
   fs.writeFileSync(metaFile, JSON.stringify(meta));
-  const durable = (meta.mime.startsWith('image/') && meta.size <= 12 * 1024 * 1024) || (meta.mime.startsWith('audio/') && meta.size <= 30 * 1024 * 1024);
-  if (durable) {
-    const bytes = fs.readFileSync(dataFile);
-    const stored = await writeUploadFile(meta.id, bytes, meta.mime, { name: meta.name });
-    if (process.env.BLOB_READ_WRITE_TOKEN && !stored) console.error('[unica] media write', 'upload');
-  }
+  const bytes = fs.readFileSync(dataFile);
+  const stored = await writeUploadFile(meta.id, bytes, meta.mime, { name: meta.name });
+  if (!stored) console.error('[unica] media write', 'upload');
   return { url: `/api/uploads/${meta.id}`, name: meta.name, mime: meta.mime };
 }
 
