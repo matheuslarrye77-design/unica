@@ -9,13 +9,13 @@ export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: bo
   const collapsed = rightCollapsed;
 
   const body = locked ? (
-    <div className={cn('flex h-full min-h-0 flex-col', fill ? 'overflow-hidden' : 'overflow-y-auto [scrollbar-width:thin]')}>
-      <div className={cn(fill ? 'flex h-full min-h-0 flex-1 flex-col' : 'flex flex-col gap-2.5 py-2')}>
+    <div className={cn('flex h-full min-h-0 flex-col justify-start', fill ? 'overflow-hidden' : 'overflow-y-auto [scrollbar-width:thin]')}>
+      <div className={cn(fill ? 'flex h-full min-h-0 flex-1 flex-col justify-start' : 'flex flex-col items-stretch justify-start gap-2.5 py-2')}>
         {children}
       </div>
     </div>
   ) : (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col items-stretch justify-start gap-2 overflow-x-hidden overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
       {children}
     </div>
   );

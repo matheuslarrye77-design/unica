@@ -260,35 +260,26 @@
 .unica-page-scroll-handle {
   position: fixed !important;
   right: 0 !important;
-  bottom: 18px !important;
+  bottom: 10px !important;
   left: auto !important;
   top: auto !important;
   z-index: 100001 !important;
   display: block;
-  width: 14px;
-  height: 64px;
+  width: 88px;
+  height: 8px;
   margin: 0 !important;
   padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  border: 1px solid #E4C8EE;
+  border-radius: 999px;
+  background: #C084E0;
+  box-shadow: 0 1px 6px rgba(80, 40, 120, 0.18);
   transform: none !important;
   cursor: grab;
   appearance: none;
 }
 
 .unica-page-scroll-handle::after {
-  content: "";
-  position: absolute;
-  right: 4px;
-  top: 8px;
-  width: 4px;
-  height: 48px;
-  border: 1px solid #E4C8EE;
-  border-radius: 999px;
-  background: #C084E0;
-  pointer-events: none;
+  content: none;
 }
 
 .unica-page-scroll-handle:active {
@@ -315,9 +306,9 @@
 @media (max-width: 639px) {
   .unica-page-scroll-handle {
     right: 0 !important;
-    bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
-    width: 14px;
-    height: 56px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    width: 72px;
+    height: 8px;
   }
 }
 
