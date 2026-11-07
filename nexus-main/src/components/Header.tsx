@@ -18,7 +18,7 @@ export const Header: FC = () => {
           <Menu className="h-4 w-4" />
         </Button>
         <div className="min-w-0 flex-1">
-          {mural ? null : <GlobalSearch />}
+          {mural ? <GlobalSearch /> : null}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <NotificationDropdown />

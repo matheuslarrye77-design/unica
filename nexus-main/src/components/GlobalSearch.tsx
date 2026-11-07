@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Command } from 'lucide-react';
 import { useState, useEffect, useMemo, useCallback, type FC } from 'react';
 import { SearchService, type SearchResult } from '@/lib/searchService';
+import { useMuralSearchOptional } from '@/lib/muralSearch';
 import { useNavigate } from 'react-router-dom';
 
 const typeLabels = {
@@ -31,6 +32,7 @@ const typeIcons = {
 };
 
 export const GlobalSearch: FC = () => {
+  const muralSearch = useMuralSearchOptional();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -38,6 +40,7 @@ export const GlobalSearch: FC = () => {
 
   // Handle keyboard shortcut
   useEffect(() => {
+    if (muralSearch) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
         event.preventDefault();
@@ -47,7 +50,7 @@ export const GlobalSearch: FC = () => {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [muralSearch]);
 
   const results = useMemo(() => {
     return SearchService.search(searchQuery);
@@ -139,6 +142,26 @@ export const GlobalSearch: FC = () => {
       handleResultClick(results[selectedIndex]);
     }
   };
+
+  if (muralSearch) {
+    return (
+      <label className="relative flex h-9 w-full cursor-text items-center gap-2 rounded-[12px] border border-border bg-card px-3 text-[13px] font-normal text-muted-foreground shadow-none">
+        <Search className="h-4 w-4 shrink-0" />
+        <input
+          type="search"
+          value={muralSearch.query}
+          onChange={(event) => muralSearch.setQuery(event.target.value)}
+          placeholder="Buscar no mural, pessoas, documentos..."
+          aria-label="Buscar publicações do mural"
+          className="min-w-0 flex-1 truncate bg-transparent text-left text-[13px] font-normal text-foreground outline-none placeholder:text-muted-foreground"
+        />
+        <span className="hidden items-center gap-1 rounded-[6px] border border-border bg-muted px-1.5 py-0.5 text-[11px] font-medium sm:inline-flex">
+          <Command className="h-3 w-3" />
+          K
+        </span>
+      </label>
+    );
+  }
 
   return (
     <>
