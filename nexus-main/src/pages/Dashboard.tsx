@@ -11,9 +11,7 @@ export const Dashboard: FC = () => {
 
   return (
     <PageFrame fitViewport rail={<HomeRail />}>
-      <div className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
-        <SocialFeed />
-      </div>
+      <SocialFeed />
     </PageFrame>
   );
 };

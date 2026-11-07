@@ -1,12 +1,19 @@
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
-import { type FC } from 'react';
+import { type FC, type ReactNode } from 'react';
 import { Profile } from './Profile';
 import { GlobalSearch } from './GlobalSearch';
 import { NotificationDropdown } from './NotificationDropdown';
 import { useOpenMenu } from './Sidebar';
 
-export const Header: FC = () => {
+export const AccountCluster: FC = () => (
+  <div className="flex shrink-0 items-center gap-1.5">
+    <NotificationDropdown />
+    <Profile />
+  </div>
+);
+
+export const Header: FC<{ trailing?: ReactNode }> = ({ trailing }) => {
   const onMenu = useOpenMenu();
 
   return (
@@ -18,10 +25,7 @@ export const Header: FC = () => {
         <div className="min-w-0 flex-1">
           <GlobalSearch />
         </div>
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          <NotificationDropdown />
-          <Profile />
-        </div>
+        {trailing}
       </div>
     </header>
   );

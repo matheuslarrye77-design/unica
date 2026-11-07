@@ -29,6 +29,22 @@ type Recognition = {
 };
 
 
+const EXTRA_KEY = 'unica-recognition-list';
+
+function areaFromTag(tag: string): Area {
+  return tag === 'Atendimento' ? 'Suporte' : 'Gestão';
+}
+
+function readExtra(): Recognition[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(EXTRA_KEY) ?? '[]') as Recognition[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) => item && typeof item.id === 'string' && typeof item.quote === 'string');
+  } catch {
+    return [];
+  }
+}
+
 const RECENT: Recognition[] = [
   { id: 'r1', from: 'João Pereira', to: 'Camila Souza', area: 'Gestão', quote: 'Excelente organização e dedicação no projeto. Você fez toda a diferença!', when: '15 de out, 14:12', likes: 12 },
   { id: 'r2', from: 'Larissa Rocha', to: 'Lucas Pereira', area: 'Suporte', quote: 'Sempre disposto a ajudar e com uma ótima postura no dia a dia. Parabéns!', when: '14 de out, 10:21', likes: 7 },
@@ -51,7 +67,8 @@ export const KudosFeedPage: FC = () => {
   const [params, setParams] = useSearchParams();
   const [composer, setComposer] = useState(false);
   const [filter, setFilter] = useState<'Todos' | Area>('Todos');
-  const [extra, setExtra] = useState<Recognition[]>([]);
+  const [extra, setExtra] = useState<Recognition[]>(readExtra);
+  useEffect(() => { localStorage.setItem(EXTRA_KEY, JSON.stringify(extra)); }, [extra]);
   const [menu, setMenu] = useState(false);
   const [posted, setPosted] = useState<Record<string, boolean>>(() => {
     try { return JSON.parse(sessionStorage.getItem('unica-recognition-mural') ?? '{}') as Record<string, boolean>; } catch { return {}; }
@@ -136,9 +153,7 @@ export const KudosFeedPage: FC = () => {
 
   const page = (
     <PageFrame fitViewport fillRail={tab === 'metas'} rail={tab === 'metas' && goals ? <GoalsAssistant /> : <HomeRail />}>
-      <div className="flex flex-col gap-2 xl:min-h-0 xl:flex-1">
-        <div className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
-          <div className="grid gap-4 pb-4">
+      <div className="grid gap-4 pb-16">
             <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#F8EAFB] via-[#F3DDF8] to-[#E7C4F2] px-5 py-4">
               <div className="pointer-events-none absolute -top-8 right-24 h-24 w-24 rounded-full bg-[#D9A6EE]/70" />
               <div className="pointer-events-none absolute right-6 -bottom-10 h-28 w-28 rounded-full bg-[#C084E0]/45" />
@@ -149,11 +164,6 @@ export const KudosFeedPage: FC = () => {
                   <p className="mt-0.5 text-[15px] font-semibold text-[#6A228C]">Valorize quem faz a diferença!</p>
                   <p className="mt-1 max-w-xl text-[13px] leading-snug text-[#8A5AA0]">Aqui você pode reconhecer seus colegas e acompanhar os maiores destaques do mês.</p>
                 </div>
-                {canRecognize ? (
-                  <button type="button" onClick={() => setComposer(true)} className="shrink-0 rounded-full bg-[#8E35B8] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#7A2CA0]">
-                    Postar reconhecimento
-                  </button>
-                ) : null}
               </div>
             </section>
 
@@ -173,6 +183,14 @@ export const KudosFeedPage: FC = () => {
             {tab === 'mural' ? (
             <>
             <PodiumStage podiums={goals?.podiums ?? []} periodKey={podiumKey} onPeriod={setPodiumMonth} />
+
+            {canRecognize ? (
+              <div className="flex justify-center">
+                <button type="button" onClick={() => setComposer(true)} className="rounded-full bg-[#8E35B8] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#7A2CA0]">
+                  Postar reconhecimento
+                </button>
+              </div>
+            ) : null}
 
             <section className="rounded-[22px] border border-[#F0E7F6] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
               <div className="flex items-center justify-between gap-3">
@@ -231,8 +249,6 @@ export const KudosFeedPage: FC = () => {
             </section>
             </>
             ) : null}
-          </div>
-        </div>
       </div>
       <Dialog open={composer} onOpenChange={setComposer}>
         <DialogContent>
@@ -240,13 +256,14 @@ export const KudosFeedPage: FC = () => {
             <DialogTitle>Postar reconhecimento</DialogTitle>
           </DialogHeader>
           <RecognitionComposer
+            publishToFeed={false}
             onCreated={(created) => {
               if (created) {
                 setExtra((current) => [{
                   id: `novo-${Date.now()}`,
                   from: me.name,
                   to: created.name,
-                  area: 'Gestão',
+                  area: areaFromTag(created.tag),
                   quote: created.message,
                   when: 'agora',
                   likes: 0,

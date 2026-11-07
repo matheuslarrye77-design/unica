@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 
 const tags = ['Colaboração', 'Atendimento', 'Entrega', 'Cultura'];
 
-export const RecognitionComposer: FC<{ onCreated: (created?: { name: string; message: string; tag: string }) => void }> = ({ onCreated }) => {
+export const RecognitionComposer: FC<{ onCreated: (created?: { name: string; message: string; tag: string }) => void; publishToFeed?: boolean }> = ({ onCreated, publishToFeed = true }) => {
   const user = actor();
   const [personId, setPersonId] = useState('');
   const [tag, setTag] = useState(tags[0]);
@@ -23,17 +23,19 @@ export const RecognitionComposer: FC<{ onCreated: (created?: { name: string; mes
     setSending(true);
     try {
       await assertPermission('recognition');
-      await createFeedPost({
-        body: text,
-        kind: 'recognition',
-        recognizedName: person.name,
-        tag,
-        bannerTitle: `Reconhecimento especial para ${person.name.split(' ')[0]}!`,
-      });
+      if (publishToFeed) {
+        await createFeedPost({
+          body: text,
+          kind: 'recognition',
+          recognizedName: person.name,
+          tag,
+          bannerTitle: `Reconhecimento especial para ${person.name.split(' ')[0]}!`,
+        });
+      }
       setMessage('');
       setPersonId('');
       onCreated({ name: person.name, message: text, tag });
-      toast.success('Reconhecimento publicado no mural.');
+      toast.success(publishToFeed ? 'Reconhecimento publicado no mural.' : 'Reconhecimento publicado.');
     } catch (error) {
       toast.error(error instanceof Error && (error.message === '403' || /permissão/i.test(error.message)) ? 'Você não tem permissão para reconhecer.' : (error instanceof Error && error.message && !/^\d+$/.test(error.message) ? error.message : 'Não foi possível publicar o reconhecimento.'));
     } finally {

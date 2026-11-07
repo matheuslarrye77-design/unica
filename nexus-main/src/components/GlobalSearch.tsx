@@ -6,7 +6,7 @@ export const GlobalSearch: FC = () => {
   const { query, setQuery, placeholder } = usePageSearch();
 
   return (
-    <label className="relative flex h-9 w-full cursor-text items-center gap-2 rounded-[12px] border border-border bg-white/90 px-3 text-[13px] font-normal text-muted-foreground shadow-none">
+    <label className="relative flex h-9 w-full cursor-text items-center gap-2 rounded-[12px] border border-transparent bg-transparent px-3 text-[13px] font-normal text-muted-foreground transition-colors focus-within:border-[#D4B8E8]/70 focus-within:bg-white/25">
       <Search className="h-4 w-4 shrink-0" />
       <input
         type="search"

@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, PanelRight } from 'lucide-react';
 import { useState, type FC, type ReactNode } from 'react';
 import { useShell } from '@/components/Sidebar';
 
-export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: boolean; fill?: boolean }> = ({ children, locked = false, fill = false }) => {
+export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: boolean; fill?: boolean; chrome?: ReactNode }> = ({ children, locked = false, fill = false, chrome = null }) => {
   const { rightCollapsed, toggleRight } = useShell();
   const [mobileOpen, setMobileOpen] = useState(false);
   const collapsed = rightCollapsed;
@@ -47,21 +47,22 @@ export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: bo
       <aside
         className={cn(
           'relative hidden shrink-0 flex-col bg-transparent text-sidebar-foreground xl:flex',
-          locked ? 'h-full min-h-0 self-stretch' : 'sticky top-12 h-[calc(100dvh-3rem)]',
+          locked ? 'h-full min-h-0 self-stretch' : 'sticky top-0 h-dvh',
           collapsed ? 'w-11' : 'w-[320px]',
         )}
       >
-        <div className={cn('z-10 flex items-center', locked && !collapsed ? 'absolute top-0 right-0' : 'shrink-0 px-1', collapsed ? 'justify-center' : 'justify-end')}>
+        <div className={cn('z-10 flex h-12 shrink-0 items-center gap-1 px-1', collapsed ? 'justify-center' : 'justify-end')}>
+          {collapsed ? null : chrome}
           <button
             type="button"
             onClick={toggleRight}
             aria-label={collapsed ? 'Expandir painel' : 'Recolher painel'}
-            className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-card hover:text-foreground"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-muted-foreground hover:bg-card hover:text-foreground"
           >
             {collapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         </div>
-        {collapsed ? null : body}
+        {collapsed ? null : <div className="flex min-h-0 flex-1 flex-col">{body}</div>}
       </aside>
     </>
   );
