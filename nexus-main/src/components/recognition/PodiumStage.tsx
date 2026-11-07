@@ -1,7 +1,8 @@
 import { teamRoster } from '@/data/team';
 import { cn } from '@/lib/utils';
 import { Calendar, ChevronLeft, ChevronRight, Crown, Mail, MessageCircle, Phone, Trophy, type LucideIcon } from 'lucide-react';
-import { useEffect, useMemo, useState, type FC } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FC, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { GoalsPayload } from '@/components/recognition/GoalsCenter';
 
 type Podium = NonNullable<GoalsPayload['podiums']>[number];
@@ -74,8 +75,46 @@ function metricLine(item: Metric, mode: string) {
   return `${label} - ${raw}`;
 }
 
+const PodiumTip: FC<{ anchor: HTMLElement; children: ReactNode }> = ({ anchor, children }) => {
+  const tip = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ top: 0, left: 0, width: 300 });
+  useLayoutEffect(() => {
+    function place() {
+      const origin = anchor.getBoundingClientRect();
+      const width = Math.min(320, Math.max(220, window.innerWidth - 16));
+      const height = tip.current?.offsetHeight ?? 120;
+      let left = origin.left + origin.width / 2 - width / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
+      const above = origin.top - height - 12;
+      const top = above >= 8 ? above : Math.min(origin.bottom + 12, window.innerHeight - height - 8);
+      setBox({ top, left, width });
+    }
+    place();
+    const frame = window.requestAnimationFrame(place);
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [anchor]);
+  return createPortal(
+    <div
+      ref={tip}
+      role="tooltip"
+      className="pointer-events-none fixed z-[200] rounded-xl border border-[#EDE4F5] bg-white px-3 py-2 text-left shadow-[0_12px_28px_rgba(80,40,120,0.16)]"
+      style={{ top: box.top, left: box.left, width: box.width }}
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+};
+
 const PersonCard: FC<{ person: Ranking; mode: string; channel?: string }> = ({ person, mode, channel = '' }) => {
   const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
   const place = (person.place === 2 || person.place === 3 ? person.place : 1) as 1 | 2 | 3;
   const tone = STEP[place];
   const member = teamRoster.find((item) => item.id === person.userId || item.name === person.name);
@@ -86,44 +125,55 @@ const PersonCard: FC<{ person: Ranking; mode: string; channel?: string }> = ({ p
   const lines = person.detailsAvailable && metrics.length ? metrics.map((item) => metricLine(item, mode)) : [];
   if (person.voided) lines.unshift(`Regra: ${person.voided}`);
   if (mode === 'overall' && person.score != null) lines.push(`Total: ${percentText(person.score)}`);
+  useEffect(() => {
+    if (!open || !touch) return;
+    function close(event: Event) {
+      if (trigger.current && event.target instanceof Node && trigger.current.contains(event.target)) return;
+      setOpen(false);
+    }
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [open, touch]);
   return (
-    <div className="relative z-10 flex min-w-0 flex-col items-center text-center">
+    <div className="relative z-10 flex min-w-0 flex-col items-center overflow-visible text-center">
       <div className="relative">
         {place === 1 ? <Crown className="absolute -top-4 left-1/2 h-5 w-5 -translate-x-1/2 text-[#7C3AED]" /> : null}
         <img src={face(person.name)} alt="" className={cn('rounded-full bg-white object-cover', tone.avatar)} style={{ boxShadow: `0 0 0 3px #fff, 0 0 0 5px ${tone.strong}` }} />
       </div>
       <p className="mt-2 max-w-full truncate text-[13px] font-semibold text-[#241B33]">{person.name}</p>
       <p className="max-w-full truncate text-[11px] text-[#8A7C98]">{role}</p>
-      <div className={cn('relative mt-4 w-full max-w-[104px]', tone.height)}>
+      <div className={cn('relative mt-4 w-full max-w-[104px] overflow-visible', tone.height)}>
         <span className="absolute -top-3 left-1/2 z-10 grid h-7 w-7 -translate-x-1/2 place-items-center rounded-full text-[13px] font-semibold text-white" style={{ background: tone.strong, boxShadow: `0 8px 16px ${tone.strong}55` }}>{place}</span>
         <div className="flex h-full flex-col overflow-visible rounded-[20px] border" style={{ borderColor: tone.line, boxShadow: `0 10px 22px ${tone.strong}22` }}>
           <div className="flex-1 rounded-t-[20px]" style={{ background: `linear-gradient(180deg, #ffffff 0%, ${tone.wash} 100%)` }} />
-          <div className="relative">
-            <button
-              type="button"
-              aria-label={`Detalhe da pontuação de ${person.name}`}
-              className="flex h-9 w-full items-center justify-center rounded-b-[20px] px-1 text-[13px] font-semibold tabular-nums text-white"
-              style={{ background: tone.strong }}
-              onMouseEnter={() => { if (!touch) setOpen(true); }}
-              onMouseLeave={() => { if (!touch) setOpen(false); }}
-              onClick={() => { if (touch) setOpen((value) => !value); }}
-            >
-              {mode === 'overall' && person.score != null ? percentText(person.score) : (person.displayScore || (person.score == null ? '—' : String(person.score)))}
-            </button>
-            {open ? (
-              <div className="pointer-events-none absolute bottom-[calc(100%+10px)] left-1/2 z-50 w-[min(220px,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border border-[#EDE4F5] bg-white/95 px-3 py-2 text-left shadow-[0_12px_28px_rgba(80,40,120,0.14)] backdrop-blur-sm">
-                {lines.length ? (
-                  <ul className="grid gap-1 text-[11.5px] leading-4 text-[#4A1C73]">
-                    {lines.map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-[11.5px] leading-4 text-[#8A7C98]">Sem detalhe gravado.</p>
-                )}
-              </div>
-            ) : null}
-          </div>
+          <button
+            ref={trigger}
+            type="button"
+            aria-label={`Detalhe da pontuação de ${person.name}`}
+            aria-expanded={open}
+            className="flex h-9 w-full items-center justify-center rounded-b-[20px] px-1 text-[13px] font-semibold tabular-nums text-white"
+            style={{ background: tone.strong }}
+            onMouseEnter={() => { if (!touch) setOpen(true); }}
+            onMouseLeave={() => { if (!touch) setOpen(false); }}
+            onFocus={() => { if (!touch) setOpen(true); }}
+            onBlur={() => { if (!touch) setOpen(false); }}
+            onClick={() => { if (touch) setOpen((value) => !value); }}
+          >
+            {mode === 'overall' && person.score != null ? percentText(person.score) : (person.displayScore || (person.score == null ? '—' : String(person.score)))}
+          </button>
+          {open && trigger.current ? (
+            <PodiumTip anchor={trigger.current}>
+              {lines.length ? (
+                <ul className="grid gap-1 text-[11.5px] leading-4 text-[#4A1C73]">
+                  {lines.map((line) => (
+                    <li key={line} className="whitespace-normal break-words">{line}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[11.5px] leading-4 text-[#8A7C98]">Sem detalhe gravado.</p>
+              )}
+            </PodiumTip>
+          ) : null}
         </div>
       </div>
     </div>

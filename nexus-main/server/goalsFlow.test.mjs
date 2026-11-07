@@ -1303,7 +1303,8 @@ test('observação no chat vira regra, pede esclarecimento se for ambígua e zer
   assert.equal(scoped.body.kind, 'conference', scoped.body.reply);
   const call2 = podiumAt(scoped.body, '2027-05', 'overall', 'Ligação');
   const mail2 = podiumAt(scoped.body, '2027-05', 'overall', 'E-mail');
-  assert.equal(mail2.ranking.some((row) => row.userId === 'tm-8' && row.score > 0), true);
+  assert.equal((scoped.body.conference.overall.scores ?? []).some((row) => row.userId === 'tm-8' && row.score > 0 && !row.disqualified), true);
+  assert.equal(mail2.ranking.every((row) => row.userId !== 'tm-8' || (!row.voided && row.score > 0)), true);
   assert.equal(call2.ranking.every((row) => !row.voided), true);
 
   const ambiguous = await postCenter({

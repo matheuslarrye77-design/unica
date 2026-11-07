@@ -661,7 +661,7 @@ function notesForMonth(store, month) {
 }
 
 function applySpecialRules(record, score, parts, notes, channel) {
-  if (!record) return { score, parts, voided: '' };
+  if (!record) return { score, parts, voided: '', disqualified: false };
   const rules = (notes ?? []).filter((item) => item.kind === 'rule' && noteAppliesToChannel(item, channel));
   let nextScore = score;
   let voided = '';
@@ -677,10 +677,43 @@ function applySpecialRules(record, score, parts, notes, channel) {
       nextParts[id] = { ...nextParts[id], contribution: 0, voided: true, reason: rule.text };
     }
   }
-  return { score: nextScore, parts: nextParts, voided };
+  return { score: nextScore, parts: nextParts, voided, disqualified: Boolean(voided) };
 }
 
-function overallFor(records, rules, pack, period, selected, open = false, roster = [], notes = []) {
+function ruleTarget(rule) {
+  const n = Number(rule?.value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function clampShare(value, weight) {
+  if (!(weight > 0) || !Number.isFinite(value)) return 0;
+  if (value <= 0) return 0;
+  if (value >= weight) return weight;
+  return value;
+}
+
+function peerShare(value, best, higher, weight) {
+  if (value == null || best == null || !(weight > 0)) return 0;
+  if (higher) {
+    if (best === 0) return value === 0 ? weight : 0;
+    return clampShare(weight * (value / best), weight);
+  }
+  if (value === best) return weight;
+  if (best === 0) return 0;
+  if (value === 0) return weight;
+  return clampShare(weight * (best / value), weight);
+}
+
+function faltasShare(value, meta, weight) {
+  if (value == null || !(meta > 0) || !(weight > 0)) return 0;
+  return clampShare(weight * (meta - value) / meta, weight);
+}
+
+function presentShare(value) {
+  return Math.round(value * 100) / 100;
+}
+
+export function overallFor(records, rules, pack, period, selected, open = false, roster = [], notes = []) {
   const wanted = monthOf(period.periodKey || period.key);
   const chosen = (selected ?? []).map((id) => overallField(id)).filter(Boolean);
   const people = [];
@@ -692,11 +725,26 @@ function overallFor(records, rules, pack, period, selected, open = false, roster
     seen.add(record.userId);
     people.push(record);
   }
+  const faltasRule = ruleForIndicator(rules, 'faltas');
+  const faltasMeta = chosen.some((field) => field.id === 'faltas') ? ruleTarget(faltasRule) : null;
+  const dropped = new Set();
+  for (const record of people) {
+    const channel = channelOfRecord(record, roster);
+    if (!fieldApplies('faltas', channel) && channel) continue;
+    if (faltasMeta === 0) {
+      const faltas = resultValue(record, 'faltas');
+      if (faltas != null && faltas >= 1) dropped.add(record.userId);
+    }
+    const special = applySpecialRules(record, 0, {}, notes, channel);
+    if (special.disqualified) dropped.add(record.userId);
+  }
+  const contenders = people.filter((row) => !dropped.has(row.userId));
   const bestOf = {};
   for (const field of chosen) {
+    if (field.id === 'faltas' && faltasMeta != null && faltasMeta >= 0) continue;
     const rule = ruleForIndicator(rules, field.id);
     const higher = fieldIsHigher(field, rule);
-    const eligible = people
+    const eligible = contenders
       .map((row) => ({ row, value: resultValue(row, field.id), channel: channelOfRecord(row, roster) }))
       .filter((item) => fieldApplies(field.id, item.channel) && overallEligible(item.value, rule, open))
       .map((item) => item.value);
@@ -708,6 +756,7 @@ function overallFor(records, rules, pack, period, selected, open = false, roster
     const localPack = equalWeights(applicable.map((item) => item.id));
     const parts = {};
     let total = 0;
+    const eliminated = dropped.has(record.userId);
     for (const field of chosen) {
       if (!applicable.includes(field)) continue;
       const rule = ruleForIndicator(rules, field.id);
@@ -718,33 +767,48 @@ function overallFor(records, rules, pack, period, selected, open = false, roster
       const higher = fieldIsHigher(field, rule);
       let contribution = 0;
       let reason = '';
-      if (!eligible) {
+      if (eliminated && field.id !== 'faltas') {
+        reason = 'Desclassificado por faltas sem atestado';
+      } else if (field.id === 'faltas' && faltasMeta === 0) {
+        if (value != null && value >= 1) {
+          reason = 'Desclassificado: meta de faltas sem atestado é 0';
+        } else if (value === 0) {
+          contribution = weight;
+        } else {
+          reason = `Sem resultado de ${displayName(field.id)}`;
+        }
+      } else if (field.id === 'faltas' && faltasMeta > 0) {
+        if (value == null) reason = `Sem resultado de ${displayName(field.id)}`;
+        else contribution = faltasShare(value, faltasMeta, weight);
+      } else if (!eligible) {
         reason = value == null ? `Sem resultado de ${displayName(field.id)}` : eligibilityReason(field, rule);
-      } else if (best && best !== 0) {
-        const ratio = higher ? value / best : best / value;
-        contribution = Math.min(weight, Math.round(ratio * weight * 100) / 100);
+      } else {
+        contribution = peerShare(value, best, higher, weight);
       }
       total += contribution;
       parts[field.id] = {
         name: displayName(field.id),
         value,
-        best,
-        eligible,
+        best: field.id === 'faltas' && faltasMeta != null && faltasMeta >= 0 ? faltasMeta : best,
+        eligible: field.id === 'faltas' && faltasMeta > 0 ? value != null : eligible,
         reason,
         weight,
-        contribution: Math.round(contribution * 100) / 100,
+        contribution: presentShare(contribution),
       };
     }
-    const special = applySpecialRules(record, Math.round(total * 100) / 100, parts, notes, channel);
+    const special = applySpecialRules(record, presentShare(total), parts, notes, channel);
+    const disqualified = eliminated || special.disqualified;
     return {
       userId: record.userId,
       name: record.name,
-      score: special.score,
+      score: disqualified ? 0 : special.score,
       parts: special.parts,
-      voided: special.voided || '',
+      voided: special.voided || (eliminated ? 'Desclassificado por faltas sem atestado' : ''),
+      disqualified,
     };
   });
-  scores.sort((left, right) => right.score - left.score || fold(left.name).localeCompare(fold(right.name), 'pt'));
+  const standing = scores.filter((item) => !item.disqualified);
+  standing.sort((left, right) => right.score - left.score || fold(left.name).localeCompare(fold(right.name), 'pt'));
   const excluded = OVERALL_FIELDS.map((item) => item.id).filter((id) => !chosen.some((item) => item.id === id));
   return {
     weights: pack,
@@ -752,7 +816,7 @@ function overallFor(records, rules, pack, period, selected, open = false, roster
     excluded,
     excludes: excluded,
     periodLabel: period?.periodLabel || period?.label || '',
-    scores: scores.map((item, index) => ({ ...item, place: index + 1 })),
+    scores: standing.map((item, index) => ({ ...item, place: index + 1 })),
   };
 }
 
@@ -1043,8 +1107,9 @@ function buildModePodium(store, month, monthRecords, evaluation, now, channel = 
         const person = personFromRoster(people, row.userId, row.name);
         const rowChannel = podiumChannelOf(person) || channel;
         const special = applySpecialRules(record, row.score, {}, notes, rowChannel);
-        return { ...row, score: special.voided ? 0 : row.score, voided: special.voided || '' };
+        return { ...row, score: special.voided ? 0 : row.score, voided: special.voided || '', disqualified: special.disqualified };
       })
+      .filter((row) => !row.disqualified)
       .sort((left, right) => Number(right.score ?? 0) - Number(left.score ?? 0) || fold(left.name).localeCompare(fold(right.name), 'pt'))
       .map((row, index) => ({ ...row, place: index + 1 }))
       .slice(0, 3);
