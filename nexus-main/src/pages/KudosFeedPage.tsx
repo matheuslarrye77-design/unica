@@ -1,20 +1,17 @@
-import { RecognitionComposer } from '@/components/social/RecognitionComposer';
+import { MuralPublishDialog } from '@/components/social/MuralPublishDialog';
 import { recognitionHeadline } from '@/lib/recognitionText';
 import { HomeRail } from '@/components/shell/HomeRail';
 import { PageFrame } from '@/components/shell/PageFrame';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { teamRoster } from '@/data/team';
 import { authHeaders, getDemoId } from '@/lib/session';
 import { usePageSearch } from '@/lib/pageSearch';
 import { cn } from '@/lib/utils';
-import { createFeedPost } from '@/lib/feed';
 import { GoalsAssistant, GoalsCenter, GoalsProvider, type GoalsPayload } from '@/components/recognition/GoalsCenter';
 import { PodiumStage } from '@/components/recognition/PodiumStage';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { ChevronDown, Heart, Megaphone, Star, Target, Trophy } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { toast } from 'sonner';
 
 type Area = 'Gestão' | 'Suporte';
 
@@ -68,6 +65,7 @@ export const KudosFeedPage: FC = () => {
   const { query } = usePageSearch();
   const [params, setParams] = useSearchParams();
   const [composer, setComposer] = useState(false);
+  const [muralTarget, setMuralTarget] = useState<Recognition | null>(null);
   const [filter, setFilter] = useState<'Todos' | Area>('Todos');
   const [extra, setExtra] = useState<Recognition[]>(readExtra);
   useEffect(() => { localStorage.setItem(EXTRA_KEY, JSON.stringify(extra)); }, [extra]);
@@ -76,7 +74,6 @@ export const KudosFeedPage: FC = () => {
     try { return JSON.parse(sessionStorage.getItem('unica-recognition-mural') ?? '{}') as Record<string, boolean>; } catch { return {}; }
   });
   useEffect(() => { sessionStorage.setItem('unica-recognition-mural', JSON.stringify(posted)); }, [posted]);
-  const [sending, setSending] = useState<string | null>(null);
   const [goals, setGoals] = useState<GoalsPayload | null>(null);
   const [week, setWeek] = useState('');
   const [podiumMonth, setPodiumMonth] = useState('');
@@ -134,31 +131,6 @@ export const KudosFeedPage: FC = () => {
     else setParams({}, { replace: true });
   }
 
-  async function postOnMural(item: Recognition) {
-    setSending(item.id);
-    try {
-      await createFeedPost({
-        body: item.quote,
-        kind: 'recognition',
-        recognizedName: item.to,
-        recognizedBy: item.from,
-        receivedRecognition: Boolean(item.received),
-        tag: item.area,
-        caption: item.caption,
-        comment: item.comment,
-        images: item.photos,
-        bannerTitle: recognitionHeadline(item.from, item.to, Boolean(item.received)),
-        nonce: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      });
-      setPosted((current) => ({ ...current, [item.id]: true }));
-      toast.success('Reconhecimento publicado no mural.');
-    } catch (error) {
-      toast.error(error instanceof Error && (error.message === '403' || /permissão/i.test(error.message)) ? 'Você não tem permissão para publicar no mural.' : 'Não foi possível publicar no mural.');
-    } finally {
-      setSending(null);
-    }
-  }
-
   const page = (
     <PageFrame fitViewport fillRail={tab === 'metas'} rail={tab === 'metas' && goals ? <GoalsAssistant /> : <HomeRail />}>
       <div className="grid gap-4 pb-16">
@@ -172,6 +144,10 @@ export const KudosFeedPage: FC = () => {
                   <p className="mt-0.5 text-[15px] font-semibold text-[#6A228C]">Valorize quem faz a diferença!</p>
                   <p className="mt-1 max-w-xl text-[13px] leading-snug text-[#8A5AA0]">Aqui você pode reconhecer seus colegas e acompanhar os maiores destaques do mês.</p>
                 </div>
+                <button type="button" onClick={() => setComposer(true)} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#8E35B8] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#7A2CA0]">
+                  <Star className="h-4 w-4 fill-current" />
+                  Postar reconhecimento
+                </button>
               </div>
             </section>
 
@@ -191,13 +167,6 @@ export const KudosFeedPage: FC = () => {
             {tab === 'mural' ? (
             <>
             <PodiumStage podiums={goals?.podiums ?? []} periodKey={podiumKey} onPeriod={setPodiumMonth} />
-
-            <div className="flex justify-center">
-              <button type="button" onClick={() => setComposer(true)} className="inline-flex items-center gap-2 rounded-full bg-[#8E35B8] px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#7A2CA0]">
-                <Star className="h-4 w-4 fill-current" />
-                Postar reconhecimento
-              </button>
-            </div>
 
             <section className="rounded-[22px] border border-[#F0E7F6] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
               <div className="flex items-center justify-between gap-3">
@@ -248,8 +217,8 @@ export const KudosFeedPage: FC = () => {
                         ) : null}
                         <button
                           type="button"
-                          disabled={posted[item.id] || sending === item.id}
-                          onClick={() => void postOnMural(item)}
+                          disabled={posted[item.id]}
+                          onClick={() => setMuralTarget(item)}
                           className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#8E35B8] px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-[#7A2CA0] disabled:bg-[#C9A6DC]"
                         >
                           <Megaphone className="h-3.5 w-3.5" />
@@ -264,35 +233,51 @@ export const KudosFeedPage: FC = () => {
             </>
             ) : null}
       </div>
-      <Dialog open={composer} onOpenChange={setComposer}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Postar reconhecimento</DialogTitle>
-          </DialogHeader>
-          <RecognitionComposer
-            publishToFeed={false}
-            onCancel={() => setComposer(false)}
-            onCreated={(created) => {
-              if (created) {
-                setExtra((current) => [{
-                  id: `novo-${Date.now()}`,
-                  from: created.fromName,
-                  to: created.name,
-                  area: areaFromTag(created.tag),
-                  quote: created.message,
-                  when: 'agora',
-                  likes: 0,
-                  received: created.received,
-                  caption: created.caption || undefined,
-                  comment: created.comment || undefined,
-                  photos: created.photos,
-                }, ...current]);
-              }
-              setComposer(false);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+      <MuralPublishDialog
+        open={composer}
+        onOpenChange={setComposer}
+        source="recognition-new"
+        onCreated={(created, published) => {
+          const id = `novo-${Date.now()}`;
+          setExtra((current) => [{
+            id,
+            from: created.fromName,
+            to: created.name,
+            area: areaFromTag(created.tag),
+            quote: created.message,
+            when: 'agora',
+            likes: 0,
+            received: created.received,
+            caption: created.caption || undefined,
+            comment: created.comment || undefined,
+            photos: created.photos,
+          }, ...current]);
+          if (published) setPosted((current) => ({ ...current, [id]: true }));
+          setComposer(false);
+        }}
+      />
+      {muralTarget ? (
+        <MuralPublishDialog
+          open
+          onOpenChange={(next) => { if (!next) setMuralTarget(null); }}
+          source="recognition-existing"
+          item={{
+            id: muralTarget.id,
+            from: muralTarget.from,
+            to: muralTarget.to,
+            quote: muralTarget.quote,
+            received: muralTarget.received,
+            tag: muralTarget.area,
+            caption: muralTarget.caption,
+            comment: muralTarget.comment,
+            photos: muralTarget.photos,
+          }}
+          onPublished={() => {
+            setPosted((current) => ({ ...current, [muralTarget.id]: true }));
+            setMuralTarget(null);
+          }}
+        />
+      ) : null}
     </PageFrame>
   );
 

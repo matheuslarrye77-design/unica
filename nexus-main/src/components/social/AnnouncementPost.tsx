@@ -12,7 +12,9 @@ export const AnnouncementPost: FC<{ post: SocialPost; expandId?: string }> = ({ 
   const category = post.journalCategory ? categoryLabel(post.journalCategory as JournalCategory) : null;
   const excerpt = post.journalExcerpt || '';
   const caption = post.caption || (post.body && post.body !== title && post.body !== excerpt ? post.body : '');
-  const photos = post.images?.length ? post.images : post.image ? [post.image] : [];
+  const decorative = new Set((post.blocks ?? []).flatMap((block) => (block.type === 'image' && block.display ? [block.url] : [])));
+  const listed = post.images?.length ? post.images : post.image ? [post.image] : [];
+  const photos = listed.filter((url) => !decorative.has(url));
   return (
     <div className="mt-3">
       <p className="text-[16px] font-semibold leading-6 text-foreground">{title}</p>

@@ -4,10 +4,12 @@ import { createPortal } from 'react-dom';
 const HANDLE_ID = 'unica-page-scroll-handle';
 
 function scrollingTarget() {
+  const page = (document.scrollingElement as HTMLElement | null) ?? document.documentElement;
+  if (page.scrollHeight > page.clientHeight + 12) return page;
   const mains = [...document.querySelectorAll('main')];
   const overflowing = mains.find((node) => node.scrollHeight > node.clientHeight + 12);
   if (overflowing) return overflowing;
-  return (document.scrollingElement as HTMLElement | null) ?? document.documentElement;
+  return page;
 }
 
 export const PageScrollHandle: FC = () => {

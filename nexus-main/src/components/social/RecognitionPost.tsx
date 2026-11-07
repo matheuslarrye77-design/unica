@@ -10,7 +10,9 @@ export const RecognitionPost: FC<{ post: SocialPost; expandId?: string }> = ({ p
   const from = post.recognizedBy?.trim() || post.author;
   const title = post.bannerTitle || (name ? recognitionHeadline(from, name, Boolean(post.receivedRecognition) || from === name) : null);
   const extras = [post.caption, post.comment].filter(Boolean) as string[];
-  const photos = post.images?.length ? post.images : post.image ? [post.image] : [];
+  const decorative = new Set((post.blocks ?? []).flatMap((block) => (block.type === 'image' && block.display ? [block.url] : [])));
+  const listed = post.images?.length ? post.images : post.image ? [post.image] : [];
+  const photos = listed.filter((url) => !decorative.has(url));
   return (
     <div className="mt-3">
       {title ? <h3 className="text-[16px] font-semibold leading-6 text-foreground">{title}</h3> : null}

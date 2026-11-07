@@ -74,7 +74,9 @@ export const PostCard: FC<{
 }> = ({ post, commentDraft, onCommentDraft, onLike, onReact, onToggleSave, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, onSaveEdit, republished, canDeleteComment, onDeleteComment, pendingMedia, onMedia, onGifFile, onPasteFile, repost, anchorId }) => {
   const plain = post.kind === 'text' || post.kind === 'image' || post.kind === 'leadership';
   const domId = anchorId ?? post.id;
+  const composed = post.kind === 'recognition' || post.kind === 'announcement';
   const blocks = (post.blocks ?? []).filter((block) => !(post.kind === 'poll' && block.type === 'text'));
+  const decorations = composed ? blocks.filter((block) => block.type === 'image' && block.display) : [];
   const mood = MOODS.find((item) => item.emoji === post.mood);
   const [editing, setEditing] = useState(false);
   const [editBody, setEditBody] = useState(post.body);
@@ -154,7 +156,7 @@ export const PostCard: FC<{
             <button type="button" className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground" onClick={() => setEditing(false)}>Cancelar</button>
           </div>
         </form>
-      ) : blocks.length > 0 ? (
+      ) : !composed && blocks.length > 0 ? (
         <div className="mt-2 space-y-2">
           {blocks.map((block, index) => {
             if (block.type === 'text') return <ReadMore key={`${domId}-texto-${index}`} id={`${domId}-texto-${index}`} text={block.text} className="text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90" />;
@@ -168,6 +170,13 @@ export const PostCard: FC<{
           {post.kind !== 'announcement' && post.kind !== 'recognition' && post.images && post.images.length > 0 ? <PhotoGallery images={post.images} /> : post.kind === 'image' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-contain bg-[#F8F7FC]" /> : null}
         </>
       )}
+      {decorations.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {decorations.map((block, index) => (
+            block.type === 'image' ? <img key={`${post.id}-extra-${index}`} src={block.url} alt={block.display === 'gif' ? 'GIF' : 'Figurinha'} className="h-24 w-24 rounded-xl bg-[#F8EAFB] object-contain" /> : null
+          ))}
+        </div>
+      ) : null}
       {post.kind === 'leadership' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
       {post.attachment?.type === 'video' && post.attachment.url ? <video src={post.attachment.url} controls preload="metadata" className="mt-3 max-h-[420px] w-full rounded-xl bg-black" /> : null}
       {post.attachment?.type === 'audio' && post.attachment.url ? (
@@ -192,6 +201,7 @@ export const PostCard: FC<{
       {post.kind === 'announcement' ? <AnnouncementPost post={post} expandId={`${domId}-noticia`} /> : null}
       {post.kind === 'recognition' ? <RecognitionPost post={post} expandId={`${domId}-reconhecimento`} /> : null}
       {post.kind === 'poll' ? <PollPost post={post} onVote={onVote} expandId={`${domId}-enquete`} /> : null}
+      {post.kind !== 'poll' && post.poll && post.poll.length > 0 ? <PollPost post={post} onVote={onVote} optionsOnly expandId={`${domId}-enquete`} /> : null}
       {post.kind === 'event' ? <EventPost post={post} expandId={`${domId}-evento`} /> : null}
 
       {repost ? (

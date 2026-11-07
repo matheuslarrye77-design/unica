@@ -10,7 +10,7 @@ export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: bo
 
   const body = locked ? (
     <div className={cn('flex h-full min-h-0 flex-col', fill ? 'overflow-hidden' : 'overflow-y-auto [scrollbar-width:thin]')}>
-      <div className={cn(fill ? 'flex h-full min-h-0 flex-1 flex-col' : 'my-auto flex flex-col gap-2.5 py-2')}>
+      <div className={cn(fill ? 'flex h-full min-h-0 flex-1 flex-col' : 'flex flex-col gap-2.5 py-2')}>
         {children}
       </div>
     </div>
