@@ -153,7 +153,7 @@ async function readBlobFeed(env) {
 export function createFeedStore(options = {}) {
   const env = options.env ?? process.env;
   const dir = options.dir ?? path.resolve(process.cwd(), 'data');
-  const timeoutMs = options.timeoutMs ?? 8000;
+  const timeoutMs = options.timeoutMs ?? 15000;
   const retries = options.retries ?? 8;
   const migrateBlob = options.migrateBlob ?? ((stageEnv) => readBlobFeed(stageEnv));
   const configured = Boolean(env.SUPABASE_URL && serverSecretKey(env));
@@ -175,10 +175,10 @@ export function createFeedStore(options = {}) {
       }
       if (id === 'feed') {
         const blob = await migrateBlob(env);
-        if (!blob.ok) return unavailable(blob.detail || 'blob');
         const local = withoutSeeds(readLocal(dir));
-        const migrated = normalizeFeed(mergeFeed(local, blob.payload || emptyFeed()));
-        if (migrated.posts.length || migrated.reposts.length || (blob.payload && typeof blob.payload === 'object')) {
+        const remote = blob.ok ? blob.payload : null;
+        const migrated = normalizeFeed(mergeFeed(local, remote || emptyFeed()));
+        if (migrated.posts.length || migrated.reposts.length) {
           const stamp = new Date().toISOString();
           const written = await withTimeout(db.from('unica_documents').upsert({ id, payload: migrated, updated_at: stamp }), timeoutMs);
           if (written.error) return unavailable(written.error.code || 'unknown');

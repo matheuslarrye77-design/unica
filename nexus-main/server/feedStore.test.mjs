@@ -129,6 +129,19 @@ test('creating a post only reports success after the write', async () => {
   assert.equal(loaded.store.posts[0].id, 'post-new');
 });
 
+test('a blob outage does not block an empty mural in supabase', async () => {
+  const mural = createFeedStore({
+    remote: true,
+    dir: 'missing-feed-dir',
+    env: { SUPABASE_URL: 'https://example.supabase.co', SUPABASE_SECRET_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.e30', VERCEL: '1', VERCEL_ENV: 'production' },
+    migrateBlob: async () => ({ ok: false, detail: 'network' }),
+    client: memoryClient(),
+  });
+  const loaded = await mural.load();
+  assert.equal(loaded.kind, undefined);
+  assert.deepEqual(loaded.store.posts, []);
+});
+
 test('demo posts from the local file are not migrated', async () => {
   let written = null;
   const mural = createFeedStore({
