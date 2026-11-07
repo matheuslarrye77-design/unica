@@ -3,7 +3,6 @@ import { HomeRail } from '@/components/shell/HomeRail';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { teamRoster } from '@/data/team';
-import { useInstitution } from '@/lib/institution';
 import { actor, authHeaders, getDemoId } from '@/lib/session';
 import { usePageSearch } from '@/lib/pageSearch';
 import { cn } from '@/lib/utils';
@@ -11,7 +10,7 @@ import { createFeedPost } from '@/lib/feed';
 import { GoalsAssistant, GoalsCenter, GoalsProvider, type GoalsPayload } from '@/components/recognition/GoalsCenter';
 import { PodiumStage } from '@/components/recognition/PodiumStage';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
-import { ChevronDown, Heart, Megaphone, Target, Trophy } from 'lucide-react';
+import { ChevronDown, Heart, Megaphone, Star, Target, Trophy } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -61,7 +60,6 @@ function goalsHeaders() {
 }
 
 export const KudosFeedPage: FC = () => {
-  const { canRecognize } = useInstitution();
   const { query } = usePageSearch();
   const me = actor();
   const [params, setParams] = useSearchParams();
@@ -184,13 +182,12 @@ export const KudosFeedPage: FC = () => {
             <>
             <PodiumStage podiums={goals?.podiums ?? []} periodKey={podiumKey} onPeriod={setPodiumMonth} />
 
-            {canRecognize ? (
-              <div className="flex justify-center">
-                <button type="button" onClick={() => setComposer(true)} className="rounded-full bg-[#8E35B8] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#7A2CA0]">
-                  Postar reconhecimento
-                </button>
-              </div>
-            ) : null}
+            <div className="flex justify-center">
+              <button type="button" onClick={() => setComposer(true)} className="inline-flex items-center gap-2 rounded-full bg-[#8E35B8] px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#7A2CA0]">
+                <Star className="h-4 w-4 fill-current" />
+                Postar reconhecimento
+              </button>
+            </div>
 
             <section className="rounded-[22px] border border-[#F0E7F6] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
               <div className="flex items-center justify-between gap-3">

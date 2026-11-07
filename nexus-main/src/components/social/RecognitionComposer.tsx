@@ -22,8 +22,8 @@ export const RecognitionComposer: FC<{ onCreated: (created?: { name: string; mes
     if (!person || !text) return;
     setSending(true);
     try {
-      await assertPermission('recognition');
       if (publishToFeed) {
+        await assertPermission('recognition');
         await createFeedPost({
           body: text,
           kind: 'recognition',
