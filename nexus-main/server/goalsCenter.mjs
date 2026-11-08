@@ -12,6 +12,14 @@ const NAMES = FIELD_NAMES;
 const UNITS = FIELD_UNITS;
 const OVERALL_FIELDS = OVERALL_FIELD_DEFS;
 const CONFERENCE_REPLY = 'Relatório interpretado. Confira os dados abaixo.';
+const TIME_FIELDS = new Set(['primeira', 'resolucao', 'espera', 'duracao']);
+
+function asMinutes(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return n;
+  if (n > 0 && n < 1) return n < 0.1 ? Math.round(n * 1440 * 100) / 100 : Math.round(n * 100);
+  return n;
+}
 
 export const GOALS_CENTER_SCHEMA = {
   type: 'object',
@@ -92,12 +100,16 @@ function parseGenerated(raw) {
 
 function passes(value, rule) {
   if (value === null || value === undefined || !rule) return null;
-  if (rule.op === 'gt') return value > rule.value;
-  if (rule.op === 'gte') return value >= rule.value;
-  if (rule.op === 'lt') return value < rule.value;
-  if (rule.op === 'lte') return value <= rule.value;
-  if (rule.op === 'eq') return value === rule.value;
-  if (rule.op === 'between') return value >= rule.value && value <= rule.valueTo;
+  const time = TIME_FIELDS.has(rule.indicator);
+  const left = time ? asMinutes(value) : value;
+  const right = time ? asMinutes(rule.value) : rule.value;
+  const rightTo = time ? asMinutes(rule.valueTo) : rule.valueTo;
+  if (rule.op === 'gt') return left > right;
+  if (rule.op === 'gte') return left >= right;
+  if (rule.op === 'lt') return left < right;
+  if (rule.op === 'lte') return left <= right;
+  if (rule.op === 'eq') return left === right;
+  if (rule.op === 'between') return left >= right && left <= rightTo;
   return null;
 }
 
@@ -682,7 +694,9 @@ function applySpecialRules(record, score, parts, notes, channel) {
 
 function ruleTarget(rule) {
   const n = Number(rule?.value);
-  return Number.isFinite(n) ? n : null;
+  if (!Number.isFinite(n)) return null;
+  if (TIME_FIELDS.has(rule?.indicator)) return asMinutes(n);
+  return n;
 }
 
 function clampShare(value, weight) {
@@ -857,12 +871,20 @@ function isCustomIndicator(indicator) {
   return String(indicator ?? '').startsWith('c:') || (indicator && !KNOWN.includes(indicator) && indicator !== 'resolvidos');
 }
 
+function minuteAmount(value) {
+  const minutes = asMinutes(value);
+  if (!Number.isFinite(minutes)) return String(value).replace('.', ',');
+  if (Math.abs(minutes - Math.round(minutes)) < 0.001) return String(Math.round(minutes));
+  return String(Math.round(minutes * 100) / 100).replace('.', ',');
+}
+
 function shownValue(indicator, value, unit) {
   if (value == null) return '';
   const extra = String(unitOf(indicator, unit) ?? '').trim();
-  const shown = String(value).replace('.', ',');
+  const time = TIME_FIELDS.has(indicator) || extra.includes('min');
+  const shown = time ? minuteAmount(value) : String(value).replace('.', ',');
   if (indicator === 'satisfacao' || indicator === 'resolvidos' || extra === '%') return `${shown}%`;
-  if (indicator === 'primeira' || indicator === 'resolucao' || extra.includes('min')) return `${shown} min`;
+  if (time) return `${shown} min`;
   return shown;
 }
 

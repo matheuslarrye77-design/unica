@@ -258,24 +258,7 @@
 }
 
 .unica-page-scroll-handle {
-  position: fixed !important;
-  right: 0 !important;
-  bottom: 10px !important;
-  left: auto !important;
-  top: auto !important;
-  z-index: 100001 !important;
-  display: block;
-  width: 88px;
-  height: 8px;
-  margin: 0 !important;
-  padding: 0;
-  border: 1px solid #E4C8EE;
-  border-radius: 999px;
-  background: #C084E0;
-  box-shadow: 0 1px 6px rgba(80, 40, 120, 0.18);
-  transform: none !important;
-  cursor: grab;
-  appearance: none;
+  display: none !important;
 }
 
 .unica-page-scroll-handle::after {
@@ -283,7 +266,7 @@
 }
 
 .unica-page-scroll-handle:active {
-  cursor: grabbing;
+  display: none !important;
 }
 
 .unica-account-follow {
@@ -305,9 +288,10 @@
 
 @media (max-width: 639px) {
   .unica-page-scroll-handle {
-    right: 0 !important;
-    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
-    width: 72px;
+    inset: auto 8px calc(12px + env(safe-area-inset-bottom, 0px)) auto !important;
+    right: 8px !important;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    width: 64px;
     height: 8px;
   }
 }

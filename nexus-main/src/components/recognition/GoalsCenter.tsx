@@ -2,7 +2,7 @@ import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { authHeaders, getDemoId } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { useShell } from '@/components/Sidebar';
-import { ArrowLeftRight, BarChart3, Bot, Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, FileText, Info, Maximize2, MessageCircle, Minimize2, Paperclip, Pencil, Phone, Send, Settings2, Smile, Sparkles, Star, Target, Ticket, Timer, Trash2, Trophy, User, X } from 'lucide-react';
+import { ArrowLeftRight, BarChart3, Bot, Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, FileText, Info, Maximize2, MessageCircle, Minimize2, Pencil, Phone, Send, Settings2, Smile, Sparkles, Star, Ticket, Timer, Trash2, Trophy, User, X } from 'lucide-react';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type FC, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
@@ -176,10 +176,24 @@ function fieldForPerson(field: string, funcao: string) {
   return !CALL_ONLY_FIELDS.has(field);
 }
 
+const TIME_FIELDS = new Set(['primeira', 'resolucao', 'espera', 'duracao']);
+
+function asMinutes(value: number) {
+  if (!Number.isFinite(value)) return value;
+  if (value > 0 && value < 1) return value < 0.1 ? Math.round(value * 1440 * 100) / 100 : Math.round(value * 100);
+  return value;
+}
+
+function minuteLabel(value: number) {
+  const minutes = asMinutes(value);
+  const shown = Math.abs(minutes - Math.round(minutes)) < 0.001 ? String(Math.round(minutes)) : String(Math.round(minutes * 100) / 100).replace('.', ',');
+  return `${shown} min`;
+}
+
 function ledgerText(field: string, value: number | null) {
   if (value === null || value === undefined) return '';
   if (field === 'resolvidos' || field === 'satisfacao') return `${value}%`;
-  if (field === 'primeira' || field === 'resolucao' || field === 'espera' || field === 'duracao') return `${value} min`;
+  if (TIME_FIELDS.has(field)) return minuteLabel(value);
   return String(value);
 }
 
@@ -227,7 +241,9 @@ const RULE_UNITS: Record<string, string> = { resolvidos: '%', satisfacao: '%', p
 function ruleConference(rule: Rule & { name?: string }, periodLabel?: string) {
   const name = rule.name || RULE_NAMES[rule.indicator] || rule.indicator.replace(/^c:/, '').replace(/-/g, ' ');
   const unit = RULE_UNITS[rule.indicator] ?? '';
-  const value = rule.op === 'between' ? `${rule.value} a ${rule.valueTo ?? ''}${unit}` : `${rule.value}${unit}`;
+  const amount = TIME_FIELDS.has(rule.indicator) ? minuteLabel(rule.value).replace(/ min$/, '') : String(rule.value);
+  const amountTo = rule.valueTo == null ? '' : TIME_FIELDS.has(rule.indicator) ? minuteLabel(rule.valueTo).replace(/ min$/, '') : String(rule.valueTo);
+  const value = rule.op === 'between' ? `${amount} a ${amountTo}${unit}` : `${amount}${unit}`;
   const sign = RULE_OPS[rule.op] ?? rule.op;
   const when = periodLabel || (rule.period === 'month' ? 'mês' : rule.period === 'week' ? 'semana' : '');
   return `${name} | ${value} | ${sign} | ${when}`;
@@ -406,6 +422,7 @@ export const GoalsProvider: FC<{
       return;
     }
     say('user', source);
+    setDraft('');
     setBusy(true);
     try {
       const history = messages.slice(-6).map((message) => ({ text: message.text }));
@@ -414,8 +431,6 @@ export const GoalsProvider: FC<{
         history,
         mode: phase === 'idle' ? (selected.mode === 'custom' ? 'custom' : 'overall') : phase,
       });
-      if (data.kind === 'unavailable' || data.kind === 'quota' || data.kind === 'auth' || data.kind === 'permission' || data.kind === 'model' || data.kind === 'invalid' || data.kind === 'clarify' || data.kind === 'storage') setDraft(source);
-      else setDraft('');
       if (data.kind === 'saved' || data.kind === 'ledger' || data.kind === 'cleared') {
         onChange({ ...data, canManage: goals.canManage, people: data.people ?? goals.people });
         window.dispatchEvent(new Event('unica-goals-saved'));
@@ -447,9 +462,8 @@ export const GoalsProvider: FC<{
         }
       }
     } catch (error) {
-      setDraft(source);
       const data = error && typeof error === 'object' && 'data' in error ? (error as { data?: { kind?: string; reply?: string } }).data : undefined;
-      say('bot', data?.reply || 'Não consegui falar com a IA agora. Nada foi alterado e o seu texto continua no campo.');
+      say('bot', data?.reply || 'Não consegui falar com a IA agora. Nada foi alterado.');
     } finally {
       setBusy(false);
     }
@@ -627,16 +641,6 @@ export const GoalsCenter: FC = () => {
 
   return (
     <div className="grid gap-4">
-      <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#F4E4FB] via-[#EED4F8] to-[#E3C2F4] px-5 py-4">
-        <div className="relative flex items-start gap-3">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/70 text-[#8E35B8]"><Target className="h-6 w-6" /></span>
-          <div>
-            <h2 className="flex items-center gap-2 text-[20px] font-semibold text-[#4A1C73]">Central Inteligente de Metas</h2>
-            <p className="mt-0.5 text-[13px] text-[#8A5AA0]">Interprete metas e resultados nos dois modos. O pódio só muda com pedido explícito e confirmação.</p>
-          </div>
-        </div>
-      </section>
-
       <section>
         <h3 className="flex items-center gap-2 text-[15px] font-semibold text-[#241B33]">
           <Trophy className="h-4 w-4 text-[#8E35B8]" /> Escolha o modo da Central
@@ -781,8 +785,12 @@ function ruleDirection(op: string) {
 }
 
 function ruleTarget(rule: Rule) {
-  if (rule.op === 'between') return `${rule.value} a ${rule.valueTo ?? ''}`;
-  return String(rule.value);
+  if (rule.op === 'between') {
+    const from = TIME_FIELDS.has(rule.indicator) ? minuteLabel(rule.value).replace(/ min$/, '') : String(rule.value);
+    const to = rule.valueTo == null ? '' : TIME_FIELDS.has(rule.indicator) ? minuteLabel(rule.valueTo).replace(/ min$/, '') : String(rule.valueTo);
+    return `${from} a ${to}`;
+  }
+  return TIME_FIELDS.has(rule.indicator) ? minuteLabel(rule.value).replace(/ min$/, '') : String(rule.value);
 }
 
 function goalMet(value: number | null | undefined, rule?: Rule, importGoal?: { target?: number | null; direction?: string }) {
@@ -807,7 +815,7 @@ function StatusText({ met }: { met: boolean | null }) {
 
 function indicatorTarget(field: string, target: number | null | undefined) {
   if (target == null) return '—';
-  if (field === 'primeira' || field === 'resolucao' || field === 'espera' || field === 'duracao') return `${target} min`;
+  if (TIME_FIELDS.has(field)) return minuteLabel(target);
   if (field === 'resolvidos' || field === 'satisfacao') return `${target}%`;
   return String(target);
 }
@@ -1191,7 +1199,6 @@ export const GoalsAssistant: FC = () => {
   const board = useBoard();
   const { goals, messages, draft, setDraft, busy, talk, phase, pendingRules, setPendingRules, conference, pendingPodium, confirmPodium, saveTemplate, cancelProposal } = board;
   const thread = useRef<HTMLDivElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
   const [bankOpen, setBankOpen] = useState(false);
   const [wide, setWide] = useState(false);
 
@@ -1205,7 +1212,7 @@ export const GoalsAssistant: FC = () => {
   }
 
   return (
-    <aside className={cn('relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[22px] border border-[#EDE4F5] bg-white', wide && 'fixed inset-3 z-[70] shadow-[0_24px_60px_rgba(80,40,120,0.22)] xl:inset-y-3 xl:right-3 xl:left-[256px]')}>
+    <aside className={cn('relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[22px] border border-[#EDE4F5] bg-white', wide && 'fixed top-14 bottom-3 left-3 right-3 z-[70] shadow-[0_24px_60px_rgba(80,40,120,0.22)] xl:left-[256px] xl:right-3')}>
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#F3EAF8] px-3 py-3 pr-10">
         <h3 className="flex min-w-0 items-center gap-2 text-[14px] font-semibold text-[#241B33]">
           <Sparkles className="h-4 w-4 shrink-0 text-[#8E35B8]" /> <span className="truncate">Fale com o assistente de metas</span>
@@ -1221,7 +1228,7 @@ export const GoalsAssistant: FC = () => {
         </div>
       </div>
       {bankOpen ? <ReportBank goals={goals} onClose={() => setBankOpen(false)} /> : null}
-      <div ref={thread} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
+      <div ref={thread} onClick={() => setWide(true)} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
         {messages.map((message) => (
           <div key={message.id} className={cn('flex gap-2', message.from === 'user' ? 'justify-end' : 'items-start')}>
             {message.from === 'bot' ? <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8]"><Bot className="h-4 w-4" /></span> : null}
@@ -1365,9 +1372,14 @@ export const GoalsAssistant: FC = () => {
       </div>
       <form onSubmit={onSubmit} className="shrink-0 border-t border-[#F3EAF8] p-3">
         <div className="flex items-end gap-2 rounded-2xl border border-[#E7DFF0] bg-[#FBF8FC] px-3 py-2">
-          <input ref={fileRef} type="file" accept=".txt,.csv,.md,text/plain" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) board.onFile(file); event.currentTarget.value = ''; }} />
-          <button type="button" aria-label="Anexar relatório" onClick={() => fileRef.current?.click()} className="grid h-8 w-8 place-items-center text-[#8A7C98]"><Paperclip className="h-4 w-4" /></button>
-          <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Cole ou digite sua mensagem..." rows={2} className="min-h-10 max-h-24 flex-1 resize-none bg-transparent text-[13px] outline-none" />
+          <textarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onFocus={() => setWide(true)}
+            placeholder="Cole ou digite sua mensagem..."
+            rows={wide ? 5 : 3}
+            className={cn('min-h-[72px] flex-1 resize-none bg-transparent text-[13px] outline-none', wide ? 'max-h-40' : 'max-h-28')}
+          />
           <button type="submit" disabled={busy || !draft.trim()} aria-label="Enviar" className="grid h-8 w-8 place-items-center rounded-full bg-[#8E35B8] text-white disabled:bg-[#C9A6DC]"><Send className="h-3.5 w-3.5" /></button>
         </div>
       </form>

@@ -68,9 +68,25 @@ function metricLabel(item: Metric) {
   return TOOLTIP_LABEL[item.id] || item.name;
 }
 
+function asMinutes(value: number) {
+  if (!Number.isFinite(value)) return value;
+  if (value > 0 && value < 1) return value < 0.1 ? Math.round(value * 1440 * 100) / 100 : Math.round(value * 100);
+  return value;
+}
+
+function metricShown(item: Metric) {
+  if (item.value == null) return item.shown || '—';
+  if (['primeira', 'resolucao', 'espera', 'duracao'].includes(item.id)) {
+    const minutes = asMinutes(item.value);
+    const shown = Math.abs(minutes - Math.round(minutes)) < 0.001 ? String(Math.round(minutes)) : String(minutes).replace('.', ',');
+    return `${shown} min`;
+  }
+  return item.shown || String(item.value);
+}
+
 function metricLine(item: Metric, mode: string) {
   const label = metricLabel(item);
-  const raw = item.shown || (item.value == null ? '—' : String(item.value));
+  const raw = metricShown(item);
   if (mode === 'overall') return `${label} - ${raw} - ${percentText(item.contribution)}`;
   return `${label} - ${raw}`;
 }

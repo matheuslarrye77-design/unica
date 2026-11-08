@@ -3,19 +3,19 @@ import { ChevronLeft, ChevronRight, PanelRight } from 'lucide-react';
 import { useState, type FC, type ReactNode } from 'react';
 import { useShell } from '@/components/Sidebar';
 
-export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: boolean; fill?: boolean; chrome?: ReactNode }> = ({ children, locked = false, fill = false, chrome = null }) => {
+export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: boolean; fill?: boolean; chrome?: ReactNode }> = ({ children, fill = false, chrome = null }) => {
   const { rightCollapsed, toggleRight } = useShell();
   const [mobileOpen, setMobileOpen] = useState(false);
   const collapsed = rightCollapsed;
 
-  const body = locked ? (
-    <div className={cn('flex h-full min-h-0 flex-col justify-start', fill ? 'overflow-hidden' : 'overflow-y-auto [scrollbar-width:thin]')}>
-      <div className={cn(fill ? 'flex h-full min-h-0 flex-1 flex-col justify-start' : 'flex flex-col items-stretch justify-start gap-2.5 py-2')}>
+  const body = fill ? (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex h-full min-h-0 flex-1 flex-col">
         {children}
       </div>
     </div>
   ) : (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col items-stretch justify-start gap-2 overflow-x-hidden overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
       {children}
     </div>
   );
@@ -46,9 +46,8 @@ export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: bo
       ) : null}
       <aside
         className={cn(
-          'relative hidden shrink-0 flex-col bg-transparent text-sidebar-foreground xl:flex',
-          locked ? 'h-full min-h-0 self-stretch' : 'sticky top-0 h-dvh',
-          collapsed ? 'w-11' : 'w-[320px]',
+          'relative hidden shrink-0 flex-col bg-transparent text-sidebar-foreground xl:flex sticky top-0 h-dvh',
+          collapsed ? 'w-11' : fill ? 'w-[400px]' : 'w-[320px]',
         )}
       >
         <div className={cn('z-10 flex h-12 shrink-0 items-center gap-1 px-1', collapsed ? 'justify-center' : 'justify-end')}>
