@@ -10,7 +10,7 @@ export const SettingsPage: FC = () => {
     <PageFrame>
       <h1 className="text-xl font-semibold tracking-tight">Configurações</h1>
       <p className="mt-1 text-sm text-muted-foreground">Preferências da conta na Única Conecta.</p>
-      <section className="mt-4 rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(40,20,70,0.05)]">
+      <section className="mt-4 rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(70,0,243,0.05)]">
         <h2 className="text-sm font-semibold">Conta</h2>
         <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
           <div><dt className="text-xs text-muted-foreground">Nome</dt><dd>{user.name}</dd></div>

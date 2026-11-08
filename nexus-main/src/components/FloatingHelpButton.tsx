@@ -190,8 +190,8 @@ export const FloatingHelpButton: FC = () => {
         aria-label={minimized ? 'Mostrar suporte' : 'Suporte'}
         title={minimized ? 'Toque para abrir' : 'Arraste para fora da tela para recolher'}
         className={minimized
-          ? 'grid h-12 w-12 cursor-grab place-items-center rounded-full border-2 border-[#8E35B8] bg-white text-[#6A228C] shadow-lg active:cursor-grabbing'
-          : 'grid h-14 w-14 cursor-grab place-items-center rounded-full border-2 border-[#8E35B8] bg-white text-[#6A228C] shadow-lg active:cursor-grabbing'}
+          ? 'grid h-12 w-12 cursor-grab place-items-center rounded-full border-2 border-[#4600F3] bg-white text-[#3600C2] shadow-lg active:cursor-grabbing'
+          : 'grid h-14 w-14 cursor-grab place-items-center rounded-full border-2 border-[#4600F3] bg-white text-[#3600C2] shadow-lg active:cursor-grabbing'}
         onPointerDown={(event) => grab(event, !minimized)}
       >
         <Headphones className="pointer-events-none h-6 w-6" />

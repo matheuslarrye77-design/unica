@@ -8,8 +8,8 @@ import { SortableActivityCard } from './ActivityCard';
 
 const tone: Record<ActivityStatus, { column: string; icon: string; count: string; group: string; action: string; Icon: typeof Circle }> = {
   todo: { column: 'border border-[#F8D0E3] bg-[#FDECF4]', icon: 'bg-[#F472B6] text-white', count: 'bg-white text-[#BE185D]', group: 'bg-white/75 text-[#BE185D]', action: 'text-[#DB2777]', Icon: Circle },
-  in_progress: { column: 'border border-[#E4D9FB] bg-[#F4EEFF]', icon: 'bg-[#A78BFA] text-white', count: 'bg-white text-[#6D28D9]', group: 'bg-white/75 text-[#6D28D9]', action: 'text-[#7C3AED]', Icon: Clock },
-  done: { column: 'border border-[#D9E0FC] bg-[#F2F4FF]', icon: 'bg-[#A5B4FC] text-white', count: 'bg-white text-[#4338CA]', group: 'bg-white/75 text-[#4338CA]', action: 'text-[#6366F1]', Icon: Check },
+  in_progress: { column: 'border border-[#E4D9FB] bg-[#F4EEFF]', icon: 'bg-[#8A5CF8] text-white', count: 'bg-white text-[#3600C2]', group: 'bg-white/75 text-[#3600C2]', action: 'text-[#4600F3]', Icon: Clock },
+  done: { column: 'border border-[#D9E0FC] bg-[#F2F4FF]', icon: 'bg-[#C4B0FC] text-white', count: 'bg-white text-[#4600F3]', group: 'bg-white/75 text-[#4600F3]', action: 'text-[#4600F3]', Icon: Check },
 };
 
 export const ActivityColumn: FC<{
@@ -34,7 +34,7 @@ export const ActivityColumn: FC<{
   }
 
   return (
-    <section className={cn('flex h-full flex-col rounded-[18px] p-2', paint.column, isOver && 'ring-2 ring-[#8E35B8]/20')}>
+    <section className={cn('flex h-full flex-col rounded-[18px] p-2', paint.column, isOver && 'ring-2 ring-[#4600F3]/20')}>
       <header className="flex items-center gap-1.5 px-1 pb-2">
         <span className={cn('grid h-6 w-6 place-items-center rounded-full', paint.icon)}>
           <Icon className="h-3 w-3" strokeWidth={2.4} />
@@ -75,11 +75,11 @@ export const ActivityColumn: FC<{
         <div className="relative mt-2 overflow-hidden rounded-xl px-3 py-4 text-center">
           <div className="pointer-events-none absolute -left-6 bottom-0 h-16 w-16 rounded-full bg-[#E0E7FF]/80" />
           <div className="pointer-events-none absolute -right-4 -bottom-4 h-14 w-14 rounded-full bg-[#C7D2FE]/50" />
-          <div className="relative mx-auto grid h-9 w-9 place-items-center rounded-full bg-[#A5B4FC] text-white">
+          <div className="relative mx-auto grid h-9 w-9 place-items-center rounded-full bg-[#C4B0FC] text-white">
             <Check className="h-4 w-4" strokeWidth={2.4} />
           </div>
-          <p className="relative mt-2 text-[13px] font-semibold text-[#4338CA]">Parabéns!</p>
-          <p className="relative text-[11.5px] font-normal text-[#6366F1]">Você está indo muito bem!</p>
+          <p className="relative mt-2 text-[13px] font-semibold text-[#4600F3]">Parabéns!</p>
+          <p className="relative text-[11.5px] font-normal text-[#4600F3]">Você está indo muito bem!</p>
         </div>
       ) : (
         <button type="button" onClick={onCreate} className={cn('mt-1.5 py-1.5 text-center text-[12px] font-medium hover:opacity-80', paint.action)}>

@@ -1,6 +1,6 @@
 import type { FC, ReactNode } from 'react';
 
-const frame = 'relative mx-auto aspect-[4/5] w-full max-w-[440px] overflow-hidden rounded-[32px] bg-[#F8EAFB] shadow-[0_18px_50px_rgba(80,40,120,0.12)]';
+const frame = 'relative mx-auto aspect-[4/5] w-full max-w-[440px] overflow-hidden rounded-[32px] bg-[#F5F1FF] shadow-[0_18px_50px_rgba(70,0,243,0.12)]';
 
 const SCENES: Record<string, { src: string; label: string }> = {
   bolo: { src: '/celebracoes/bolo.png', label: 'Bolo de aniversário' },

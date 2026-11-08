@@ -9,7 +9,7 @@ export const PhotoGallery: FC<{ images: string[] }> = ({ images }) => {
     <>
       <div className={`mt-3 grid gap-1 overflow-hidden rounded-[12px] ${grid}`}>
         {images.map((src, index) => (
-          <button key={`${src}-${index}`} type="button" className="relative min-h-28 bg-[#F8F7FC]" onClick={() => setOpen(index)}>
+          <button key={`${src}-${index}`} type="button" className="relative min-h-28 bg-[#F6F4FC]" onClick={() => setOpen(index)}>
             <img src={src} alt="" className={`w-full object-contain ${images.length === 1 ? 'max-h-80' : 'h-40'}`} />
           </button>
         ))}

@@ -25,7 +25,7 @@ const ROLE_ICON: Record<TeamFuncao, FC<{ className?: string }>> = {
 function RoleBadge({ funcao }: { funcao: TeamFuncao }) {
   const Icon = ROLE_ICON[funcao];
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-[#F3E4FA] px-2 py-0.5 text-[11px] font-medium text-[#6A228C]">
+    <span className="inline-flex items-center gap-1 rounded-full bg-[#EDE7FE] px-2 py-0.5 text-[11px] font-medium text-[#3600C2]">
       <Icon className="h-3 w-3" />
       {funcao}
     </span>
@@ -139,7 +139,7 @@ export const EmployeeDirectoryPage: FC = () => {
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]">
               <Users className="h-5 w-5" />
             </span>
             <div className="min-w-0">
@@ -148,11 +148,11 @@ export const EmployeeDirectoryPage: FC = () => {
             </div>
           </div>
           <div className="flex shrink-0 gap-2">
-            <Button className="h-10 rounded-full bg-[#8E35B8] px-4 hover:bg-[#7A2CA0]" onClick={() => { setSearchQuery(''); setRoles([...TEAM_FUNCOES]); }}>
+            <Button className="h-10 rounded-full bg-[#4600F3] px-4 hover:bg-[#3600C2]" onClick={() => { setSearchQuery(''); setRoles([...TEAM_FUNCOES]); }}>
               <Users className="h-4 w-4" /> Ver equipe
             </Button>
             {leader ? (
-              <Button variant="outline" className="h-10 rounded-full border-[#E7DFF0] bg-white px-4" onClick={() => setOpen(true)}>
+              <Button variant="outline" className="h-10 rounded-full border-[#DDD4F5] bg-white px-4" onClick={() => setOpen(true)}>
                 <Plus className="h-4 w-4" /> Adicionar colaborador
               </Button>
             ) : null}
@@ -162,7 +162,7 @@ export const EmployeeDirectoryPage: FC = () => {
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" className="h-11 rounded-xl border-[#E7DFF0] bg-white px-4 text-[#5C5168] shadow-none">
+              <Button type="button" variant="outline" className="h-11 rounded-xl border-[#DDD4F5] bg-white px-4 text-[#5C5168] shadow-none">
                 <Filter className="h-4 w-4" /> Filtrar
               </Button>
             </DropdownMenuTrigger>
@@ -176,27 +176,27 @@ export const EmployeeDirectoryPage: FC = () => {
             </DropdownMenuContent>
           </DropdownMenu>
           <p className="ml-auto text-[13px] text-[#8A7C98]">Total: {roster.length} colaboradores</p>
-          <div className="flex rounded-xl bg-white p-1 shadow-[0_4px_14px_rgba(80,40,120,0.05)]">
-            <button type="button" aria-label="Grade" onClick={() => setLayout('grid')} className={cn('grid h-8 w-8 place-items-center rounded-lg', layout === 'grid' ? 'bg-[#F3E4FA] text-[#8E35B8]' : 'text-[#8A7C98]')}>
+          <div className="flex rounded-xl bg-white p-1 shadow-[0_4px_14px_rgba(70,0,243,0.05)]">
+            <button type="button" aria-label="Grade" onClick={() => setLayout('grid')} className={cn('grid h-8 w-8 place-items-center rounded-lg', layout === 'grid' ? 'bg-[#EDE7FE] text-[#4600F3]' : 'text-[#8A7C98]')}>
               <LayoutGrid className="h-4 w-4" />
             </button>
-            <button type="button" aria-label="Lista" onClick={() => setLayout('list')} className={cn('grid h-8 w-8 place-items-center rounded-lg', layout === 'list' ? 'bg-[#F3E4FA] text-[#8E35B8]' : 'text-[#8A7C98]')}>
+            <button type="button" aria-label="Lista" onClick={() => setLayout('list')} className={cn('grid h-8 w-8 place-items-center rounded-lg', layout === 'list' ? 'bg-[#EDE7FE] text-[#4600F3]' : 'text-[#8A7C98]')}>
               <List className="h-4 w-4" />
             </button>
           </div>
         </div>
 
         {filtered.length === 0 ? (
-          <div className="mt-6 rounded-[22px] border border-[#F0E7F6] bg-white px-6 py-14 text-center">
+          <div className="mt-6 rounded-[22px] border border-[#EDE7FE] bg-white px-6 py-14 text-center">
             <p className="font-medium text-[#2C2433]">Nenhum colaborador encontrado</p>
             <p className="mt-1 text-sm text-[#8A7C98]">Ajuste a pesquisa ou os filtros.</p>
           </div>
         ) : (
           <div className={cn('mt-5', layout === 'grid' ? 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4' : 'grid gap-3')}>
             {filtered.map((person) => (
-              <article key={person.id} className="relative rounded-[22px] border border-[#F0E7F6] bg-white p-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
+              <article key={person.id} className="relative rounded-[22px] border border-[#EDE7FE] bg-white p-4 shadow-[0_8px_22px_rgba(70,0,243,0.04)]">
                 <div className="flex items-start gap-3">
-                  <img src={person.avatar} alt="" className="h-12 w-12 shrink-0 rounded-full bg-[#F3E4FA]" />
+                  <img src={person.avatar} alt="" className="h-12 w-12 shrink-0 rounded-full bg-[#EDE7FE]" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -204,12 +204,12 @@ export const EmployeeDirectoryPage: FC = () => {
                         <div className="mt-1"><RoleBadge funcao={person.funcao} /></div>
                       </div>
                       <div className="flex shrink-0 items-center">
-                        <a href={`mailto:${person.email}`} aria-label={`Enviar e-mail para ${person.name}`} className="grid h-8 w-8 place-items-center rounded-lg text-[#8E35B8] hover:bg-[#F8EAFB]">
+                        <a href={`mailto:${person.email}`} aria-label={`Enviar e-mail para ${person.name}`} className="grid h-8 w-8 place-items-center rounded-lg text-[#4600F3] hover:bg-[#F5F1FF]">
                           <Mail className="h-4 w-4" />
                         </a>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <button type="button" aria-label={`Ações de ${person.name}`} className="grid h-8 w-8 place-items-center rounded-lg text-[#8A7C98] hover:bg-[#F8EAFB]">
+                            <button type="button" aria-label={`Ações de ${person.name}`} className="grid h-8 w-8 place-items-center rounded-lg text-[#8A7C98] hover:bg-[#F5F1FF]">
                               <MoreHorizontal className="h-4 w-4" />
                             </button>
                           </DropdownMenuTrigger>
@@ -224,11 +224,11 @@ export const EmployeeDirectoryPage: FC = () => {
                 </div>
                 <div className="mt-3 px-6 text-center">
                   <p className="flex items-center justify-center gap-1.5 text-[12.5px] text-[#5C5168]">
-                    <Phone className="h-3.5 w-3.5 text-[#8E35B8]" /> Ramal: {person.ramal || '—'}
+                    <Phone className="h-3.5 w-3.5 text-[#4600F3]" /> Ramal: {person.ramal || '—'}
                   </p>
-                  <a href={`mailto:${person.email}`} className="mt-1 block text-center text-[11px] leading-tight text-[#8E35B8]">{person.email}</a>
+                  <a href={`mailto:${person.email}`} className="mt-1 block text-center text-[11px] leading-tight text-[#4600F3]">{person.email}</a>
                 </div>
-                <a href={`mailto:${person.email}`} aria-label={`Contato de ${person.name}`} className="absolute right-3 bottom-3 grid h-7 w-7 place-items-center rounded-full text-[#C4B6D4] hover:bg-[#F8EAFB] hover:text-[#8E35B8]">
+                <a href={`mailto:${person.email}`} aria-label={`Contato de ${person.name}`} className="absolute right-3 bottom-3 grid h-7 w-7 place-items-center rounded-full text-[#C4B6D4] hover:bg-[#F5F1FF] hover:text-[#4600F3]">
                   <ChevronRight className="h-4 w-4" />
                 </a>
               </article>

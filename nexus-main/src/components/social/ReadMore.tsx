@@ -61,7 +61,7 @@ export const ReadMore: FC<{ id: string; text: string; className?: string; prefix
         {prefix}<EmojiText text={text} />
       </p>
       {overflows ? (
-        <button type="button" className="mt-1 text-[13px] font-semibold text-[#8E35B8] hover:underline" onClick={toggle}>
+        <button type="button" className="mt-1 text-[13px] font-semibold text-[#4600F3] hover:underline" onClick={toggle}>
           {open ? 'Ler menos' : 'Ler mais'}
         </button>
       ) : null}

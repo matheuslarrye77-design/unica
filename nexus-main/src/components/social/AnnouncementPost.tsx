@@ -36,7 +36,7 @@ export const AnnouncementPost: FC<{ post: SocialPost; expandId?: string }> = ({ 
     <div className="mt-3">
       {caption ? (
         <div className="mb-3">
-          <p className="text-[12px] font-semibold text-[#8E35B8]">Legenda da publicação (opcional)</p>
+          <p className="text-[12px] font-semibold text-[#4600F3]">Legenda da publicação (opcional)</p>
           <div className="mt-1">
             <ReadMore id={expandId ?? `${post.id}-legenda`} text={caption} className="text-[15px] leading-6 text-[#3C3148]" />
           </div>

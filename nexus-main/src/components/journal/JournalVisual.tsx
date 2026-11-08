@@ -5,10 +5,10 @@ import type { FC } from 'react';
 
 export const categoryTone: Record<JournalCategory, { badge: string; badgeText: string; header: string; icon: string }> = {
   social: {
-    badge: 'bg-[#F3E4FA] text-[#6A228C]',
-    badgeText: 'text-[#6A228C]',
+    badge: 'bg-[#EDE7FE] text-[#3600C2]',
+    badgeText: 'text-[#3600C2]',
     header: 'bg-[linear-gradient(105deg,#F7EDFC_0%,#E9D2F7_100%)]',
-    icon: 'text-[#8E35B8]',
+    icon: 'text-[#4600F3]',
   },
   processos: {
     badge: 'bg-[#E4EEF9] text-[#1E4E8C]',

@@ -150,12 +150,12 @@ export const ResourcesPage: FC = () => {
   return (
     <>
     <PageFrame rail={
-          <section className="rounded-[22px] border border-[#F0E7F6] bg-white p-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
+          <section className="rounded-[22px] border border-[#EDE7FE] bg-white p-4 shadow-[0_8px_22px_rgba(70,0,243,0.04)]">
             <div className="flex items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-[14px] font-semibold text-[#2C2433]">
-                <Star className="h-4 w-4 fill-[#8E35B8] text-[#8E35B8]" /> Meus favoritos
+                <Star className="h-4 w-4 fill-[#4600F3] text-[#4600F3]" /> Meus favoritos
               </h2>
-              <button type="button" onClick={() => document.getElementById('todos-documentos')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="text-[12.5px] font-medium text-[#8E35B8]">Ver todos</button>
+              <button type="button" onClick={() => document.getElementById('todos-documentos')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="text-[12.5px] font-medium text-[#4600F3]">Ver todos</button>
             </div>
             {favorites.length === 0 ? <p className="px-1 py-3 text-[13px] text-[#8A7C98]">Nenhum favorito ainda.</p> : (
               <ul className="mt-3 grid gap-2">
@@ -177,7 +177,7 @@ export const ResourcesPage: FC = () => {
     }>
           <section>
             <div className="flex items-start gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]">
                 <FileText className="h-5 w-5" strokeWidth={2.2} />
               </span>
               <div>
@@ -188,7 +188,7 @@ export const ResourcesPage: FC = () => {
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button type="button" variant="outline" className="h-11 rounded-xl border-[#E7DFF0] bg-white px-4 text-[#5C5168] shadow-none">
+                  <Button type="button" variant="outline" className="h-11 rounded-xl border-[#DDD4F5] bg-white px-4 text-[#5C5168] shadow-none">
                     <Filter className="h-4 w-4" /> Filtrar
                   </Button>
                 </DropdownMenuTrigger>
@@ -211,11 +211,11 @@ export const ResourcesPage: FC = () => {
           {featured.length > 0 && !query ? (
             <section className="mt-6">
               <h2 className="mb-3 flex items-center gap-2 text-[16px] font-semibold text-[#2C2433]">
-                <Star className="h-4 w-4 fill-[#8E35B8] text-[#8E35B8]" /> Fixados
+                <Star className="h-4 w-4 fill-[#4600F3] text-[#4600F3]" /> Fixados
               </h2>
               <div className="grid gap-3 md:grid-cols-3">
                 {featured.map((document) => (
-                  <button key={document.id} type="button" onClick={() => setSelected(document)} className="flex items-start gap-3 rounded-2xl border border-[#F0E7F6] bg-white p-3.5 text-left shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
+                  <button key={document.id} type="button" onClick={() => setSelected(document)} className="flex items-start gap-3 rounded-2xl border border-[#EDE7FE] bg-white p-3.5 text-left shadow-[0_8px_22px_rgba(70,0,243,0.04)]">
                     <SystemMark system={document.system} />
                     <span className="min-w-0 flex-1">
                       <span className="block text-[11.5px] text-[#8A7C98]">{categoryLabel(document.category)} · {systemLabel(document.system)}</span>
@@ -233,7 +233,7 @@ export const ResourcesPage: FC = () => {
           <section id="todos-documentos" className="mt-8">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="text-[16px] font-semibold text-[#2C2433]">Todos os documentos</h2>
-              {canSend ? <Button className="h-9 rounded-xl bg-[#8E35B8] hover:bg-[#7A2CA0]" onClick={() => openEditor()}><Plus className="h-4 w-4" />Enviar documento</Button> : null}
+              {canSend ? <Button className="h-9 rounded-xl bg-[#4600F3] hover:bg-[#3600C2]" onClick={() => openEditor()}><Plus className="h-4 w-4" />Enviar documento</Button> : null}
             </div>
             {visible.length === 0 ? (
               <p className="rounded-2xl border bg-card px-4 py-10 text-center text-sm text-muted-foreground">Nenhum documento encontrado.</p>
@@ -242,7 +242,7 @@ export const ResourcesPage: FC = () => {
                 {visible.map((document) => {
                   const favored = document.favorites.includes(currentUser.id);
                   return (
-                    <article key={document.id} className="flex items-center gap-4 rounded-2xl border border-[#F0E7F6] bg-white px-4 py-3 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
+                    <article key={document.id} className="flex items-center gap-4 rounded-2xl border border-[#EDE7FE] bg-white px-4 py-3 shadow-[0_8px_22px_rgba(70,0,243,0.04)]">
                       <button type="button" onClick={() => setSelected(document)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                         <SystemMark system={document.system} />
                         <span className="min-w-0">

@@ -12,7 +12,7 @@ export const JournalRail: FC<{
   articles: JournalArticle[];
   empty?: string;
 }> = ({ articles, empty = 'Nenhuma publicação salva.' }) => (
-  <div className="rounded-2xl border border-[#E7E0F0] bg-white p-3 shadow-[0_8px_24px_rgba(70,30,110,0.04)]">
+  <div className="rounded-2xl border border-[#DDD4F5] bg-white p-3 shadow-[0_8px_24px_rgba(70,0,243,0.04)]">
     <div className="mb-3 flex items-center gap-2">
       <h2 className="flex min-w-0 items-center gap-2 text-[14px] font-semibold">
         <span className="unica-icon">

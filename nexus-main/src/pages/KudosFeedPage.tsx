@@ -137,31 +137,31 @@ export const KudosFeedPage: FC = () => {
     <PageFrame fitViewport fillRail={tab === 'metas'} rail={tab === 'metas' && goals ? <GoalsAssistant /> : <HomeRail />}>
       <div className="grid gap-4 pb-16">
             {tab === 'metas' ? (
-              <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#F8EAFB] via-[#F3DDF8] to-[#E7C4F2] px-5 py-4">
-                <div className="pointer-events-none absolute -top-8 right-24 h-24 w-24 rounded-full bg-[#D9A6EE]/70" />
-                <div className="pointer-events-none absolute right-6 -bottom-10 h-28 w-28 rounded-full bg-[#C084E0]/45" />
+              <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#F5F1FF] via-[#F3DDF8] to-[#E0D6FC] px-5 py-4">
+                <div className="pointer-events-none absolute -top-8 right-24 h-24 w-24 rounded-full bg-[#C4B0FC]/70" />
+                <div className="pointer-events-none absolute right-6 -bottom-10 h-28 w-28 rounded-full bg-[#8A5CF8]/45" />
                 <div className="relative flex flex-wrap items-center gap-4">
-                  <span className="grid h-[92px] w-[92px] shrink-0 place-items-center rounded-2xl bg-white/70 text-[#8E35B8]"><Target className="h-10 w-10" /></span>
+                  <span className="grid h-[92px] w-[92px] shrink-0 place-items-center rounded-2xl bg-white/70 text-[#4600F3]"><Target className="h-10 w-10" /></span>
                   <div className="min-w-0 flex-1">
                     <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#241B33]">Central Inteligente de Metas</h1>
-                    <p className="mt-0.5 text-[15px] font-semibold text-[#6A228C]">Interprete metas e resultados nos dois modos.</p>
-                    <p className="mt-1 max-w-xl text-[13px] leading-snug text-[#8A5AA0]">O pódio só muda com pedido explícito e confirmação.</p>
+                    <p className="mt-0.5 text-[15px] font-semibold text-[#3600C2]">Interprete metas e resultados nos dois modos.</p>
+                    <p className="mt-1 max-w-xl text-[13px] leading-snug text-[#6B33F6]">O pódio só muda com pedido explícito e confirmação.</p>
                   </div>
                 </div>
               </section>
             ) : (
-              <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#F8EAFB] via-[#F3DDF8] to-[#E7C4F2] px-5 py-4">
-                <div className="pointer-events-none absolute -top-8 right-24 h-24 w-24 rounded-full bg-[#D9A6EE]/70" />
-                <div className="pointer-events-none absolute right-6 -bottom-10 h-28 w-28 rounded-full bg-[#C084E0]/45" />
+              <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#F5F1FF] via-[#F3DDF8] to-[#E0D6FC] px-5 py-4">
+                <div className="pointer-events-none absolute -top-8 right-24 h-24 w-24 rounded-full bg-[#C4B0FC]/70" />
+                <div className="pointer-events-none absolute right-6 -bottom-10 h-28 w-28 rounded-full bg-[#8A5CF8]/45" />
                 <div className="relative flex flex-wrap items-center gap-4">
                   <img src="/reconhecimento/trofeu.png" alt="" className="h-[92px] w-[92px] shrink-0 object-contain" />
                   <div className="min-w-0 flex-1">
                     <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#241B33]">Reconhecimento</h1>
-                    <p className="mt-0.5 text-[15px] font-semibold text-[#6A228C]">Valorize quem faz a diferença!</p>
-                    <p className="mt-1 max-w-xl text-[13px] leading-snug text-[#8A5AA0]">Aqui você pode reconhecer seus colegas e acompanhar os maiores destaques do mês.</p>
+                    <p className="mt-0.5 text-[15px] font-semibold text-[#3600C2]">Valorize quem faz a diferença!</p>
+                    <p className="mt-1 max-w-xl text-[13px] leading-snug text-[#6B33F6]">Aqui você pode reconhecer seus colegas e acompanhar os maiores destaques do mês.</p>
                   </div>
                   {gestao ? (
-                    <button type="button" onClick={() => setComposer(true)} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#8E35B8] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#7A2CA0]">
+                    <button type="button" onClick={() => setComposer(true)} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#4600F3] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#3600C2]">
                       <Star className="h-4 w-4 fill-current" />
                       Postar reconhecimento
                     </button>
@@ -172,10 +172,10 @@ export const KudosFeedPage: FC = () => {
 
             {canManageGoals ? (
               <div className="flex gap-5 border-b border-[#EDE6F3]">
-                <button type="button" onClick={() => showTab('mural')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'mural' ? 'border-[#8E35B8] text-[#6A228C]' : 'border-transparent text-[#8A7C98]')}>
+                <button type="button" onClick={() => showTab('mural')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'mural' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}>
                   <Trophy className="h-3.5 w-3.5" /> Mural de reconhecimento
                 </button>
-                <button type="button" onClick={() => showTab('metas')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'metas' ? 'border-[#8E35B8] text-[#6A228C]' : 'border-transparent text-[#8A7C98]')}>
+                <button type="button" onClick={() => showTab('metas')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'metas' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}>
                   <Target className="h-3.5 w-3.5" /> Central de Metas
                 </button>
               </div>
@@ -187,19 +187,19 @@ export const KudosFeedPage: FC = () => {
             <>
             <PodiumStage podiums={goals?.podiums ?? []} periodKey={podiumKey} onPeriod={setPodiumMonth} />
 
-            <section className="rounded-[22px] border border-[#F0E7F6] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(80,40,120,0.04)]">
+            <section className="rounded-[22px] border border-[#EDE7FE] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(70,0,243,0.04)]">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="flex items-center gap-2 text-[16px] font-semibold text-[#241B33]">
-                  <span className="text-[#8E35B8]">★</span> Últimos reconhecimentos
+                  <span className="text-[#4600F3]">★</span> Últimos reconhecimentos
                 </h2>
                 <div className="relative">
-                  <button type="button" onClick={() => setMenu((value) => !value)} className="inline-flex items-center gap-1 rounded-full border border-[#E7DFF0] px-3 py-1.5 text-[12.5px] font-medium text-[#5C5168]">
+                  <button type="button" onClick={() => setMenu((value) => !value)} className="inline-flex items-center gap-1 rounded-full border border-[#DDD4F5] px-3 py-1.5 text-[12.5px] font-medium text-[#5C5168]">
                     {filter} <ChevronDown className="h-3.5 w-3.5" />
                   </button>
                   {menu ? (
-                    <div className="absolute right-0 z-10 mt-1 w-32 rounded-xl border border-[#E7DFF0] bg-white p-1 shadow-lg">
+                    <div className="absolute right-0 z-10 mt-1 w-32 rounded-xl border border-[#DDD4F5] bg-white p-1 shadow-lg">
                       {(['Todos', 'Gestão', 'Suporte'] as const).map((option) => (
-                        <button key={option} type="button" onClick={() => { setFilter(option); setMenu(false); }} className={cn('block w-full rounded-lg px-3 py-1.5 text-left text-[13px]', filter === option ? 'bg-[#F3E4FA] text-[#6A228C]' : 'text-[#5C5168] hover:bg-[#FBF8FC]')}>
+                        <button key={option} type="button" onClick={() => { setFilter(option); setMenu(false); }} className={cn('block w-full rounded-lg px-3 py-1.5 text-left text-[13px]', filter === option ? 'bg-[#EDE7FE] text-[#3600C2]' : 'text-[#5C5168] hover:bg-[#F8F6FF]')}>
                           {option}
                         </button>
                       ))}
@@ -209,11 +209,11 @@ export const KudosFeedPage: FC = () => {
               </div>
               <ul className="mt-3 grid gap-3">
                 {items.map((item) => (
-                  <li key={item.id} className="rounded-2xl border border-[#E7DFF0] bg-gradient-to-r from-white to-[#FBF6FC] p-4">
+                  <li key={item.id} className="rounded-2xl border border-[#DDD4F5] bg-gradient-to-r from-white to-[#FBF6FC] p-4">
                     <div className="flex items-start gap-4">
                       <div className="relative shrink-0">
-                        <img src={face(item.to)} alt="" className="h-16 w-16 rounded-full bg-[#F3E4FA] ring-4 ring-[#F3E4FA]" />
-                        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#8E35B8] px-2 py-0.5 text-[10px] font-semibold text-white">Reconhecido</span>
+                        <img src={face(item.to)} alt="" className="h-16 w-16 rounded-full bg-[#EDE7FE] ring-4 ring-[#EDE7FE]" />
+                        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#4600F3] px-2 py-0.5 text-[10px] font-semibold text-white">Reconhecido</span>
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-3">
@@ -224,20 +224,20 @@ export const KudosFeedPage: FC = () => {
                             </p>
                           </div>
                           <div className="inline-flex shrink-0 items-center gap-1">
-                            <span className="inline-flex items-center gap-1 text-[12.5px] text-[#8A7C98]"><Heart className="h-3.5 w-3.5 text-[#8E35B8]" /> {item.likes}</span>
+                            <span className="inline-flex items-center gap-1 text-[12.5px] text-[#8A7C98]"><Heart className="h-3.5 w-3.5 text-[#4600F3]" /> {item.likes}</span>
                             <button
                               type="button"
                               aria-label={posted[item.id] ? 'Publicado no mural' : 'Postar no mural'}
                               title={posted[item.id] ? 'Publicado no mural' : 'Postar no mural'}
                               disabled={posted[item.id]}
                               onClick={() => setMuralTarget(item)}
-                              className="grid h-8 w-8 place-items-center rounded-full text-[#8E35B8] hover:bg-[#F3E4FA] disabled:text-[#C9A6DC]"
+                              className="grid h-8 w-8 place-items-center rounded-full text-[#4600F3] hover:bg-[#EDE7FE] disabled:text-[#B09AF5]"
                             >
                               <Megaphone className="h-4 w-4" />
                             </button>
                           </div>
                         </div>
-                        <span className={cn('mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium', item.area === 'Gestão' ? 'bg-[#F3E4FA] text-[#6A228C]' : 'bg-[#F8E8F0] text-[#8A4A66]')}>{item.area}</span>
+                        <span className={cn('mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium', item.area === 'Gestão' ? 'bg-[#EDE7FE] text-[#3600C2]' : 'bg-[#EDE7FE] text-[#8A4A66]')}>{item.area}</span>
                         <p className="mt-2 text-[14.5px] leading-6 text-[#3C3148]">“{item.quote}”</p>
                         {item.caption ? <p className="mt-2 text-[13.5px] text-[#5C5168]">{item.caption}</p> : null}
                         {item.comment ? <p className="mt-1 text-[13px] text-[#8A7C98]">{item.comment}</p> : null}

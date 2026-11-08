@@ -14,8 +14,8 @@ import { toast } from 'sonner';
 
 const STATUS: Record<SuggestionStatus, { label: string; className: string }> = {
   novo: { label: 'Novo', className: 'bg-[#FCE7F3] text-[#BE185D]' },
-  analise: { label: 'Análise', className: 'bg-[#F3E8FF] text-[#6D28D9]' },
-  respondido: { label: 'Respondido', className: 'bg-[#E0E7FF] text-[#3730A3]' },
+  analise: { label: 'Análise', className: 'bg-[#F3E8FF] text-[#3600C2]' },
+  respondido: { label: 'Respondido', className: 'bg-[#E0E7FF] text-[#2A0094]' },
 };
 
 function initials(name: string) {
@@ -165,7 +165,7 @@ export const FeedbacksPage: FC = () => {
       <div className="w-full">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3">
-            <span className="mt-0.5 grid h-10 w-10 place-items-center rounded-2xl bg-[#F3E8FF] text-[#7C3AED]">
+            <span className="mt-0.5 grid h-10 w-10 place-items-center rounded-2xl bg-[#F3E8FF] text-[#4600F3]">
               <MessageSquare className="h-5 w-5" />
             </span>
             <div>
@@ -210,7 +210,7 @@ export const FeedbacksPage: FC = () => {
                     </label>
                   </>
                 ) : null}
-                <button type="button" className="mt-3 text-[12px] font-medium text-[#8E35B8]" onClick={clearFilters}>Limpar filtros</button>
+                <button type="button" className="mt-3 text-[12px] font-medium text-[#4600F3]" onClick={clearFilters}>Limpar filtros</button>
               </div>
             ) : null}
           </div>
@@ -225,7 +225,7 @@ export const FeedbacksPage: FC = () => {
               {items.length === 0 ? (
                 <Button className="mt-4 rounded-full" onClick={() => setComposer(true)}>Criar a primeira sugestão</Button>
               ) : (
-                <button type="button" className="mt-3 text-sm font-medium text-[#8E35B8]" onClick={clearFilters}>Limpar pesquisa</button>
+                <button type="button" className="mt-3 text-sm font-medium text-[#4600F3]" onClick={clearFilters}>Limpar pesquisa</button>
               )}
             </div>
           ) : null}
@@ -237,7 +237,7 @@ export const FeedbacksPage: FC = () => {
             return (
               <article key={item.id} className="rounded-2xl border border-[#EFE6F4] bg-white">
                 <div className="flex items-start gap-3 px-4 py-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F3E8FF] text-[12px] font-semibold text-[#7C3AED]">{initials(name)}</span>
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F3E8FF] text-[12px] font-semibold text-[#4600F3]">{initials(name)}</span>
                   <div className="min-w-0 flex-1">
                     <button type="button" className="block w-full text-left" onClick={() => { setOpenId(open ? null : item.id); setStatusMenu(null); }}>
                       <span className="block truncate text-[14px] font-semibold text-[#241B33]">{item.title || item.message}</span>
@@ -264,14 +264,14 @@ export const FeedbacksPage: FC = () => {
                       {statusMenu === item.id ? (
                         <div className="absolute right-0 z-10 mt-1 w-36 rounded-xl border border-[#EFE6F4] bg-white p-1 shadow-lg">
                           {(Object.keys(STATUS) as SuggestionStatus[]).map((status) => (
-                            <button key={status} type="button" className={cn('block w-full rounded-lg px-2 py-1.5 text-left text-[12px]', status === item.status ? 'bg-[#F8EAFB] font-medium' : 'hover:bg-[#FBF7FD]')} onClick={() => void changeStatus(item, status)}>
+                            <button key={status} type="button" className={cn('block w-full rounded-lg px-2 py-1.5 text-left text-[12px]', status === item.status ? 'bg-[#F5F1FF] font-medium' : 'hover:bg-[#FBF7FD]')} onClick={() => void changeStatus(item, status)}>
                               {STATUS[status].label}
                             </button>
                           ))}
                         </div>
                       ) : null}
                     </div>
-                    <button type="button" className="inline-flex items-center gap-1 text-[12px] font-medium text-[#6A228C]" onClick={() => openReply(item.id)}>Responder</button>
+                    <button type="button" className="inline-flex items-center gap-1 text-[12px] font-medium text-[#3600C2]" onClick={() => openReply(item.id)}>Responder</button>
                     <button type="button" className="inline-flex items-center gap-1 text-[12px] text-[#8A7C98]" onClick={() => setOpenId(open ? null : item.id)} aria-label={replyLabel(count)}>
                       <MessageSquare className="h-3.5 w-3.5" /> {replyLabel(count)}
                     </button>

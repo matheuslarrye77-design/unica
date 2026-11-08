@@ -18,23 +18,23 @@ function formatDate(iso: string) {
 const FeaturedCard: FC<{ article: JournalArticle; saved: boolean; onRemove?: () => void }> = ({ article, saved, onRemove }) => {
   const minutes = readingMinutes(article.content);
   return (
-    <Link to={`/announcements/${article.id}`} className="group flex flex-col rounded-[22px] border border-[#EFE8F4] bg-white p-3.5 shadow-[0_10px_28px_rgba(80,40,120,0.06)]">
+    <Link to={`/announcements/${article.id}`} className="group flex flex-col rounded-[22px] border border-[#E5DDF8] bg-white p-3.5 shadow-[0_10px_28px_rgba(70,0,243,0.06)]">
       <JournalCover article={article} />
-      <h3 className="mt-3.5 line-clamp-2 min-h-[46px] text-[17px] font-semibold leading-[1.28] tracking-tight text-[#1A1428] group-hover:text-[#6A228C]">{article.title}</h3>
+      <h3 className="mt-3.5 line-clamp-2 min-h-[46px] text-[17px] font-semibold leading-[1.28] tracking-tight text-[#1A1428] group-hover:text-[#3600C2]">{article.title}</h3>
       <p className="mt-2 line-clamp-3 min-h-[60px] text-[13px] leading-5 text-[#625C70]">{articleSummary(article.content)}</p>
       <div className="mt-3.5 flex items-center gap-4 text-[12.5px] text-[#948D9E]">
         <span className="inline-flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" strokeWidth={1.75} />{formatDate(article.date)}</span>
         <span className="inline-flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" strokeWidth={1.75} />{minutes} min</span>
       </div>
       <div className="mt-auto flex items-center gap-2 pt-3.5">
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#7A2498] text-[10px] font-bold tracking-tight text-white">U1</span>
-        <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-[#6A228C]">{article.author}</span>
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#3600C2] text-[10px] font-bold tracking-tight text-white">U1</span>
+        <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-[#3600C2]">{article.author}</span>
         <button
           type="button"
           aria-label={saved ? 'Remover dos salvos' : 'Salvar'}
           aria-pressed={saved}
           onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleJournalSave(article.id); }}
-          className={cn('grid h-7 w-7 place-items-center rounded-full', saved ? 'text-[#7A2498]' : 'text-[#C9BED6] hover:text-[#8E35B8]')}
+          className={cn('grid h-7 w-7 place-items-center rounded-full', saved ? 'text-[#3600C2]' : 'text-[#C9BED6] hover:text-[#4600F3]')}
         >
           <Bookmark className="h-4 w-4" fill={saved ? 'currentColor' : 'none'} />
         </button>
@@ -48,7 +48,7 @@ const FeaturedCard: FC<{ article: JournalArticle; saved: boolean; onRemove?: () 
             <Trash2 className="h-4 w-4" />
           </button>
         ) : null}
-        <ChevronRight className="h-4 w-4 shrink-0 text-[#C9BED6] transition-colors group-hover:text-[#8E35B8]" />
+        <ChevronRight className="h-4 w-4 shrink-0 text-[#C9BED6] transition-colors group-hover:text-[#4600F3]" />
       </div>
     </Link>
   );
@@ -105,7 +105,7 @@ export const CompanyAnnouncementsPage: FC = () => {
     <PageFrame rail={<JournalRail articles={savedArticles} />}>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]">
                 <Newspaper className="h-5 w-5" />
               </span>
               <div className="min-w-0">
@@ -115,7 +115,7 @@ export const CompanyAnnouncementsPage: FC = () => {
             </div>
             {canManage ? (
               <div className="flex items-center gap-2">
-                <button type="button" aria-pressed={trashOpen} aria-label="Lixeira" onClick={() => { setTrashOpen((current) => !current); setSeenTrash(removed.length); }} className={cn('relative grid h-9 w-9 place-items-center rounded-full border border-[#E6DEEF] bg-white text-[#6A228C] hover:bg-[#F3E4FA]', trashOpen && 'bg-[#F3E4FA]')}>
+                <button type="button" aria-pressed={trashOpen} aria-label="Lixeira" onClick={() => { setTrashOpen((current) => !current); setSeenTrash(removed.length); }} className={cn('relative grid h-9 w-9 place-items-center rounded-full border border-[#DDD4F5] bg-white text-[#3600C2] hover:bg-[#EDE7FE]', trashOpen && 'bg-[#EDE7FE]')}>
                   <Trash2 className="h-4 w-4" />
                   {removed.length > seenTrash ? <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#9D174D] px-1 text-[10px] font-semibold text-white">{removed.length}</span> : null}
                 </button>
@@ -127,7 +127,7 @@ export const CompanyAnnouncementsPage: FC = () => {
           </div>
 
           {canManage && trashOpen ? (
-            <section className="mb-4 rounded-2xl border border-[#E7E0F0] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(40,20,70,0.04)]">
+            <section className="mb-4 rounded-2xl border border-[#DDD4F5] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(70,0,243,0.04)]">
               <h2 className="flex items-center gap-2 text-[14px] font-semibold">
                 <span className="unica-icon">
                   <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
@@ -139,15 +139,15 @@ export const CompanyAnnouncementsPage: FC = () => {
               ) : (
                 <div className="mt-3 grid items-stretch gap-3 md:grid-cols-3">
                   {removed.map((article) => (
-                    <article key={article.id} className="flex flex-col rounded-[22px] border border-[#EFE8F4] bg-white p-3.5 shadow-[0_10px_28px_rgba(80,40,120,0.06)]">
+                    <article key={article.id} className="flex flex-col rounded-[22px] border border-[#E5DDF8] bg-white p-3.5 shadow-[0_10px_28px_rgba(70,0,243,0.06)]">
                       <Link to={`/announcements/${article.id}`} className="flex flex-col">
                         <JournalCover article={article} />
-                        <h3 className="mt-3 line-clamp-2 text-[16px] font-semibold leading-snug text-[#1A1428] hover:text-[#6A228C]">{article.title}</h3>
+                        <h3 className="mt-3 line-clamp-2 text-[16px] font-semibold leading-snug text-[#1A1428] hover:text-[#3600C2]">{article.title}</h3>
                         <p className="mt-2 line-clamp-3 text-[13px] leading-5 text-[#625C70]">{articleSummary(article.content)}</p>
                         <p className="mt-2 text-[12px] text-[#948D9E]">{formatDate(article.date)}</p>
                       </Link>
                       <div className="mt-3 flex items-center gap-2">
-                        <button type="button" aria-label="Restaurar" title="Restaurar" className="grid h-8 w-8 place-items-center rounded-full text-[#6A228C] hover:bg-[#F3E4FA]" onClick={() => { if (!window.confirm('Restaurar esta publicação?')) return; restoreJournalArticle(article.id); }}>
+                        <button type="button" aria-label="Restaurar" title="Restaurar" className="grid h-8 w-8 place-items-center rounded-full text-[#3600C2] hover:bg-[#EDE7FE]" onClick={() => { if (!window.confirm('Restaurar esta publicação?')) return; restoreJournalArticle(article.id); }}>
                           <RotateCcw className="h-4 w-4" />
                         </button>
                         <button type="button" aria-label="Excluir de vez" title="Excluir de vez" className="grid h-8 w-8 place-items-center rounded-full text-[#9D174D] hover:bg-[#FDE7EE]" onClick={() => { if (window.confirm('Excluir esta publicação de vez?')) purgeJournalArticle(article.id); }}>
@@ -162,7 +162,7 @@ export const CompanyAnnouncementsPage: FC = () => {
           ) : null}
 
           {canManage && drafts.length > 0 && showingDefault ? (
-            <section className="mb-4 rounded-2xl border border-[#E7E0F0] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(40,20,70,0.04)]">
+            <section className="mb-4 rounded-2xl border border-[#DDD4F5] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(70,0,243,0.04)]">
               <h2 className="flex items-center gap-2 text-[14px] font-semibold">
                 <span className="unica-icon">
                   <ClipboardList className="h-3.5 w-3.5" strokeWidth={1.75} />
@@ -172,11 +172,11 @@ export const CompanyAnnouncementsPage: FC = () => {
               <div className="mt-3 flex flex-col gap-2">
                 {drafts.map((article) => (
                   <div key={article.id} className="flex items-center gap-2">
-                    <button type="button" onClick={() => openDraft(article)} className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl border border-[#E7E0F0] px-3 py-2.5 text-left text-[13.5px] hover:bg-[#FBF8FC]">
+                    <button type="button" onClick={() => openDraft(article)} className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl border border-[#DDD4F5] px-3 py-2.5 text-left text-[13.5px] hover:bg-[#F8F6FF]">
                       <span className="truncate">{article.title}</span>
                       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                     </button>
-                    <button type="button" aria-label={`Excluir rascunho ${article.title}`} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#E7E0F0] text-[#9D174D] hover:bg-[#FDE7EE]" onClick={() => { if (window.confirm('Excluir este rascunho?')) deleteJournalArticle(article.id); }}>
+                    <button type="button" aria-label={`Excluir rascunho ${article.title}`} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#DDD4F5] text-[#9D174D] hover:bg-[#FDE7EE]" onClick={() => { if (window.confirm('Excluir este rascunho?')) deleteJournalArticle(article.id); }}>
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -197,7 +197,7 @@ export const CompanyAnnouncementsPage: FC = () => {
                 key={id}
                 type="button"
                 onClick={() => selectCategory(id)}
-                className={cn('rounded-full px-3 py-1.5 text-[13px] font-semibold', category === id ? (id === 'todos' ? 'bg-[#F3E4FA] text-[#6A228C]' : categoryTone[id as JournalCategory].badge) : 'font-medium text-muted-foreground hover:bg-white hover:text-foreground')}
+                className={cn('rounded-full px-3 py-1.5 text-[13px] font-semibold', category === id ? (id === 'todos' ? 'bg-[#EDE7FE] text-[#3600C2]' : categoryTone[id as JournalCategory].badge) : 'font-medium text-muted-foreground hover:bg-white hover:text-foreground')}
               >
                 {label}
               </button>
@@ -207,7 +207,7 @@ export const CompanyAnnouncementsPage: FC = () => {
           <section>
             <h2 className="mb-3 text-[18px] font-semibold">{showingDefault ? 'Em destaque' : 'Publicações'}</h2>
             {cards.length === 0 ? (
-              <p className="rounded-2xl border border-[#E7E0F0] bg-white px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma publicação encontrada.</p>
+              <p className="rounded-2xl border border-[#DDD4F5] bg-white px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma publicação encontrada.</p>
             ) : (
               <div className="grid items-stretch gap-3 md:grid-cols-3">
                 {cards.map((article) => <FeaturedCard key={article.id} article={article} saved={savedIds.includes(article.id)} onRemove={canManage ? () => { if (window.confirm('Mover esta publicação para a lixeira?')) archiveJournalArticle(article.id); } : undefined} />)}

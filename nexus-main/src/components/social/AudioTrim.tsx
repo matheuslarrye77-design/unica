@@ -255,8 +255,8 @@ export const AudioTrim: FC<{ file: File; onCancel: () => void; onConfirm: (file:
           <div className="relative col-start-2 row-start-1 h-5">
             <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[#5C5C5C]" />
             <div className="absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-[#F5D90A]" style={{ left: `${selectionLeft}%`, width: `${Math.max(0.6, ((progressEnd - start) / span) * 100)}%` }} />
-            <button type="button" data-edge="start" aria-label="Ajustar início" className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#E100FF]" style={{ left: `${selectionLeft}%` }} onPointerDown={(event) => startDrag('start', event)} />
-            <button type="button" data-edge="end" aria-label="Ajustar fim" className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#E100FF]" style={{ left: `${Math.min(100, selectionLeft + selectionWidth)}%` }} onPointerDown={(event) => startDrag('end', event)} />
+            <button type="button" data-edge="start" aria-label="Ajustar início" className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#6B33F6]" style={{ left: `${selectionLeft}%` }} onPointerDown={(event) => startDrag('start', event)} />
+            <button type="button" data-edge="end" aria-label="Ajustar fim" className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#6B33F6]" style={{ left: `${Math.min(100, selectionLeft + selectionWidth)}%` }} onPointerDown={(event) => startDrag('end', event)} />
           </div>
           <button type="button" aria-label={playing ? 'Pausar' : 'Reproduzir trecho'} disabled={length <= 0} className="col-start-3 row-start-1 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[#2A2A2A] disabled:opacity-40" onClick={togglePlay}>
             {playing ? <Pause className="h-4 w-4" fill="currentColor" /> : <Play className="h-4 w-4" fill="currentColor" />}
@@ -285,7 +285,7 @@ export const AudioTrim: FC<{ file: File; onCancel: () => void; onConfirm: (file:
               style={{
                 borderRadius: 10,
                 padding: '6px',
-                background: 'conic-gradient(from 0deg, #FF3B30 0deg, #FF4F93 70deg, #FF4F93 110deg, #D946EF 160deg, #7C3AED 210deg, #C026D3 250deg, #FF4F93 300deg, #FFE14A 328deg, #FF9A1A 348deg, #FF3B30 360deg)',
+                background: 'conic-gradient(from 0deg, #FF3B30 0deg, #FF4F93 70deg, #FF4F93 110deg, #6B33F6 160deg, #4600F3 210deg, #4600F3 250deg, #FF4F93 300deg, #FFE14A 328deg, #FF9A1A 348deg, #FF3B30 360deg)',
                 WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
                 WebkitMaskComposite: 'xor',
                 maskComposite: 'exclude',
@@ -300,7 +300,7 @@ export const AudioTrim: FC<{ file: File; onCancel: () => void; onConfirm: (file:
         {error ? <p className="mt-2 text-xs text-[#F9A8D4]">{error}</p> : null}
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" className="rounded-full px-4 py-2 text-sm text-white/80" onClick={() => { pauseAt(start); onCancel(); }}>Cancelar</button>
-          <button type="button" disabled={!ready || busy} className="rounded-full bg-[#8E35B8] px-4 py-2 text-sm font-medium text-white disabled:opacity-40" onClick={() => void confirm()}>{busy ? 'Recortando...' : 'Usar este trecho'}</button>
+          <button type="button" disabled={!ready || busy} className="rounded-full bg-[#4600F3] px-4 py-2 text-sm font-medium text-white disabled:opacity-40" onClick={() => void confirm()}>{busy ? 'Recortando...' : 'Usar este trecho'}</button>
         </div>
       </div>
     </div>

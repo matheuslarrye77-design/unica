@@ -12,7 +12,7 @@ function LikeMark({ selected = false }: { selected?: boolean }) {
 
 function LoveMark() {
   return (
-    <span className="grid h-8 w-8 place-items-center rounded-full bg-[#7C3AED] text-white ring-2 ring-white">
+    <span className="grid h-8 w-8 place-items-center rounded-full bg-[#4600F3] text-white ring-2 ring-white">
       <Heart className="h-4 w-4" fill="currentColor" />
     </span>
   );
@@ -21,7 +21,7 @@ function LoveMark() {
 function MiniReaction({ kind }: { kind: 'like' | 'love' }) {
   const Icon = kind === 'love' ? Heart : ThumbsUp;
   return (
-    <span className={`grid h-[18px] w-[18px] place-items-center rounded-full text-white ring-2 ring-card ${kind === 'love' ? 'bg-[#7C3AED]' : 'bg-[#1877F2]'}`}>
+    <span className={`grid h-[18px] w-[18px] place-items-center rounded-full text-white ring-2 ring-card ${kind === 'love' ? 'bg-[#4600F3]' : 'bg-[#1877F2]'}`}>
       <Icon className="h-2.5 w-2.5" fill="currentColor" />
     </span>
   );
@@ -111,10 +111,10 @@ export const PostActions: FC<{
               ) : null}
               {lovePeople.length > 0 ? (
                 <div>
-                  <p className="px-1 py-1 text-[12px] font-semibold text-[#7C3AED]">Amei</p>
+                  <p className="px-1 py-1 text-[12px] font-semibold text-[#4600F3]">Amei</p>
                   {lovePeople.map((item, index) => (
                     <p key={`love-${item.name}-${index}`} className="flex items-center gap-2 px-1 py-1">
-                      <Heart className="h-3.5 w-3.5 text-[#7C3AED]" fill="currentColor" />
+                      <Heart className="h-3.5 w-3.5 text-[#4600F3]" fill="currentColor" />
                       {item.name}
                     </p>
                   ))}
@@ -126,11 +126,11 @@ export const PostActions: FC<{
           ) : null}
         </div>
       ) : null}
-      <div className={`border-t pt-2.5 ${recognition ? 'border-[#E9E2F2]' : 'border-border'}`}>
+      <div className={`border-t pt-2.5 ${recognition ? 'border-[#DDD4F5]' : 'border-border'}`}>
       <div className="flex items-center justify-between gap-2">
         <div className={`flex items-center ${recognition ? 'gap-3' : ''}`}>
         <div className="relative" onMouseEnter={openPicker} onMouseLeave={scheduleClose}>
-          <div className={`inline-flex h-8 items-center gap-1.5 ${recognition ? 'text-[14px] text-[#7135C9]' : 'text-[13px] text-[#5C5870]'}`}>
+          <div className={`inline-flex h-8 items-center gap-1.5 ${recognition ? 'text-[14px] text-[#4600F3]' : 'text-[13px] text-[#5C5870]'}`}>
             <button
               type="button"
               aria-label={selected === 'love' ? 'Amei' : 'Curtir'}
@@ -139,10 +139,10 @@ export const PostActions: FC<{
               className={`inline-flex h-8 items-center gap-1.5 rounded-full px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${
                 recognition
                   ? selected
-                    ? 'font-semibold text-[#5020A8]'
-                    : 'text-[#7135C9] hover:bg-[#F4EDFF]'
+                    ? 'font-semibold text-[#2A0094]'
+                    : 'text-[#4600F3] hover:bg-[#EDE7FE]'
                   : selected === 'love'
-                    ? 'font-semibold text-[#7C3AED]'
+                    ? 'font-semibold text-[#4600F3]'
                     : selected === 'like'
                       ? 'font-semibold text-[#1877F2]'
                       : 'hover:bg-accent'
@@ -171,12 +171,12 @@ export const PostActions: FC<{
             </div>
           ) : null}
         </div>
-        {recognition ? <span className="h-5 w-px bg-[#E9E2F2]" /> : null}
+        {recognition ? <span className="h-5 w-px bg-[#DDD4F5]" /> : null}
         {recognition ? (
           <button
             type="button"
             onClick={onComment}
-            className="inline-flex h-8 items-center gap-1.5 rounded-[8px] px-2 text-[14px] text-[#7135C9] hover:bg-[#F4EDFF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            className="inline-flex h-8 items-center gap-1.5 rounded-[8px] px-2 text-[14px] text-[#4600F3] hover:bg-[#EDE7FE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           >
             <MessageCircle className="h-4 w-4" />
             {comments === 1 ? '1 comentário' : `${comments} comentários`}
@@ -201,7 +201,7 @@ export const PostActions: FC<{
           aria-label={saved ? 'Remover dos salvos' : 'Salvar publicação'}
           className={`inline-flex h-8 w-8 items-center justify-center rounded-[8px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${
             recognition
-              ? saved ? 'text-[#7135C9]' : 'text-[#7135C9] hover:bg-[#F4EDFF]'
+              ? saved ? 'text-[#4600F3]' : 'text-[#4600F3] hover:bg-[#EDE7FE]'
               : saved ? 'text-primary' : 'text-[#5C5870] hover:text-foreground'
           }`}
         >

@@ -44,6 +44,7 @@ export const PageScrollHandle: FC = () => {
       type="button"
       aria-label="Arrastar para rolar a tela"
       className="unica-page-scroll-handle"
+      style={{ position: 'fixed', top: 'unset', left: 'unset', right: 8, bottom: 16, margin: 0, transform: 'none', width: 76, height: 8 }}
       onPointerDown={grab}
     />,
     document.body,

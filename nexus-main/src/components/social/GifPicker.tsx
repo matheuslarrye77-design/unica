@@ -57,7 +57,7 @@ export const GifPicker: FC<{ onPick: (url: string) => void }> = ({ onPick }) => 
       <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar GIF: risada, meme, comemoração" aria-label="Buscar GIF" className="mb-2 h-9 w-full rounded-lg border border-[#EFE6F4] px-2 text-[13px]" />
       {saved.length > 0 ? (
         <div className="mb-2">
-          <p className="mb-1 px-1 text-[12px] font-medium text-[#6A228C]">Salvos</p>
+          <p className="mb-1 px-1 text-[12px] font-medium text-[#3600C2]">Salvos</p>
           <div className="grid max-h-40 grid-cols-[repeat(auto-fill,3.5rem)] justify-start gap-1.5 overflow-y-auto">
             {saved.map((item) => (
               <button key={item.id} type="button" className="h-14 w-14 overflow-hidden rounded-xl bg-[#FBF7FD] disabled:opacity-60" disabled={picking} onClick={() => choose(item)} aria-label={item.title}>

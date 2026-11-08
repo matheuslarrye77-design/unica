@@ -26,7 +26,7 @@ export const LoginPage: FC = () => {
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-transparent px-4">
-      <form onSubmit={(event) => void submit(event)} className="w-full max-w-sm rounded-2xl border bg-card p-6 shadow-[0_1px_2px_rgba(40,20,70,0.05)]">
+      <form onSubmit={(event) => void submit(event)} className="w-full max-w-sm rounded-2xl border bg-card p-6 shadow-[0_1px_2px_rgba(70,0,243,0.05)]">
         <div className="mb-6 flex items-center gap-2">
           <img src="/marca-unica.png" alt="" className="h-8 w-8 rounded-full object-cover" />
           <span className="text-lg font-semibold text-primary">Única Conecta</span>

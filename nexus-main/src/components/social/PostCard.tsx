@@ -85,7 +85,7 @@ export const PostCard: FC<{
   const recognition = post.kind === 'recognition';
 
   return (
-      <article id={domId} className={recognition ? 'rounded-[18px] border border-[#E9E2F2] bg-white p-[18px] shadow-[0_8px_24px_rgba(81,32,168,0.06)]' : 'unica-surface px-4 py-3'}>
+      <article id={domId} className={recognition ? 'rounded-[18px] border border-[#DDD4F5] bg-white p-[18px] shadow-[0_8px_24px_rgba(70,0,243,0.06)]' : 'unica-surface px-4 py-3'}>
       {repost ? (
         <div className="mb-3 flex items-center gap-2 text-[12px] text-muted-foreground">
           <img src={repost.avatar} alt="" className="h-6 w-6 rounded-full bg-muted" />
@@ -100,7 +100,7 @@ export const PostCard: FC<{
             <>
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <p className="truncate text-[15px] font-semibold leading-5 text-[#29213A]">{post.author}</p>
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#EEE4FF] px-2.5 py-0.5 text-[11px] font-semibold text-[#7135C9]">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#E8E0FD] px-2.5 py-0.5 text-[11px] font-semibold text-[#4600F3]">
                   <Award className="h-3 w-3" />
                   Reconhecimento
                 </span>
@@ -108,7 +108,7 @@ export const PostCard: FC<{
               <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-[12px] leading-4 text-[#827A91]">
                 <span>{post.time}</span>
                 {post.audience === 'management' ? <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Somente a gestão</span> : null}
-                {mood ? <span className="inline-flex items-center gap-1 text-[#7135C9]"><Emoji emoji={mood.emoji} className="h-3.5 w-3.5" />{mood.label}</span> : null}
+                {mood ? <span className="inline-flex items-center gap-1 text-[#4600F3]"><Emoji emoji={mood.emoji} className="h-3.5 w-3.5" />{mood.label}</span> : null}
               </p>
             </>
           ) : (
@@ -120,7 +120,7 @@ export const PostCard: FC<{
               <p className="flex flex-wrap items-center gap-x-1 text-[12px] leading-4 text-muted-foreground">
                 <span>{post.time}</span>
                 {post.audience === 'management' ? <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Somente a gestão</span> : null}
-                {mood ? <span className="inline-flex items-center gap-1 text-[#6A228C]"><Emoji emoji={mood.emoji} className="h-3.5 w-3.5" />{mood.label}</span> : null}
+                {mood ? <span className="inline-flex items-center gap-1 text-[#3600C2]"><Emoji emoji={mood.emoji} className="h-3.5 w-3.5" />{mood.label}</span> : null}
               </p>
             </>
           )}
@@ -180,20 +180,20 @@ export const PostCard: FC<{
         <div className="mt-2 space-y-2">
           {blocks.map((block, index) => {
             if (block.type === 'text') return <ReadMore key={`${domId}-texto-${index}`} id={`${domId}-texto-${index}`} text={block.text} className="text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90" />;
-            if (block.display === 'sticker' || block.display === 'gif') return <img key={`${post.id}-imagem-${index}`} src={block.url} alt={block.display === 'gif' ? 'GIF' : 'Figurinha'} className="h-24 w-24 rounded-xl bg-[#F8EAFB] object-contain" />;
-            return <img key={`${post.id}-imagem-${index}`} src={block.url} alt="" className="max-h-[480px] w-full rounded-[12px] bg-[#F8F7FC] object-contain" />;
+            if (block.display === 'sticker' || block.display === 'gif') return <img key={`${post.id}-imagem-${index}`} src={block.url} alt={block.display === 'gif' ? 'GIF' : 'Figurinha'} className="h-24 w-24 rounded-xl bg-[#F5F1FF] object-contain" />;
+            return <img key={`${post.id}-imagem-${index}`} src={block.url} alt="" className="max-h-[480px] w-full rounded-[12px] bg-[#F6F4FC] object-contain" />;
           })}
         </div>
       ) : (
         <>
           {plain && post.body ? <div className="mt-2"><ReadMore id={`${domId}-texto`} text={post.body} className="text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90" /></div> : null}
-          {post.kind !== 'announcement' && post.kind !== 'recognition' && post.images && post.images.length > 0 ? <PhotoGallery images={post.images} /> : post.kind === 'image' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-contain bg-[#F8F7FC]" /> : null}
+          {post.kind !== 'announcement' && post.kind !== 'recognition' && post.images && post.images.length > 0 ? <PhotoGallery images={post.images} /> : post.kind === 'image' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-contain bg-[#F6F4FC]" /> : null}
         </>
       )}
       {decorations.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {decorations.map((block, index) => (
-            block.type === 'image' ? <img key={`${post.id}-extra-${index}`} src={block.url} alt={block.display === 'gif' ? 'GIF' : 'Figurinha'} className="h-24 w-24 rounded-xl bg-[#F8EAFB] object-contain" /> : null
+            block.type === 'image' ? <img key={`${post.id}-extra-${index}`} src={block.url} alt={block.display === 'gif' ? 'GIF' : 'Figurinha'} className="h-24 w-24 rounded-xl bg-[#F5F1FF] object-contain" /> : null
           ))}
         </div>
       ) : null}

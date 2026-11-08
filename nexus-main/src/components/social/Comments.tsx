@@ -73,7 +73,7 @@ export const Comments: FC<{
                   {comment.media.kind === 'video' ? (
                     <video src={comment.media.url} controls className="max-h-48 max-w-full rounded-xl bg-black" />
                   ) : (
-                    <img src={comment.media.url} alt={comment.media.kind === 'gif' ? 'GIF' : comment.media.kind === 'sticker' ? 'Figurinha' : 'Foto'} className={`${comment.media.kind === 'image' ? 'max-h-60 max-w-full' : 'h-28 w-28'} rounded-xl bg-[#F8EAFB] object-contain`} />
+                    <img src={comment.media.url} alt={comment.media.kind === 'gif' ? 'GIF' : comment.media.kind === 'sticker' ? 'Figurinha' : 'Foto'} className={`${comment.media.kind === 'image' ? 'max-h-60 max-w-full' : 'h-28 w-28'} rounded-xl bg-[#F5F1FF] object-contain`} />
                   )}
                   {comment.media.kind === 'sticker' && comment.authorId !== actor().id && /^\/api\/stickers\/stk-[a-f0-9]{16}$/.test(comment.media.url) ? <SaveSticker url={comment.media.url} /> : null}
                 </div>
@@ -137,7 +137,7 @@ const SaveSticker: FC<{ url: string }> = ({ url }) => {
       aria-pressed={saved}
       disabled={busy}
       aria-label={saved ? 'Remover figurinha salva' : 'Salvar figurinha'}
-      className={`absolute right-0.5 top-0.5 grid h-6 w-6 place-items-center text-[#8E35B8] drop-shadow-[0_0_1px_rgba(255,255,255,0.9)] ${saved ? 'opacity-100' : 'opacity-80'}`}
+      className={`absolute right-0.5 top-0.5 grid h-6 w-6 place-items-center text-[#4600F3] drop-shadow-[0_0_1px_rgba(255,255,255,0.9)] ${saved ? 'opacity-100' : 'opacity-80'}`}
       onClick={() => {
         if (busy) return;
         const next = !saved;

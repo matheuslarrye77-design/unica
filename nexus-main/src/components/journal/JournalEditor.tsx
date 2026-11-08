@@ -46,7 +46,7 @@ const VIDEO_MAX = 200 * 1024 * 1024;
 const DOC_MAX = 40 * 1024 * 1024;
 
 const dot: Record<JournalCategory, string> = {
-  social: 'bg-[#8E35B8]',
+  social: 'bg-[#4600F3]',
   processos: 'bg-[#3A6AAD]',
   urgente: 'bg-[#E11D48]',
   treinamentos: 'bg-[#15803D]',
@@ -223,7 +223,7 @@ const AttachedMedia: FC<{ items: JournalMedia[]; onRemove?: (id: string) => void
           {item.kind === 'audio' ? <ClipAudio url={resolveJournalAsset(item.url)} start={item.start} duration={item.duration} /> : null}
           {item.kind === 'video' ? <video controls src={resolveJournalAsset(item.url)} className="max-h-36 w-full rounded-lg" /> : null}
           {item.kind === 'image' ? <img src={resolveJournalAsset(item.url)} alt="" className="max-h-28 rounded-lg object-contain" /> : null}
-          {item.kind === 'document' ? <a href={resolveJournalAsset(item.url)} target="_blank" rel="noreferrer" className="block truncate text-[13px] font-medium text-[#6A228C] underline">{item.name}</a> : null}
+          {item.kind === 'document' ? <a href={resolveJournalAsset(item.url)} target="_blank" rel="noreferrer" className="block truncate text-[13px] font-medium text-[#3600C2] underline">{item.name}</a> : null}
         </span>
         {onRemove ? <button type="button" className="shrink-0 text-[12px] font-semibold text-[#9D174D]" onClick={() => onRemove(item.id)}>Remover</button> : null}
       </li>
@@ -501,7 +501,7 @@ const DescriptionBalloon = forwardRef<DescriptionHandle, {
   }
 
   return (
-    <div className={cn('rounded-2xl border border-[#E6DEEF] bg-[#FBF9FD] px-3 py-2 focus-within:border-[#E4C8EE] focus-within:ring-2 focus-within:ring-[#F3E4FA]', expanded && 'min-h-[52vh]')}>
+    <div className={cn('rounded-2xl border border-[#DDD4F5] bg-[#FBF9FD] px-3 py-2 focus-within:border-[#E0D6FC] focus-within:ring-2 focus-within:ring-[#EDE7FE]', expanded && 'min-h-[52vh]')}>
       <div
         ref={editorRef}
         contentEditable
@@ -749,8 +749,8 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        overlayClassName="bg-[#4A2A66]/35 backdrop-blur-md"
-        className="flex max-h-[calc(100dvh-1rem)] w-[min(840px,calc(100%-2rem))] max-w-none flex-col gap-0 overflow-hidden rounded-[28px] border-[#E7E0F0] bg-white p-4 shadow-[0_24px_80px_rgba(70,30,110,0.16)] sm:max-w-[840px]"
+        overlayClassName="bg-[#2A0094]/35 backdrop-blur-md"
+        className="flex max-h-[calc(100dvh-1rem)] w-[min(840px,calc(100%-2rem))] max-w-none flex-col gap-0 overflow-hidden rounded-[28px] border-[#DDD4F5] bg-white p-4 shadow-[0_24px_80px_rgba(70,0,243,0.16)] sm:max-w-[840px]"
         onPointerDown={(event) => {
           const target = event.target as HTMLElement | null;
           if (pinHint && !target?.closest('[data-pin-hint]')) setPinHint(false);
@@ -778,7 +778,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
         }}
       >
         <div className="mb-3 flex shrink-0 items-start gap-3 pr-8">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]">
             <Megaphone className="h-5 w-5" />
           </span>
           <div>
@@ -789,31 +789,31 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
 
         {preview ? (
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <div className="rounded-[22px] border border-[#EFE8F4] bg-white p-3.5 shadow-[0_10px_28px_rgba(80,40,120,0.06)]">
+            <div className="rounded-[22px] border border-[#E5DDF8] bg-white p-3.5 shadow-[0_10px_28px_rgba(70,0,243,0.06)]">
               <JournalCover article={previewArticle} />
               <h3 className="mt-3.5 text-[17px] font-semibold leading-snug text-[#1A1428]">{previewArticle.title}</h3>
               <JournalRichText content={content} className="mt-2 space-y-2 text-[13px] leading-5 text-[#625C70]" />
               <p className="mt-3 text-[12.5px] text-[#948D9E]">{new Date(`${date}T12:00:00`).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' })} · {readingMinutes(content || 'texto')} min</p>
-              <p className="mt-3 text-[13.5px] font-semibold text-[#6A228C]">{authorName}</p>
+              <p className="mt-3 text-[13.5px] font-semibold text-[#3600C2]">{authorName}</p>
             </div>
             {media.length > 0 ? <div className="mt-3 space-y-2"><AttachedMedia items={media} /></div> : null}
-            <button type="button" onClick={() => setPreview(false)} className="mt-4 h-10 rounded-full px-4 text-sm font-semibold text-[#6A228C] hover:bg-[#F3E4FA]">Voltar à edição</button>
+            <button type="button" onClick={() => setPreview(false)} className="mt-4 h-10 rounded-full px-4 text-sm font-semibold text-[#3600C2] hover:bg-[#EDE7FE]">Voltar à edição</button>
           </div>
         ) : (
           <div className="grid min-h-0 flex-1 content-start gap-2.5 overflow-y-auto pr-1">
             <label className="grid gap-1">
-              <span className="flex items-center gap-2 text-[13px] font-semibold text-[#241B33]"><Type className="h-3.5 w-3.5 text-[#8E35B8]" /> Título</span>
+              <span className="flex items-center gap-2 text-[13px] font-semibold text-[#241B33]"><Type className="h-3.5 w-3.5 text-[#4600F3]" /> Título</span>
               <span className="relative">
-                <input value={title} maxLength={TITLE_LIMIT} onChange={(event) => setTitle(event.target.value.slice(0, TITLE_LIMIT))} placeholder="Digite o título da publicação..." className="h-10 w-full rounded-2xl border border-[#E6DEEF] bg-[#FBF9FD] px-4 pr-16 text-[14px] outline-none placeholder:text-[#B0A8BA] focus:border-[#C9A4DE]" />
+                <input value={title} maxLength={TITLE_LIMIT} onChange={(event) => setTitle(event.target.value.slice(0, TITLE_LIMIT))} placeholder="Digite o título da publicação..." className="h-10 w-full rounded-2xl border border-[#DDD4F5] bg-[#FBF9FD] px-4 pr-16 text-[14px] outline-none placeholder:text-[#B0A8BA] focus:border-[#C4B0FC]" />
                 <span className="absolute top-1/2 right-4 -translate-y-1/2 text-[12px] text-[#B0A8BA]">{title.length}/{TITLE_LIMIT}</span>
               </span>
             </label>
             <div className="grid gap-1">
               <span className="flex items-center justify-between gap-2 text-[13px] font-semibold text-[#241B33]">
-                <span className="flex items-center gap-2"><FileText className="h-3.5 w-3.5 text-[#8E35B8]" /> Descrição</span>
+                <span className="flex items-center gap-2"><FileText className="h-3.5 w-3.5 text-[#4600F3]" /> Descrição</span>
                 <span className="flex items-center gap-0.5">
-                  <button type="button" aria-label="Inserir imagem na descrição" onClick={() => inlineInput.current?.click()} className="grid h-7 w-7 place-items-center rounded-full text-[#8E35B8] hover:bg-[#F3E4FA]"><ImagePlus className="h-3.5 w-3.5" /></button>
-                  <button type="button" aria-pressed={writing} aria-label="Ampliar descrição" onClick={() => setWriting(true)} className="grid h-7 w-7 place-items-center rounded-full text-[#B0A8BA] hover:bg-[#F3E4FA] hover:text-[#6A228C]">
+                  <button type="button" aria-label="Inserir imagem na descrição" onClick={() => inlineInput.current?.click()} className="grid h-7 w-7 place-items-center rounded-full text-[#4600F3] hover:bg-[#EDE7FE]"><ImagePlus className="h-3.5 w-3.5" /></button>
+                  <button type="button" aria-pressed={writing} aria-label="Ampliar descrição" onClick={() => setWriting(true)} className="grid h-7 w-7 place-items-center rounded-full text-[#B0A8BA] hover:bg-[#EDE7FE] hover:text-[#3600C2]">
                     <Maximize2 className="h-3.5 w-3.5" />
                   </button>
                 </span>
@@ -823,13 +823,13 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
             </div>
             <div className="grid gap-2 sm:grid-cols-[1fr_190px]">
               <div className="relative" data-category-menu>
-                <button type="button" aria-expanded={categoryOpen} onClick={() => setCategoryOpen((current) => !current)} className="flex h-10 w-full items-center gap-2 rounded-2xl border border-[#E6DEEF] bg-white px-3 text-left text-[14px] font-medium">
+                <button type="button" aria-expanded={categoryOpen} onClick={() => setCategoryOpen((current) => !current)} className="flex h-10 w-full items-center gap-2 rounded-2xl border border-[#DDD4F5] bg-white px-3 text-left text-[14px] font-medium">
                   <span className={cn('h-2.5 w-2.5 rounded-full', dot[category])} />
                   <span className="min-w-0 flex-1 truncate">{categoryLabel(category)}</span>
                   <ChevronDown className="h-4 w-4 text-[#8A7C98]" />
                 </button>
                 {categoryOpen ? (
-                  <div className="absolute z-20 mt-1 w-full rounded-2xl border border-[#E6DEEF] bg-white p-1 shadow-[0_12px_32px_rgba(70,30,110,0.12)]">
+                  <div className="absolute z-20 mt-1 w-full rounded-2xl border border-[#DDD4F5] bg-white p-1 shadow-[0_12px_32px_rgba(70,0,243,0.12)]">
                     {JOURNAL_CATEGORIES.map((item) => (
                       <button key={item.id} type="button" onClick={() => chooseCategory(item.id)} className={cn('flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[14px]', category === item.id && categoryTone[item.id].badge)}>
                         <span className={cn('h-2.5 w-2.5 rounded-full', dot[item.id])} />
@@ -839,33 +839,33 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
                   </div>
                 ) : null}
               </div>
-              <label className={cn('relative flex h-10 items-center rounded-2xl border border-[#E6DEEF] bg-white px-3', dateLocked && 'bg-[#F7F4FA] text-[#8A7C98]')}>
+              <label className={cn('relative flex h-10 items-center rounded-2xl border border-[#DDD4F5] bg-white px-3', dateLocked && 'bg-[#F7F4FA] text-[#8A7C98]')}>
                 <Calendar className="pointer-events-none absolute right-3 h-4 w-4 text-[#8A7C98]" />
                 <input type="date" value={date} min={date < todayInput() ? date : todayInput()} disabled={dateLocked} onChange={(event) => { const next = event.target.value; const kept = article && !categoryLocksDate(article.category) ? toInputDate(article.date) : ''; const fallback = kept && kept < todayInput() ? kept : todayInput(); if (!next || (next < todayInput() && next !== kept)) { setDate(fallback); return; } setDate(next); }} aria-label="Data" title={dateLocked ? 'Nesta categoria a data fica no dia de hoje.' : 'A data não pode ser anterior a hoje.'} className="h-full w-full bg-transparent pr-7 text-[14px] outline-none disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-2 [&::-webkit-calendar-picker-indicator]:h-4 [&::-webkit-calendar-picker-indicator]:w-4 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0" />
               </label>
             </div>
             <div className="grid gap-1.5">
-              <span className="flex items-center gap-2 text-[13px] font-semibold text-[#241B33]"><ImageIcon className="h-3.5 w-3.5 text-[#8E35B8]" /> Imagem de capa</span>
+              <span className="flex items-center gap-2 text-[13px] font-semibold text-[#241B33]"><ImageIcon className="h-3.5 w-3.5 text-[#4600F3]" /> Imagem de capa</span>
               <button type="button" onClick={() => setLibrary((current) => !current)} onDragOver={(event) => event.preventDefault()} onDrop={onDrop} className="overflow-hidden rounded-2xl border border-dashed border-[#D9C6E8] bg-[#FBF9FD] text-left">
                 {coverUrl ? (
                   <span className="relative block">
                     <img src={coverUrl} alt="Pré-visualização da capa" className="aspect-[1400/320] w-full object-cover" />
-                    <span className="absolute right-3 bottom-2 rounded-full bg-white/95 px-3 py-1 text-[12px] font-semibold text-[#6A228C]">Trocar imagem</span>
+                    <span className="absolute right-3 bottom-2 rounded-full bg-white/95 px-3 py-1 text-[12px] font-semibold text-[#3600C2]">Trocar imagem</span>
                   </span>
                 ) : (
                   <span className="flex flex-col items-center justify-center gap-0.5 px-4 py-3 text-center">
-                    <span className="mb-1 grid h-9 w-9 place-items-center rounded-xl bg-[#F3E4FA] text-[#8E35B8]"><ImageIcon className="h-5 w-5" /></span>
+                    <span className="mb-1 grid h-9 w-9 place-items-center rounded-xl bg-[#EDE7FE] text-[#4600F3]"><ImageIcon className="h-5 w-5" /></span>
                     <span className="text-[13px] font-medium text-[#5C5470]">Arraste uma imagem aqui ou clique para selecionar</span>
                     <span className="text-[12px] text-[#8A7C98]">Formatos: JPG, PNG, WEBP • Tamanho máximo: 5MB</span>
                   </span>
                 )}
               </button>
               {library ? (
-                <div className="rounded-2xl border border-[#E6DEEF] bg-white p-3">
+                <div className="rounded-2xl border border-[#DDD4F5] bg-white p-3">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <p className="text-[13px] font-semibold">Biblioteca de imagens</p>
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => coverInput.current?.click()} className="rounded-full bg-[#F3E4FA] px-3 py-1.5 text-[12px] font-semibold text-[#6A228C]">Enviar nova imagem</button>
+                      <button type="button" onClick={() => coverInput.current?.click()} className="rounded-full bg-[#EDE7FE] px-3 py-1.5 text-[12px] font-semibold text-[#3600C2]">Enviar nova imagem</button>
                       <button type="button" aria-label="Fechar biblioteca" onClick={() => setLibrary(false)} className="grid h-8 w-8 place-items-center rounded-full text-[#8A7C98]"><X className="h-4 w-4" /></button>
                     </div>
                   </div>
@@ -873,7 +873,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
                     <div className="grid max-h-28 grid-cols-4 gap-2 overflow-y-auto">
                       {covers.map((item) => (
                         <div key={item.id} className="relative">
-                          <button type="button" onClick={() => { setCover(`lib:${item.id}`); setLibrary(false); }} className={cn('block w-full overflow-hidden rounded-xl border', cover === `lib:${item.id}` ? 'border-[#8E35B8]' : 'border-transparent')}>
+                          <button type="button" onClick={() => { setCover(`lib:${item.id}`); setLibrary(false); }} className={cn('block w-full overflow-hidden rounded-xl border', cover === `lib:${item.id}` ? 'border-[#4600F3]' : 'border-transparent')}>
                             <img src={item.url} alt="" className="aspect-[4/3] w-full object-cover" />
                           </button>
                           <button type="button" aria-label="Excluir imagem da biblioteca" className="absolute top-1 right-1 grid h-6 w-6 place-items-center rounded-full bg-white text-[#9D174D] shadow" onClick={() => { if (!window.confirm('Tem certeza que deseja excluir esta imagem da biblioteca?')) return; deleteJournalCover(item.id); if (cover === `lib:${item.id}`) setCover(''); }}><Trash2 className="h-3.5 w-3.5" /></button>
@@ -889,7 +889,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
             {sending ? <p className="text-[12px] text-[#8A7C98]">Enviando {sending === 'audio' ? 'áudio' : sending === 'video' ? 'vídeo' : 'arquivo'}...</p> : null}
             <div className="relative flex items-center gap-2 pb-1 text-[14px] text-[#241B33]">
               <label className="flex items-center gap-2">
-                <input type="checkbox" checked={pinned} onChange={(event) => setPinned(event.target.checked)} className="h-4 w-4 accent-[#7A2498]" />
+                <input type="checkbox" checked={pinned} onChange={(event) => setPinned(event.target.checked)} className="h-4 w-4 accent-[#3600C2]" />
                 Fixar como destaque
               </label>
               <span className="relative" data-pin-hint onMouseEnter={() => setPinHint(true)} onMouseLeave={() => setPinHint(false)}>
@@ -897,7 +897,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
                   <Info className="h-3.5 w-3.5" />
                 </button>
                 {pinHint ? (
-                  <p data-pin-hint className="absolute bottom-7 left-0 z-30 w-[min(360px,80vw)] rounded-2xl border border-[#E6DEEF] bg-white p-3 text-[12.5px] leading-5 text-[#3C3952] shadow-[0_12px_32px_rgba(70,30,110,0.14)]">
+                  <p data-pin-hint className="absolute bottom-7 left-0 z-30 w-[min(360px,80vw)] rounded-2xl border border-[#DDD4F5] bg-white p-3 text-[12.5px] leading-5 text-[#3C3952] shadow-[0_12px_32px_rgba(70,0,243,0.14)]">
                     É possível manter até três publicações fixadas. Ao atingir esse limite, a publicação fixada há mais tempo será desafixada automaticamente. Para escolher qual será removida, desafixe-a manualmente antes de fixar uma nova.
                   </p>
                 ) : null}
@@ -910,7 +910,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
             <div className="mt-2 flex shrink-0 items-center justify-between gap-3 border-t border-[#F0E8F4] pt-3">
               <div className="flex items-center gap-2">
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="inline-flex h-10 items-center gap-2 rounded-full border border-[#E6DEEF] bg-white px-3 text-[13px] font-semibold text-[#5C5470]">
+                  <DropdownMenuTrigger className="inline-flex h-10 items-center gap-2 rounded-full border border-[#DDD4F5] bg-white px-3 text-[13px] font-semibold text-[#5C5470]">
                     <Paperclip className="h-4 w-4" /> Arquivos <ChevronDown className="h-3.5 w-3.5" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="rounded-2xl">
@@ -920,13 +920,13 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
                     <DropdownMenuItem onSelect={() => documentInput.current?.click()}>Enviar documentos</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                {canAutosave ? <button type="button" onClick={() => publish('draft')} className="h-10 rounded-full px-3 text-[13px] font-semibold text-[#6A228C] hover:bg-[#F3E4FA]">Rascunho</button> : null}
+                {canAutosave ? <button type="button" onClick={() => publish('draft')} className="h-10 rounded-full px-3 text-[13px] font-semibold text-[#3600C2] hover:bg-[#EDE7FE]">Rascunho</button> : null}
               </div>
               <div className="flex items-center gap-2">
-                <button type="button" aria-label="Pré-visualizar" onClick={() => setPreview(true)} className="grid h-11 w-11 place-items-center rounded-full border border-[#E6DEEF] bg-white text-[#6A228C] hover:bg-[#F3E4FA]">
+                <button type="button" aria-label="Pré-visualizar" onClick={() => setPreview(true)} className="grid h-11 w-11 place-items-center rounded-full border border-[#DDD4F5] bg-white text-[#3600C2] hover:bg-[#EDE7FE]">
                   <Eye className="h-5 w-5" />
                 </button>
-                <button type="button" onClick={() => publish('published')} className="inline-flex h-11 items-center gap-2 rounded-full bg-[#7A2498] px-5 text-[14px] font-semibold text-white hover:bg-[#6A228C]">
+                <button type="button" onClick={() => publish('published')} className="inline-flex h-11 items-center gap-2 rounded-full bg-[#3600C2] px-5 text-[14px] font-semibold text-white hover:bg-[#3600C2]">
                   <Send className="h-4 w-4" /> Publicar
                 </button>
               </div>
@@ -964,12 +964,12 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
         ) : null}
         {writing ? createPortal(
           <div data-journal-overlay className="pointer-events-auto fixed inset-0 z-[70] grid place-items-center bg-black/50 p-4" style={{ pointerEvents: 'auto' }}>
-            <div className="pointer-events-auto flex max-h-[min(860px,calc(100dvh-2rem))] w-[min(840px,calc(100%-2rem))] flex-col rounded-[28px] bg-white p-4 shadow-[0_24px_80px_rgba(70,30,110,0.2)]" style={{ pointerEvents: 'auto' }} role="dialog" aria-label="Descrição ampliada">
+            <div className="pointer-events-auto flex max-h-[min(860px,calc(100dvh-2rem))] w-[min(840px,calc(100%-2rem))] flex-col rounded-[28px] bg-white p-4 shadow-[0_24px_80px_rgba(70,0,243,0.2)]" style={{ pointerEvents: 'auto' }} role="dialog" aria-label="Descrição ampliada">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="text-[15px] font-semibold text-[#241B33]">Descrição</p>
                 <span className="flex items-center gap-0.5">
-                  <button type="button" aria-label="Inserir imagem na descrição" onClick={() => inlineInput.current?.click()} className="grid h-8 w-8 place-items-center rounded-full text-[#8E35B8] hover:bg-[#F3E4FA]"><ImagePlus className="h-4 w-4" /></button>
-                  <button type="button" aria-label="Reduzir descrição" onClick={() => setWriting(false)} className="grid h-8 w-8 place-items-center rounded-full text-[#6A228C] hover:bg-[#F3E4FA]"><Minimize2 className="h-4 w-4" /></button>
+                  <button type="button" aria-label="Inserir imagem na descrição" onClick={() => inlineInput.current?.click()} className="grid h-8 w-8 place-items-center rounded-full text-[#4600F3] hover:bg-[#EDE7FE]"><ImagePlus className="h-4 w-4" /></button>
+                  <button type="button" aria-label="Reduzir descrição" onClick={() => setWriting(false)} className="grid h-8 w-8 place-items-center rounded-full text-[#3600C2] hover:bg-[#EDE7FE]"><Minimize2 className="h-4 w-4" /></button>
                 </span>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto">

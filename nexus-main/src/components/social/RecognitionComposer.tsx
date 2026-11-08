@@ -122,7 +122,7 @@ export const RecognitionComposer: FC<{
           </select>
         </label>
       </div>
-      {headline ? <p className="rounded-xl bg-[#F8EAFB] px-3 py-2 text-[13px] font-medium text-[#6A228C]">{headline}</p> : null}
+      {headline ? <p className="rounded-xl bg-[#F5F1FF] px-3 py-2 text-[13px] font-medium text-[#3600C2]">{headline}</p> : null}
       <label className="grid gap-1 text-sm">
         Mensagem principal
         <textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={3} required placeholder="Escreva o agradecimento" className="w-full resize-none rounded-xl border border-border bg-muted/30 px-4 py-3 text-[15px] leading-6 outline-none placeholder:text-muted-foreground focus-visible:border-primary" />

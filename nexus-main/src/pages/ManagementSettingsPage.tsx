@@ -85,7 +85,7 @@ export const ManagementSettingsPage: FC<{ embedded?: boolean }> = ({ embedded = 
   const content = (
       <div className={embedded ? 'flex flex-col gap-4' : 'mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6 sm:px-6'}>
         {embedded ? null : <h1 className="text-xl font-semibold tracking-tight">Configurações</h1>}
-        <section className="rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(40,20,70,0.05)]">
+        <section className="rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(70,0,243,0.05)]">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">Mural</h2>
@@ -114,7 +114,7 @@ export const ManagementSettingsPage: FC<{ embedded?: boolean }> = ({ embedded = 
           onMode={(mode) => void persist({ ...settings, documents: { ...settings.documents, mode } })}
           onToggle={(id) => togglePerson('documents', id)}
         />
-        <section className="rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(40,20,70,0.05)]">
+        <section className="rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(70,0,243,0.05)]">
           <h2 className="text-sm font-semibold">Calendário</h2>
           <p className="mt-1 text-sm text-muted-foreground">Tema e papel de parede da grade.</p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -149,7 +149,7 @@ const PolicyCard: FC<{
   onMode: (mode: PolicyMode) => void;
   onToggle: (id: string) => void;
 }> = ({ title, description, name, mode, userIds, onMode, onToggle }) => (
-  <section className="rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(40,20,70,0.05)]">
+  <section className="rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(70,0,243,0.05)]">
     <h2 className="text-sm font-semibold">{title}</h2>
     <p className="mt-1 text-sm text-muted-foreground">{description}</p>
     <div className="mt-3 flex flex-col gap-2">

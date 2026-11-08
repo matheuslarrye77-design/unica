@@ -631,7 +631,7 @@ export const GoalsCenter: FC = () => {
     <div className="grid gap-4">
       <section>
         <h3 className="flex items-center gap-2 text-[15px] font-semibold text-[#241B33]">
-          <Trophy className="h-4 w-4 text-[#8E35B8]" /> Escolha o modo da Central
+          <Trophy className="h-4 w-4 text-[#4600F3]" /> Escolha o modo da Central
         </h3>
         <p className="mt-0.5 text-[12.5px] text-[#8A7C98]">O modo orienta a interpretação. Você pode mudar de assunto no chat a qualquer momento.</p>
         <div className="mt-3 grid items-stretch gap-3 sm:grid-cols-2">
@@ -640,15 +640,15 @@ export const GoalsCenter: FC = () => {
             const pending = (card.id === 'custom' && phase === 'custom') || (card.id === 'overall' && phase === 'overall');
             const Icon = card.icon;
             return (
-              <article key={card.id} className={cn('relative flex h-full flex-col rounded-[22px] border bg-white p-4 shadow-[0_8px_22px_rgba(80,40,120,0.05)]', committed || pending ? 'border-[#8E35B8] ring-1 ring-[#8E35B8]/20' : 'border-[#EDE4F5]')}>
-                {committed ? <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-[#8E35B8] text-white"><Check className="h-3.5 w-3.5" /></span> : null}
-                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]"><Icon className="h-5 w-5" /></span>
+              <article key={card.id} className={cn('relative flex h-full flex-col rounded-[22px] border bg-white p-4 shadow-[0_8px_22px_rgba(70,0,243,0.05)]', committed || pending ? 'border-[#4600F3] ring-1 ring-[#4600F3]/20' : 'border-[#E5DDF8]')}>
+                {committed ? <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-[#4600F3] text-white"><Check className="h-3.5 w-3.5" /></span> : null}
+                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]"><Icon className="h-5 w-5" /></span>
                 <h4 className="mt-3 text-[15px] font-semibold text-[#241B33]">{card.title}</h4>
                 <p className="mt-1 text-[12.5px] leading-5 text-[#8A7C98]">{card.text}</p>
                 <ul className="mt-3 grid flex-1 gap-1.5 text-[12.5px] text-[#5C5168]">
                   {card.points.map((point) => (
                     <li key={point} className="flex items-start gap-2">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#8E35B8]" />
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#4600F3]" />
                       {point}
                     </li>
                   ))}
@@ -657,7 +657,7 @@ export const GoalsCenter: FC = () => {
                   type="button"
                   disabled={!goals.canManage}
                   onClick={() => onSelect(card.id)}
-                  className={cn('mt-4 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full px-4 text-[13px] font-semibold', committed ? 'bg-[#8E35B8] text-white' : pending ? 'bg-[#F3E4FA] text-[#6A228C]' : 'border border-[#E7DFF0] text-[#6A228C]')}
+                  className={cn('mt-4 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full px-4 text-[13px] font-semibold', committed ? 'bg-[#4600F3] text-white' : pending ? 'bg-[#EDE7FE] text-[#3600C2]' : 'border border-[#DDD4F5] text-[#3600C2]')}
                 >
                   {committed ? <Check className="h-3.5 w-3.5" /> : card.id === 'custom' ? <Pencil className="h-3.5 w-3.5" /> : <BarChart3 className="h-3.5 w-3.5" />}
                   {committed ? 'Selecionado' : pending ? 'Definindo no chat' : 'Selecionar'}
@@ -669,10 +669,10 @@ export const GoalsCenter: FC = () => {
       </section>
 
       {preview ? (
-        <section className="rounded-[22px] border border-[#EDE4F5] bg-white p-4">
+        <section className="rounded-[22px] border border-[#E5DDF8] bg-white p-4">
           <div className="flex flex-wrap items-end gap-3">
             <label className="grid gap-1 text-[13px] text-[#5C5168]">Semana
-              <input type="week" value={periodKey} onChange={(event) => setPeriodKey(event.target.value)} className="h-10 rounded-xl border border-[#E7DFF0] px-3" />
+              <input type="week" value={periodKey} onChange={(event) => setPeriodKey(event.target.value)} className="h-10 rounded-xl border border-[#DDD4F5] px-3" />
             </label>
             <label className="flex items-center gap-2 text-[13px] text-[#5C5168]">
               <input type="checkbox" checked={replace} onChange={(event) => setReplace(event.target.checked)} />
@@ -692,12 +692,12 @@ export const GoalsCenter: FC = () => {
               </thead>
               <tbody>
                 {preview.rows.map((row, index) => (
-                  <tr key={`${row.sourceName}-${index}`} className="border-t border-[#F3E4FA]">
+                  <tr key={`${row.sourceName}-${index}`} className="border-t border-[#EDE7FE]">
                     <td className="py-2 pr-3">
                       {row.userId ? row.name : (
                         <div className="grid gap-1">
                           <span className="text-[11px] text-[#A16207]">{row.sourceName}</span>
-                          <select className="h-9 rounded-lg border border-[#E7DFF0] px-2" value={row.userId} onChange={(event) => {
+                          <select className="h-9 rounded-lg border border-[#DDD4F5] px-2" value={row.userId} onChange={(event) => {
                             const person = goals.people.find((item) => item.id === event.target.value);
                             const subsetor = person && ['Chat', 'E-mail', 'Ligação', 'Atendimento'].includes(person.funcao) ? person.funcao : (['Chat', 'E-mail', 'Ligação', 'Atendimento'].includes(person?.role ?? '') ? person?.role ?? '' : '');
                             patchRow(index, { userId: event.target.value, name: person?.name ?? '', subsetor });
@@ -719,7 +719,7 @@ export const GoalsCenter: FC = () => {
                             const raw = event.target.value.replace(',', '.');
                             patchRow(index, { values: { ...row.values, [id]: raw === '' ? null : Number(raw) } });
                           }}
-                          className="h-8 w-20 rounded-lg border border-[#E7DFF0] bg-transparent px-2"
+                          className="h-8 w-20 rounded-lg border border-[#DDD4F5] bg-transparent px-2"
                         />
                         {id !== 'transferidos' && row.goal[id]?.target != null ? <span className="block text-[11px] text-[#8A7C98]">meta {row.goal[id]?.target}</span> : null}
                       </td>
@@ -730,7 +730,7 @@ export const GoalsCenter: FC = () => {
               </tbody>
             </table>
           </div>
-          <button type="button" disabled={busy} onClick={() => void approveWith(board.lastReport)} className="mt-3 w-fit rounded-full bg-[#8E35B8] px-4 py-2 text-[13px] font-semibold text-white">Aprovar importação</button>
+          <button type="button" disabled={busy} onClick={() => void approveWith(board.lastReport)} className="mt-3 w-fit rounded-full bg-[#4600F3] px-4 py-2 text-[13px] font-semibold text-white">Aprovar importação</button>
         </section>
       ) : null}
     </div>
@@ -941,9 +941,9 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
   const bank = (
     <div className={cn('fixed inset-0 z-[80] overflow-y-auto bg-[url("/fundo-unica.png")] bg-cover bg-fixed bg-center [scrollbar-width:thin]', leftCollapsed ? 'lg:left-16' : 'lg:left-[256px]')}>
       <div className="mx-auto flex min-h-full w-full flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
-        <header className="flex flex-col gap-4 rounded-[22px] border border-[#EEE6F4] bg-white px-5 py-4 shadow-[0_8px_24px_rgba(80,40,120,0.05)] sm:flex-row sm:items-center sm:justify-between">
+        <header className="flex flex-col gap-4 rounded-[22px] border border-[#E5DDF8] bg-white px-5 py-4 shadow-[0_8px_24px_rgba(70,0,243,0.05)] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]"><BarChart3 className="h-6 w-6" /></span>
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]"><BarChart3 className="h-6 w-6" /></span>
             <div className="min-w-0">
               <h3 className="text-[22px] font-semibold tracking-tight text-[#241B33]">Banco dos relatórios</h3>
               <p className="mt-0.5 text-[13px] text-[#8A7C98]">Metas da gestão e resultados por colaborador, separados por mês.</p>
@@ -951,16 +951,16 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {buckets.length ? (
-              <div className="inline-flex items-center gap-1 rounded-full border border-[#E7DFF0] bg-white px-1.5 py-1 text-[12.5px] font-medium text-[#5C5168]">
+              <div className="inline-flex items-center gap-1 rounded-full border border-[#DDD4F5] bg-white px-1.5 py-1 text-[12.5px] font-medium text-[#5C5168]">
                 <button type="button" aria-label="Período anterior" disabled={periodIndex <= 0} onClick={() => setSelected(buckets[periodIndex - 1])} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button>
-                <span className="inline-flex items-center gap-1.5 px-1"><Calendar className="h-3.5 w-3.5 text-[#8E35B8]" /> {periodLabel}</span>
+                <span className="inline-flex items-center gap-1.5 px-1"><Calendar className="h-3.5 w-3.5 text-[#4600F3]" /> {periodLabel}</span>
                 <button type="button" aria-label="Período seguinte" disabled={periodIndex < 0 || periodIndex >= buckets.length - 1} onClick={() => setSelected(buckets[periodIndex + 1])} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button>
               </div>
             ) : null}
-            <button type="button" onClick={() => setClearMode((value) => value ? '' : 'period')} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#E7DFF0] px-3 text-[12.5px] font-medium text-[#8A7C98] hover:bg-[#F3E4FA] hover:text-[#6A228C]">
+            <button type="button" onClick={() => setClearMode((value) => value ? '' : 'period')} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#DDD4F5] px-3 text-[12.5px] font-medium text-[#8A7C98] hover:bg-[#EDE7FE] hover:text-[#3600C2]">
               <Trash2 className="h-3.5 w-3.5" /> Limpar
             </button>
-            <button type="button" onClick={onClose} aria-label="Fechar banco dos relatórios" className="grid h-10 w-10 place-items-center rounded-xl border border-[#E7DFF0] text-[#6A228C] hover:bg-[#F3E4FA]">
+            <button type="button" onClick={onClose} aria-label="Fechar banco dos relatórios" className="grid h-10 w-10 place-items-center rounded-xl border border-[#DDD4F5] text-[#3600C2] hover:bg-[#EDE7FE]">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -970,8 +970,8 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
             <p className="font-semibold text-[#241B33]">Limpar banco de relatórios</p>
             <p className="mt-1">Esta ação apaga resultados gravados. Cadastros da Equipe e a estrutura das metas são preservados.</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" onClick={() => setClearMode('period')} className={cn('h-9 rounded-full border px-3', clearMode === 'period' ? 'border-[#8E35B8] bg-[#F3E4FA] text-[#6A228C]' : 'border-[#E7DFF0]')}>Limpar {periodLabel || 'este período'}</button>
-              <button type="button" onClick={() => setClearMode('all')} className={cn('h-9 rounded-full border px-3', clearMode === 'all' ? 'border-[#8E35B8] bg-[#F3E4FA] text-[#6A228C]' : 'border-[#E7DFF0]')}>Limpar banco completo</button>
+              <button type="button" onClick={() => setClearMode('period')} className={cn('h-9 rounded-full border px-3', clearMode === 'period' ? 'border-[#4600F3] bg-[#EDE7FE] text-[#3600C2]' : 'border-[#DDD4F5]')}>Limpar {periodLabel || 'este período'}</button>
+              <button type="button" onClick={() => setClearMode('all')} className={cn('h-9 rounded-full border px-3', clearMode === 'all' ? 'border-[#4600F3] bg-[#EDE7FE] text-[#3600C2]' : 'border-[#DDD4F5]')}>Limpar banco completo</button>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -983,18 +983,18 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
                     if (data?.kind === 'cleared' && clearMode === 'all') setSelected('');
                   });
                 }}
-                className="h-9 rounded-full bg-[#8E35B8] px-4 text-[12.5px] font-semibold text-white"
+                className="h-9 rounded-full bg-[#4600F3] px-4 text-[12.5px] font-semibold text-white"
               >
                 Confirmar {clearMode === 'all' ? 'limpeza completa' : `limpeza de ${periodLabel}`}
               </button>
-              <button type="button" onClick={() => setClearMode('')} className="h-9 rounded-full border border-[#E7DFF0] px-4">Cancelar</button>
+              <button type="button" onClick={() => setClearMode('')} className="h-9 rounded-full border border-[#DDD4F5] px-4">Cancelar</button>
             </div>
           </section>
         ) : null}
 
-        <section className="rounded-[22px] border border-[#EEE6F4] bg-white px-5 py-4 shadow-[0_8px_24px_rgba(80,40,120,0.04)]">
+        <section className="rounded-[22px] border border-[#E5DDF8] bg-white px-5 py-4 shadow-[0_8px_24px_rgba(70,0,243,0.04)]">
           <div className="flex items-center gap-2 text-[13px] font-semibold text-[#241B33]">
-            <Trophy className="h-4 w-4 text-[#8E35B8]" /> Legenda
+            <Trophy className="h-4 w-4 text-[#4600F3]" /> Legenda
           </div>
           <ul className="mt-3 flex flex-wrap items-center justify-between gap-x-8 gap-y-2 text-[13px] text-[#5C5168]">
             <li className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#22C55E]" /> Atingiu a meta</li>
@@ -1002,7 +1002,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
             <li className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#C4B5C8]" /> Sem meta cadastrada</li>
             <li className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B]" /> Aguardando identificação</li>
           </ul>
-          <div className="mt-4 h-px bg-[#F0E7F6]" />
+          <div className="mt-4 h-px bg-[#EDE7FE]" />
         </section>
 
         <section>
@@ -1015,7 +1015,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
                 aria-label="Metas de Ligação"
                 aria-pressed={goalFilter === 'Ligação'}
                 onClick={() => setGoalFilter('Ligação')}
-                className={cn('grid h-7 w-7 place-items-center rounded-full transition', goalFilter === 'Ligação' ? 'bg-[#8E35B8] text-white' : 'border border-[#E7DFF0] bg-white text-[#8E35B8] hover:bg-[#FBF8FC]')}
+                className={cn('grid h-7 w-7 place-items-center rounded-full transition', goalFilter === 'Ligação' ? 'bg-[#4600F3] text-white' : 'border border-[#DDD4F5] bg-white text-[#4600F3] hover:bg-[#F8F6FF]')}
               >
                 <Phone className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={2} />
               </button>
@@ -1025,7 +1025,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
                 aria-label="Metas de Chat e E-mail"
                 aria-pressed={goalFilter === 'desk'}
                 onClick={() => setGoalFilter('desk')}
-                className={cn('grid h-7 w-7 place-items-center rounded-full transition', goalFilter === 'desk' ? 'bg-[#8E35B8] text-white' : 'border border-[#E7DFF0] bg-white text-[#8E35B8] hover:bg-[#FBF8FC]')}
+                className={cn('grid h-7 w-7 place-items-center rounded-full transition', goalFilter === 'desk' ? 'bg-[#4600F3] text-white' : 'border border-[#DDD4F5] bg-white text-[#4600F3] hover:bg-[#F8F6FF]')}
               >
                 <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={2} />
               </button>
@@ -1036,7 +1036,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
             if (goalFilter === 'Ligação') return CALL_ONLY_FIELDS.has(goal.indicator);
             return TICKET_FIELDS.has(goal.indicator) || String(goal.indicator).startsWith('c:');
           }).length === 0 ? (
-            <p className="rounded-[22px] border border-[#EEE6F4] bg-white px-5 py-6 text-[13px] text-[#8A7C98]">Nenhuma meta cadastrada para este período.</p>
+            <p className="rounded-[22px] border border-[#E5DDF8] bg-white px-5 py-6 text-[13px] text-[#8A7C98]">Nenhuma meta cadastrada para este período.</p>
           ) : (
             <ul className="grid gap-3">
               {managementGoals.filter((goal) => {
@@ -1047,9 +1047,9 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
                 const Icon = goalIcon(goal.indicator);
                 const open = openGoal === goal.key;
                 return (
-                  <li key={goal.key} className="overflow-hidden rounded-[20px] border border-[#EEE6F4] bg-white shadow-[0_6px_18px_rgba(80,40,120,0.04)]">
+                  <li key={goal.key} className="overflow-hidden rounded-[20px] border border-[#E5DDF8] bg-white shadow-[0_6px_18px_rgba(70,0,243,0.04)]">
                     <button type="button" onClick={() => setOpenGoal(open ? '' : goal.key)} className="flex w-full items-center gap-4 px-4 py-4 text-left sm:px-5">
-                      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]"><Icon className="h-6 w-6" /></span>
+                      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]"><Icon className="h-6 w-6" /></span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-[15px] font-semibold text-[#241B33]">{goal.name}</span>
                         <span className="mt-0.5 block truncate text-[13px] text-[#8A7C98]">Valor da meta: {goal.value} · Regra: {goal.direction} · Período de validade: {goal.period}</span>
@@ -1074,7 +1074,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
             if (goalFilter === 'Ligação') return channels.includes('Ligação');
             return channels.includes('Chat') || channels.includes('E-mail');
           }).length ? (
-            <div className="mt-4 rounded-[20px] border border-[#EEE6F4] bg-white px-4 py-4 sm:px-5">
+            <div className="mt-4 rounded-[20px] border border-[#E5DDF8] bg-white px-4 py-4 sm:px-5">
               <p className="text-[14px] font-semibold text-[#241B33]">Observações e regras de avaliação</p>
               <p className="mt-1 text-[12.5px] leading-5 text-[#8A7C98]">Interpretadas pelo chat da Central. Regras obrigatórias entram no cálculo antes da pontuação.</p>
               <ul className="mt-3 grid gap-2">
@@ -1085,7 +1085,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
                   return channels.includes('Chat') || channels.includes('E-mail');
                 }).map((note) => (
                   <li key={note.id} className="rounded-2xl border border-[#F3EAF8] px-3 py-3">
-                    <p className="text-[11px] font-semibold tracking-wide text-[#8E35B8]">{note.kind === 'rule' ? 'Regra obrigatória' : 'Observação'}{note.effect === 'zero_on_faltas' ? ' · zera todas as metas' : ''}{(note.channels ?? []).length ? ` · ${(note.channels ?? []).join(', ')}` : ''}</p>
+                    <p className="text-[11px] font-semibold tracking-wide text-[#4600F3]">{note.kind === 'rule' ? 'Regra obrigatória' : 'Observação'}{note.effect === 'zero_on_faltas' ? ' · zera todas as metas' : ''}{(note.channels ?? []).length ? ` · ${(note.channels ?? []).join(', ')}` : ''}</p>
                     <p className="mt-1 text-[13px] leading-5 text-[#241B33]">{note.text}</p>
                   </li>
                 ))}
@@ -1096,10 +1096,10 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
 
         <section className="pb-8">
           <div className="mb-3 flex items-center gap-3">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#8E35B8]"><BarChart3 className="h-6 w-6" /></span>
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]"><BarChart3 className="h-6 w-6" /></span>
             <h4 className="text-[16px] font-semibold text-[#241B33]">Resultados individuais</h4>
           </div>
-          {peopleCards.length === 0 && pending.length === 0 ? <p className="rounded-[26px] bg-white px-6 py-6 text-[15px] text-[#8A7C98] shadow-[0_8px_24px_rgba(80,40,120,0.04)]">Nenhum resultado armazenado neste período.</p> : null}
+          {peopleCards.length === 0 && pending.length === 0 ? <p className="rounded-[26px] bg-white px-6 py-6 text-[15px] text-[#8A7C98] shadow-[0_8px_24px_rgba(70,0,243,0.04)]">Nenhum resultado armazenado neste período.</p> : null}
           <div className="grid gap-5">
           {peopleCards.map(({ person, record, indicators, periodLabel, history }) => {
             const open = openId === (record?.id || person.id);
@@ -1112,9 +1112,9 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
               return { field, name: label, value, met: goalMet(value, meta.rule, meta.importGoal), target: meta.rule ? meta.rule.value : meta.importGoal?.target, op: meta.rule?.op ?? '' };
             }).filter(Boolean) as BankIndicator[])).filter((item) => fieldForPerson(item.field, person.funcao));
             return (
-              <article key={person.id} className="overflow-hidden rounded-[26px] bg-white shadow-[0_8px_28px_rgba(80,40,120,0.045)]">
+              <article key={person.id} className="overflow-hidden rounded-[26px] bg-white shadow-[0_8px_28px_rgba(70,0,243,0.045)]">
                 <button type="button" onClick={() => setOpenId(open ? '' : (record?.id || person.id))} className="flex min-h-[84px] w-full items-center gap-4 px-5 py-3 text-left sm:px-6">
-                  <span className="grid h-[68px] w-[68px] shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8]"><User className="h-8 w-8" strokeWidth={1.75} /></span>
+                  <span className="grid h-[68px] w-[68px] shrink-0 place-items-center rounded-full bg-[#EDE7FE] text-[#4600F3]"><User className="h-8 w-8" strokeWidth={1.75} /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[15px] font-semibold leading-tight text-[#241B33]">{person.name}</span>
                     <span className="mt-0.5 block text-[13px] text-[#8A7C98]">{person.funcao || person.role} · {periodLabel || record?.periodLabel || bankPeriod?.label || (selected ? monthTitle(selected) : '')}</span>
@@ -1128,7 +1128,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
                         <IndicatorRows rows={rows} />
                         {shownHistory.length ? (
                           <details className="mt-4">
-                            <summary className="cursor-pointer text-[13px] font-medium text-[#6A228C]">Histórico de atualizações</summary>
+                            <summary className="cursor-pointer text-[13px] font-medium text-[#3600C2]">Histórico de atualizações</summary>
                             <ul className="mt-2 grid gap-2">
                               {shownHistory.map((item, index) => (
                                 <li key={`${item.at}-${index}`} className="text-[13px] text-[#8A7C98]">
@@ -1154,9 +1154,9 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
               return { field, name: label, value, met: null as boolean | null, target: null as number | null };
             }).filter(Boolean) as { field: string; name: string; value: number; met: boolean | null; target?: number | null }[];
             return (
-              <article key={record.id} className="overflow-hidden rounded-[26px] bg-white shadow-[0_8px_28px_rgba(80,40,120,0.045)]">
+              <article key={record.id} className="overflow-hidden rounded-[26px] bg-white shadow-[0_8px_28px_rgba(70,0,243,0.045)]">
                 <button type="button" onClick={() => setOpenId(open ? '' : record.id)} className="flex min-h-[84px] w-full items-center gap-4 px-5 py-3 text-left sm:px-6">
-                  <span className="grid h-[68px] w-[68px] shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8]"><User className="h-8 w-8" strokeWidth={1.75} /></span>
+                  <span className="grid h-[68px] w-[68px] shrink-0 place-items-center rounded-full bg-[#EDE7FE] text-[#4600F3]"><User className="h-8 w-8" strokeWidth={1.75} /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[15px] font-semibold leading-tight text-[#241B33]">{record.sourceName || record.name}</span>
                     <span className="mt-0.5 inline-flex items-center gap-1.5 text-[13px] font-medium text-[#B45309]"><span className="h-2 w-2 rounded-full bg-[#F59E0B]" />Aguardando identificação</span>
@@ -1200,16 +1200,16 @@ export const GoalsAssistant: FC = () => {
   }
 
   return (
-    <aside className={cn('relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[22px] border border-[#EDE4F5] bg-white', wide && 'fixed top-14 bottom-3 left-3 right-3 z-[70] shadow-[0_24px_60px_rgba(80,40,120,0.22)] xl:left-[256px] xl:right-3')}>
+    <aside className={cn('relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[22px] border border-[#E5DDF8] bg-white', wide && 'fixed top-14 bottom-3 left-3 right-3 z-[70] shadow-[0_24px_60px_rgba(70,0,243,0.22)] xl:left-[256px] xl:right-3')}>
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#F3EAF8] px-3 py-3 pr-10">
         <h3 className="flex min-w-0 items-center gap-2 text-[14px] font-semibold text-[#241B33]">
-          <Sparkles className="h-4 w-4 shrink-0 text-[#8E35B8]" /> <span className="truncate">Fale com o assistente de metas</span>
+          <Sparkles className="h-4 w-4 shrink-0 text-[#4600F3]" /> <span className="truncate">Fale com o assistente de metas</span>
         </h3>
         <div className="flex shrink-0 items-center gap-0.5">
-          <button type="button" aria-label="Abrir banco de dados dos relatórios" title="Banco de dados" onClick={() => setBankOpen(true)} className="grid h-8 w-8 place-items-center rounded-lg text-[#8E35B8] hover:bg-[#F3E4FA]">
+          <button type="button" aria-label="Abrir banco de dados dos relatórios" title="Banco de dados" onClick={() => setBankOpen(true)} className="grid h-8 w-8 place-items-center rounded-lg text-[#4600F3] hover:bg-[#EDE7FE]">
             <FileText className="h-4 w-4" />
           </button>
-          <button type="button" aria-label={wide ? 'Reduzir painel' : 'Ampliar chat e banco de dados'} title={wide ? 'Reduzir' : 'Ampliar chat e banco'} onClick={() => setWide((value) => !value)} className="grid h-8 w-8 place-items-center rounded-lg text-[#8E35B8] hover:bg-[#F3E4FA]">
+          <button type="button" aria-label={wide ? 'Reduzir painel' : 'Ampliar chat e banco de dados'} title={wide ? 'Reduzir' : 'Ampliar chat e banco'} onClick={() => setWide((value) => !value)} className="grid h-8 w-8 place-items-center rounded-lg text-[#4600F3] hover:bg-[#EDE7FE]">
             {wide ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
         </div>
@@ -1218,17 +1218,17 @@ export const GoalsAssistant: FC = () => {
       <div ref={thread} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
         {messages.map((message) => (
           <div key={message.id} className={cn('flex gap-2', message.from === 'user' ? 'justify-end' : 'items-start')}>
-            {message.from === 'bot' ? <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8]"><Bot className="h-4 w-4" /></span> : null}
-            <p className={cn('max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-[13px] leading-5', message.from === 'bot' ? 'bg-[#F7F0FB] text-[#3C3148]' : 'bg-[#8E35B8] text-white')}>{message.text}</p>
+            {message.from === 'bot' ? <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#EDE7FE] text-[#4600F3]"><Bot className="h-4 w-4" /></span> : null}
+            <p className={cn('max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-[13px] leading-5', message.from === 'bot' ? 'bg-[#F4F0FE] text-[#3C3148]' : 'bg-[#4600F3] text-white')}>{message.text}</p>
           </div>
         ))}
         {pendingPodium ? (
-          <div className="grid gap-2 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
+          <div className="grid gap-2 rounded-xl border border-[#DDD4F5] bg-[#F8F6FF] p-2">
             <p className="text-[12px] font-semibold text-[#4A1C73]">Só o pódio. As metas não mudam.</p>
             <p className="text-[12.5px] text-[#5C5168]">Critério: {pendingPodium.mode === 'overall' ? 'Desempenho geral' : METRICS.find((item) => item[0] === pendingPodium.indicator)?.[1] ?? pendingPodium.indicator}</p>
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" disabled={busy} onClick={() => void confirmPodium()} className="h-9 rounded-full bg-[#8E35B8] text-[12.5px] font-semibold text-white disabled:bg-[#C9A6DC]">Confirmar pódio</button>
-              <button type="button" disabled={busy} onClick={cancelProposal} className="h-9 rounded-full border border-[#E7DFF0] text-[12.5px] font-semibold text-[#6A228C]">Cancelar</button>
+              <button type="button" disabled={busy} onClick={() => void confirmPodium()} className="h-9 rounded-full bg-[#4600F3] text-[12.5px] font-semibold text-white disabled:bg-[#B09AF5]">Confirmar pódio</button>
+              <button type="button" disabled={busy} onClick={cancelProposal} className="h-9 rounded-full border border-[#DDD4F5] text-[12.5px] font-semibold text-[#3600C2]">Cancelar</button>
             </div>
           </div>
         ) : null}
@@ -1238,14 +1238,14 @@ export const GoalsAssistant: FC = () => {
               'Meta personalizada: primeira resposta no máximo 5 minutos e TMA no máximo 8 minutos em janeiro de 2027.',
               'Índice de qualidade no atendimento pelo menos 90% em janeiro de 2027.',
             ].map((example) => (
-              <button key={example} type="button" onClick={() => void talk(example)} className="rounded-xl border border-[#E7DFF0] px-3 py-2 text-left text-[12.5px] text-[#6A228C] hover:bg-[#FBF8FC]">
+              <button key={example} type="button" onClick={() => void talk(example)} className="rounded-xl border border-[#DDD4F5] px-3 py-2 text-left text-[12.5px] text-[#3600C2] hover:bg-[#F8F6FF]">
                 {example}
               </button>
             ))}
           </div>
         ) : null}
         {conference ? (
-          <div className="grid gap-2 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
+          <div className="grid gap-2 rounded-xl border border-[#DDD4F5] bg-[#F8F6FF] p-2">
             <p className="text-[12px] font-semibold text-[#4A1C73]">Resumo do que foi registrado. O pódio não foi alterado.</p>
             {conference.period?.label ? <p className="text-[12px] text-[#5C5168]">Período: {conference.period.label}</p> : null}
             {conference.goals.length ? (
@@ -1304,12 +1304,12 @@ export const GoalsAssistant: FC = () => {
             ) : null}
             <p className="text-[12px] text-[#8A7C98]">O pódio permanece como está.</p>
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" disabled={busy} onClick={() => void saveTemplate()} className="h-9 rounded-full bg-[#8E35B8] text-[12.5px] font-semibold text-white disabled:bg-[#C9A6DC]">Confirmar metas</button>
-              <button type="button" disabled={busy} onClick={cancelProposal} className="h-9 rounded-full border border-[#E7DFF0] text-[12.5px] font-semibold text-[#6A228C]">Cancelar</button>
+              <button type="button" disabled={busy} onClick={() => void saveTemplate()} className="h-9 rounded-full bg-[#4600F3] text-[12.5px] font-semibold text-white disabled:bg-[#B09AF5]">Confirmar metas</button>
+              <button type="button" disabled={busy} onClick={cancelProposal} className="h-9 rounded-full border border-[#DDD4F5] text-[12.5px] font-semibold text-[#3600C2]">Cancelar</button>
             </div>
           </div>
         ) : pendingRules ? (
-          <div className="grid gap-2 rounded-xl border border-[#E7DFF0] bg-[#FBF8FC] p-2">
+          <div className="grid gap-2 rounded-xl border border-[#DDD4F5] bg-[#F8F6FF] p-2">
             <p className="text-[12px] font-semibold text-[#4A1C73]">Conferência. Nada foi salvo e o pódio não foi alterado.</p>
             {pendingRules.rules.length ? (
               <>
@@ -1348,17 +1348,17 @@ export const GoalsAssistant: FC = () => {
             ) : null}
             <p className="text-[12px] text-[#8A7C98]">{pendingRules.sourceText || pendingRules.rows?.length ? 'O pódio permanece como está.' : pendingRules.combine === 'any' ? 'Basta uma condição.' : 'Todas as condições são obrigatórias.'}{pendingRules.subsetor ? ` Subsetor ${pendingRules.subsetor}.` : ''}</p>
             {pendingRules.sourceText || pendingRules.rows?.length ? null : (
-              <input value={pendingRules.name} onChange={(event) => setPendingRules({ ...pendingRules, name: event.target.value })} placeholder="Nome do pódio" className="h-9 w-full rounded-lg border border-[#E7DFF0] bg-white px-2 text-[13px]" />
+              <input value={pendingRules.name} onChange={(event) => setPendingRules({ ...pendingRules, name: event.target.value })} placeholder="Nome do pódio" className="h-9 w-full rounded-lg border border-[#DDD4F5] bg-white px-2 text-[13px]" />
             )}
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" disabled={busy} onClick={() => void saveTemplate()} className="h-9 rounded-full bg-[#8E35B8] text-[12.5px] font-semibold text-white disabled:bg-[#C9A6DC]">Confirmar metas</button>
-              <button type="button" disabled={busy} onClick={cancelProposal} className="h-9 rounded-full border border-[#E7DFF0] text-[12.5px] font-semibold text-[#6A228C]">Cancelar</button>
+              <button type="button" disabled={busy} onClick={() => void saveTemplate()} className="h-9 rounded-full bg-[#4600F3] text-[12.5px] font-semibold text-white disabled:bg-[#B09AF5]">Confirmar metas</button>
+              <button type="button" disabled={busy} onClick={cancelProposal} className="h-9 rounded-full border border-[#DDD4F5] text-[12.5px] font-semibold text-[#3600C2]">Cancelar</button>
             </div>
           </div>
         ) : null}
       </div>
       <form onSubmit={onSubmit} className="shrink-0 border-t border-[#F3EAF8] p-3">
-        <div className="flex items-end gap-2 rounded-2xl border border-[#E7DFF0] bg-[#FBF8FC] px-3 py-2">
+        <div className="flex items-end gap-2 rounded-2xl border border-[#DDD4F5] bg-[#F8F6FF] px-3 py-2">
           <textarea
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
@@ -1366,7 +1366,7 @@ export const GoalsAssistant: FC = () => {
             rows={wide ? 5 : 3}
             className={cn('min-h-[72px] flex-1 resize-none bg-transparent text-[13px] outline-none', wide ? 'max-h-40' : 'max-h-28')}
           />
-          <button type="submit" disabled={busy || !draft.trim()} aria-label="Enviar" className="grid h-8 w-8 place-items-center rounded-full bg-[#8E35B8] text-white disabled:bg-[#C9A6DC]"><Send className="h-3.5 w-3.5" /></button>
+          <button type="submit" disabled={busy || !draft.trim()} aria-label="Enviar" className="grid h-8 w-8 place-items-center rounded-full bg-[#4600F3] text-white disabled:bg-[#B09AF5]"><Send className="h-3.5 w-3.5" /></button>
         </div>
       </form>
     </aside>

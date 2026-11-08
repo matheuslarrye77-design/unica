@@ -36,16 +36,16 @@ export const AttachPhotos: FC<{ urls: string[]; onChange: (urls: string[]) => vo
       {urls.length ? (
         <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {urls.map((url) => (
-            <li key={url} className="relative overflow-hidden rounded-xl bg-[#F8EAFB]">
+            <li key={url} className="relative overflow-hidden rounded-xl bg-[#F5F1FF]">
               <img src={url} alt="" className="h-24 w-full object-cover" />
-              <button type="button" aria-label="Remover foto" onClick={() => onChange(urls.filter((item) => item !== url))} className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-white/90 text-[#6A228C]">
+              <button type="button" aria-label="Remover foto" onClick={() => onChange(urls.filter((item) => item !== url))} className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-white/90 text-[#3600C2]">
                 <X className="h-3.5 w-3.5" />
               </button>
             </li>
           ))}
         </ul>
       ) : null}
-      <button type="button" disabled={busy || urls.length >= max} onClick={() => input.current?.click()} className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-dashed border-[#E4C8EE] bg-[#FBF8FC] text-[13px] font-medium text-[#6A228C] hover:bg-[#F3E4FA] disabled:opacity-50">
+      <button type="button" disabled={busy || urls.length >= max} onClick={() => input.current?.click()} className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-dashed border-[#E0D6FC] bg-[#F8F6FF] text-[13px] font-medium text-[#3600C2] hover:bg-[#EDE7FE] disabled:opacity-50">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
         {busy ? 'Enviando...' : 'Adicionar fotos'}
       </button>

@@ -22,7 +22,7 @@ export const TrophyArt: FC<{ className?: string }> = ({ className }) => (
         <stop offset="70%" stopColor="#F6C453" stopOpacity="0" />
       </radialGradient>
     </defs>
-    <circle cx="18" cy="22" r="3.2" fill="#CDB6FF" />
+    <circle cx="18" cy="22" r="3.2" fill="#C4B0FC" />
     <circle cx="122" cy="18" r="2.4" fill="#F5B4D0" />
     <circle cx="14" cy="78" r="2.2" fill="#F6D56A" />
     <path d="M108 34l4 1.4-3 3 .4-4.2z" fill="#E6DAFF" />

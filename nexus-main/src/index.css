@@ -41,79 +41,79 @@
 
 :root {
   --radius: 0.875rem;
-  --background: #F8F7FC;
+  --background: #F6F4FC;
   --foreground: #25233A;
   --card: #FFFFFF;
   --card-foreground: #25233A;
   --popover: #FFFFFF;
   --popover-foreground: #25233A;
-  --primary: #8E35B8;
+  --primary: #4600F3;
   --primary-foreground: #FFFFFF;
-  --secondary: #F8EAFB;
-  --secondary-foreground: #6A228C;
-  --muted: #F7F3F8;
+  --secondary: #F5F1FF;
+  --secondary-foreground: #3600C2;
+  --muted: #F4F0FE;
   --muted-foreground: #77748A;
-  --accent: #F0D9F6;
-  --accent-foreground: #6A228C;
+  --accent: #E0D6FC;
+  --accent-foreground: #3600C2;
   --destructive: #C2415B;
   --destructive-foreground: #FFFFFF;
-  --border: #E8E3F0;
-  --input: #E8E3F0;
-  --ring: #8E35B8;
-  --chart-1: #8E35B8;
+  --border: #DDD4F5;
+  --input: #DDD4F5;
+  --ring: #4600F3;
+  --chart-1: #4600F3;
   --chart-2: #3D9A6A;
   --chart-3: #C48A1A;
-  --chart-4: #C45B8A;
-  --chart-5: #5B6BC8;
+  --chart-4: #8A5CF8;
+  --chart-5: #4600F3;
   --sidebar: #FFFFFF;
   --sidebar-foreground: #25233A;
-  --sidebar-primary: #8E35B8;
+  --sidebar-primary: #4600F3;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F0D9F6;
-  --sidebar-accent-foreground: #6A228C;
-  --sidebar-border: #E8DCEC;
-  --sidebar-ring: #8E35B8;
-  --unica-hover: #F8EAFB;
+  --sidebar-accent: #E0D6FC;
+  --sidebar-accent-foreground: #3600C2;
+  --sidebar-border: #DDD4F5;
+  --sidebar-ring: #4600F3;
+  --unica-hover: #F5F1FF;
   --unica-positive: #E7F7EC;
   --unica-neutral: #FFF4D9;
   --unica-alert: #FBEAF2;
-  --unica-shadow: 0 1px 2px rgba(79, 39, 143, 0.04), 0 8px 18px rgba(112, 64, 200, 0.05);
+  --unica-shadow: 0 1px 2px rgba(70, 0, 243, 0.04), 0 8px 18px rgba(70, 0, 243, 0.06);
 }
 
 .dark {
-  --background: oklch(0.22 0.045 305);
-  --foreground: oklch(0.96 0.012 305);
-  --card: oklch(0.27 0.05 305);
-  --card-foreground: oklch(0.96 0.012 305);
-  --popover: oklch(0.29 0.052 305);
-  --popover-foreground: oklch(0.96 0.012 305);
-  --primary: oklch(0.74 0.13 305);
-  --primary-foreground: oklch(0.2 0.04 305);
-  --secondary: oklch(0.32 0.05 305);
-  --secondary-foreground: oklch(0.96 0.012 305);
-  --muted: oklch(0.32 0.04 305);
-  --muted-foreground: oklch(0.78 0.03 305);
-  --accent: oklch(0.36 0.06 305);
-  --accent-foreground: oklch(0.96 0.012 305);
+  --background: oklch(0.22 0.045 257);
+  --foreground: oklch(0.96 0.012 257);
+  --card: oklch(0.27 0.05 257);
+  --card-foreground: oklch(0.96 0.012 257);
+  --popover: oklch(0.29 0.052 257);
+  --popover-foreground: oklch(0.96 0.012 257);
+  --primary: oklch(0.74 0.13 257);
+  --primary-foreground: oklch(0.2 0.04 257);
+  --secondary: oklch(0.32 0.05 257);
+  --secondary-foreground: oklch(0.96 0.012 257);
+  --muted: oklch(0.32 0.04 257);
+  --muted-foreground: oklch(0.78 0.03 257);
+  --accent: oklch(0.36 0.06 257);
+  --accent-foreground: oklch(0.96 0.012 257);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.42 0.05 305);
-  --input: oklch(0.38 0.05 305);
-  --ring: oklch(0.74 0.13 305);
-  --chart-1: oklch(0.68 0.14 305);
+  --border: oklch(0.42 0.05 257);
+  --input: oklch(0.38 0.05 257);
+  --ring: oklch(0.74 0.13 257);
+  --chart-1: oklch(0.68 0.14 257);
   --chart-2: oklch(0.7 0.1 184);
   --chart-3: oklch(0.76 0.12 70);
   --chart-4: oklch(0.62 0.16 303);
   --chart-5: oklch(0.66 0.14 20);
-  --sidebar: oklch(0.24 0.048 305);
-  --sidebar-foreground: oklch(0.96 0.012 305);
-  --sidebar-primary: oklch(0.74 0.13 305);
-  --sidebar-primary-foreground: oklch(0.18 0.04 305);
-  --sidebar-accent: oklch(0.32 0.05 305);
-  --sidebar-accent-foreground: oklch(0.96 0.012 305);
-  --sidebar-border: oklch(0.4 0.05 305);
-  --sidebar-ring: oklch(0.74 0.13 305);
-  --unica-hover: oklch(0.34 0.05 305);
+  --sidebar: oklch(0.24 0.048 257);
+  --sidebar-foreground: oklch(0.96 0.012 257);
+  --sidebar-primary: oklch(0.74 0.13 257);
+  --sidebar-primary-foreground: oklch(0.18 0.04 257);
+  --sidebar-accent: oklch(0.32 0.05 257);
+  --sidebar-accent-foreground: oklch(0.96 0.012 257);
+  --sidebar-border: oklch(0.4 0.05 257);
+  --sidebar-ring: oklch(0.74 0.13 257);
+  --unica-hover: oklch(0.34 0.05 257);
   --unica-positive: oklch(0.34 0.05 155);
   --unica-neutral: oklch(0.36 0.05 85);
   --unica-alert: oklch(0.34 0.05 350);
@@ -127,16 +127,11 @@
   html {
     font-size: 16px;
     min-height: 100%;
-    background-color: #efe6fb;
+    background-color: #EFEAFC;
   }
   body {
     min-height: 100%;
-    background-color: #efe6fb;
-    background-image: url('/fundo-unica.png');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+    background-color: #EFEAFC;
     color: var(--foreground);
     font-family: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "cv11" 1;
@@ -146,14 +141,25 @@
   #root {
     min-height: 100%;
   }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image: url('/fundo-unica.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    filter: hue-rotate(-42deg) saturate(1.08);
+  }
   ::selection {
-    background: #F0D9F6;
+    background: #E0D6FC;
     color: #25233A;
   }
   
   /* YouTube-like dark mode improvements */
   .dark {
-    scrollbar-color: oklch(0.46 0.05 305) transparent;
+    scrollbar-color: oklch(0.46 0.05 257) transparent;
   }
   
   .dark ::-webkit-scrollbar {
@@ -166,12 +172,12 @@
   }
   
   .dark ::-webkit-scrollbar-thumb {
-    background-color: oklch(0.46 0.05 305);
+    background-color: oklch(0.46 0.05 257);
     border-radius: 4px;
   }
   
   .dark ::-webkit-scrollbar-thumb:hover {
-    background-color: oklch(0.54 0.06 305);
+    background-color: oklch(0.54 0.06 257);
   }
 }
 
@@ -185,7 +191,7 @@
   background-image: linear-gradient(180deg, oklch(0.95 0.03 85) 0%, var(--card) 46%);
 }
 .calendar-skin-anonovo {
-  background-image: linear-gradient(180deg, oklch(0.94 0.03 305) 0%, var(--card) 46%);
+  background-image: linear-gradient(180deg, oklch(0.94 0.03 257) 0%, var(--card) 46%);
 }
 .dark .calendar-skin-halloween {
   background-image: linear-gradient(180deg, oklch(0.32 0.04 45) 0%, var(--card) 50%);
@@ -197,7 +203,7 @@
   background-image: linear-gradient(180deg, oklch(0.32 0.04 80) 0%, var(--card) 50%);
 }
 .dark .calendar-skin-anonovo {
-  background-image: linear-gradient(180deg, oklch(0.3 0.05 305) 0%, var(--card) 50%);
+  background-image: linear-gradient(180deg, oklch(0.3 0.05 257) 0%, var(--card) 50%);
 }
 
 /* Theme Mode Ripple Reveal animations css starts */
@@ -245,8 +251,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #F3E4FA;
-  color: #8E35B8;
+  background: #EDE7FE;
+  color: #4600F3;
 }
 
 .unica-script {

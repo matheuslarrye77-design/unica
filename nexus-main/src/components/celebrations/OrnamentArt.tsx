@@ -32,8 +32,8 @@ export const OrnamentArt: FC<{ kind: string }> = ({ kind }) => {
     return (
       <svg viewBox="0 0 64 64" className="h-full w-full">
         <path d="M32 10c4 6 4 10 0 14-4-4-4-8 0-14z" fill="#F59E0B" />
-        <rect x="27" y="24" width="10" height="28" rx="3" fill="#F8EAFB" stroke="#8E35B8" />
-        <rect x="24" y="50" width="16" height="4" rx="2" fill="#6A228C" />
+        <rect x="27" y="24" width="10" height="28" rx="3" fill="#F5F1FF" stroke="#4600F3" />
+        <rect x="24" y="50" width="16" height="4" rx="2" fill="#3600C2" />
       </svg>
     );
   }
@@ -58,15 +58,15 @@ export const OrnamentArt: FC<{ kind: string }> = ({ kind }) => {
     return (
       <svg viewBox="0 0 64 64" className="h-full w-full">
         <path d="M32 8v8" stroke="#B45309" strokeWidth="2" />
-        <circle cx="32" cy="36" r="16" fill="#8E35B8" />
-        <path d="M22 30c6 4 14 4 20-2" fill="none" stroke="#F8EAFB" strokeWidth="2" />
+        <circle cx="32" cy="36" r="16" fill="#4600F3" />
+        <path d="M22 30c6 4 14 4 20-2" fill="none" stroke="#F5F1FF" strokeWidth="2" />
       </svg>
     );
   }
   if (kind === 'presente') {
     return (
       <svg viewBox="0 0 64 64" className="h-full w-full">
-        <rect x="12" y="26" width="40" height="26" rx="4" fill="#7C3AED" />
+        <rect x="12" y="26" width="40" height="26" rx="4" fill="#4600F3" />
         <rect x="28" y="26" width="8" height="26" fill="#F9A8D4" />
         <path d="M32 26c-8-12-18-4-10 2h10c8-6-2-14-10-2" fill="#F9A8D4" />
       </svg>
@@ -75,16 +75,16 @@ export const OrnamentArt: FC<{ kind: string }> = ({ kind }) => {
   if (kind === 'bandeira') {
     return (
       <svg viewBox="0 0 64 64" className="h-full w-full">
-        <path d="M8 40h48" stroke="#6A228C" strokeWidth="2" />
-        <path d="M14 40l8-16 8 16 8-16 8 16" fill="#F59E0B" stroke="#8E35B8" />
+        <path d="M8 40h48" stroke="#3600C2" strokeWidth="2" />
+        <path d="M14 40l8-16 8 16 8-16 8 16" fill="#F59E0B" stroke="#4600F3" />
       </svg>
     );
   }
   if (kind === 'plaquinha') {
     return (
       <svg viewBox="0 0 64 64" className="h-full w-full">
-        <rect x="10" y="18" width="44" height="28" rx="6" fill="#F8EAFB" stroke="#8E35B8" />
-        <path d="M18 30h28M18 38h18" stroke="#6A228C" strokeWidth="2" />
+        <rect x="10" y="18" width="44" height="28" rx="6" fill="#F5F1FF" stroke="#4600F3" />
+        <path d="M18 30h28M18 38h18" stroke="#3600C2" strokeWidth="2" />
       </svg>
     );
   }
@@ -109,7 +109,7 @@ export const OrnamentArt: FC<{ kind: string }> = ({ kind }) => {
   if (kind === 'ovo') {
     return (
       <svg viewBox="0 0 64 64" className="h-full w-full">
-        <ellipse cx="32" cy="34" rx="14" ry="18" fill="#FDE68A" stroke="#8E35B8" />
+        <ellipse cx="32" cy="34" rx="14" ry="18" fill="#FDE68A" stroke="#4600F3" />
         <path d="M22 34h20" stroke="#E11D48" strokeWidth="3" />
       </svg>
     );
@@ -119,7 +119,7 @@ export const OrnamentArt: FC<{ kind: string }> = ({ kind }) => {
       <svg viewBox="0 0 64 64" className="h-full w-full">
         <circle cx="32" cy="32" r="4" fill="#F59E0B" />
         {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => (
-          <line key={angle} x1="32" y1="32" x2="32" y2="12" stroke="#8E35B8" strokeWidth="2" transform={`rotate(${angle} 32 32)`} />
+          <line key={angle} x1="32" y1="32" x2="32" y2="12" stroke="#4600F3" strokeWidth="2" transform={`rotate(${angle} 32 32)`} />
         ))}
       </svg>
     );
@@ -127,7 +127,7 @@ export const OrnamentArt: FC<{ kind: string }> = ({ kind }) => {
   return (
     <svg viewBox="0 0 64 64" className="h-full w-full">
       <ellipse cx="32" cy="40" rx="12" ry="14" fill="#E11D48" />
-      <path d="M32 18c6 8 6 12 0 16" stroke="#F8EAFB" strokeWidth="2" fill="none" />
+      <path d="M32 18c6 8 6 12 0 16" stroke="#F5F1FF" strokeWidth="2" fill="none" />
     </svg>
   );
 };

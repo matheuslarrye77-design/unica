@@ -178,16 +178,16 @@ export const CelebrationsCenter: FC = () => {
     <section className="mt-4">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex gap-2">
-          <button type="button" onClick={() => chooseScope('aniversarios')} className={cn('grid h-14 w-14 place-items-center rounded-full border', scope === 'aniversarios' ? 'border-[#8E35B8] bg-[#8E35B8] text-white' : 'border-[#E7DFF0] bg-white text-[#6A228C]') } aria-label="Aniversários"><Cake className="h-5 w-5" /></button>
-          <button type="button" onClick={() => chooseScope('equipe')} className={cn('grid h-14 w-14 place-items-center rounded-full border', scope === 'equipe' ? 'border-[#8E35B8] bg-[#8E35B8] text-white' : 'border-[#E7DFF0] bg-white text-[#6A228C]')} aria-label="Celebrações da equipe"><TreePine className="h-5 w-5" /></button>
+          <button type="button" onClick={() => chooseScope('aniversarios')} className={cn('grid h-14 w-14 place-items-center rounded-full border', scope === 'aniversarios' ? 'border-[#4600F3] bg-[#4600F3] text-white' : 'border-[#DDD4F5] bg-white text-[#3600C2]') } aria-label="Aniversários"><Cake className="h-5 w-5" /></button>
+          <button type="button" onClick={() => chooseScope('equipe')} className={cn('grid h-14 w-14 place-items-center rounded-full border', scope === 'equipe' ? 'border-[#4600F3] bg-[#4600F3] text-white' : 'border-[#DDD4F5] bg-white text-[#3600C2]')} aria-label="Celebrações da equipe"><TreePine className="h-5 w-5" /></button>
         </div>
-        <Link to="/calendar" className="text-[13px] font-medium text-[#6A228C]">Ver calendário</Link>
+        <Link to="/calendar" className="text-[13px] font-medium text-[#3600C2]">Ver calendário</Link>
       </div>
       <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
         {scope === 'aniversarios' ? people.map((item) => (
-          <button key={item.id} type="button" onClick={() => { const next = new URLSearchParams(params); next.set('pessoa', item.id); setParams(next); }} className={cn('shrink-0 rounded-full px-3 py-1.5 text-[13px]', item.id === person?.id ? 'bg-[#8E35B8] text-white' : 'bg-white text-[#6A228C]')}>{item.name.split(' ')[0]}</button>
+          <button key={item.id} type="button" onClick={() => { const next = new URLSearchParams(params); next.set('pessoa', item.id); setParams(next); }} className={cn('shrink-0 rounded-full px-3 py-1.5 text-[13px]', item.id === person?.id ? 'bg-[#4600F3] text-white' : 'bg-white text-[#3600C2]')}>{item.name.split(' ')[0]}</button>
         )) : editions.map((item) => (
-          <button key={item.id} type="button" onClick={() => { const next = new URLSearchParams(params); next.set('edicao', item.id); setParams(next); }} className={cn('shrink-0 rounded-full px-3 py-1.5 text-[13px]', item.id === edition?.id ? 'bg-[#8E35B8] text-white' : 'bg-white text-[#6A228C]')}>{item.title}</button>
+          <button key={item.id} type="button" onClick={() => { const next = new URLSearchParams(params); next.set('edicao', item.id); setParams(next); }} className={cn('shrink-0 rounded-full px-3 py-1.5 text-[13px]', item.id === edition?.id ? 'bg-[#4600F3] text-white' : 'bg-white text-[#3600C2]')}>{item.title}</button>
         ))}
       </div>
       {edition ? (
@@ -206,7 +206,7 @@ export const CelebrationsCenter: FC = () => {
             type="button"
             aria-label={`Enfeite de ${ornament.authorName}`}
             onPointerDown={(event) => onPointerDown(event, ornament)}
-            className={cn('absolute grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center', selectedId === ornament.id && 'rounded-full ring-2 ring-[#8E35B8]')}
+            className={cn('absolute grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center', selectedId === ornament.id && 'rounded-full ring-2 ring-[#4600F3]')}
             style={{ left: `${ornament.x}%`, top: `${ornament.y}%`, transform: `translate(-50%, -50%) scale(${ornament.scale})` }}
           >
             <OrnamentArt kind={ornament.kind} />
@@ -223,14 +223,14 @@ export const CelebrationsCenter: FC = () => {
       <div className="mx-auto mt-4 max-w-[440px]">
         <div className="flex gap-2 overflow-x-auto pb-2">
           {catalog.map((item) => (
-            <button key={item.id} type="button" onClick={() => { setDraftKind(item.id); noteRef.current?.focus(); }} className={cn('grid h-14 w-14 shrink-0 place-items-center rounded-2xl border bg-white', draftKind === item.id ? 'border-[#8E35B8]' : 'border-[#F0E7F6]')} aria-label={item.label}>
+            <button key={item.id} type="button" onClick={() => { setDraftKind(item.id); noteRef.current?.focus(); }} className={cn('grid h-14 w-14 shrink-0 place-items-center rounded-2xl border bg-white', draftKind === item.id ? 'border-[#4600F3]' : 'border-[#EDE7FE]')} aria-label={item.label}>
               <span className="h-8 w-8"><OrnamentArt kind={item.id} /></span>
             </button>
           ))}
         </div>
-        <textarea ref={noteRef} value={message} onChange={(event) => setMessage(event.target.value)} maxLength={500} placeholder="Escreva o recado que fica escondido neste enfeite" className="mt-2 min-h-20 w-full rounded-2xl border border-[#E7DFF0] bg-white px-3 py-2 text-sm" />
+        <textarea ref={noteRef} value={message} onChange={(event) => setMessage(event.target.value)} maxLength={500} placeholder="Escreva o recado que fica escondido neste enfeite" className="mt-2 min-h-20 w-full rounded-2xl border border-[#DDD4F5] bg-white px-3 py-2 text-sm" />
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <label className="rounded-full bg-white px-3 py-1.5 text-[12px] text-[#6A228C]">
+          <label className="rounded-full bg-white px-3 py-1.5 text-[12px] text-[#3600C2]">
             Foto ou GIF
             <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={(event) => {
               const file = event.target.files?.[0];
@@ -243,7 +243,7 @@ export const CelebrationsCenter: FC = () => {
               <img src={`/figurinhas/${sticker}.svg`} alt="" />
             </button>
           ))}
-          <button type="button" disabled={busy || !edition?.writable || message.trim().length < 1} onClick={() => void publish()} className="ml-auto rounded-full bg-[#8E35B8] px-4 py-2 text-sm text-white disabled:opacity-40">Publicar</button>
+          <button type="button" disabled={busy || !edition?.writable || message.trim().length < 1} onClick={() => void publish()} className="ml-auto rounded-full bg-[#4600F3] px-4 py-2 text-sm text-white disabled:opacity-40">Publicar</button>
         </div>
         {edition && !edition.writable ? <p className="mt-2 text-[12px] text-[#8A7C98]">Novos recados estão bloqueados neste período. Escolha um aniversário ou uma data da equipe que ainda está em preparação.</p> : null}
       </div>
@@ -259,7 +259,7 @@ export const CelebrationsCenter: FC = () => {
               </div>
               <button type="button" aria-label="Fechar" onClick={() => setOpenId(null)}><X className="h-4 w-4" /></button>
             </div>
-            {opened.sealed ? <p className="mt-4 text-sm text-[#6A228C]">Este recado ainda não foi liberado.</p> : (
+            {opened.sealed ? <p className="mt-4 text-sm text-[#3600C2]">Este recado ainda não foi liberado.</p> : (
               <>
                 <p className="mt-4 whitespace-pre-wrap text-sm text-[#241B33]">{opened.message}</p>
                 {opened.media ? <img src={opened.media.url} alt="" className="mt-3 max-h-48 rounded-2xl" /> : null}
@@ -267,7 +267,7 @@ export const CelebrationsCenter: FC = () => {
             )}
             {(opened.authorId === viewerId || leader) && edition?.writable && !opened.sealed ? (
               <div className="mt-4 flex gap-3">
-                <button type="button" className="text-[13px] text-[#6A228C]" onClick={() => {
+                <button type="button" className="text-[13px] text-[#3600C2]" onClick={() => {
                   const next = window.prompt('Editar recado', opened.message);
                   if (!next?.trim()) return;
                   void moveOrnament(opened.id, { message: next.trim() }).then(refresh);
@@ -303,7 +303,7 @@ const LeaderTools: FC<{ onSaved: () => Promise<void> }> = ({ onSaved }) => {
   const [messageUntil, setMessageUntil] = useState('');
   const [openAt, setOpenAt] = useState('');
   const [viewUntil, setViewUntil] = useState('');
-  if (!open) return <button type="button" className="mt-4 text-[12px] text-[#6A228C]" onClick={() => setOpen(true)}>Configurar períodos</button>;
+  if (!open) return <button type="button" className="mt-4 text-[12px] text-[#3600C2]" onClick={() => setOpen(true)}>Configurar períodos</button>;
   return (
     <form className="mt-4 grid gap-2 rounded-2xl bg-white p-3 text-[13px]" onSubmit={(event) => {
       event.preventDefault();
@@ -319,8 +319,8 @@ const LeaderTools: FC<{ onSaved: () => Promise<void> }> = ({ onSaved }) => {
       <label className="grid gap-1">Abertura da leitura<input type="date" value={openAt} onChange={(event) => setOpenAt(event.target.value)} className="rounded-xl border px-3 py-2" /></label>
       <label className="grid gap-1">Encerramento<input type="date" value={viewUntil} onChange={(event) => setViewUntil(event.target.value)} className="rounded-xl border px-3 py-2" /></label>
       <div className="flex gap-2">
-        <button type="submit" className="rounded-full bg-[#8E35B8] px-3 py-1.5 text-white">Criar</button>
-        <button type="button" className="rounded-full bg-[#F8EAFB] px-3 py-1.5" onClick={() => void saveCelebrationSettings(2).then(() => onSaved())}>Retenção de 2 meses</button>
+        <button type="submit" className="rounded-full bg-[#4600F3] px-3 py-1.5 text-white">Criar</button>
+        <button type="button" className="rounded-full bg-[#F5F1FF] px-3 py-1.5" onClick={() => void saveCelebrationSettings(2).then(() => onSaved())}>Retenção de 2 meses</button>
       </div>
     </form>
   );

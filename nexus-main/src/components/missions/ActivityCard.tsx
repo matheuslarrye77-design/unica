@@ -24,8 +24,8 @@ import { cn } from '@/lib/utils';
 
 const priorityClass: Record<Activity['priority'], string> = {
   high: 'bg-[#FCE7F3] text-[#BE185D]',
-  medium: 'bg-[#EDE9FE] text-[#6D28D9]',
-  low: 'bg-[#E0E7FF] text-[#4338CA]',
+  medium: 'bg-[#EDE9FE] text-[#3600C2]',
+  low: 'bg-[#E0E7FF] text-[#4600F3]',
 };
 
 function SourceIcon({ source }: { source: string }) {
@@ -51,7 +51,7 @@ export const ActivityCardView: FC<{
     <article className={cn('relative h-[128px] overflow-hidden rounded-xl border border-[#F3EEF6] bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(40,20,60,0.04)]', dragging && 'opacity-40')}>
       <div className="relative flex items-center gap-1.5">
         {leadership ? <img src="/atividades/alfinete.png" alt="" className="h-5 w-5 shrink-0 object-contain" /> : null}
-        <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-medium', leadership ? 'bg-[#F6EEFB] text-[#6A228C]' : 'bg-[#F6EEFB] text-[#8E35B8]')}>
+        <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-medium', leadership ? 'bg-[#F3EFFF] text-[#3600C2]' : 'bg-[#F3EFFF] text-[#4600F3]')}>
           {ORIGIN_LABEL[activity.origin]}
         </span>
         {onToggle ? (

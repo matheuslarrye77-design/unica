@@ -277,7 +277,7 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
                     key={corner}
                     type="button"
                     aria-label="Ajustar recorte"
-                    className={`absolute z-10 h-3.5 w-3.5 rounded-full border border-white bg-[#8E35B8] ${corner.includes('n') ? '-top-1.5' : '-bottom-1.5'} ${corner.includes('w') ? '-left-1.5' : '-right-1.5'}`}
+                    className={`absolute z-10 h-3.5 w-3.5 rounded-full border border-white bg-[#4600F3] ${corner.includes('n') ? '-top-1.5' : '-bottom-1.5'} ${corner.includes('w') ? '-left-1.5' : '-right-1.5'}`}
                     onPointerDown={(event) => onPointerDown(event, corner)}
                   />
                 ))}
@@ -286,20 +286,20 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
           ) : null}
         </div>
         <div className="relative mt-3 flex items-center gap-2">
-          <button type="button" aria-expanded={zoomOpen} aria-label="Zoom" onClick={() => { setZoomOpen((current) => !current); setShapesOpen(false); }} className={`grid h-8 w-8 place-items-center rounded-full ${zoomOpen ? 'bg-[#8E35B8] text-white' : 'bg-[#F3E4FA] text-[#6A228C]'}`}>
+          <button type="button" aria-expanded={zoomOpen} aria-label="Zoom" onClick={() => { setZoomOpen((current) => !current); setShapesOpen(false); }} className={`grid h-8 w-8 place-items-center rounded-full ${zoomOpen ? 'bg-[#4600F3] text-white' : 'bg-[#EDE7FE] text-[#3600C2]'}`}>
             <Search className="h-3.5 w-3.5" />
           </button>
-          <button type="button" aria-expanded={shapesOpen} aria-label="Recortar" onClick={() => { setShapesOpen((current) => !current); setZoomOpen(false); }} className={`grid h-8 w-8 place-items-center rounded-full ${shapesOpen || format ? 'bg-[#8E35B8] text-white' : 'bg-[#F3E4FA] text-[#6A228C]'}`}>
+          <button type="button" aria-expanded={shapesOpen} aria-label="Recortar" onClick={() => { setShapesOpen((current) => !current); setZoomOpen(false); }} className={`grid h-8 w-8 place-items-center rounded-full ${shapesOpen || format ? 'bg-[#4600F3] text-white' : 'bg-[#EDE7FE] text-[#3600C2]'}`}>
             <Scissors className="h-3.5 w-3.5" />
           </button>
           {zoomOpen ? (
-            <input aria-label="Zoom" type="range" min={1} max={3} step={0.01} value={zoom} onChange={(event) => changeZoom(Number(event.target.value))} className="h-1.5 min-w-0 flex-1 accent-[#8E35B8]" />
+            <input aria-label="Zoom" type="range" min={1} max={3} step={0.01} value={zoom} onChange={(event) => changeZoom(Number(event.target.value))} className="h-1.5 min-w-0 flex-1 accent-[#4600F3]" />
           ) : null}
           {shapesOpen ? (
-            <div className="absolute bottom-10 left-0 z-20 w-44 rounded-2xl border border-[#E6DEEF] bg-white p-1.5 shadow-[0_12px_32px_rgba(70,30,110,0.14)]">
-              <button type="button" className="block w-full rounded-xl px-3 py-1.5 text-left text-[13px] text-[#6A228C] hover:bg-[#F8F4FB]" onClick={() => chooseFormat(null)}>Sem corte</button>
+            <div className="absolute bottom-10 left-0 z-20 w-44 rounded-2xl border border-[#DDD4F5] bg-white p-1.5 shadow-[0_12px_32px_rgba(70,0,243,0.14)]">
+              <button type="button" className="block w-full rounded-xl px-3 py-1.5 text-left text-[13px] text-[#3600C2] hover:bg-[#F8F4FB]" onClick={() => chooseFormat(null)}>Sem corte</button>
               {formats.map((item) => (
-                <button key={item.id} type="button" aria-pressed={format === item.id} className={`block w-full rounded-xl px-3 py-1.5 text-left text-[13px] ${format === item.id ? 'bg-[#F3E4FA] font-semibold text-[#6A228C]' : 'text-[#3C3952] hover:bg-[#F8F4FB]'}`} onClick={() => chooseFormat(item.id)}>
+                <button key={item.id} type="button" aria-pressed={format === item.id} className={`block w-full rounded-xl px-3 py-1.5 text-left text-[13px] ${format === item.id ? 'bg-[#EDE7FE] font-semibold text-[#3600C2]' : 'text-[#3C3952] hover:bg-[#F8F4FB]'}`} onClick={() => chooseFormat(item.id)}>
                   {item.label}
                 </button>
               ))}
@@ -309,12 +309,12 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
         {darken ? (
           <label className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
             Opacidade
-            <input aria-label="Opacidade" type="range" min={0.2} max={1} step={0.01} value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} className="h-1.5 flex-1 accent-[#8E35B8]" />
+            <input aria-label="Opacidade" type="range" min={0.2} max={1} step={0.01} value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} className="h-1.5 flex-1 accent-[#4600F3]" />
           </label>
         ) : null}
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" className="rounded-full px-4 py-2 text-sm text-[#6A228C]" onClick={onCancel}>Cancelar</button>
-          <button type="button" className="rounded-full bg-[#8E35B8] px-4 py-2 text-sm font-medium text-white" onClick={confirm}>Confirmar</button>
+          <button type="button" className="rounded-full px-4 py-2 text-sm text-[#3600C2]" onClick={onCancel}>Cancelar</button>
+          <button type="button" className="rounded-full bg-[#4600F3] px-4 py-2 text-sm font-medium text-white" onClick={confirm}>Confirmar</button>
         </div>
       </div>
     </div>

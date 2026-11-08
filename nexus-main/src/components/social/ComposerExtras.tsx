@@ -67,7 +67,7 @@ export const ComposerExtras: FC<{
       {active === 'emoji' ? (
         <div className="grid max-h-52 grid-cols-8 gap-0.5 overflow-y-auto">
           {emojis.map((emoji) => (
-            <button key={emoji} type="button" className="grid h-8 place-items-center rounded-lg text-lg hover:bg-[#F8EAFB]" onClick={() => onEmoji(emoji)}>{emoji}</button>
+            <button key={emoji} type="button" className="grid h-8 place-items-center rounded-lg text-lg hover:bg-[#F5F1FF]" onClick={() => onEmoji(emoji)}>{emoji}</button>
           ))}
         </div>
       ) : null}
@@ -76,10 +76,10 @@ export const ComposerExtras: FC<{
           <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(event) => { void uploadSticker(event.target.files?.[0]); event.target.value = ''; }} />
           {uploadError ? <p className="mb-2 px-1 text-center text-[12px] text-[#9D174D]">{uploadError}</p> : null}
           <div className="mb-2 flex justify-end px-1">
-            <button type="button" className="text-[12px] font-semibold text-[#8E35B8]" aria-pressed={editing} onClick={() => setEditing((current) => !current)}>{editing ? 'Concluir' : 'Editar'}</button>
+            <button type="button" className="text-[12px] font-semibold text-[#4600F3]" aria-pressed={editing} onClick={() => setEditing((current) => !current)}>{editing ? 'Concluir' : 'Editar'}</button>
           </div>
           <div className="grid max-h-48 grid-cols-[repeat(auto-fill,3.5rem)] justify-start gap-1.5 overflow-y-auto">
-            <button type="button" disabled={uploading} aria-label="Enviar figurinha" className="grid h-14 w-14 place-items-center rounded-xl border border-dashed border-[#D7B6E8] bg-[#FBF7FD] text-[#8E35B8] disabled:opacity-50" onClick={() => fileRef.current?.click()}>
+            <button type="button" disabled={uploading} aria-label="Enviar figurinha" className="grid h-14 w-14 place-items-center rounded-xl border border-dashed border-[#D4C8FC] bg-[#FBF7FD] text-[#4600F3] disabled:opacity-50" onClick={() => fileRef.current?.click()}>
               <Plus className="h-4 w-4" />
             </button>
             {savedStickers.map((item) => (
@@ -87,7 +87,7 @@ export const ComposerExtras: FC<{
                 <img src={item.url} alt="" className="h-full w-full rounded-lg object-contain" />
                 {editing ? (
                   <>
-                    <button type="button" aria-label="Colocar figurinha em primeiro" className="absolute left-1 top-1 z-10 grid h-6 w-6 place-items-center rounded-full bg-white text-[#8E35B8] shadow" onClick={() => { void prioritizeSticker(item.url).catch(() => setUploadError('Não foi possível priorizar a figurinha.')); }}>
+                    <button type="button" aria-label="Colocar figurinha em primeiro" className="absolute left-1 top-1 z-10 grid h-6 w-6 place-items-center rounded-full bg-white text-[#4600F3] shadow" onClick={() => { void prioritizeSticker(item.url).catch(() => setUploadError('Não foi possível priorizar a figurinha.')); }}>
                       <ArrowUp className="h-3.5 w-3.5" />
                     </button>
                     <button type="button" aria-label="Remover figurinha" className="absolute right-1 top-1 z-10 grid h-6 w-6 place-items-center rounded-full bg-white text-[#9D174D] shadow" onClick={() => { void forgetSticker(item.url).catch(() => setUploadError('Não foi possível remover a figurinha.')); }}>
@@ -111,9 +111,9 @@ export const ComposerExtras: FC<{
   return (
     <div className="min-w-0">
       <div className="flex items-center gap-1">
-        <button type="button" aria-label="Emojis" aria-expanded={panel === 'emoji'} className="grid h-9 w-9 place-items-center rounded-full text-[#6A228C] hover:bg-[#F8EAFB]" onClick={() => toggle('emoji')}><Smile className="h-4 w-4" /></button>
-        {onSticker ? <button type="button" aria-label="Figurinhas" aria-expanded={panel === 'sticker'} className="grid h-9 w-9 place-items-center rounded-full text-[#6A228C] hover:bg-[#F8EAFB]" onClick={() => toggle('sticker')}><Sticker className="h-4 w-4" /></button> : null}
-        {onGif ? <button type="button" aria-label="GIFs" aria-expanded={panel === 'gif'} className="grid h-9 w-9 place-items-center rounded-full text-[#6A228C] hover:bg-[#F8EAFB]" onClick={() => toggle('gif')}><ImagePlay className="h-4 w-4" /></button> : null}
+        <button type="button" aria-label="Emojis" aria-expanded={panel === 'emoji'} className="grid h-9 w-9 place-items-center rounded-full text-[#3600C2] hover:bg-[#F5F1FF]" onClick={() => toggle('emoji')}><Smile className="h-4 w-4" /></button>
+        {onSticker ? <button type="button" aria-label="Figurinhas" aria-expanded={panel === 'sticker'} className="grid h-9 w-9 place-items-center rounded-full text-[#3600C2] hover:bg-[#F5F1FF]" onClick={() => toggle('sticker')}><Sticker className="h-4 w-4" /></button> : null}
+        {onGif ? <button type="button" aria-label="GIFs" aria-expanded={panel === 'gif'} className="grid h-9 w-9 place-items-center rounded-full text-[#3600C2] hover:bg-[#F5F1FF]" onClick={() => toggle('gif')}><ImagePlay className="h-4 w-4" /></button> : null}
       </div>
       {panel ? (
         <div className="mt-2 w-full max-w-sm rounded-2xl border border-[#EFE6F4] bg-white p-2 shadow-lg">

@@ -136,23 +136,23 @@ export const ImageAdjust: FC<{ file: File; onCancel: () => void; onConfirm: (fil
           {aspect && opacity < 1 ? <div className="pointer-events-none absolute inset-0 bg-black" style={{ opacity: 1 - opacity }} /> : null}
         </div>
         <div className="mt-4 flex items-center gap-3">
-          <button type="button" aria-label="Diminuir zoom" className="grid h-9 w-9 place-items-center rounded-full bg-[#F8EAFB] text-[#6A228C]" onClick={() => changeZoom(zoom - 0.15)}>
+          <button type="button" aria-label="Diminuir zoom" className="grid h-9 w-9 place-items-center rounded-full bg-[#F5F1FF] text-[#3600C2]" onClick={() => changeZoom(zoom - 0.15)}>
             <Minus className="h-4 w-4" />
           </button>
-          <input aria-label="Zoom" type="range" min={1} max={3} step={0.01} value={zoom} onChange={(event) => changeZoom(Number(event.target.value))} className="h-1.5 flex-1 accent-[#8E35B8]" />
-          <button type="button" aria-label="Aumentar zoom" className="grid h-9 w-9 place-items-center rounded-full bg-[#F8EAFB] text-[#6A228C]" onClick={() => changeZoom(zoom + 0.15)}>
+          <input aria-label="Zoom" type="range" min={1} max={3} step={0.01} value={zoom} onChange={(event) => changeZoom(Number(event.target.value))} className="h-1.5 flex-1 accent-[#4600F3]" />
+          <button type="button" aria-label="Aumentar zoom" className="grid h-9 w-9 place-items-center rounded-full bg-[#F5F1FF] text-[#3600C2]" onClick={() => changeZoom(zoom + 0.15)}>
             <Plus className="h-4 w-4" />
           </button>
         </div>
         {aspect ? (
           <label className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
             Opacidade
-            <input aria-label="Opacidade" type="range" min={0.2} max={1} step={0.01} value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} className="h-1.5 flex-1 accent-[#8E35B8]" />
+            <input aria-label="Opacidade" type="range" min={0.2} max={1} step={0.01} value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} className="h-1.5 flex-1 accent-[#4600F3]" />
           </label>
         ) : null}
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" className="rounded-full px-4 py-2 text-sm text-[#6A228C]" onClick={onCancel}>Cancelar</button>
-          <button type="button" className="rounded-full bg-[#8E35B8] px-4 py-2 text-sm font-medium text-white" onClick={confirm}>Confirmar</button>
+          <button type="button" className="rounded-full px-4 py-2 text-sm text-[#3600C2]" onClick={onCancel}>Cancelar</button>
+          <button type="button" className="rounded-full bg-[#4600F3] px-4 py-2 text-sm font-medium text-white" onClick={confirm}>Confirmar</button>
         </div>
       </div>
     </div>

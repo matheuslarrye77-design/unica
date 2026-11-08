@@ -146,7 +146,7 @@ export const ActivityBoard: FC = () => {
     <div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-2.5">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#F3E4FA] text-[#8E35B8]">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#EDE7FE] text-[#4600F3]">
             <Check className="h-4 w-4" strokeWidth={2.4} />
           </span>
           <div>
@@ -160,22 +160,22 @@ export const ActivityBoard: FC = () => {
         <button
           type="button"
           onClick={() => showTab('mine')}
-          className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'mine' ? 'border-[#8E35B8] text-[#6A228C]' : 'border-transparent text-[#8A7C98]')}
+          className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'mine' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}
         >
           <User className="h-3.5 w-3.5" /> Minhas atividades
         </button>
         <button
           type="button"
           onClick={() => showTab('leadership')}
-          className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'leadership' ? 'border-[#8E35B8] text-[#6A228C]' : 'border-transparent text-[#8A7C98]')}
+          className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'leadership' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}
         >
           <Star className="h-3.5 w-3.5" /> Missões da liderança
-          <span className="grid h-4 min-w-4 place-items-center rounded-full bg-[#F3E4FA] px-1 text-[10px] font-semibold text-[#8E35B8]">{leadershipCount}</span>
+          <span className="grid h-4 min-w-4 place-items-center rounded-full bg-[#EDE7FE] px-1 text-[10px] font-semibold text-[#4600F3]">{leadershipCount}</span>
         </button>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button type="button" onClick={() => openCreate('todo')} className="ml-auto h-9 rounded-full bg-[#8E35B8] px-3.5 text-[13px] hover:bg-[#7A2CA0]">
+        <Button type="button" onClick={() => openCreate('todo')} className="ml-auto h-9 rounded-full bg-[#4600F3] px-3.5 text-[13px] hover:bg-[#3600C2]">
           <Plus /> Nova atividade
         </Button>
       </div>
@@ -199,35 +199,35 @@ export const ActivityBoard: FC = () => {
         </DndContext>
 
         <aside className="grid content-start gap-2.5">
-          <section className="rounded-2xl border border-[#F0E7F6] bg-white p-3 shadow-[0_1px_2px_rgba(40,20,60,0.04)]">
+          <section className="rounded-2xl border border-[#EDE7FE] bg-white p-3 shadow-[0_1px_2px_rgba(40,20,60,0.04)]">
             <h2 className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#2C2433]">
-              <BarChart3 className="h-3.5 w-3.5 text-[#8E35B8]" /> Resumo da sua performance
+              <BarChart3 className="h-3.5 w-3.5 text-[#4600F3]" /> Resumo da sua performance
             </h2>
             <div className="mt-3 flex items-center gap-3">
               <div className="relative grid h-[88px] w-[88px] shrink-0 place-items-center">
                 <div
                   className="absolute inset-0 rounded-full"
-                  style={{ background: 'conic-gradient(from 250deg, #8E35B8 0 87%, #F3E4FA 87% 100%)' }}
+                  style={{ background: 'conic-gradient(from 250deg, #4600F3 0 87%, #EDE7FE 87% 100%)' }}
                 />
                 <div className="absolute inset-[9px] rounded-full bg-white" />
-                <span className="relative text-[18px] font-semibold text-[#6A228C]">87%</span>
+                <span className="relative text-[18px] font-semibold text-[#3600C2]">87%</span>
               </div>
               <ul className="grid gap-1 text-[11.5px] font-normal text-[#5C5168]">
-                <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#8E35B8]" /> <strong className="font-semibold text-[#2C2433]">12</strong> Total de atividades</li>
-                <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#818CF8]" /> <strong className="font-semibold text-[#2C2433]">10</strong> Concluídas</li>
-                <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#A78BFA]" /> <strong className="font-semibold text-[#2C2433]">2</strong> Em andamento</li>
+                <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#4600F3]" /> <strong className="font-semibold text-[#2C2433]">12</strong> Total de atividades</li>
+                <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#6B33F6]" /> <strong className="font-semibold text-[#2C2433]">10</strong> Concluídas</li>
+                <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#8A5CF8]" /> <strong className="font-semibold text-[#2C2433]">2</strong> Em andamento</li>
                 <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#FB7185]" /> <strong className="font-semibold text-[#2C2433]">0</strong> Atrasadas</li>
               </ul>
             </div>
             <p className="mt-1.5 text-center text-[11px] font-normal text-[#8A7C98]">Taxa de conclusão</p>
           </section>
 
-          <section className="rounded-2xl border border-[#F0E7F6] bg-white p-3 shadow-[0_1px_2px_rgba(40,20,60,0.04)]">
+          <section className="rounded-2xl border border-[#EDE7FE] bg-white p-3 shadow-[0_1px_2px_rgba(40,20,60,0.04)]">
             <div className="flex items-center justify-between gap-2">
               <h2 className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#2C2433]">
                 <Star className="h-3.5 w-3.5 text-[#8A7C98]" /> Missões ativas para você
               </h2>
-              <button type="button" onClick={() => showTab('leadership')} className="text-[11.5px] font-medium text-[#8E35B8]">Ver todas</button>
+              <button type="button" onClick={() => showTab('leadership')} className="text-[11.5px] font-medium text-[#4600F3]">Ver todas</button>
             </div>
             <ul className="mt-2.5 grid gap-2.5">
               {activeMissions.map((mission) => (

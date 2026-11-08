@@ -49,7 +49,7 @@ const chartColors = {
   secondary: '#10b981',
   tertiary: '#f59e0b',
   danger: '#ef4444',
-  purple: '#8b5cf6',
+  purple: '#6B33F6',
   pink: '#ec4899'
 };
 
@@ -222,7 +222,7 @@ export const AnalyticsPage: FC = () => {
                         labelLine={false}
                         label={({ name, percentage }) => `${name} (${percentage}%)`}
                         outerRadius={80}
-                        fill="#8884d8"
+                        fill="#6B33F6"
                         dataKey="count"
                       >
                         {projectStatusData.map((_, index) => (
