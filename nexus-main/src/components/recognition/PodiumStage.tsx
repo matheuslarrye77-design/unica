@@ -4,7 +4,6 @@ import { Calendar, ChevronLeft, ChevronRight, Crown, Mail, MessageCircle, Phone,
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FC, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { GoalsPayload } from '@/components/recognition/GoalsCenter';
-import { PODIUM_CONFIG } from '@/components/ui/leaderboard-podium';
 
 type Podium = NonNullable<GoalsPayload['podiums']>[number];
 type Ranking = Podium['ranking'][number];
@@ -134,7 +133,6 @@ const PersonCard: FC<{ person: Ranking; mode: string; channel?: string }> = ({ p
   const trigger = useRef<HTMLButtonElement>(null);
   const place = (person.place === 2 || person.place === 3 ? person.place : 1) as 1 | 2 | 3;
   const tone = STEP[place];
-  const figure = PODIUM_CONFIG[place];
   const score =
     mode === 'overall' && person.score != null
       ? percentText(person.score)
@@ -161,9 +159,11 @@ const PersonCard: FC<{ person: Ranking; mode: string; channel?: string }> = ({ p
       <div className="relative mb-2" aria-hidden="true">
         {place === 1 ? <Crown className="absolute -top-4 left-1/2 h-5 w-5 -translate-x-1/2 text-[#4600F3]" /> : null}
         <img src={face(person.name)} alt="" className={cn('rounded-full bg-white object-cover', tone.avatar)} style={{ boxShadow: `0 0 0 3px #fff, 0 0 0 5px ${tone.strong}` }} />
-        <div className="absolute -right-1 -bottom-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-sm">
-          <Crown className={cn('h-4 w-4', figure.color)} />
-        </div>
+        {place === 1 ? null : (
+          <div className="absolute -right-1 -bottom-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-sm">
+            <Crown className="h-4 w-4" style={{ color: tone.strong }} />
+          </div>
+        )}
       </div>
       <p className="max-w-[5.5rem] truncate text-[13px] font-medium text-[#241B33]" title={person.name}>{person.name}</p>
       {role ? <p className="max-w-[5.5rem] truncate text-[11px] text-[#8A7C98]">{role}</p> : null}
@@ -173,14 +173,15 @@ const PersonCard: FC<{ person: Ranking; mode: string; channel?: string }> = ({ p
         type="button"
         aria-label={`Detalhe da pontuação de ${person.name}`}
         aria-expanded={open}
-        className={cn('mt-2 w-[5.5rem] rounded-t-xl text-left', tone.height, figure.bg)}
+        className={cn('mt-2 w-[5.5rem] rounded-t-xl text-left', tone.height)}
+        style={{ background: tone.strong }}
         onMouseEnter={() => { if (!touch) setOpen(true); }}
         onMouseLeave={() => { if (!touch) setOpen(false); }}
         onFocus={() => { if (!touch) setOpen(true); }}
         onBlur={() => { if (!touch) setOpen(false); }}
         onClick={() => { if (touch) setOpen((value) => !value); }}
       >
-        <span className={cn('flex h-8 items-center justify-center font-medium', figure.color)}>{place}</span>
+        <span className="flex h-8 items-center justify-center font-medium text-white">{place}</span>
       </button>
       {open && trigger.current ? (
         <PodiumTip anchor={trigger.current}>

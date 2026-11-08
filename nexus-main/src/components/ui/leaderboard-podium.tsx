@@ -30,8 +30,8 @@ const podiumVariants = cva("flex items-end justify-center gap-4", {
 const PODIUM_CONFIG = {
   1: {
     icon: Crown,
-    color: "text-[#4600F3]",
-    bg: "bg-[#4600F3]/60",
+    color: "text-white",
+    bg: "bg-[#4600F3]",
     ringColor: "ring-[#4600F3]/50",
     strong: "#4600F3",
     height: "h-32",
@@ -40,8 +40,8 @@ const PODIUM_CONFIG = {
   },
   2: {
     icon: Crown,
-    color: "text-[#DB2777]",
-    bg: "bg-[#DB2777]/30",
+    color: "text-white",
+    bg: "bg-[#DB2777]",
     ringColor: "ring-[#DB2777]/50",
     strong: "#DB2777",
     height: "h-24",
@@ -50,8 +50,8 @@ const PODIUM_CONFIG = {
   },
   3: {
     icon: Crown,
-    color: "text-[#6B33F6]",
-    bg: "bg-[#6B33F6]/50",
+    color: "text-white",
+    bg: "bg-[#6B33F6]",
     ringColor: "ring-[#6B33F6]/50",
     strong: "#6B33F6",
     height: "h-20",
@@ -175,7 +175,7 @@ const LeaderboardPodium = React.forwardRef<
                   </div>
                 )}
 
-                {medalStyle !== "minimal" && (
+                {medalStyle !== "minimal" && ranking.rank !== 1 && (
                   <div
                     className={cn(
                       "absolute -right-1 -bottom-1 flex items-center justify-center rounded-full bg-white shadow-sm",
@@ -188,7 +188,8 @@ const LeaderboardPodium = React.forwardRef<
                   >
                     <config.icon
                       className={cn(
-                        config.color,
+                        "text-[#DB2777]",
+                        ranking.rank === 3 && "text-[#6B33F6]",
                         size === "sm"
                           ? "h-3 w-3"
                           : size === "lg"

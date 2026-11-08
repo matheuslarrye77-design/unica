@@ -62,7 +62,7 @@ function PerformanceChart({ activities }: { activities: Activity[] }) {
   const dash = (rate / 100) * circumference;
 
   return (
-    <section className="rounded-2xl border border-[#EDE7FE] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(40,20,60,0.04)]">
+    <section className="flex h-full flex-col rounded-2xl border border-[#EDE7FE] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(40,20,60,0.04)]">
       <h2 className="text-[12px] font-medium tracking-wide text-[#8A7C98]">Resumo da sua performance</h2>
       <div className="mt-4 grid place-items-center">
         <div className="relative h-[112px] w-[112px]">
@@ -228,30 +228,33 @@ export const ActivityBoard: FC = () => {
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-        <button
-          type="button"
-          onClick={() => showTab('mine')}
-          className={cn('inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-medium', tab === 'mine' ? 'bg-[#EDE7FE] text-[#3600C2]' : 'text-[#8A7C98] hover:bg-white')}
-        >
-          <User className="h-3.5 w-3.5" /> Minhas atividades
-        </button>
-        <Button type="button" onClick={() => openCreate('todo')} className="h-9 rounded-full bg-[#4600F3] px-3.5 text-[13px] hover:bg-[#3600C2]">
+      <div className="mt-4 flex min-w-0 flex-col items-stretch gap-3 lg:flex-row">
+        <div className="min-w-0 flex-1">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EDE6F3]">
+        <div className="flex gap-5">
+          <button
+            type="button"
+            onClick={() => showTab('mine')}
+            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'mine' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}
+          >
+            <User className="h-3.5 w-3.5" /> Minhas atividades
+          </button>
+          <button
+            type="button"
+            onClick={() => showTab('leadership')}
+            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'leadership' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}
+          >
+            <Star className="h-3.5 w-3.5" /> Missões da liderança
+            <span className="grid h-4 min-w-4 place-items-center rounded-full bg-[#EDE7FE] px-1 text-[10px] font-semibold text-[#4600F3]">{leadershipCount}</span>
+          </button>
+        </div>
+        <Button type="button" onClick={() => openCreate('todo')} className="mb-2 h-9 rounded-full bg-[#4600F3] px-3.5 text-[13px] hover:bg-[#3600C2]">
           <Plus /> Nova atividade
         </Button>
-        <button
-          type="button"
-          onClick={() => showTab('leadership')}
-          className={cn('inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-medium', tab === 'leadership' ? 'bg-[#EDE7FE] text-[#3600C2]' : 'text-[#8A7C98] hover:bg-white')}
-        >
-          <Star className="h-3.5 w-3.5" /> Missões da liderança
-          <span className="grid h-4 min-w-4 place-items-center rounded-full bg-white px-1 text-[10px] font-semibold text-[#4600F3]">{leadershipCount}</span>
-        </button>
       </div>
 
-      <div className="mt-4 grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
-          <div className="grid min-w-0 grid-cols-1 items-stretch gap-2.5 md:grid-cols-3">
+          <div className="mt-4 grid h-full min-w-0 grid-cols-1 items-stretch gap-2.5 md:grid-cols-3">
             {ACTIVITY_STATUSES.map((status) => (
               <ActivityColumn
                 key={status}
@@ -270,8 +273,9 @@ export const ActivityBoard: FC = () => {
           </div>
           <DragOverlay>{dragging ? <ActivityCardView activity={dragging} /> : null}</DragOverlay>
         </DndContext>
+        </div>
 
-        <aside className="min-w-0 lg:sticky lg:top-4">
+        <aside className="w-full shrink-0 lg:w-[280px] lg:self-stretch">
           <PerformanceChart activities={scoped} />
         </aside>
       </div>
