@@ -338,9 +338,9 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
         <LilacWash
           className="min-h-[118px]"
           icon={<Sun className="h-6 w-6" strokeWidth={1.75} />}
-          title={<h1 className="text-[26px] font-bold leading-tight tracking-tight text-[#1C0066] [text-shadow:0_1px_0_rgba(255,255,255,0.85)]">{getTimeBasedGreeting()}, {firstName}!</h1>}
+          title={<h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#2C2438]">{getTimeBasedGreeting()}, {firstName}!</h1>}
         >
-          <p className="mt-1 text-[13.5px] font-semibold text-[#3600C2]">Que hoje seja um dia incrível.</p>
+          <p className="mt-1 text-[13.5px] font-medium text-[#5C5168]">Que hoje seja um dia incrível.</p>
         </LilacWash>
       )}
 

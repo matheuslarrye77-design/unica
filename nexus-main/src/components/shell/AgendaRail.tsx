@@ -31,7 +31,7 @@ export const AgendaRail: FC = () => {
         <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/40 via-white/16 to-transparent" />
         <div className="relative flex items-center gap-2.5">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-[#4600F3]"><Sparkles className="h-4 w-4" /></span>
-          <p className="text-[14px] font-bold text-[#1C0066]">Eventos importantes</p>
+          <p className="text-[14px] font-semibold text-[#2C2438]">Eventos importantes</p>
         </div>
         {featured ? (
           <div className="relative mt-2.5 flex items-center gap-2.5 rounded-xl bg-white/80 px-2.5 py-2">

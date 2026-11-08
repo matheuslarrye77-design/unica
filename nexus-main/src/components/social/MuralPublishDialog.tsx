@@ -423,8 +423,8 @@ export const MuralPublishDialog: FC<Props> = (props) => {
                 <img src="/cards/fundo-claro.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
                 <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/40 via-white/16 to-transparent" />
                 <img src={authorAvatar} alt="" className="relative h-11 w-11 shrink-0 rounded-full bg-white object-cover ring-2 ring-white" />
-                <p className="relative min-w-0 flex-1 text-[16px] font-bold leading-5 text-[#1C0066]">
-                  {fromName.split(/\s+/)[0]} reconheceu <span className="text-[#4600F3]">{recognizedName}</span>
+                <p className="relative min-w-0 flex-1 text-[16px] font-semibold leading-5 text-[#2C2438]">
+                  {fromName.split(/\s+/)[0]} reconheceu <span className="text-[#3C3952]">{recognizedName}</span>
                 </p>
                 <Sparkles className="h-5 w-5 shrink-0 text-[#8A5CF8]" />
               </div>

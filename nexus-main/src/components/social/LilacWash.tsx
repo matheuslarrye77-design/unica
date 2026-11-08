@@ -14,7 +14,7 @@ export const LilacWash: FC<{
     <div className="relative flex items-center gap-3">
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-[#4600F3] shadow-sm">{icon}</span>
       <div className="min-w-0 flex-1">
-        <div className="text-[15px] font-semibold leading-snug text-[#1C0066]">{title}</div>
+        <div className="text-[15px] font-semibold leading-snug text-[#2C2438]">{title}</div>
         {children}
       </div>
       {aside ? <div className="relative shrink-0">{aside}</div> : null}

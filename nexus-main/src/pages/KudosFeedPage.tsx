@@ -143,9 +143,9 @@ export const KudosFeedPage: FC = () => {
                 <div className="relative flex flex-wrap items-center gap-4">
                   <span className="grid h-[92px] w-[92px] shrink-0 place-items-center rounded-2xl bg-white text-[#4600F3]"><Target className="h-10 w-10" /></span>
                   <div className="min-w-0 flex-1">
-                    <h1 className="text-[26px] font-bold leading-tight tracking-tight text-[#1C0066] [text-shadow:0_1px_0_rgba(255,255,255,0.85)]">Central Inteligente de Metas</h1>
-                    <p className="mt-0.5 text-[15px] font-semibold text-[#3600C2]">Interprete metas e resultados nos dois modos.</p>
-                    <p className="mt-1 max-w-xl text-[13px] font-medium leading-snug text-[#2A0094]">O pódio só muda com pedido explícito e confirmação.</p>
+                    <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#2C2438]">Central Inteligente de Metas</h1>
+                    <p className="mt-0.5 text-[15px] font-medium text-[#3C3952]">Interprete metas e resultados nos dois modos.</p>
+                    <p className="mt-1 max-w-xl text-[13px] leading-snug text-[#5C5168]">O pódio só muda com pedido explícito e confirmação.</p>
                   </div>
                 </div>
               </section>
@@ -156,9 +156,9 @@ export const KudosFeedPage: FC = () => {
                 <div className="relative flex flex-wrap items-center gap-4">
                   <img src="/reconhecimento/trofeu.png" alt="" className="h-[92px] w-[92px] shrink-0 object-contain" />
                   <div className="min-w-0 flex-1">
-                    <h1 className="text-[26px] font-bold leading-tight tracking-tight text-[#1C0066] [text-shadow:0_1px_0_rgba(255,255,255,0.85)]">Reconhecimento</h1>
-                    <p className="mt-0.5 text-[15px] font-semibold text-[#3600C2]">Valorize quem faz a diferença!</p>
-                    <p className="mt-1 max-w-xl text-[13px] font-medium leading-snug text-[#2A0094]">Aqui você pode reconhecer seus colegas e acompanhar os maiores destaques do mês.</p>
+                    <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#2C2438]">Reconhecimento</h1>
+                    <p className="mt-0.5 text-[15px] font-medium text-[#3C3952]">Valorize quem faz a diferença!</p>
+                    <p className="mt-1 max-w-xl text-[13px] leading-snug text-[#5C5168]">Aqui você pode reconhecer seus colegas e acompanhar os maiores destaques do mês.</p>
                   </div>
                   {gestao ? (
                     <button type="button" onClick={() => setComposer(true)} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#4600F3] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#3600C2]">

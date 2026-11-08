@@ -17,7 +17,7 @@ export const RecognitionPost: FC<{ post: SocialPost; expandId?: string }> = ({ p
     <div className="mt-3.5">
       {line ? (
         <p className="text-[20px] font-semibold leading-7 text-[#29213A]">
-          {firstNameOf(from)} reconheceu <span className="text-[#4600F3]">{name}</span>
+          {firstNameOf(from)} reconheceu <span className="text-[#3C3952]">{name}</span>
         </p>
       ) : null}
       {caption ? (
