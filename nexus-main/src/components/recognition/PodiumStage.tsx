@@ -4,15 +4,16 @@ import { Calendar, ChevronLeft, ChevronRight, Crown, Mail, MessageCircle, Phone,
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FC, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { GoalsPayload } from '@/components/recognition/GoalsCenter';
+import { PODIUM_CONFIG } from '@/components/ui/leaderboard-podium';
 
 type Podium = NonNullable<GoalsPayload['podiums']>[number];
 type Ranking = Podium['ranking'][number];
 type Metric = NonNullable<Ranking['metrics']>[number];
 
 const STEP = {
-  1: { strong: '#4600F3', wash: '#EDE9FE', line: '#C4B0FC', height: 'h-[108px]', avatar: 'h-[68px] w-[68px]' },
-  2: { strong: '#DB2777', wash: '#FCE7F3', line: '#F9A8D4', height: 'h-[78px]', avatar: 'h-12 w-12' },
-  3: { strong: '#6B33F6', wash: '#EEF2FF', line: '#C7D2FE', height: 'h-[58px]', avatar: 'h-12 w-12' },
+  1: { strong: '#4600F3', height: 'h-32', avatar: 'h-[68px] w-[68px]' },
+  2: { strong: '#DB2777', height: 'h-24', avatar: 'h-12 w-12' },
+  3: { strong: '#6B33F6', height: 'h-20', avatar: 'h-12 w-12' },
 } as const;
 
 const MODE_ORDER = ['overall', 'custom'] as const;
@@ -133,6 +134,11 @@ const PersonCard: FC<{ person: Ranking; mode: string; channel?: string }> = ({ p
   const trigger = useRef<HTMLButtonElement>(null);
   const place = (person.place === 2 || person.place === 3 ? person.place : 1) as 1 | 2 | 3;
   const tone = STEP[place];
+  const figure = PODIUM_CONFIG[place];
+  const score =
+    mode === 'overall' && person.score != null
+      ? percentText(person.score)
+      : (person.displayScore || (person.score == null ? '—' : String(person.score)));
   const member = teamRoster.find((item) => item.id === person.userId || item.name === person.name);
   const role = member?.role ?? '';
   const funcao = member?.funcao ?? '';
@@ -152,46 +158,43 @@ const PersonCard: FC<{ person: Ranking; mode: string; channel?: string }> = ({ p
   }, [open, touch]);
   return (
     <div className="relative z-10 flex min-w-0 flex-col items-center overflow-visible text-center">
-      <div className="relative">
+      <div className="relative mb-2" aria-hidden="true">
         {place === 1 ? <Crown className="absolute -top-4 left-1/2 h-5 w-5 -translate-x-1/2 text-[#4600F3]" /> : null}
         <img src={face(person.name)} alt="" className={cn('rounded-full bg-white object-cover', tone.avatar)} style={{ boxShadow: `0 0 0 3px #fff, 0 0 0 5px ${tone.strong}` }} />
-      </div>
-      <p className="mt-2 max-w-full truncate text-[13px] font-semibold text-[#241B33]">{person.name}</p>
-      <p className="max-w-full truncate text-[11px] text-[#8A7C98]">{role}</p>
-      <div className={cn('relative mt-4 w-full max-w-[104px] overflow-visible', tone.height)}>
-        <span className="absolute -top-3 left-1/2 z-10 grid h-7 w-7 -translate-x-1/2 place-items-center rounded-full text-[13px] font-semibold text-white" style={{ background: tone.strong, boxShadow: `0 8px 16px ${tone.strong}55` }}>{place}</span>
-        <div className="flex h-full flex-col overflow-visible rounded-[20px] border" style={{ borderColor: tone.line, boxShadow: `0 10px 22px ${tone.strong}22` }}>
-          <div className="flex-1 rounded-t-[20px]" style={{ background: `linear-gradient(180deg, #ffffff 0%, ${tone.wash} 100%)` }} />
-          <button
-            ref={trigger}
-            type="button"
-            aria-label={`Detalhe da pontuação de ${person.name}`}
-            aria-expanded={open}
-            className="flex h-9 w-full items-center justify-center rounded-b-[20px] px-1 text-[13px] font-semibold tabular-nums text-white"
-            style={{ background: tone.strong }}
-            onMouseEnter={() => { if (!touch) setOpen(true); }}
-            onMouseLeave={() => { if (!touch) setOpen(false); }}
-            onFocus={() => { if (!touch) setOpen(true); }}
-            onBlur={() => { if (!touch) setOpen(false); }}
-            onClick={() => { if (touch) setOpen((value) => !value); }}
-          >
-            {mode === 'overall' && person.score != null ? percentText(person.score) : (person.displayScore || (person.score == null ? '—' : String(person.score)))}
-          </button>
-          {open && trigger.current ? (
-            <PodiumTip anchor={trigger.current}>
-              {lines.length ? (
-                <ul className="grid gap-1 text-[11.5px] leading-4 text-[#4A1C73]">
-                  {lines.map((line) => (
-                    <li key={line} className="whitespace-normal break-words">{line}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-[11.5px] leading-4 text-[#8A7C98]">Sem detalhe gravado.</p>
-              )}
-            </PodiumTip>
-          ) : null}
+        <div className="absolute -right-1 -bottom-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-sm">
+          <Crown className={cn('h-4 w-4', figure.color)} />
         </div>
       </div>
+      <p className="max-w-[5.5rem] truncate text-[13px] font-medium text-[#241B33]" title={person.name}>{person.name}</p>
+      {role ? <p className="max-w-[5.5rem] truncate text-[11px] text-[#8A7C98]">{role}</p> : null}
+      <p className="text-[13px] tabular-nums text-[#8A7C98]">{score}</p>
+      <button
+        ref={trigger}
+        type="button"
+        aria-label={`Detalhe da pontuação de ${person.name}`}
+        aria-expanded={open}
+        className={cn('mt-2 w-[5.5rem] rounded-t-xl text-left', tone.height, figure.bg)}
+        onMouseEnter={() => { if (!touch) setOpen(true); }}
+        onMouseLeave={() => { if (!touch) setOpen(false); }}
+        onFocus={() => { if (!touch) setOpen(true); }}
+        onBlur={() => { if (!touch) setOpen(false); }}
+        onClick={() => { if (touch) setOpen((value) => !value); }}
+      >
+        <span className={cn('flex h-8 items-center justify-center font-medium', figure.color)}>{place}</span>
+      </button>
+      {open && trigger.current ? (
+        <PodiumTip anchor={trigger.current}>
+          {lines.length ? (
+            <ul className="grid gap-1 text-[11.5px] leading-4 text-[#4A1C73]">
+              {lines.map((line) => (
+                <li key={line} className="whitespace-normal break-words">{line}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[11.5px] leading-4 text-[#8A7C98]">Sem detalhe gravado.</p>
+          )}
+        </PodiumTip>
+      ) : null}
     </div>
   );
 };
@@ -233,7 +236,7 @@ export const PodiumStage: FC<{
         <div className="flex items-start gap-2.5">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#EDE7FE] text-[#4600F3]"><Trophy className="h-4 w-4" /></span>
           <div>
-            <h2 className="text-[16px] font-semibold text-[#241B33]">Pódio do mês</h2>
+            <h2 className="text-[16px] font-medium text-[#241B33]">Pódio do mês</h2>
             <p className="text-[12.5px] text-[#8A7C98]">{subtitle}</p>
           </div>
         </div>
@@ -281,7 +284,6 @@ export const PodiumStage: FC<{
             person ? <PersonCard key={`${person.place}-${person.userId}`} person={person} mode={podiumMode(active)} channel={channel} /> : <div key={`vazio-${index}`} className="min-h-[120px]" />
           ))}
         </div>
-        <div className="mx-6 mt-2 h-1.5 rounded-full bg-gradient-to-r from-[#F9A8D4] via-[#C4B0FC] to-[#C4B0FC]" />
       </div>
     </section>
   );
