@@ -29,6 +29,7 @@ function MiniReaction({ kind }: { kind: 'like' | 'love' }) {
 
 export const PostActions: FC<{
   post: SocialPost;
+  tone?: 'default' | 'recognition';
   republished?: boolean;
   onLike: () => void;
   onReact?: (kind: 'like' | 'love') => void;
@@ -36,7 +37,7 @@ export const PostActions: FC<{
   onShare: () => void;
   onRepublish: () => void;
   onToggleSave?: () => void;
-}> = ({ post, onLike, onReact, onComment, onToggleSave }) => {
+}> = ({ post, tone = 'default', onLike, onReact, onComment, onToggleSave }) => {
   const comments = post.comments.length;
   const [picker, setPicker] = useState(false);
   const [people, setPeople] = useState(false);
@@ -72,6 +73,8 @@ export const PostActions: FC<{
     if (onReact) onReact(kind);
     else onLike();
   }
+
+  const recognition = tone === 'recognition';
 
   return (
     <div className="mt-3">
@@ -123,16 +126,27 @@ export const PostActions: FC<{
           ) : null}
         </div>
       ) : null}
-      <div className="border-t border-border pt-2.5">
+      <div className={`border-t pt-2.5 ${recognition ? 'border-[#E9E2F2]' : 'border-border'}`}>
       <div className="flex items-center justify-between gap-2">
+        <div className={`flex items-center ${recognition ? 'gap-3' : ''}`}>
         <div className="relative" onMouseEnter={openPicker} onMouseLeave={scheduleClose}>
-          <div className="inline-flex h-8 items-center gap-1.5 text-[13px] text-[#5C5870]">
+          <div className={`inline-flex h-8 items-center gap-1.5 ${recognition ? 'text-[14px] text-[#7135C9]' : 'text-[13px] text-[#5C5870]'}`}>
             <button
               type="button"
               aria-label={selected === 'love' ? 'Amei' : 'Curtir'}
               aria-pressed={Boolean(selected)}
               aria-expanded={picker}
-              className={`inline-flex h-8 items-center gap-1.5 rounded-full px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${selected === 'love' ? 'font-semibold text-[#7C3AED]' : selected === 'like' ? 'font-semibold text-[#1877F2]' : 'hover:bg-accent'}`}
+              className={`inline-flex h-8 items-center gap-1.5 rounded-full px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${
+                recognition
+                  ? selected
+                    ? 'font-semibold text-[#5020A8]'
+                    : 'text-[#7135C9] hover:bg-[#F4EDFF]'
+                  : selected === 'love'
+                    ? 'font-semibold text-[#7C3AED]'
+                    : selected === 'like'
+                      ? 'font-semibold text-[#1877F2]'
+                      : 'hover:bg-accent'
+              }`}
               onClick={() => {
                 if (readyToReact.current) {
                   choose(selected === 'love' ? 'love' : 'like');
@@ -142,8 +156,10 @@ export const PostActions: FC<{
                 setPicker(true);
               }}
             >
-              {selected === 'love' ? <LoveMark /> : selected === 'like' ? <LikeMark selected /> : <ThumbsUp className="ml-1 h-4 w-4" />}
-              <span className="pr-1">{selected === 'love' ? 'Amei' : 'Curtir'}</span>
+              {recognition ? (
+                <ThumbsUp className="ml-1 h-4 w-4" fill={selected === 'like' ? 'currentColor' : 'none'} />
+              ) : selected === 'love' ? <LoveMark /> : selected === 'like' ? <LikeMark selected /> : <ThumbsUp className="ml-1 h-4 w-4" />}
+              <span className="pr-1">{!recognition && selected === 'love' ? 'Amei' : 'Curtir'}</span>
             </button>
           </div>
           {picker ? (
@@ -155,7 +171,20 @@ export const PostActions: FC<{
             </div>
           ) : null}
         </div>
+        {recognition ? <span className="h-5 w-px bg-[#E9E2F2]" /> : null}
+        {recognition ? (
+          <button
+            type="button"
+            onClick={onComment}
+            className="inline-flex h-8 items-center gap-1.5 rounded-[8px] px-2 text-[14px] text-[#7135C9] hover:bg-[#F4EDFF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            <MessageCircle className="h-4 w-4" />
+            {comments === 1 ? '1 comentário' : `${comments} comentários`}
+          </button>
+        ) : null}
+        </div>
         <div className="flex items-center gap-1">
+        {recognition ? null : (
           <button
             type="button"
             onClick={onComment}
@@ -164,15 +193,20 @@ export const PostActions: FC<{
             <MessageCircle className="h-4 w-4" />
             {comments === 1 ? '1 comentário' : `${comments} comentários`}
           </button>
-          <button
-            type="button"
-            onClick={onToggleSave}
-            aria-pressed={saved}
-            aria-label={saved ? 'Remover dos salvos' : 'Salvar publicação'}
-            className={`inline-flex h-8 w-8 items-center justify-center rounded-[8px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${saved ? 'text-primary' : 'text-[#5C5870] hover:text-foreground'}`}
-          >
-            <Bookmark className="h-4 w-4" fill={saved ? 'currentColor' : 'none'} />
-          </button>
+        )}
+        <button
+          type="button"
+          onClick={onToggleSave}
+          aria-pressed={saved}
+          aria-label={saved ? 'Remover dos salvos' : 'Salvar publicação'}
+          className={`inline-flex h-8 w-8 items-center justify-center rounded-[8px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${
+            recognition
+              ? saved ? 'text-[#7135C9]' : 'text-[#7135C9] hover:bg-[#F4EDFF]'
+              : saved ? 'text-primary' : 'text-[#5C5870] hover:text-foreground'
+          }`}
+        >
+          <Bookmark className="h-4 w-4" fill={saved ? 'currentColor' : 'none'} />
+        </button>
         </div>
       </div>
       </div>

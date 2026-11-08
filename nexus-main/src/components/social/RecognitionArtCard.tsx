@@ -6,40 +6,51 @@ export function personAvatar(name: string) {
   return person?.avatar ?? `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
 }
 
-const delicate = { fontFamily: '"Manrope", "Segoe UI", sans-serif' } as const;
+const TrophyMark: FC = () => (
+  <svg viewBox="0 0 140 148" className="h-[118px] w-[112px] shrink-0" aria-hidden>
+    <circle cx="22" cy="42" r="3.2" fill="#D7C6F5" />
+    <circle cx="118" cy="28" r="2.4" fill="#E4D6FA" />
+    <circle cx="16" cy="96" r="2" fill="#E4D6FA" />
+    <path fill="#C9B4F0" d="M26 18l2.6 2.6-2.6 2.6-2.6-2.6z" />
+    <path fill="#D7C6F5" d="M112 108l3.2 3.2-3.2 3.2-3.2-3.2z" />
+    <path fill="#E9DFFB" d="M124 52l2.4 2.4-2.4 2.4-2.4-2.4z" />
+    <path d="M38 44c-16 2-24 22-12 36 4 4 10 6 16 6" fill="none" stroke="#7135C9" strokeWidth="8" strokeLinecap="round" />
+    <path d="M102 44c16 2 24 22 12 36-4 4-10 6-16 6" fill="none" stroke="#7135C9" strokeWidth="8" strokeLinecap="round" />
+    <path d="M38 28h64c2 18 4 36-4 56H42c-8-20-6-38-4-56z" fill="#7135C9" />
+    <path d="M46 32h48c1.5 16 3 32-3 48H49c-6-16-4.5-32-3-48z" fill="#974FF0" />
+    <ellipse cx="70" cy="40" rx="22" ry="8" fill="#B57AF5" opacity="0.55" />
+    <path fill="#FFFFFF" d="M70 48.5l3.6 7.3 8.1 1.2-5.8 5.7 1.4 8-7.3-3.8-7.3 3.8 1.4-8-5.8-5.7 8.1-1.2z" />
+    <rect x="62" y="86" width="16" height="16" rx="3" fill="#7135C9" />
+    <rect x="50" y="100" width="40" height="10" rx="3" fill="#7135C9" />
+    <rect x="40" y="110" width="60" height="14" rx="5" fill="#5020A8" />
+    <rect x="54" y="114" width="32" height="6" rx="2" fill="#EEE4FF" />
+  </svg>
+);
 
-export const RecognitionArtCard: FC<{ name: string; avatar?: string }> = ({ name, avatar }) => {
-  const photo = avatar || personAvatar(name);
+export const RecognitionArtCard: FC<{ name: string; avatar?: string }> = ({ name }) => {
   if (!name) return null;
   return (
-    <article className="relative h-[148px] w-full overflow-hidden rounded-[22px] shadow-[0_12px_32px_rgba(76,29,149,0.18)]">
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `
-            radial-gradient(ellipse 90% 120% at 8% 50%, rgba(216, 180, 254, 0.45) 0%, transparent 55%),
-            radial-gradient(ellipse 70% 100% at 92% 30%, rgba(251, 191, 36, 0.14) 0%, transparent 50%),
-            radial-gradient(ellipse 60% 80% at 78% 85%, rgba(139, 92, 246, 0.55) 0%, transparent 48%),
-            linear-gradient(118deg, #4c1d95 0%, #6d28d9 42%, #7c3aed 72%, #5b21b6 100%)
-          `,
-        }}
-      />
-      <svg className="pointer-events-none absolute -right-[6%] bottom-0 h-full w-[62%] text-white/[0.07]" viewBox="0 0 640 200" preserveAspectRatio="none" aria-hidden>
-        <path fill="currentColor" d="M0 120 C120 60 200 140 320 80 C440 24 520 100 640 70 L640 200 L0 200 Z" />
-        <path fill="currentColor" opacity="0.65" d="M0 150 C140 90 260 170 400 110 C500 65 580 130 640 100 L640 200 L0 200 Z" />
+    <div className="relative isolate flex min-h-[140px] w-full items-center overflow-hidden rounded-[20px] bg-[#F4EDFF] px-4 py-4 sm:min-h-[148px] sm:px-6">
+      <span className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-[#E4D6FA]" />
+      <span className="pointer-events-none absolute -bottom-16 right-16 h-36 w-36 rounded-full bg-[#EEE4FF]" />
+      <span className="pointer-events-none absolute right-8 top-6 h-10 w-10 rounded-full border-[6px] border-[#E9DFFB]/80" />
+      <svg className="pointer-events-none absolute right-10 top-5 h-6 w-6 text-[#C9B4F0]" viewBox="0 0 24 24" aria-hidden>
+        <path fill="currentColor" d="M12 2.5l1.6 4.8h5.1l-4.1 3 1.6 4.9L12 12.3 7.8 15.2l1.6-4.9-4.1-3h5.1z" />
       </svg>
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.06)_0%,transparent_38%,transparent_62%,rgba(255,255,255,0.04)_100%)]" />
-      <div className="relative z-[1] flex h-full items-center gap-4 px-5 sm:gap-5 sm:px-7" style={delicate}>
-        <div className="relative shrink-0">
-          <div className="absolute -inset-1 rounded-full bg-white/25 blur-sm" />
-          <img src={photo} alt="" className="relative h-16 w-16 rounded-full bg-white object-cover ring-[3px] ring-white/95 shadow-[0_8px_20px_rgba(30,10,70,0.35)] sm:h-[72px] sm:w-[72px]" />
+      <svg className="pointer-events-none absolute bottom-6 right-24 h-4 w-4 text-[#D7C6F5]" viewBox="0 0 24 24" aria-hidden>
+        <path fill="currentColor" d="M12 2.5l1.6 4.8h5.1l-4.1 3 1.6 4.9L12 12.3 7.8 15.2l1.6-4.9-4.1-3h5.1z" />
+      </svg>
+      <div className="relative z-[1] flex w-full flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
+        <div className="relative flex shrink-0 items-center justify-center">
+          <TrophyMark />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/70 sm:text-[12px]">Reconhecimento</p>
-          <p className="mt-0.5 truncate text-[22px] font-semibold leading-7 tracking-[-0.02em] text-white sm:text-[26px]">{name}</p>
-          <p className="truncate text-[13px] font-normal leading-5 text-white/88 sm:text-[15px]">pelo seu desempenho e dedicação</p>
+        <div className="hidden h-[88px] w-px shrink-0 bg-[#7135C9]/25 sm:block" />
+        <div className="relative min-w-0 flex-1 text-center sm:text-left">
+          <p className="inline-flex rounded-full bg-[#7135C9] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white">Reconhecimento</p>
+          <p className="mt-2 truncate text-[clamp(26px,3.4vw,38px)] font-bold leading-tight tracking-[-0.03em] text-[#29213A]">{name}</p>
+          <p className="mt-1 text-[17px] leading-6 text-[#625578] sm:text-[18px]">pelo seu desempenho e dedicação</p>
         </div>
       </div>
-    </article>
+    </div>
   );
 };

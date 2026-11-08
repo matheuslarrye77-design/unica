@@ -14,15 +14,15 @@ export const RecognitionPost: FC<{ post: SocialPost; expandId?: string }> = ({ p
   const listed = post.images?.length ? post.images : post.image ? [post.image] : [];
   const photos = listed.filter((url) => !decorative.has(url));
   return (
-    <div className="mt-3">
+    <div className="mt-3.5">
       {line ? (
-        <p className="text-[15px] font-semibold leading-6 text-[#241B33]">
-          {firstNameOf(from)} reconheceu <span className="text-[#6A228C]">{name}</span>
+        <p className="text-[20px] font-semibold leading-7 text-[#29213A]">
+          {firstNameOf(from)} reconheceu <span className="text-[#7135C9]">{name}</span>
         </p>
       ) : null}
       {caption ? (
-        <div className="mt-1.5">
-          <ReadMore id={expandId ?? `${post.id}-reconhecimento`} text={caption} className="text-[14.5px] leading-6 text-[#3C3952] dark:text-foreground/90" />
+        <div className="mt-2">
+          <ReadMore id={expandId ?? `${post.id}-reconhecimento`} text={caption} className="text-[15px] leading-6 text-[#514663] dark:text-foreground/90" />
         </div>
       ) : null}
       {photos.length ? (
@@ -31,7 +31,7 @@ export const RecognitionPost: FC<{ post: SocialPost; expandId?: string }> = ({ p
         </div>
       ) : null}
       {name ? (
-        <div className="mt-3">
+        <div className="mt-3.5">
           <RecognitionArtCard name={name} avatar={personAvatar(name)} />
         </div>
       ) : null}

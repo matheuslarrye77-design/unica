@@ -1,7 +1,7 @@
 import { Emoji } from '@/components/Emoji';
 import { MOODS } from '@/components/shell/TeamMood';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { FileText, Lock, MoreHorizontal } from 'lucide-react';
+import { Award, FileText, Lock, MoreHorizontal } from 'lucide-react';
 import { PhotoGallery } from './PhotoGallery';
 import { ReadMore } from './ReadMore';
 import { useEffect, useRef, useState, type FC } from 'react';
@@ -82,9 +82,10 @@ export const PostCard: FC<{
   const [editBody, setEditBody] = useState(post.body);
   const [editTitle, setEditTitle] = useState(post.bannerTitle ?? '');
   const [savingEdit, setSavingEdit] = useState(false);
+  const recognition = post.kind === 'recognition';
 
   return (
-      <article id={domId} className="unica-surface px-4 py-3">
+      <article id={domId} className={recognition ? 'rounded-[18px] border border-[#E9E2F2] bg-white p-[18px] shadow-[0_8px_24px_rgba(81,32,168,0.06)]' : 'unica-surface px-4 py-3'}>
       {repost ? (
         <div className="mb-3 flex items-center gap-2 text-[12px] text-muted-foreground">
           <img src={repost.avatar} alt="" className="h-6 w-6 rounded-full bg-muted" />
@@ -93,21 +94,40 @@ export const PostCard: FC<{
       ) : null}
       {repost?.note ? <p className="mb-3 text-[13.5px] leading-6">{repost.note}</p> : null}
       <header className="flex items-start gap-3">
-        <img src={post.avatar} alt="" className="h-10 w-10 rounded-full bg-muted object-cover" />
+        <img src={post.avatar} alt="" className={`${recognition ? 'h-11 w-11' : 'h-10 w-10'} rounded-full bg-muted object-cover`} />
         <div className="min-w-0 flex-1 pt-0.5">
-          <p className="truncate text-[14px] leading-5">
-            <span className="font-semibold text-foreground">{post.author}</span>
-            <span className="font-normal text-muted-foreground"> · {(post.department === 'Jornal' ? 'Jornal' : kindLabel[post.kind]) ?? post.department}</span>
-          </p>
-          <p className="flex flex-wrap items-center gap-x-1 text-[12px] leading-4 text-muted-foreground">
-            <span>{post.time}</span>
-            {post.audience === 'management' ? <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Somente a gestão</span> : null}
-            {mood ? <span className="inline-flex items-center gap-1 text-[#6A228C]"><Emoji emoji={mood.emoji} className="h-3.5 w-3.5" />{mood.label}</span> : null}
-          </p>
+          {recognition ? (
+            <>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <p className="truncate text-[15px] font-semibold leading-5 text-[#29213A]">{post.author}</p>
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#EEE4FF] px-2.5 py-0.5 text-[11px] font-semibold text-[#7135C9]">
+                  <Award className="h-3 w-3" />
+                  Reconhecimento
+                </span>
+              </div>
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-[12px] leading-4 text-[#827A91]">
+                <span>{post.time}</span>
+                {post.audience === 'management' ? <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Somente a gestão</span> : null}
+                {mood ? <span className="inline-flex items-center gap-1 text-[#7135C9]"><Emoji emoji={mood.emoji} className="h-3.5 w-3.5" />{mood.label}</span> : null}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="truncate text-[14px] leading-5">
+                <span className="font-semibold text-foreground">{post.author}</span>
+                <span className="font-normal text-muted-foreground"> · {(post.department === 'Jornal' ? 'Jornal' : kindLabel[post.kind]) ?? post.department}</span>
+              </p>
+              <p className="flex flex-wrap items-center gap-x-1 text-[12px] leading-4 text-muted-foreground">
+                <span>{post.time}</span>
+                {post.audience === 'management' ? <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Somente a gestão</span> : null}
+                {mood ? <span className="inline-flex items-center gap-1 text-[#6A228C]"><Emoji emoji={mood.emoji} className="h-3.5 w-3.5" />{mood.label}</span> : null}
+              </p>
+            </>
+          )}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button type="button" aria-label="Mais ações" className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
+            <button type="button" aria-label="Mais ações" className={`flex h-8 w-8 items-center justify-center rounded-full hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${recognition ? 'text-[#827A91]' : 'text-muted-foreground'}`}>
               <MoreHorizontal className="h-4 w-4" />
             </button>
           </DropdownMenuTrigger>
@@ -207,7 +227,7 @@ export const PostCard: FC<{
       {repost ? (
         <Link to={`/publicacao/${post.id}`} className="mt-3 block text-sm font-medium text-primary">Ver publicação original</Link>
       ) : null}
-      <PostActions post={post} republished={republished} onLike={onLike} onReact={onReact} onToggleSave={onToggleSave} onComment={onToggleComments} onShare={onShare} onRepublish={onRepublish} />
+      <PostActions post={post} tone={recognition ? 'recognition' : 'default'} republished={republished} onLike={onLike} onReact={onReact} onToggleSave={onToggleSave} onComment={onToggleComments} onShare={onShare} onRepublish={onRepublish} />
       {post.commentsOpen ? (
         <Comments
           inputId={`comentario-${domId}`}
