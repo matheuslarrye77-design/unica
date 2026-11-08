@@ -3,53 +3,56 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 import {
   Award,
   CalendarDays,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   FileText,
   ListChecks,
   Home,
+  LogOut,
   Megaphone,
   MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   Target,
   Users,
   X,
 } from 'lucide-react';
 import { type FC } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { PageSearchProvider } from '@/lib/pageSearch';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { SidebarBrand, SidebarNav, type NavGroupData, type NavItemData } from '@/components/ui/dashboard-sidebar';
 import { useInstitution } from '@/lib/institution';
+import { LOGIN_REQUIRED } from '@/lib/loginGate';
+import { logout } from '@/lib/session';
 
-const GROUPS = [
+const GROUPS: NavGroupData[] = [
   {
-    id: 'social',
-    label: 'Social',
+    heading: 'Social',
     items: [
-      { path: '/', label: 'Mural', icon: Home },
-      { path: '/announcements', label: 'Jornal', icon: Megaphone },
-      { path: '/kudos', label: 'Reconhecimento', icon: Award },
+      { id: 'mural', title: 'Mural', icon: Home, href: '/' },
+      { id: 'jornal', title: 'Jornal', icon: Megaphone, href: '/announcements' },
+      { id: 'reconhecimento', title: 'Reconhecimento', icon: Award, href: '/kudos' },
     ],
   },
   {
-    id: 'trabalho',
-    label: 'Trabalho',
+    heading: 'Trabalho',
     items: [
-      { path: '/projects', label: 'Atividades', icon: ListChecks },
-      { path: '/resources', label: 'Documentos', icon: FileText },
-      { path: '/calendar', label: 'Calendários', icon: CalendarDays },
-      { path: '/sugestoes', label: 'Sugestões', icon: MessageSquare },
+      { id: 'atividades', title: 'Atividades', icon: ListChecks, href: '/projects' },
+      { id: 'documentos', title: 'Documentos', icon: FileText, href: '/resources' },
+      { id: 'calendarios', title: 'Calendários', icon: CalendarDays, href: '/calendar' },
+      { id: 'sugestoes', title: 'Sugestões', icon: MessageSquare, href: '/sugestoes' },
     ],
   },
   {
-    id: 'gestao',
-    label: 'Gestão',
+    heading: 'Gestão',
     items: [
-      { path: '/employees', label: 'Equipe', icon: Users },
-      { path: '/projects?painel=missoes', label: 'Missões', icon: Target },
+      { id: 'equipe', title: 'Equipe', icon: Users, href: '/employees' },
+      { id: 'missoes', title: 'Missões', icon: Target, href: '/projects?painel=missoes' },
     ],
   },
+];
+
+const BOTTOM_ITEMS: NavItemData[] = [
+  { id: 'configuracoes', title: 'Configurações', icon: Settings, href: '/configuracoes' },
 ];
 
 const LEFT_KEY = 'unica-nav-collapsed';
@@ -81,7 +84,8 @@ export function useShell() {
   return useContext(ShellContext);
 }
 
-function isActive(pathname: string, search: string, path: string) {
+function isActive(pathname: string, search: string, path?: string) {
+  if (!path) return false;
   const [targetPath, targetQuery] = path.split('?');
   if (pathname !== targetPath) return false;
   const current = new URLSearchParams(search);
@@ -127,7 +131,7 @@ export const AppFrame: FC<{ children: ReactNode }> = ({ children }) => {
       <MenuContext.Provider value={() => setOpen(true)}>
         <PageSearchProvider>
         <Sidebar open={open} onClose={() => setOpen(false)} />
-        <div className={cn('min-h-0', leftCollapsed ? 'lg:pl-16' : 'lg:pl-[256px]')}>{children}</div>
+        <div className={cn('min-h-0', leftCollapsed ? 'lg:pl-16' : 'lg:pl-[260px]')}>{children}</div>
         </PageSearchProvider>
       </MenuContext.Provider>
     </ShellContext.Provider>
@@ -136,117 +140,61 @@ export const AppFrame: FC<{ children: ReactNode }> = ({ children }) => {
 
 export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { leftCollapsed, toggleLeft } = useShell();
   const institution = useInstitution();
-  const [closedGroups, setClosedGroups] = useState<string[]>([]);
   const groups = GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => item.path !== '/' || institution.muralAvailable),
+    items: group.items.filter((item) => item.href !== '/' || institution.muralAvailable),
   }));
-
-  const itemClass = (active: boolean, collapsed: boolean) => cn(
-    'flex h-9 items-center gap-2.5 rounded-[10px] px-2.5 text-[13.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
-    collapsed && 'justify-center px-0',
-    active
-      ? 'bg-accent text-accent-foreground'
-      : 'text-[#25233A] hover:bg-[var(--unica-hover)] [&_svg]:text-primary dark:text-foreground',
-  );
+  const activeOf = (item: NavItemData) => isActive(location.pathname, location.search, item.href);
 
   const nav = (collapsed: boolean) => (
-    <>
-      <div className={cn('flex items-center px-4 pb-1 pt-4', collapsed ? 'flex-col gap-2 px-2' : 'justify-between')}>
-        <Link to="/" onClick={onClose} className="flex items-center gap-2.5 rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
-          <img src="/marca-unica.png" alt="" className="h-8 w-8 rounded-full object-cover" />
-          {collapsed ? null : <span className="unica-display text-[15px] tracking-tight text-foreground">Única Conecta</span>}
-        </Link>
-        <button type="button" className="hidden h-8 w-8 items-center justify-center rounded-[10px] text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 lg:inline-flex" aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'} onClick={toggleLeft}>
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
-        <button type="button" className="rounded-[10px] p-2 text-muted-foreground lg:hidden" aria-label="Fechar menu" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-      <nav className="flex min-h-0 flex-col gap-0.5 overflow-y-auto px-3 pb-2 pt-1" aria-label="Principal">
-        {groups.flatMap((group) => {
-          const rows = [];
-          const groupClosed = closedGroups.includes(group.id);
-          if (group.label && !collapsed) {
-            rows.push(
-              <button
-                key={`${group.id}-label`}
-                type="button"
-                className="mt-3 flex h-8 w-full items-center justify-between rounded-[8px] px-3 text-[12px] font-medium text-muted-foreground first:mt-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                aria-expanded={!groupClosed}
-                onClick={() => setClosedGroups((current) => current.includes(group.id) ? current.filter((id) => id !== group.id) : [...current, group.id])}
-              >
-                {group.label}
-                <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', groupClosed && '-rotate-90')} />
-              </button>,
-            );
-          }
-          if (groupClosed && !collapsed) return rows;
-          for (const item of group.items) {
-            const Icon = item.icon;
-            const active = isActive(location.pathname, location.search, item.path);
-            const link = (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={onClose}
-                className={itemClass(active, collapsed)}
-              >
-                <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
-                {collapsed ? <span className="sr-only">{item.label}</span> : item.label}
-              </Link>
-            );
-            rows.push(collapsed ? (
-              <Tooltip key={item.path}>
-                <TooltipTrigger asChild>{link}</TooltipTrigger>
-                <TooltipContent side="right">{item.label}</TooltipContent>
-              </Tooltip>
-            ) : link);
-          }
-          return rows;
-        })}
-      </nav>
-      <div className="mt-auto px-3 pb-4 pt-3">
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link
-                to="/configuracoes"
-                onClick={onClose}
-                className={itemClass(location.pathname === '/configuracoes', true)}
-              >
-                <Settings className="h-[18px] w-[18px]" strokeWidth={1.75} />
-                <span className="sr-only">Configurações</span>
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent side="right">Configurações</TooltipContent>
-          </Tooltip>
-        ) : (
-          <Link
-            to="/configuracoes"
-            onClick={onClose}
-            className={itemClass(location.pathname === '/configuracoes', false)}
+    <SidebarNav
+      className={cn('border-none bg-transparent', collapsed ? 'p-2' : 'p-3')}
+      groups={groups}
+      bottomItems={[
+        ...BOTTOM_ITEMS,
+        {
+          id: 'sair',
+          title: 'Sair',
+          icon: LogOut,
+          onClick: () => {
+            void logout().finally(() => navigate(LOGIN_REQUIRED ? '/login' : '/', { replace: true }));
+          },
+        },
+      ]}
+      collapsed={collapsed}
+      isActive={activeOf}
+      onNavigate={onClose}
+      header={(
+        <div className={cn('mb-1 flex items-start', collapsed ? 'flex-col items-center gap-1' : 'justify-between gap-1')}>
+          <SidebarBrand name="Única Conecta" detail="Intranet" href="/" collapsed={collapsed} onNavigate={onClose} />
+          <button
+            type="button"
+            className="mt-1 hidden h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground lg:inline-flex dark:hover:bg-white/5"
+            aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            onClick={toggleLeft}
           >
-            <Settings className="h-[18px] w-[18px]" strokeWidth={1.75} />
-            Configurações
-          </Link>
-        )}
-      </div>
-    </>
+            {collapsed ? <PanelLeftOpen className="h-[18px] w-[18px]" strokeWidth={1.5} /> : <PanelLeftClose className="h-[18px] w-[18px]" strokeWidth={1.5} />}
+          </button>
+          <button type="button" className="mt-1 rounded-md p-1.5 text-muted-foreground lg:hidden" aria-label="Fechar menu" onClick={onClose}>
+            <X className="h-4 w-4" strokeWidth={1.5} />
+          </button>
+        </div>
+      )}
+    />
   );
 
   return (
     <>
-      <aside className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[var(--unica-shadow)] transition-[width] duration-300 ease-out lg:flex', leftCollapsed ? 'w-16' : 'w-[240px]')}>
+      <aside className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-border/50 bg-card/80 text-sidebar-foreground backdrop-blur-sm transition-[width] duration-300 ease-out lg:flex', leftCollapsed ? 'w-16' : 'w-[260px]')}>
         {nav(leftCollapsed)}
       </aside>
       {open ? (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button type="button" className="absolute inset-0 bg-foreground/30" aria-label="Fechar menu" onClick={onClose} />
-          <aside className="absolute inset-y-0 left-0 flex w-[240px] flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-lg">
+          <aside className="absolute inset-y-0 left-0 flex w-[260px] flex-col border-r border-border/50 bg-card text-sidebar-foreground shadow-lg">
             {nav(false)}
           </aside>
         </div>
