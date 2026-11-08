@@ -48,7 +48,9 @@ export const ActivityCardView: FC<{
   const leadership = activity.origin === 'leadership';
 
   return (
-    <article className={cn('relative flex aspect-square w-full flex-col overflow-hidden rounded-xl border border-[#F3EEF6] bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(40,20,60,0.04)]', dragging && 'opacity-40')}>
+    <article className={cn('relative overflow-hidden rounded-[22px] px-4 py-3', dragging && 'opacity-40')}>
+      <img src="/cards/fundo-claro.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
+      <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/40 via-white/16 to-transparent" />
       <div className="relative flex items-center gap-1.5">
         {leadership ? <img src="/atividades/alfinete.png" alt="" className="h-5 w-5 shrink-0 object-contain" /> : null}
         <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-light', leadership ? 'bg-[#F3EFFF] text-[#3600C2]' : 'bg-[#F3EFFF] text-[#4600F3]')}>
@@ -96,16 +98,16 @@ export const ActivityCardView: FC<{
           </DropdownMenu>
         ) : <span className="ml-auto" />}
       </div>
-      <h3 title={activity.title} className="relative mt-2 line-clamp-3 text-[13px] font-light leading-snug text-[#2C2433]">{activity.title}</h3>
+      <h3 title={activity.title} className="relative mt-2 line-clamp-2 text-[15px] font-light leading-snug text-[#2C2438]">{activity.title}</h3>
       {collapsed ? null : (
-      <div className="relative mt-auto">
-      <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[11px] font-extralight text-[#8A7C98]">
+      <div className="relative">
+      <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[12px] font-extralight text-[#5C5168]">
         <SourceIcon source={activity.source} />
         <span className="truncate">{activity.source}</span>
       </p>
       <div className="mt-2 flex items-end gap-2">
         {when ? (
-          <p className="flex min-w-0 items-center gap-1 text-[11px] font-extralight text-[#8A7C98]">
+          <p className="flex min-w-0 items-center gap-1 text-[11px] font-extralight text-[#5C5168]">
             <CalendarDays className="h-3 w-3 shrink-0" />
             <span className="truncate">{done ? `Concluída em: ${when}` : `Prazo: ${when}`}</span>
           </p>

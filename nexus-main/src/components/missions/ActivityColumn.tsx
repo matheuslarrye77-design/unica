@@ -45,12 +45,12 @@ export const ActivityColumn: FC<{
           {activities.length}
         </span>
       </header>
-      <div ref={setNodeRef} className="grid min-h-12 flex-1 grid-cols-2 content-start gap-2.5">
+      <div ref={setNodeRef} className="flex min-h-12 flex-1 flex-col gap-2.5">
         {leadership.length > 0 ? (
           <button
             type="button"
             onClick={() => setLeadershipOpen((open) => !open)}
-            className={cn('col-span-2 flex items-center gap-1.5 rounded-lg px-2 py-1 text-left text-[11.5px] font-light', paint.group)}
+            className={cn('flex items-center gap-1.5 rounded-lg px-2 py-1 text-left text-[11.5px] font-light', paint.group)}
           >
             {leadershipOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             <img src="/atividades/alfinete.png" alt="" className="h-3.5 w-3.5 object-contain" />

@@ -205,11 +205,12 @@ export const ActivityBoard: FC = () => {
     <div>
       <section className="relative overflow-visible rounded-[22px]">
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[22px]">
-          <img src="/atividades/banner.png" alt="" className="h-full w-full object-cover object-center" />
+          <img src="/cards/fundo-claro.png" alt="" className="h-full w-full object-cover object-center" />
+          <span className="absolute inset-0 bg-gradient-to-r from-white/40 via-white/16 to-transparent" />
         </div>
         <div className="relative flex min-h-[148px] items-center justify-between gap-6 px-6 py-5 pr-10">
           <div className="flex min-w-0 max-w-[52%] items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/80 text-[#4600F3] shadow-sm">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-[#4600F3] shadow-sm">
               <Check className="h-5 w-5" strokeWidth={1.75} />
             </span>
             <div className="min-w-0">
