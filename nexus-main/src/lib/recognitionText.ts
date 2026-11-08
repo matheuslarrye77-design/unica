@@ -2,6 +2,11 @@ export function firstNameOf(name: string) {
   return name.trim().split(/\s+/)[0] || name;
 }
 
+export function recognitionLine(from: string, to: string) {
+  if (!from.trim() || !to.trim()) return '';
+  return `${firstNameOf(from)} reconheceu ${to}`;
+}
+
 export function recognitionHeadline(from: string, to: string, received = false) {
   const author = firstNameOf(from);
   const person = firstNameOf(to);

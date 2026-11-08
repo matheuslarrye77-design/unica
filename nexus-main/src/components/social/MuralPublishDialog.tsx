@@ -3,19 +3,21 @@ import { AudioTrim } from '@/components/social/AudioTrim';
 import { JournalNewsCard } from '@/components/social/JournalNewsCard';
 import { PostCard } from '@/components/social/PostCard';
 import { ExpandProvider } from '@/components/social/ReadMore';
+import { personAvatar, RecognitionArtCard } from '@/components/social/RecognitionArtCard';
 import type { RecognitionDraft } from '@/components/social/RecognitionComposer';
 import type { Attachment, PollOption, PostBlock, SocialPost } from '@/components/social/types';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { articleCover, articleSummary, categoryLabel, type JournalArticle } from '@/data/journal';
 import { teamRoster } from '@/data/team';
 import { createFeedPost, uploadMedia } from '@/lib/feed';
-import { recognitionHeadline } from '@/lib/recognitionText';
+import { recognitionLine } from '@/lib/recognitionText';
 import { actor } from '@/lib/session';
-import { ChevronDown, Eye, FileText, ImagePlay, ListChecks, Loader2, Megaphone, Mic, Paperclip, Send, Smile, Sticker, X } from 'lucide-react';
+import { ChevronDown, Eye, FileText, ImagePlay, Info, ListChecks, Loader2, Megaphone, Mic, Paperclip, Pencil, Send, Smile, Sparkles, Sticker, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ChangeEvent, type FC } from 'react';
 import { toast } from 'sonner';
 
 const MAX = 10000;
+const CAPTION_MAX = 300;
 const AUDIO_MAX = 80 * 1024 * 1024;
 const DOC_MAX = 40 * 1024 * 1024;
 const VIDEO_MAX = 200 * 1024 * 1024;
@@ -93,7 +95,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
     setGifs([]);
     setProgress(null);
     if (props.source === 'recognition-existing') {
-      setText(props.item.quote);
+      setText((props.item.caption || props.item.quote || '').slice(0, CAPTION_MAX));
       setPhotos((props.item.photos ?? []).map((url) => ({ id: url, url })));
       setTag(props.item.tag && tags.includes(props.item.tag) ? props.item.tag : tags[0]);
       setPersonId('');
@@ -126,7 +128,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
     setText((current) => {
       const start = node?.selectionStart ?? current.length;
       const end = node?.selectionEnd ?? current.length;
-      const next = (current.slice(0, start) + emoji + current.slice(end)).slice(0, MAX);
+      const next = (current.slice(0, start) + emoji + current.slice(end)).slice(0, props.source === 'journal' ? MAX : CAPTION_MAX);
       const caret = start + emoji.length;
       requestAnimationFrame(() => {
         node?.focus();
@@ -249,11 +251,11 @@ export const MuralPublishDialog: FC<Props> = (props) => {
     ];
   }
 
-  const headline = existing
-    ? recognitionHeadline(existing.from, existing.to, Boolean(existing.received))
-    : person
-      ? recognitionHeadline(fromName, recognizedName, received)
-      : '';
+  const isRecognition = props.source !== 'journal';
+  const textMax = isRecognition ? CAPTION_MAX : MAX;
+  const headline = recognizedName ? recognitionLine(fromName, recognizedName) : '';
+  const recognizedAvatar = recognizedName ? personAvatar(recognizedName) : '';
+  const authorAvatar = teamRoster.find((item) => item.name === fromName)?.avatar || user.avatar;
 
   function previewPost(): SocialPost {
     const built = blocks();
@@ -286,7 +288,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
       recognizedBy: journal ? undefined : fromName,
       receivedRecognition: journal ? undefined : received,
       tag: journal ? undefined : (existing?.tag || tag),
-      caption: journal ? (text.trim() || undefined) : (existing?.caption || undefined),
+      caption: journal ? (text.trim() || undefined) : (text.trim() || undefined),
       comment: existing?.comment || undefined,
     };
   }
@@ -296,8 +298,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
     if (pollOpen && (labels.length < 2 || new Set(labels.map((item) => item.toLowerCase())).size !== labels.length)) return false;
     if (props.source === 'journal') return true;
     if (!recognizedName || (props.source === 'recognition-new' && !person)) return false;
-    const hasBody = Boolean(text.trim() || pollQuestion.trim() || photoUrls.length || stickers.length || gifs.length || attachment || labels.length >= 2);
-    return hasBody;
+    return true;
   })();
 
   async function publish() {
@@ -339,13 +340,13 @@ export const MuralPublishDialog: FC<Props> = (props) => {
         recognizedBy: fromName,
         receivedRecognition: received,
         tag: publishedTag,
-        caption: existing?.caption,
+        caption: message || undefined,
         comment: existing?.comment,
         images: built ? undefined : photoUrls,
         blocks: built,
         attachment,
         poll,
-        bannerTitle: recognitionHeadline(fromName, recognizedName, received),
+        bannerTitle: recognizedName,
         nonce: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       });
       toast.success('Reconhecimento publicado no mural.');
@@ -355,8 +356,8 @@ export const MuralPublishDialog: FC<Props> = (props) => {
           fromName,
           message,
           tag: publishedTag,
-          caption: '',
-          comment: '',
+          caption: message,
+          comment: existing?.comment || '',
           photos: photos.map((item) => item.url),
           received,
         }, true);
@@ -381,15 +382,18 @@ export const MuralPublishDialog: FC<Props> = (props) => {
       <DialogContent
         showCloseButton={false}
         overlayClassName="bg-[#4A2A66]/35 backdrop-blur-md"
-        className="gap-0 overflow-visible border-0 bg-white p-0 shadow-[0_24px_70px_rgba(74,36,110,0.22)] sm:max-w-[640px] rounded-[28px]"
+        className={`gap-0 overflow-visible border-0 bg-white p-0 shadow-[0_24px_70px_rgba(74,36,110,0.22)] rounded-[28px] ${isRecognition ? 'sm:max-w-[680px]' : 'sm:max-w-[640px]'}`}
       >
-        <DialogDescription className="sr-only">Escreva o conteúdo e publique no mural.</DialogDescription>
+        <DialogDescription className="sr-only">{isRecognition ? 'Compartilhe um reconhecimento com sua equipe.' : 'Escreva o conteúdo e publique no mural.'}</DialogDescription>
         <div className="flex max-h-[min(760px,calc(100dvh-2rem))] flex-col">
-          <div className="flex items-center gap-3 px-5 pb-3 pt-5">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#F3E4FA] text-[#7C3AED]">
+          <div className="flex items-start gap-3 px-5 pb-3 pt-5">
+            <span className={`grid h-11 w-11 shrink-0 place-items-center ${isRecognition ? 'rounded-full bg-[#7C3AED] text-white' : 'rounded-2xl bg-[#F3E4FA] text-[#7C3AED]'}`}>
               <Megaphone className="h-5 w-5" />
             </span>
-            <DialogTitle className="flex-1 text-[22px] font-bold tracking-tight text-[#3B0764]">Publicar no mural</DialogTitle>
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-[22px] font-bold tracking-tight text-[#3B0764]">Publicar no mural</DialogTitle>
+              {isRecognition ? <p className="mt-0.5 text-[13px] text-[#8A7C98]">Compartilhe um reconhecimento com sua equipe.</p> : null}
+            </div>
             <button type="button" aria-label="Fechar" onClick={close} disabled={sending} className="grid h-9 w-9 place-items-center rounded-full text-[#6B6280] hover:bg-[#F6EEFB]">
               <X className="h-5 w-5" />
             </button>
@@ -397,29 +401,34 @@ export const MuralPublishDialog: FC<Props> = (props) => {
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3">
             {props.source === 'recognition-new' ? (
-              <div className="mb-3 grid gap-2">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <label className="grid gap-1 text-[12.5px] text-[#5C5168]">
-                    Pessoa reconhecida
-                    <select className="h-9 rounded-xl border border-[#E7D4F2] bg-white px-3 text-sm text-[#241B33]" value={personId} onChange={(event) => setPersonId(event.target.value)}>
-                      <option value="">Selecione</option>
-                      {others.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-                    </select>
-                  </label>
-                  <label className="grid gap-1 text-[12.5px] text-[#5C5168]">
-                    Etiqueta
-                    <select className="h-9 rounded-xl border border-[#E7D4F2] bg-white px-3 text-sm text-[#241B33]" value={tag} onChange={(event) => setTag(event.target.value)}>
-                      {tags.map((item) => <option key={item} value={item}>{item}</option>)}
-                    </select>
-                  </label>
-                </div>
-                {headline ? <p className="rounded-xl bg-[#F8EAFB] px-3 py-2 text-[13px] font-medium text-[#6A228C]">{headline}</p> : null}
+              <div className="mb-3 grid gap-2 sm:grid-cols-2">
+                <label className="grid gap-1 text-[12.5px] text-[#5C5168]">
+                  Pessoa reconhecida
+                  <select className="h-9 rounded-xl border border-[#E7D4F2] bg-white px-3 text-sm text-[#241B33]" value={personId} onChange={(event) => setPersonId(event.target.value)}>
+                    <option value="">Selecione</option>
+                    {others.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  </select>
+                </label>
+                <label className="grid gap-1 text-[12.5px] text-[#5C5168]">
+                  Etiqueta
+                  <select className="h-9 rounded-xl border border-[#E7D4F2] bg-white px-3 text-sm text-[#241B33]" value={tag} onChange={(event) => setTag(event.target.value)}>
+                    {tags.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </label>
               </div>
             ) : null}
 
-            {existing ? <p className="mb-3 rounded-xl bg-[#F8EAFB] px-3 py-2 text-[13px] font-medium text-[#6A228C]">{headline}</p> : null}
+            {isRecognition && headline ? (
+              <div className="mb-3 flex items-center gap-3 rounded-[22px] bg-gradient-to-r from-[#F8EAFB] to-[#F4E4FB] px-3 py-2.5">
+                <img src={authorAvatar} alt="" className="h-11 w-11 shrink-0 rounded-full bg-white object-cover ring-2 ring-white" />
+                <p className="min-w-0 flex-1 text-[16px] font-semibold leading-5 text-[#241B33]">
+                  {fromName.split(/\s+/)[0]} reconheceu <span className="text-[#6A228C]">{recognizedName}</span>
+                </p>
+                <Sparkles className="h-5 w-5 shrink-0 text-[#C084E0]" />
+              </div>
+            ) : null}
 
-            {preview ? (
+            {preview && !isRecognition ? (
               <ExpandProvider>
                 <PostCard
                   preview
@@ -437,15 +446,16 @@ export const MuralPublishDialog: FC<Props> = (props) => {
               </ExpandProvider>
             ) : (
               <>
-                <div className="relative rounded-2xl border border-[#E7D4F2] bg-white px-4 pb-10 pt-3 focus-within:border-[#C084E0] focus-within:ring-2 focus-within:ring-[#F3E4FA]">
+                <div className={`relative rounded-2xl border border-[#E7D4F2] bg-white px-4 pb-8 pt-3 focus-within:border-[#C084E0] focus-within:ring-2 focus-within:ring-[#F3E4FA] ${isRecognition ? 'flex items-start gap-2' : ''}`}>
+                  {isRecognition ? <Pencil className="mt-0.5 h-4 w-4 shrink-0 text-[#8E35B8]" /> : null}
                   {journal ? <p className="mb-1 text-[12px] font-semibold text-[#8E35B8]">Legenda da publicação (opcional)</p> : null}
                   <textarea
                     ref={field}
                     value={text}
-                    maxLength={MAX}
-                    onChange={(event) => setText(event.target.value.slice(0, MAX))}
-                    placeholder={journal ? '' : 'Digite o conteúdo da sua publicação…'}
-                    className={`w-full resize-none bg-transparent text-[15px] leading-6 text-[#241B33] outline-none placeholder:text-[#B7A8C4] ${journal ? 'min-h-[52px]' : 'min-h-[190px]'}`}
+                    maxLength={textMax}
+                    onChange={(event) => setText(event.target.value.slice(0, textMax))}
+                    placeholder={isRecognition ? 'Adicione uma legenda (opcional)...' : (journal ? '' : 'Digite o conteúdo da sua publicação…')}
+                    className={`w-full resize-none bg-transparent text-[15px] leading-6 text-[#241B33] outline-none placeholder:text-[#B7A8C4] ${isRecognition || journal ? 'min-h-[52px]' : 'min-h-[190px]'}`}
                   />
                   {journal ? (
                     <div className="mt-3">
@@ -457,8 +467,13 @@ export const MuralPublishDialog: FC<Props> = (props) => {
                       />
                     </div>
                   ) : null}
-                  <span className="pointer-events-none absolute bottom-3 right-4 text-[12.5px] text-[#B7A8C4]">{text.length}/{MAX}</span>
+                  <span className="pointer-events-none absolute bottom-3 right-4 text-[12.5px] text-[#B7A8C4]">{text.length}/{textMax}</span>
                 </div>
+                {isRecognition && recognizedName ? (
+                  <div className="mt-3">
+                    <RecognitionArtCard name={recognizedName} avatar={recognizedAvatar} />
+                  </div>
+                ) : null}
 
                 {photos.length || stickers.length || gifs.length ? (
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -550,7 +565,13 @@ export const MuralPublishDialog: FC<Props> = (props) => {
             )}
           </div>
 
-          <div className="relative flex items-center gap-2 border-t border-[#F3E8F8] px-4 py-3">
+          {isRecognition ? (
+            <p className="flex items-center gap-2 px-5 pb-1 text-[12px] text-[#8A7C98]">
+              <Info className="h-3.5 w-3.5 shrink-0 text-[#8E35B8]" />
+              Sua publicação será exibida no mural de reconhecimento.
+            </p>
+          ) : null}
+          <div className="relative flex flex-wrap items-center gap-2 border-t border-[#F3E8F8] px-4 py-3">
             <input ref={fileRef} type="file" multiple className="hidden" onChange={onFiles} />
             <button type="button" aria-label="Anexar arquivo" title="Anexar arquivo" onClick={() => fileRef.current?.click()} className={tool}><Paperclip className="h-[18px] w-[18px]" /></button>
             <span className="h-6 w-px bg-[#E7D4F2]" />
@@ -568,13 +589,21 @@ export const MuralPublishDialog: FC<Props> = (props) => {
                 <MenuItem icon={Smile} label="Emojis" onClick={() => { setPanel('emoji'); setMenu(false); setPreview(false); }} />
               </div>
             ) : null}
-            <button type="button" aria-label="Pré-visualizar publicação" aria-pressed={preview} title="Pré-visualizar publicação" onClick={() => { setPreview((value) => !value); setMenu(false); }} className={`${tool} ml-auto ${preview ? 'ring-2 ring-[#8E35B8]/30' : ''}`}>
-              <Eye className="h-[18px] w-[18px]" />
-            </button>
-            <button type="button" disabled={!ready} onClick={() => void publish()} className="inline-flex h-11 items-center gap-2 rounded-full bg-[#7C3AED] px-5 text-[14px] font-semibold text-white hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-50">
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Publicar
-            </button>
+            <div className="ml-auto flex items-center gap-2">
+              {isRecognition ? (
+                <button type="button" disabled={sending} onClick={close} className="inline-flex h-11 items-center rounded-full border border-[#E7D4F2] px-5 text-[14px] font-semibold text-[#6A228C] hover:bg-[#FBF8FC]">
+                  Cancelar
+                </button>
+              ) : (
+                <button type="button" aria-label="Pré-visualizar publicação" aria-pressed={preview} title="Pré-visualizar publicação" onClick={() => { setPreview((value) => !value); setMenu(false); }} className={`${tool} ${preview ? 'ring-2 ring-[#8E35B8]/30' : ''}`}>
+                  <Eye className="h-[18px] w-[18px]" />
+                </button>
+              )}
+              <button type="button" disabled={!ready} onClick={() => void publish()} className="inline-flex h-11 items-center gap-2 rounded-full bg-[#7C3AED] px-5 text-[14px] font-semibold text-white hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-50">
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Publicar
+              </button>
+            </div>
           </div>
         </div>
       </DialogContent>
