@@ -47,7 +47,7 @@ export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: bo
       <aside
         className={cn(
           'relative hidden shrink-0 flex-col bg-transparent text-sidebar-foreground xl:flex sticky top-0 h-dvh',
-          collapsed ? 'w-11' : fill ? 'w-[400px]' : 'w-[320px]',
+          collapsed ? 'w-11' : 'w-[320px]',
         )}
       >
         <div className={cn('z-10 flex h-12 shrink-0 items-center gap-1 px-1', collapsed ? 'justify-center' : 'justify-end')}>

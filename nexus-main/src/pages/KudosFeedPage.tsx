@@ -137,12 +137,15 @@ export const KudosFeedPage: FC = () => {
     <PageFrame fitViewport fillRail={tab === 'metas'} rail={tab === 'metas' && goals ? <GoalsAssistant /> : <HomeRail />}>
       <div className="grid gap-4 pb-16">
             {tab === 'metas' ? (
-              <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#F4E4FB] via-[#EED4F8] to-[#E3C2F4] px-5 py-4">
-                <div className="relative flex items-start gap-3">
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/70 text-[#8E35B8]"><Target className="h-6 w-6" /></span>
-                  <div>
-                    <h1 className="flex items-center gap-2 text-[20px] font-semibold text-[#4A1C73]">Central Inteligente de Metas</h1>
-                    <p className="mt-0.5 text-[13px] text-[#8A5AA0]">Interprete metas e resultados nos dois modos. O pódio só muda com pedido explícito e confirmação.</p>
+              <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#F8EAFB] via-[#F3DDF8] to-[#E7C4F2] px-5 py-4">
+                <div className="pointer-events-none absolute -top-8 right-24 h-24 w-24 rounded-full bg-[#D9A6EE]/70" />
+                <div className="pointer-events-none absolute right-6 -bottom-10 h-28 w-28 rounded-full bg-[#C084E0]/45" />
+                <div className="relative flex flex-wrap items-center gap-4">
+                  <span className="grid h-[92px] w-[92px] shrink-0 place-items-center rounded-2xl bg-white/70 text-[#8E35B8]"><Target className="h-10 w-10" /></span>
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#241B33]">Central Inteligente de Metas</h1>
+                    <p className="mt-0.5 text-[15px] font-semibold text-[#6A228C]">Interprete metas e resultados nos dois modos.</p>
+                    <p className="mt-1 max-w-xl text-[13px] leading-snug text-[#8A5AA0]">O pódio só muda com pedido explícito e confirmação.</p>
                   </div>
                 </div>
               </section>

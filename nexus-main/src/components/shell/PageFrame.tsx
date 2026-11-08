@@ -11,7 +11,6 @@ export const PageFrame: FC<{ children: ReactNode; rail?: ReactNode; fitViewport?
     <div className="flex min-h-svh flex-col overflow-x-clip bg-transparent">
       <div className="flex min-w-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
-          <div data-unica-search-sentinel="" aria-hidden className="h-px w-full shrink-0" />
           <Header trailing={dockAccount ? <div className="xl:hidden"><AccountCluster /></div> : <AccountCluster />} />
           <main className="relative min-w-0 flex-1 overflow-x-clip px-4 py-3 sm:px-5">
             {children}

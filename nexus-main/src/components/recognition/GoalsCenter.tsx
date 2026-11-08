@@ -2,7 +2,7 @@ import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { authHeaders, getDemoId } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { useShell } from '@/components/Sidebar';
-import { ArrowLeftRight, BarChart3, Bot, Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, FileText, Info, Maximize2, MessageCircle, Minimize2, Pencil, Phone, Send, Settings2, Smile, Sparkles, Star, Ticket, Timer, Trash2, Trophy, User, X } from 'lucide-react';
+import { ArrowLeftRight, BarChart3, Bot, Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, FileText, Maximize2, MessageCircle, Minimize2, Pencil, Phone, Send, Settings2, Smile, Sparkles, Star, Ticket, Timer, Trash2, Trophy, User, X } from 'lucide-react';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type FC, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
@@ -254,18 +254,6 @@ type Phase = 'idle' | 'custom' | 'overall';
 
 function headers() {
   return { ...authHeaders(), ...(LOGIN_REQUIRED ? {} : { 'x-unica-demo': getDemoId() }) };
-}
-
-function Hint({ text }: { text: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <span className="relative inline-flex align-middle" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
-      <button type="button" aria-label={text} aria-expanded={open} onClick={() => setOpen((value) => !value)} className="grid h-4 w-4 place-items-center rounded-full border border-white/50 bg-white/40 text-[10px] font-semibold text-[#8A7C98]">
-        <Info className="h-2.5 w-2.5" />
-      </button>
-      {open ? <span role="tooltip" className="absolute top-5 left-0 z-20 w-64 rounded-xl border border-[#E7DFF0] bg-white p-2 text-left text-[12px] leading-5 font-normal text-[#5C5168] shadow-md">{text}</span> : null}
-    </span>
-  );
 }
 
 function tone(state?: string) {
@@ -1216,10 +1204,9 @@ export const GoalsAssistant: FC = () => {
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#F3EAF8] px-3 py-3 pr-10">
         <h3 className="flex min-w-0 items-center gap-2 text-[14px] font-semibold text-[#241B33]">
           <Sparkles className="h-4 w-4 shrink-0 text-[#8E35B8]" /> <span className="truncate">Fale com o assistente de metas</span>
-          <Hint text="O pódio só muda com pedido explícito e confirmação." />
         </h3>
         <div className="flex shrink-0 items-center gap-0.5">
-          <button type="button" aria-label="Abrir banco de dados dos relatórios" title="Banco de dados" onClick={() => { setWide(true); setBankOpen(true); }} className="grid h-8 w-8 place-items-center rounded-lg text-[#8E35B8] hover:bg-[#F3E4FA]">
+          <button type="button" aria-label="Abrir banco de dados dos relatórios" title="Banco de dados" onClick={() => setBankOpen(true)} className="grid h-8 w-8 place-items-center rounded-lg text-[#8E35B8] hover:bg-[#F3E4FA]">
             <FileText className="h-4 w-4" />
           </button>
           <button type="button" aria-label={wide ? 'Reduzir painel' : 'Ampliar chat e banco de dados'} title={wide ? 'Reduzir' : 'Ampliar chat e banco'} onClick={() => setWide((value) => !value)} className="grid h-8 w-8 place-items-center rounded-lg text-[#8E35B8] hover:bg-[#F3E4FA]">
@@ -1228,7 +1215,7 @@ export const GoalsAssistant: FC = () => {
         </div>
       </div>
       {bankOpen ? <ReportBank goals={goals} onClose={() => setBankOpen(false)} /> : null}
-      <div ref={thread} onClick={() => setWide(true)} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
+      <div ref={thread} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
         {messages.map((message) => (
           <div key={message.id} className={cn('flex gap-2', message.from === 'user' ? 'justify-end' : 'items-start')}>
             {message.from === 'bot' ? <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#F3E4FA] text-[#8E35B8]"><Bot className="h-4 w-4" /></span> : null}
@@ -1375,8 +1362,7 @@ export const GoalsAssistant: FC = () => {
           <textarea
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            onFocus={() => setWide(true)}
-            placeholder="Cole ou digite sua mensagem..."
+            placeholder="Digite aqui"
             rows={wide ? 5 : 3}
             className={cn('min-h-[72px] flex-1 resize-none bg-transparent text-[13px] outline-none', wide ? 'max-h-40' : 'max-h-28')}
           />
