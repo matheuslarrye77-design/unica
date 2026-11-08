@@ -18,12 +18,12 @@ export const RecognitionArtCard: FC<{ name: string; avatar?: string }> = ({ name
         alt=""
         className="block h-auto w-full"
       />
-      <div className="absolute inset-y-0 left-0 flex w-[58%] items-center gap-4 pl-7 pr-4 sm:pl-8" style={delicate}>
-        <img src={photo} alt="" className="h-[72px] w-[72px] shrink-0 rounded-full bg-white object-cover ring-[3px] ring-white/90 shadow-[0_8px_16px_rgba(30,10,70,0.3)]" />
+      <div className="absolute inset-y-0 left-0 flex w-[66%] items-center gap-3 pl-5 pr-3 sm:pl-6" style={delicate}>
+        <img src={photo} alt="" className="h-12 w-12 shrink-0 rounded-full bg-white object-cover ring-2 ring-white/90 shadow-[0_6px_14px_rgba(30,10,70,0.28)] sm:h-14 sm:w-14" />
         <div className="min-w-0">
-          <p className="text-[14px] font-medium uppercase tracking-[0.18em] text-white/75">Reconhecimento</p>
-          <p className="mt-1 truncate text-[30px] font-semibold leading-9 tracking-[-0.02em] text-white">{name}</p>
-          <p className="text-[17px] font-normal leading-6 text-white/90">pelo seu desempenho e dedicação</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/75">Reconhecimento</p>
+          <p className="truncate text-[20px] font-semibold leading-6 tracking-[-0.02em] text-white sm:text-[24px] sm:leading-7">{name}</p>
+          <p className="truncate text-[13px] font-normal leading-5 text-white/90 sm:text-[15px]">pelo seu desempenho e dedicação</p>
         </div>
       </div>
     </article>
