@@ -137,9 +137,8 @@ export const KudosFeedPage: FC = () => {
     <PageFrame fitViewport fillRail={tab === 'metas'} rail={tab === 'metas' && goals ? <GoalsAssistant /> : <HomeRail />}>
       <div className="grid gap-4 pb-16">
             {tab === 'metas' ? (
-              <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#F5F1FF] via-[#F3DDF8] to-[#E0D6FC] px-5 py-4">
-                <div className="pointer-events-none absolute -top-8 right-24 h-24 w-24 rounded-full bg-[#C4B0FC]/70" />
-                <div className="pointer-events-none absolute right-6 -bottom-10 h-28 w-28 rounded-full bg-[#8A5CF8]/45" />
+              <section className="relative overflow-hidden rounded-[22px] px-5 py-4">
+                <img src="/cards/fundo-pequeno.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
                 <div className="relative flex flex-wrap items-center gap-4">
                   <span className="grid h-[92px] w-[92px] shrink-0 place-items-center rounded-2xl bg-white/70 text-[#4600F3]"><Target className="h-10 w-10" /></span>
                   <div className="min-w-0 flex-1">
@@ -150,9 +149,8 @@ export const KudosFeedPage: FC = () => {
                 </div>
               </section>
             ) : (
-              <section className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#F5F1FF] via-[#F3DDF8] to-[#E0D6FC] px-5 py-4">
-                <div className="pointer-events-none absolute -top-8 right-24 h-24 w-24 rounded-full bg-[#C4B0FC]/70" />
-                <div className="pointer-events-none absolute right-6 -bottom-10 h-28 w-28 rounded-full bg-[#8A5CF8]/45" />
+              <section className="relative overflow-hidden rounded-[22px] px-5 py-4">
+                <img src="/cards/fundo-pequeno.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
                 <div className="relative flex flex-wrap items-center gap-4">
                   <img src="/reconhecimento/trofeu.png" alt="" className="h-[92px] w-[92px] shrink-0 object-contain" />
                   <div className="min-w-0 flex-1">

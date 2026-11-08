@@ -26,13 +26,14 @@ export const AgendaRail: FC = () => {
 
   return (
     <div className="grid min-w-0 gap-2">
-      <section className="min-w-0 rounded-[22px] bg-gradient-to-r from-[#F5F1FF] to-[#F3DDF8] p-3">
-        <div className="flex items-center gap-2.5">
+      <section className="relative min-w-0 overflow-hidden rounded-[22px] p-3">
+        <img src="/cards/fundo-pequeno.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
+        <div className="relative flex items-center gap-2.5">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/80 text-[#4600F3]"><Sparkles className="h-4 w-4" /></span>
           <p className="text-[14px] font-semibold text-[#3600C2]">Eventos importantes</p>
         </div>
         {featured ? (
-          <div className="mt-2.5 flex items-center gap-2.5 rounded-xl bg-white/80 px-2.5 py-2">
+          <div className="relative mt-2.5 flex items-center gap-2.5 rounded-xl bg-white/80 px-2.5 py-2">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#EDE7FE] text-center leading-tight text-[#3600C2]">
               <span className="text-[13px] font-semibold">{featured.date.toLocaleDateString('pt-BR', { day: '2-digit' })}</span>
               <span className="text-[10px] capitalize">{featured.date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>

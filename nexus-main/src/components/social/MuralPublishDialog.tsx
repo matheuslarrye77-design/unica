@@ -419,8 +419,9 @@ export const MuralPublishDialog: FC<Props> = (props) => {
             ) : null}
 
             {isRecognition && headline ? (
-              <div className="mb-3 flex items-center gap-3 rounded-[22px] bg-gradient-to-r from-[#F5F1FF] to-[#F4E4FB] px-3 py-2.5">
-                <img src={authorAvatar} alt="" className="h-11 w-11 shrink-0 rounded-full bg-white object-cover ring-2 ring-white" />
+              <div className="relative mb-3 flex items-center gap-3 overflow-hidden rounded-[22px] px-3 py-2.5">
+                <img src="/cards/fundo-pequeno.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
+                <img src={authorAvatar} alt="" className="relative h-11 w-11 shrink-0 rounded-full bg-white object-cover ring-2 ring-white" />
                 <p className="min-w-0 flex-1 text-[16px] font-semibold leading-5 text-[#241B33]">
                   {fromName.split(/\s+/)[0]} reconheceu <span className="text-[#3600C2]">{recognizedName}</span>
                 </p>

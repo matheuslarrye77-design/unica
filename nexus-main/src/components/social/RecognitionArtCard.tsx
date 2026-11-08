@@ -30,16 +30,8 @@ const TrophyMark: FC = () => (
 export const RecognitionArtCard: FC<{ name: string; avatar?: string }> = ({ name }) => {
   if (!name) return null;
   return (
-    <div className="relative isolate flex min-h-[140px] w-full items-center overflow-hidden rounded-[20px] bg-[#EDE7FE] px-4 py-4 sm:min-h-[148px] sm:px-6">
-      <span className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-[#DDD4FB]" />
-      <span className="pointer-events-none absolute -bottom-16 right-16 h-36 w-36 rounded-full bg-[#E8E0FD]" />
-      <span className="pointer-events-none absolute right-8 top-6 h-10 w-10 rounded-full border-[6px] border-[#E8E0FD]/80" />
-      <svg className="pointer-events-none absolute right-10 top-5 h-6 w-6 text-[#C4B0FC]" viewBox="0 0 24 24" aria-hidden>
-        <path fill="currentColor" d="M12 2.5l1.6 4.8h5.1l-4.1 3 1.6 4.9L12 12.3 7.8 15.2l1.6-4.9-4.1-3h5.1z" />
-      </svg>
-      <svg className="pointer-events-none absolute bottom-6 right-24 h-4 w-4 text-[#D4C8FC]" viewBox="0 0 24 24" aria-hidden>
-        <path fill="currentColor" d="M12 2.5l1.6 4.8h5.1l-4.1 3 1.6 4.9L12 12.3 7.8 15.2l1.6-4.9-4.1-3h5.1z" />
-      </svg>
+    <div className="relative isolate flex min-h-[140px] w-full items-center overflow-hidden rounded-[20px] px-4 py-4 sm:min-h-[148px] sm:px-6">
+      <img src="/cards/fundo-pequeno.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
       <div className="relative z-[1] flex w-full flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
         <div className="relative flex shrink-0 items-center justify-center">
           <TrophyMark />
