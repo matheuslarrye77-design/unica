@@ -16,9 +16,9 @@ export const RecognitionArtCard: FC<{ name: string; avatar?: string }> = ({ name
       <img
         src="/reconhecimento/card-banner.jpg?v=3"
         alt=""
-        className="absolute inset-0 h-full w-full object-cover object-[18%_center]"
+        className="absolute left-0 top-1/2 h-full w-[128%] max-w-none -translate-y-1/2 object-cover object-left"
       />
-      <div className="absolute inset-y-0 left-[58%] flex items-center gap-3.5 pr-6" style={delicate}>
+      <div className="absolute inset-y-0 left-[36%] flex items-center gap-3.5 pr-6" style={delicate}>
         <img src={photo} alt="" className="h-12 w-12 shrink-0 rounded-full bg-white object-cover ring-2 ring-white/90 shadow-[0_6px_14px_rgba(30,10,70,0.28)]" />
         <div className="min-w-0">
           <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/70">Reconhecimento</p>
