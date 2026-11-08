@@ -17,7 +17,7 @@ export const Header: FC<{ trailing?: ReactNode }> = ({ trailing }) => {
   const onMenu = useOpenMenu();
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-[#EFEAFC] bg-[url('/fundo-plataforma.png')] bg-cover bg-center bg-fixed">
+    <header className="sticky top-0 z-30 w-full bg-transparent">
       <div className="flex h-12 items-center gap-3 px-4 sm:px-5">
         <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 rounded-[10px] lg:hidden" aria-label="Abrir menu" onClick={onMenu}>
           <Menu className="h-4 w-4" />

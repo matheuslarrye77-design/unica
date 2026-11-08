@@ -96,7 +96,7 @@ export const ActivityCardView: FC<{
           </DropdownMenu>
         ) : <span className="ml-auto" />}
       </div>
-      <h3 title={activity.title} className="relative mt-1.5 line-clamp-2 text-[13px] font-light leading-snug text-[#2C2433]">{activity.title}</h3>
+      <h3 title={activity.title} className="relative mt-1.5 line-clamp-2 text-[13px] font-semibold leading-snug text-[#2C2433]">{activity.title}</h3>
       {collapsed ? null : (
       <div className="relative">
       <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[12px] font-extralight text-[#5C5168]">

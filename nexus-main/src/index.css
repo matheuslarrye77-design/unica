@@ -171,11 +171,16 @@
   html {
     font-size: 16px;
     min-height: 100%;
-    background-color: #EFEAFC;
+    background-color: transparent;
+    background-image: url('/fundo-plataforma.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
   }
   body {
     min-height: 100%;
-    background-color: #EFEAFC;
+    background-color: transparent;
     color: var(--foreground);
     font-family: "General Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
     letter-spacing: -0.01em;
@@ -195,16 +200,7 @@
   }
   #root {
     min-height: 100%;
-  }
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    background-image: url('/fundo-plataforma.png');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+    background: transparent;
   }
   ::selection {
     background: #E0D6FC;

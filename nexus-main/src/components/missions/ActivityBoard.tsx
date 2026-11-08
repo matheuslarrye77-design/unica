@@ -214,8 +214,8 @@ export const ActivityBoard: FC = () => {
               <Check className="h-5 w-5" strokeWidth={1.75} />
             </span>
             <div className="min-w-0">
-              <h1 className="text-[22px] font-light leading-tight tracking-tight text-[#2C2433]">Atividades</h1>
-              <p className="mt-1 text-[13px] font-extralight leading-snug text-[#5C5168]">Organize suas atividades pessoais e acompanhe seu progresso</p>
+              <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#2C2438]">Atividades</h1>
+              <p className="mt-0.5 text-[15px] font-medium text-[#3C3952]">Organize suas atividades pessoais e acompanhe seu progresso</p>
             </div>
           </div>
           <PerformanceChart activities={scoped} />
