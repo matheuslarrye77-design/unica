@@ -12,7 +12,7 @@ import { teamRoster } from '@/data/team';
 import { createFeedPost, uploadMedia } from '@/lib/feed';
 import { recognitionLine } from '@/lib/recognitionText';
 import { actor } from '@/lib/session';
-import { ChevronDown, Eye, FileText, ImagePlay, Info, ListChecks, Loader2, Megaphone, Mic, Paperclip, Pencil, Send, Smile, Sparkles, Sticker, X } from 'lucide-react';
+import { ChevronDown, Eye, FileText, ImagePlay, ListChecks, Loader2, Megaphone, Mic, Paperclip, Pencil, Send, Smile, Sparkles, Sticker, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ChangeEvent, type FC } from 'react';
 import { toast } from 'sonner';
 
@@ -565,12 +565,6 @@ export const MuralPublishDialog: FC<Props> = (props) => {
             )}
           </div>
 
-          {isRecognition ? (
-            <p className="flex items-center gap-2 px-5 pb-1 text-[12px] text-[#8A7C98]">
-              <Info className="h-3.5 w-3.5 shrink-0 text-[#8E35B8]" />
-              Sua publicação será exibida no mural de reconhecimento.
-            </p>
-          ) : null}
           <div className="relative flex flex-wrap items-center gap-2 border-t border-[#F3E8F8] px-4 py-3">
             <input ref={fileRef} type="file" multiple className="hidden" onChange={onFiles} />
             <button type="button" aria-label="Anexar arquivo" title="Anexar arquivo" onClick={() => fileRef.current?.click()} className={tool}><Paperclip className="h-[18px] w-[18px]" /></button>

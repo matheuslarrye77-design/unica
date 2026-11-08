@@ -10,16 +10,13 @@ export const RecognitionArtCard: FC<{ name: string; avatar?: string }> = ({ name
   const photo = avatar || personAvatar(name);
   if (!name) return null;
   return (
-    <div
-      className="relative h-[158px] overflow-hidden rounded-[20px] sm:h-[176px]"
-      style={{ backgroundColor: '#6D28D9', backgroundImage: 'url(/reconhecimento/card-banner.jpg)', backgroundPosition: '12% center', backgroundSize: 'cover' }}
-    >
-      <div className="relative z-10 flex h-full items-center justify-end gap-3 px-4 sm:gap-4 sm:px-6">
-        <span className="hidden h-14 w-px shrink-0 bg-white/50 sm:block" />
-        <img src={photo} alt="" className="h-16 w-16 shrink-0 rounded-full bg-white object-cover ring-[3px] ring-white/90 shadow-[0_8px_20px_rgba(40,10,80,0.28)] sm:h-[72px] sm:w-[72px]" />
-        <div className="min-w-0 max-w-[58%]">
-          <p className="truncate text-[18px] font-bold leading-6 text-white sm:text-[22px]">{name}</p>
-          <p className="mt-0.5 text-[12.5px] leading-5 text-white/95 sm:text-[13.5px]">Reconhecimento pelo seu desempenho e dedicação!</p>
+    <div className="relative aspect-[2/1] w-full overflow-hidden rounded-[20px] bg-[#6D28D9]">
+      <img src="/reconhecimento/card-banner.jpg?v=2" alt="" className="absolute inset-0 h-full w-full object-cover" />
+      <div className="absolute inset-y-0 right-0 flex w-[40%] items-center gap-3 pr-4 sm:gap-3.5 sm:pr-5">
+        <img src={photo} alt="" className="h-14 w-14 shrink-0 rounded-full bg-white object-cover ring-[3px] ring-white/90 shadow-[0_8px_20px_rgba(40,10,80,0.28)] sm:h-16 sm:w-16" />
+        <div className="min-w-0">
+          <p className="truncate text-[16px] font-bold leading-5 text-white sm:text-[20px] sm:leading-6">{name}</p>
+          <p className="mt-0.5 text-[12px] leading-4 text-white/95 sm:text-[13.5px] sm:leading-5">Reconhecimento pelo seu desempenho e dedicação!</p>
         </div>
       </div>
     </div>
