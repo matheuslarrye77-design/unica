@@ -139,24 +139,26 @@ export const KudosFeedPage: FC = () => {
             {tab === 'metas' ? (
               <section className="relative overflow-hidden rounded-[22px] px-5 py-4">
                 <img src="/cards/fundo-pequeno.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
+                <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/75 via-white/40 to-white/12" />
                 <div className="relative flex flex-wrap items-center gap-4">
-                  <span className="grid h-[92px] w-[92px] shrink-0 place-items-center rounded-2xl bg-white/70 text-[#4600F3]"><Target className="h-10 w-10" /></span>
+                  <span className="grid h-[92px] w-[92px] shrink-0 place-items-center rounded-2xl bg-white text-[#4600F3]"><Target className="h-10 w-10" /></span>
                   <div className="min-w-0 flex-1">
-                    <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#241B33]">Central Inteligente de Metas</h1>
+                    <h1 className="text-[26px] font-bold leading-tight tracking-tight text-[#1C0066] [text-shadow:0_1px_0_rgba(255,255,255,0.85)]">Central Inteligente de Metas</h1>
                     <p className="mt-0.5 text-[15px] font-semibold text-[#3600C2]">Interprete metas e resultados nos dois modos.</p>
-                    <p className="mt-1 max-w-xl text-[13px] leading-snug text-[#6B33F6]">O pódio só muda com pedido explícito e confirmação.</p>
+                    <p className="mt-1 max-w-xl text-[13px] font-medium leading-snug text-[#2A0094]">O pódio só muda com pedido explícito e confirmação.</p>
                   </div>
                 </div>
               </section>
             ) : (
               <section className="relative overflow-hidden rounded-[22px] px-5 py-4">
                 <img src="/cards/fundo-pequeno.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
+                <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/75 via-white/40 to-white/12" />
                 <div className="relative flex flex-wrap items-center gap-4">
                   <img src="/reconhecimento/trofeu.png" alt="" className="h-[92px] w-[92px] shrink-0 object-contain" />
                   <div className="min-w-0 flex-1">
-                    <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#241B33]">Reconhecimento</h1>
+                    <h1 className="text-[26px] font-bold leading-tight tracking-tight text-[#1C0066] [text-shadow:0_1px_0_rgba(255,255,255,0.85)]">Reconhecimento</h1>
                     <p className="mt-0.5 text-[15px] font-semibold text-[#3600C2]">Valorize quem faz a diferença!</p>
-                    <p className="mt-1 max-w-xl text-[13px] leading-snug text-[#6B33F6]">Aqui você pode reconhecer seus colegas e acompanhar os maiores destaques do mês.</p>
+                    <p className="mt-1 max-w-xl text-[13px] font-medium leading-snug text-[#2A0094]">Aqui você pode reconhecer seus colegas e acompanhar os maiores destaques do mês.</p>
                   </div>
                   {gestao ? (
                     <button type="button" onClick={() => setComposer(true)} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#4600F3] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#3600C2]">

@@ -32,15 +32,16 @@ export const RecognitionArtCard: FC<{ name: string; avatar?: string }> = ({ name
   return (
     <div className="relative isolate flex min-h-[140px] w-full items-center overflow-hidden rounded-[20px] px-4 py-4 sm:min-h-[148px] sm:px-6">
       <img src="/cards/fundo-pequeno.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
+      <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.78)_0%,rgba(255,255,255,0.28)_52%,transparent_78%)]" />
       <div className="relative z-[1] flex w-full flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
         <div className="relative flex shrink-0 items-center justify-center">
           <TrophyMark />
         </div>
-        <div className="hidden h-[88px] w-px shrink-0 bg-[#4600F3]/25 sm:block" />
+        <div className="hidden h-[88px] w-px shrink-0 bg-[#4600F3]/40 sm:block" />
         <div className="relative flex min-w-0 flex-1 flex-col items-center justify-center text-center">
-          <p className="inline-flex rounded-full bg-[#4600F3] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white">Reconhecimento</p>
-          <p className="mt-2 max-w-full px-2 text-[clamp(26px,3.4vw,38px)] font-bold leading-tight tracking-[-0.03em] text-[#29213A]">{name}</p>
-          <p className="mt-1 text-[17px] leading-6 text-[#625578] sm:text-[18px]">pelo seu desempenho e dedicação</p>
+          <p className="inline-flex rounded-full bg-[#4600F3] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white shadow-[0_6px_16px_rgba(70,0,243,0.28)]">Reconhecimento</p>
+          <p className="mt-2 max-w-full px-2 text-[clamp(26px,3.4vw,38px)] font-extrabold leading-tight tracking-[-0.03em] text-[#1C0066] [text-shadow:0_1px_0_rgba(255,255,255,0.85)]">{name}</p>
+          <p className="mt-1 text-[17px] font-semibold leading-6 text-[#3600C2] sm:text-[18px]">pelo seu desempenho e dedicação</p>
         </div>
       </div>
     </div>
