@@ -14,7 +14,7 @@ export const JournalNewsCard: FC<{
     <Newspaper className="absolute right-4 top-4 h-5 w-5 text-[#5C5168]" strokeWidth={1.75} />
     <div className="relative pr-8">
       <p className="inline-flex rounded-full bg-[#4600F3] px-3 py-1 text-[10px] font-bold tracking-[0.08em] text-white">NOTÍCIA DO JORNAL</p>
-      <p className="mt-3 text-[18px] font-bold leading-6 text-[#2C2438]">{title}</p>
+      <p className="unica-display mt-3 text-[18px] leading-6 text-[#2C2438]">{title}</p>
       {category ? (
         <span className="mt-2 inline-flex rounded-full bg-white px-2.5 py-1 text-[12px] font-semibold text-[#5C5168]">{category}</span>
       ) : null}

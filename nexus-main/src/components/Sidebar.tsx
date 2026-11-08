@@ -157,7 +157,7 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
       <div className={cn('flex items-center px-4 pb-1 pt-4', collapsed ? 'flex-col gap-2 px-2' : 'justify-between')}>
         <Link to="/" onClick={onClose} className="flex items-center gap-2.5 rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
           <img src="/marca-unica.png" alt="" className="h-8 w-8 rounded-full object-cover" />
-          {collapsed ? null : <span className="text-[15px] font-semibold tracking-tight text-foreground">Única Conecta</span>}
+          {collapsed ? null : <span className="unica-display text-[15px] tracking-tight text-foreground">Única Conecta</span>}
         </Link>
         <button type="button" className="hidden h-8 w-8 items-center justify-center rounded-[10px] text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 lg:inline-flex" aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'} onClick={toggleLeft}>
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}

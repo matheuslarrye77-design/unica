@@ -40,7 +40,7 @@ export const RecognitionArtCard: FC<{ name: string; avatar?: string }> = ({ name
         <div className="hidden h-[88px] w-px shrink-0 bg-[#4600F3]/40 sm:block" />
         <div className="relative flex min-w-0 flex-1 flex-col items-center justify-center text-center">
           <p className="inline-flex rounded-full bg-[#4600F3] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white shadow-[0_6px_16px_rgba(70,0,243,0.28)]">Reconhecimento</p>
-          <p className="mt-2 max-w-full px-2 text-[clamp(26px,3.4vw,38px)] font-bold leading-tight tracking-[-0.03em] text-[#2C2438]">{name}</p>
+          <p className="unica-display mt-2 max-w-full px-2 text-[clamp(26px,3.4vw,38px)] leading-tight text-[#2C2438]">{name}</p>
           <p className="mt-1 text-[17px] font-medium leading-6 text-[#5C5168] sm:text-[18px]">pelo seu desempenho e dedicação</p>
         </div>
       </div>
