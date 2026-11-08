@@ -59,7 +59,6 @@ export const MuralPublishDialog: FC<Props> = (props) => {
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
   const [text, setText] = useState('');
-  const [mode, setMode] = useState<'give' | 'received'>('give');
   const [personId, setPersonId] = useState('');
   const [tag, setTag] = useState(tags[0]);
   const [photos, setPhotos] = useState<Piece[]>([]);
@@ -96,14 +95,12 @@ export const MuralPublishDialog: FC<Props> = (props) => {
     if (props.source === 'recognition-existing') {
       setText(props.item.quote);
       setPhotos((props.item.photos ?? []).map((url) => ({ id: url, url })));
-      setMode(props.item.received ? 'received' : 'give');
       setTag(props.item.tag && tags.includes(props.item.tag) ? props.item.tag : tags[0]);
       setPersonId('');
       return;
     }
     setText('');
     setPhotos([]);
-    setMode('give');
     setPersonId('');
     setTag(tags[0]);
   }
@@ -233,9 +230,9 @@ export const MuralPublishDialog: FC<Props> = (props) => {
   }
 
   const person = teamRoster.find((item) => item.id === personId);
-  const received = existing ? Boolean(existing.received) : mode === 'received';
-  const recognizedName = existing ? existing.to : received ? user.name : (person?.name ?? '');
-  const fromName = existing ? existing.from : received ? (person?.name ?? '') : user.name;
+  const received = existing ? Boolean(existing.received) : false;
+  const recognizedName = existing ? existing.to : (person?.name ?? '');
+  const fromName = existing ? existing.from : user.name;
   const cover = journal ? articleCover(journal) : '';
   const photoUrls = [...(cover ? [cover] : []), ...photos.map((item) => item.url)];
   const labels = pollOpen ? options.map((item) => item.trim()).filter(Boolean) : [];
@@ -401,13 +398,9 @@ export const MuralPublishDialog: FC<Props> = (props) => {
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3">
             {props.source === 'recognition-new' ? (
               <div className="mb-3 grid gap-2">
-                <div className="grid grid-cols-2 gap-1 rounded-full bg-[#F3E4FA] p-1">
-                  <button type="button" onClick={() => setMode('give')} className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium ${mode === 'give' ? 'bg-[#8E35B8] text-white' : 'text-[#6A228C]'}`}>Reconhecer alguém</button>
-                  <button type="button" onClick={() => setMode('received')} className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium ${mode === 'received' ? 'bg-[#8E35B8] text-white' : 'text-[#6A228C]'}`}>Reconhecimento recebido</button>
-                </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <label className="grid gap-1 text-[12.5px] text-[#5C5168]">
-                    {mode === 'received' ? 'Quem reconheceu você' : 'Pessoa reconhecida'}
+                    Pessoa reconhecida
                     <select className="h-9 rounded-xl border border-[#E7D4F2] bg-white px-3 text-sm text-[#241B33]" value={personId} onChange={(event) => setPersonId(event.target.value)}>
                       <option value="">Selecione</option>
                       {others.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}

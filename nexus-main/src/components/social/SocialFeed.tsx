@@ -20,7 +20,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   const demo = useDemoProfile();
   const user = actor();
   const [params, setParams] = useSearchParams();
-  const { canRecognize } = useInstitution();
+  const { isLeader: gestao } = useInstitution();
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [reposts, setReposts] = useState<Repost[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -344,7 +344,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
         </LilacWash>
       )}
 
-      {mode === 'recognition' ? (canRecognize ? <RecognitionComposer onCreated={() => window.dispatchEvent(new Event('unica-feed-refresh'))} /> : null) : <CreatePost onPublish={publish} journal={journalShare} onClearJournal={() => setParams({}, { replace: true })} />}
+      {mode === 'recognition' ? (gestao ? <RecognitionComposer onCreated={() => window.dispatchEvent(new Event('unica-feed-refresh'))} /> : null) : <CreatePost onPublish={publish} journal={journalShare} onClearJournal={() => setParams({}, { replace: true })} />}
 
       {mode === 'mural' ? (
         <div className="flex justify-end">

@@ -83,6 +83,7 @@ const LEGACY_COVERS: Record<string, string> = {
 };
 
 export const PIN_LIMIT = 3;
+export const SAVE_LIMIT = 8;
 export const TITLE_LIMIT = 150;
 export const CONTENT_LIMIT = 10000;
 const STORAGE_KEY = 'unica-journal';
@@ -679,18 +680,31 @@ export function toggleJournalPin(id: string) {
   return { ok: true as const, pinned: !article.pinned, replacedId: pinned.replacedId };
 }
 
-export function savedJournalIds() {
+function readSavedIds() {
   try {
     const parsed = JSON.parse(localStorage.getItem(SAVED_KEY) ?? '[]') as string[];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : [];
   } catch {
     return [];
   }
 }
 
+export function savedJournalIds() {
+  return readSavedIds().slice(0, SAVE_LIMIT);
+}
+
+export function trimSavedJournal() {
+  const ids = readSavedIds();
+  if (ids.length <= SAVE_LIMIT) return ids;
+  const next = ids.slice(0, SAVE_LIMIT);
+  localStorage.setItem(SAVED_KEY, JSON.stringify(next));
+  notify();
+  return next;
+}
+
 export function toggleJournalSave(id: string) {
-  const current = savedJournalIds();
-  const next = current.includes(id) ? current.filter((item) => item !== id) : [id, ...current];
+  const current = readSavedIds();
+  const next = current.includes(id) ? current.filter((item) => item !== id) : [id, ...current.filter((item) => item !== id)].slice(0, SAVE_LIMIT);
   localStorage.setItem(SAVED_KEY, JSON.stringify(next));
   notify();
   return next.includes(id);

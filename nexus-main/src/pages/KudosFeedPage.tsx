@@ -8,6 +8,7 @@ import { usePageSearch } from '@/lib/pageSearch';
 import { cn } from '@/lib/utils';
 import { GoalsAssistant, GoalsCenter, GoalsProvider, type GoalsPayload } from '@/components/recognition/GoalsCenter';
 import { PodiumStage } from '@/components/recognition/PodiumStage';
+import { useInstitution } from '@/lib/institution';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { ChevronDown, Heart, Megaphone, Star, Target, Trophy } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
@@ -62,6 +63,7 @@ function goalsHeaders() {
 }
 
 export const KudosFeedPage: FC = () => {
+  const { isLeader: gestao } = useInstitution();
   const { query } = usePageSearch();
   const [params, setParams] = useSearchParams();
   const [composer, setComposer] = useState(false);
@@ -144,10 +146,12 @@ export const KudosFeedPage: FC = () => {
                   <p className="mt-0.5 text-[15px] font-semibold text-[#6A228C]">Valorize quem faz a diferença!</p>
                   <p className="mt-1 max-w-xl text-[13px] leading-snug text-[#8A5AA0]">Aqui você pode reconhecer seus colegas e acompanhar os maiores destaques do mês.</p>
                 </div>
-                <button type="button" onClick={() => setComposer(true)} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#8E35B8] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#7A2CA0]">
-                  <Star className="h-4 w-4 fill-current" />
-                  Postar reconhecimento
-                </button>
+                {gestao ? (
+                  <button type="button" onClick={() => setComposer(true)} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#8E35B8] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#7A2CA0]">
+                    <Star className="h-4 w-4 fill-current" />
+                    Postar reconhecimento
+                  </button>
+                ) : null}
               </div>
             </section>
 
@@ -204,7 +208,19 @@ export const KudosFeedPage: FC = () => {
                               {item.received ? `${item.to} recebeu de ${item.from}` : `${item.from} reconheceu ${item.to}`} · {item.when}
                             </p>
                           </div>
-                          <span className="inline-flex shrink-0 items-center gap-1 text-[12.5px] text-[#8A7C98]"><Heart className="h-3.5 w-3.5 text-[#8E35B8]" /> {item.likes}</span>
+                          <div className="inline-flex shrink-0 items-center gap-1">
+                            <span className="inline-flex items-center gap-1 text-[12.5px] text-[#8A7C98]"><Heart className="h-3.5 w-3.5 text-[#8E35B8]" /> {item.likes}</span>
+                            <button
+                              type="button"
+                              aria-label={posted[item.id] ? 'Publicado no mural' : 'Postar no mural'}
+                              title={posted[item.id] ? 'Publicado no mural' : 'Postar no mural'}
+                              disabled={posted[item.id]}
+                              onClick={() => setMuralTarget(item)}
+                              className="grid h-8 w-8 place-items-center rounded-full text-[#8E35B8] hover:bg-[#F3E4FA] disabled:text-[#C9A6DC]"
+                            >
+                              <Megaphone className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                         <span className={cn('mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium', item.area === 'Gestão' ? 'bg-[#F3E4FA] text-[#6A228C]' : 'bg-[#F8E8F0] text-[#8A4A66]')}>{item.area}</span>
                         <p className="mt-2 text-[14.5px] leading-6 text-[#3C3148]">“{item.quote}”</p>
@@ -215,15 +231,6 @@ export const KudosFeedPage: FC = () => {
                             {item.photos.map((url) => <img key={url} src={url} alt="" className="max-h-48 w-full rounded-xl object-cover" />)}
                           </div>
                         ) : null}
-                        <button
-                          type="button"
-                          disabled={posted[item.id]}
-                          onClick={() => setMuralTarget(item)}
-                          className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#8E35B8] px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-[#7A2CA0] disabled:bg-[#C9A6DC]"
-                        >
-                          <Megaphone className="h-3.5 w-3.5" />
-                          {posted[item.id] ? 'Publicado no mural' : 'Postar no mural'}
-                        </button>
                       </div>
                     </div>
                   </li>

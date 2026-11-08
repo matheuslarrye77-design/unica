@@ -27,7 +27,6 @@ export const RecognitionComposer: FC<{
   onCancel?: () => void;
 }> = ({ onCreated, publishToFeed = true, onCancel }) => {
   const user = actor();
-  const [mode, setMode] = useState<'give' | 'received'>('give');
   const [personId, setPersonId] = useState('');
   const [tag, setTag] = useState(tags[0]);
   const [message, setMessage] = useState('');
@@ -39,8 +38,7 @@ export const RecognitionComposer: FC<{
   const others = teamRoster.filter((person) => person.id !== user.id);
   const headline = (() => {
     const person = teamRoster.find((item) => item.id === personId);
-    if (!person) return mode === 'received' ? `${user.name.split(' ')[0]} recebeu um reconhecimento especial!` : '';
-    if (mode === 'received') return recognitionHeadline(person.name, user.name, true);
+    if (!person) return '';
     return recognitionHeadline(user.name, person.name, false);
   })();
 
@@ -50,7 +48,6 @@ export const RecognitionComposer: FC<{
     setCaption('');
     setComment('');
     setPhotos([]);
-    setMode('give');
     setTag(tags[0]);
   }
 
@@ -60,9 +57,8 @@ export const RecognitionComposer: FC<{
     const person = teamRoster.find((item) => item.id === personId);
     const text = message.trim();
     if (!person || !text) return;
-    const received = mode === 'received';
-    const recognizedName = received ? user.name : person.name;
-    const fromName = received ? person.name : user.name;
+    const recognizedName = person.name;
+    const fromName = user.name;
     setSending(true);
     try {
       if (publishToFeed) {
@@ -71,12 +67,12 @@ export const RecognitionComposer: FC<{
           kind: 'recognition',
           recognizedName,
           recognizedBy: fromName,
-          receivedRecognition: received,
+          receivedRecognition: false,
           tag,
           caption: caption.trim() || undefined,
           comment: comment.trim() || undefined,
           images: photos,
-          bannerTitle: recognitionHeadline(fromName, recognizedName, received),
+          bannerTitle: recognitionHeadline(fromName, recognizedName, false),
           nonce: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         });
       }
@@ -88,7 +84,7 @@ export const RecognitionComposer: FC<{
         caption: caption.trim(),
         comment: comment.trim(),
         photos,
-        received,
+        received: false,
       };
       reset();
       onCreated(draft);
@@ -106,16 +102,12 @@ export const RecognitionComposer: FC<{
         <img src={user.avatar} alt="" className="h-10 w-10 rounded-full bg-muted" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">{user.name}</p>
-          <p className="text-xs text-muted-foreground">{mode === 'received' ? 'Compartilhe um reconhecimento que você recebeu' : 'Reconheça alguém da equipe'}</p>
+          <p className="text-xs text-muted-foreground">Reconheça alguém da equipe</p>
         </div>
-      </div>
-      <div className="grid grid-cols-2 gap-1 rounded-full bg-[#F3E4FA] p-1">
-        <button type="button" onClick={() => setMode('give')} className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium ${mode === 'give' ? 'bg-[#8E35B8] text-white' : 'text-[#6A228C]'}`}>Reconhecer alguém</button>
-        <button type="button" onClick={() => setMode('received')} className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium ${mode === 'received' ? 'bg-[#8E35B8] text-white' : 'text-[#6A228C]'}`}>Reconhecimento recebido</button>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="grid gap-1 text-sm">
-          {mode === 'received' ? 'Quem reconheceu você' : 'Pessoa reconhecida'}
+          Pessoa reconhecida
           <select className="h-9 rounded-md border bg-background px-3 text-sm" value={personId} onChange={(event) => setPersonId(event.target.value)} required>
             <option value="">Selecione</option>
             {others.map((person) => (
