@@ -15,11 +15,12 @@ const tone: Record<ActivityStatus, { column: string; icon: string; count: string
 export const ActivityColumn: FC<{
   status: ActivityStatus;
   activities: Activity[];
+  canMoveLeadership?: boolean;
   onCreate: () => void;
   onEdit: (activity: Activity) => void;
   onDelete: (activity: Activity) => void;
   onMove: (activity: Activity, status: ActivityStatus) => void;
-}> = ({ status, activities, onCreate, onEdit, onDelete, onMove }) => {
+}> = ({ status, activities, canMoveLeadership = false, onCreate, onEdit, onDelete, onMove }) => {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const paint = tone[status];
   const Icon = paint.Icon;
@@ -63,6 +64,7 @@ export const ActivityColumn: FC<{
               key={activity.id}
               activity={activity}
               collapsed={folded[activity.id] === true}
+              canMove={activity.origin !== 'leadership' || canMoveLeadership}
               onToggle={() => toggle(activity.id)}
               onEdit={() => onEdit(activity)}
               onDelete={() => onDelete(activity)}
@@ -71,21 +73,9 @@ export const ActivityColumn: FC<{
           ))}
         </SortableContext>
       </div>
-      {status === 'done' ? (
-        <div className="relative mt-2 overflow-hidden rounded-xl px-3 py-4 text-center">
-          <div className="pointer-events-none absolute -left-6 bottom-0 h-16 w-16 rounded-full bg-[#E0E7FF]/80" />
-          <div className="pointer-events-none absolute -right-4 -bottom-4 h-14 w-14 rounded-full bg-[#C7D2FE]/50" />
-          <div className="relative mx-auto grid h-9 w-9 place-items-center rounded-full bg-[#C4B0FC] text-white">
-            <Check className="h-4 w-4" strokeWidth={2.4} />
-          </div>
-          <p className="relative mt-2 text-[13px] font-semibold text-[#4600F3]">Parabéns!</p>
-          <p className="relative text-[11.5px] font-normal text-[#4600F3]">Você está indo muito bem!</p>
-        </div>
-      ) : (
-        <button type="button" onClick={onCreate} className={cn('mt-1.5 py-1.5 text-center text-[12px] font-medium hover:opacity-80', paint.action)}>
-          + Adicionar atividade
-        </button>
-      )}
+      <button type="button" onClick={onCreate} className={cn('mt-1.5 py-1.5 text-center text-[12px] font-medium hover:opacity-80', paint.action)}>
+        + Adicionar atividade
+      </button>
     </section>
   );
 };

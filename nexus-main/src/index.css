@@ -28,21 +28,6 @@
   font-display: swap;
   src: url("/fonts/GeneralSans-Semibold.woff2") format("woff2");
 }
-@font-face {
-  font-family: "Clash Display";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/fonts/ClashDisplay-Regular.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Clash Display";
-  font-style: normal;
-  font-weight: 500 800;
-  font-display: swap;
-  src: url("/fonts/ClashDisplay-Medium.woff2") format("woff2");
-}
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -80,7 +65,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --font-sans: "General Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-display: "Clash Display", "General Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-display: "General Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 
@@ -189,10 +174,10 @@
   h1, h2, h3,
   [data-slot="dialog-title"],
   [data-slot="alert-dialog-title"] {
-    font-family: "Clash Display", "General Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: "General Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-style: normal;
     font-weight: 500;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.01em;
   }
   #root {
     min-height: 100%;
@@ -311,17 +296,12 @@
   color: #4600F3;
 }
 
-.unica-script {
-  font-family: "Clash Display", "General Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-style: normal;
-  font-weight: 500;
-}
-
+.unica-script,
 .unica-display {
-  font-family: "Clash Display", "General Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: "General Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-style: normal;
   font-weight: 500;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.01em;
 }
 
 #bmc-wbtn {

@@ -11,8 +11,9 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { BarChart3, Check, Mail, Plus, Star, Trophy, User, Users } from 'lucide-react';
+import { Check, Plus, Star, User } from 'lucide-react';
 import { usePageSearch } from '@/lib/pageSearch';
+import { useInstitution } from '@/lib/institution';
 import { type FC, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -28,7 +29,6 @@ import {
 import { Button } from '@/components/ui/button';
 import {
   ACTIVITY_STATUSES,
-  PRIORITY_LABEL,
   activitiesInStatus,
   createActivity,
   isActivityStatus,
@@ -46,14 +46,71 @@ import { ActivityCardView } from './ActivityCard';
 import { ActivityColumn } from './ActivityColumn';
 import { ActivityDialog } from './ActivityDialog';
 
-function SourceMark({ source }: { source: string }) {
-  if (source === 'E-mail') return <Mail className="h-3 w-3" />;
-  if (source.startsWith('Equipe')) return <Users className="h-3 w-3" />;
-  return <User className="h-3 w-3" />;
+function isOverdue(activity: Activity) {
+  if (activity.status === 'done' || !activity.dueDate) return false;
+  return activity.dueDate < new Date().toISOString().slice(0, 10);
+}
+
+function PerformanceChart({ activities }: { activities: Activity[] }) {
+  const total = activities.length;
+  const done = activities.filter((item) => item.status === 'done').length;
+  const progress = activities.filter((item) => item.status === 'in_progress').length;
+  const overdue = activities.filter((item) => isOverdue(item)).length;
+  const rate = total === 0 ? 0 : Math.round((done / total) * 100);
+  const radius = 42;
+  const circumference = 2 * Math.PI * radius;
+  const dash = (rate / 100) * circumference;
+
+  return (
+    <section className="rounded-2xl border border-[#EDE7FE] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(40,20,60,0.04)]">
+      <h2 className="text-[12px] font-medium tracking-wide text-[#8A7C98]">Resumo da sua performance</h2>
+      <div className="mt-4 grid place-items-center">
+        <div className="relative h-[112px] w-[112px]">
+          <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
+            <circle cx="60" cy="60" r={radius} fill="none" stroke="#F3EEFF" strokeWidth="10" />
+            <circle
+              cx="60"
+              cy="60"
+              r={radius}
+              fill="none"
+              stroke="#4600F3"
+              strokeWidth="10"
+              strokeLinecap="round"
+              strokeDasharray={`${dash} ${circumference}`}
+              className="transition-[stroke-dasharray] duration-500 ease-out"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <p className="text-[24px] font-medium tabular-nums leading-none text-[#2C2433]">{rate}%</p>
+            <p className="mt-1 text-[10px] font-medium tracking-wide text-[#8A7C98]">concluído</p>
+          </div>
+        </div>
+      </div>
+      <ul className="mt-4 grid gap-2.5 text-[12px] text-[#5C5168]">
+        <li className="flex items-center justify-between">
+          <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-[#2C2433]" />Atividades</span>
+          <strong className="font-medium tabular-nums text-[#2C2433]">{total}</strong>
+        </li>
+        <li className="flex items-center justify-between">
+          <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-[#4600F3]" />Concluídas</span>
+          <strong className="font-medium tabular-nums text-[#2C2433]">{done}</strong>
+        </li>
+        <li className="flex items-center justify-between">
+          <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-[#8A5CF8]" />Em andamento</span>
+          <strong className="font-medium tabular-nums text-[#2C2433]">{progress}</strong>
+        </li>
+        <li className="flex items-center justify-between">
+          <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-[#FB7185]" />Atrasadas</span>
+          <strong className="font-medium tabular-nums text-[#2C2433]">{overdue}</strong>
+        </li>
+      </ul>
+    </section>
+  );
 }
 
 export const ActivityBoard: FC = () => {
   const [params, setParams] = useSearchParams();
+  const { isLeader: gestao } = useInstitution();
   const tab = params.get('painel') === 'missoes' ? 'leadership' : 'mine';
   const [store] = useState(loadActivityStore);
   const [activities, setActivities] = useState<Activity[]>(store.activities);
@@ -75,7 +132,7 @@ export const ActivityBoard: FC = () => {
   );
 
   const leadershipCount = activities.filter((activity) => activity.origin === 'leadership').length;
-  const activeMissions = activities.filter((activity) => activity.origin === 'leadership' && activity.status !== 'done');
+  const scoped = activities.filter((activity) => (tab === 'leadership' ? activity.origin === 'leadership' : activity.origin === 'mine'));
 
   const visible = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -91,7 +148,17 @@ export const ActivityBoard: FC = () => {
   }
 
   function onDragStart(event: DragStartEvent) {
-    setDragging(activities.find((activity) => activity.id === String(event.active.id)) ?? null);
+    const active = activities.find((activity) => activity.id === String(event.active.id)) ?? null;
+    if (!canMove(active ?? undefined)) {
+      setDragging(null);
+      return;
+    }
+    setDragging(active);
+  }
+
+  function canMove(activity: Activity | undefined) {
+    if (!activity) return false;
+    return activity.origin !== 'leadership' || gestao;
   }
 
   function onDragOver(event: DragOverEvent) {
@@ -100,6 +167,7 @@ export const ActivityBoard: FC = () => {
     if (!overId || activeId === overId) return;
     setActivities((current) => {
       const active = current.find((activity) => activity.id === activeId);
+      if (!canMove(active)) return current;
       const overStatus = isActivityStatus(overId) ? overId : current.find((activity) => activity.id === overId)?.status;
       if (!active || !overStatus || active.status === overStatus) return current;
       return moveActivity(current, activeId, overId);
@@ -110,7 +178,11 @@ export const ActivityBoard: FC = () => {
     setDragging(null);
     const overId = event.over ? String(event.over.id) : '';
     if (!overId) return;
-    setActivities((current) => moveActivity(current, String(event.active.id), overId));
+    setActivities((current) => {
+      const active = current.find((activity) => activity.id === String(event.active.id));
+      if (!canMove(active)) return current;
+      return moveActivity(current, String(event.active.id), overId);
+    });
   }
 
   function openCreate(status: ActivityStatus) {
@@ -150,113 +222,57 @@ export const ActivityBoard: FC = () => {
             <Check className="h-4 w-4" strokeWidth={2.4} />
           </span>
           <div>
-            <h1 className="text-[22px] font-semibold leading-tight tracking-tight text-[#2C2433]">Atividades</h1>
+            <h1 className="text-[22px] font-medium leading-tight tracking-tight text-[#2C2433]">Atividades</h1>
             <p className="mt-0.5 text-[12px] font-normal text-[#8A7C98]">Organize suas atividades pessoais e acompanhe as missões da liderança.</p>
           </div>
         </div>
       </div>
 
-      <div className="mt-3 flex gap-5 border-b border-[#EDE6F3]">
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
         <button
           type="button"
           onClick={() => showTab('mine')}
-          className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'mine' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}
+          className={cn('inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-medium', tab === 'mine' ? 'bg-[#EDE7FE] text-[#3600C2]' : 'text-[#8A7C98] hover:bg-white')}
         >
           <User className="h-3.5 w-3.5" /> Minhas atividades
         </button>
+        <Button type="button" onClick={() => openCreate('todo')} className="h-9 rounded-full bg-[#4600F3] px-3.5 text-[13px] hover:bg-[#3600C2]">
+          <Plus /> Nova atividade
+        </Button>
         <button
           type="button"
           onClick={() => showTab('leadership')}
-          className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'leadership' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}
+          className={cn('inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-medium', tab === 'leadership' ? 'bg-[#EDE7FE] text-[#3600C2]' : 'text-[#8A7C98] hover:bg-white')}
         >
           <Star className="h-3.5 w-3.5" /> Missões da liderança
-          <span className="grid h-4 min-w-4 place-items-center rounded-full bg-[#EDE7FE] px-1 text-[10px] font-semibold text-[#4600F3]">{leadershipCount}</span>
+          <span className="grid h-4 min-w-4 place-items-center rounded-full bg-white px-1 text-[10px] font-semibold text-[#4600F3]">{leadershipCount}</span>
         </button>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button type="button" onClick={() => openCreate('todo')} className="ml-auto h-9 rounded-full bg-[#4600F3] px-3.5 text-[13px] hover:bg-[#3600C2]">
-          <Plus /> Nova atividade
-        </Button>
-      </div>
-
-      <div className="mt-3 grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_272px]">
+      <div className="mt-4 grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
-          <div className="grid grid-cols-1 items-stretch gap-2.5 lg:grid-cols-3">
+          <div className="grid min-w-0 grid-cols-1 items-stretch gap-2.5 md:grid-cols-3">
             {ACTIVITY_STATUSES.map((status) => (
               <ActivityColumn
                 key={status}
                 status={status}
                 activities={columns(status)}
+                canMoveLeadership={gestao}
                 onCreate={() => openCreate(status)}
                 onEdit={(activity) => { setEditing(activity); setDialogOpen(true); }}
                 onDelete={setPendingDelete}
-                onMove={(activity, next) => setActivities((current) => moveActivity(current, activity.id, next))}
+                onMove={(activity, next) => {
+                  if (activity.origin === 'leadership' && !gestao) return;
+                  setActivities((current) => moveActivity(current, activity.id, next));
+                }}
               />
             ))}
           </div>
           <DragOverlay>{dragging ? <ActivityCardView activity={dragging} /> : null}</DragOverlay>
         </DndContext>
 
-        <aside className="grid content-start gap-2.5">
-          <section className="rounded-2xl border border-[#EDE7FE] bg-white p-3 shadow-[0_1px_2px_rgba(40,20,60,0.04)]">
-            <h2 className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#2C2433]">
-              <BarChart3 className="h-3.5 w-3.5 text-[#4600F3]" /> Resumo da sua performance
-            </h2>
-            <div className="mt-3 flex items-center gap-3">
-              <div className="relative grid h-[88px] w-[88px] shrink-0 place-items-center">
-                <div
-                  className="absolute inset-0 rounded-full"
-                  style={{ background: 'conic-gradient(from 250deg, #4600F3 0 87%, #EDE7FE 87% 100%)' }}
-                />
-                <div className="absolute inset-[9px] rounded-full bg-white" />
-                <span className="relative text-[18px] font-semibold text-[#3600C2]">87%</span>
-              </div>
-              <ul className="grid gap-1 text-[11.5px] font-normal text-[#5C5168]">
-                <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#4600F3]" /> <strong className="font-semibold text-[#2C2433]">12</strong> Total de atividades</li>
-                <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#6B33F6]" /> <strong className="font-semibold text-[#2C2433]">10</strong> Concluídas</li>
-                <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#8A5CF8]" /> <strong className="font-semibold text-[#2C2433]">2</strong> Em andamento</li>
-                <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#FB7185]" /> <strong className="font-semibold text-[#2C2433]">0</strong> Atrasadas</li>
-              </ul>
-            </div>
-            <p className="mt-1.5 text-center text-[11px] font-normal text-[#8A7C98]">Taxa de conclusão</p>
-          </section>
-
-          <section className="rounded-2xl border border-[#EDE7FE] bg-white p-3 shadow-[0_1px_2px_rgba(40,20,60,0.04)]">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#2C2433]">
-                <Star className="h-3.5 w-3.5 text-[#8A7C98]" /> Missões ativas para você
-              </h2>
-              <button type="button" onClick={() => showTab('leadership')} className="text-[11.5px] font-medium text-[#4600F3]">Ver todas</button>
-            </div>
-            <ul className="mt-2.5 grid gap-2.5">
-              {activeMissions.map((mission) => (
-                <li key={mission.id} className="flex items-start gap-2">
-                  <Star className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8A7C98]" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12px] font-medium leading-snug text-[#2C2433]">{mission.title}</p>
-                    <p className="mt-0.5 flex items-center gap-1 text-[11px] font-normal text-[#8A7C98]">
-                      <SourceMark source={mission.source} /> {mission.source}
-                    </p>
-                  </div>
-                  <span className="shrink-0 rounded-full bg-[#F4F6F8] px-1.5 py-0.5 text-[10px] font-medium text-[#3E4C5E]">{PRIORITY_LABEL[mission.priority]}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="relative overflow-hidden rounded-2xl bg-[#FFF6E8] px-3 py-3">
-            <div className="pointer-events-none absolute -right-5 -bottom-6 h-16 w-16 rounded-full bg-[#F6D48A]/50" />
-            <div className="relative flex items-center gap-2.5">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-white text-[#C47B12]">
-                <Trophy className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="text-[12.5px] font-semibold text-[#8A5A12]">Destaque do time</p>
-                <p className="mt-0.5 text-[11.5px] font-normal leading-snug text-[#A07840]">Juntos, alcançamos resultados incríveis!</p>
-              </div>
-            </div>
-          </section>
+        <aside className="min-w-0 lg:sticky lg:top-4">
+          <PerformanceChart activities={scoped} />
         </aside>
       </div>
 

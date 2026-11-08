@@ -12,7 +12,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
-  Target,
   Users,
   X,
 } from 'lucide-react';
@@ -46,7 +45,6 @@ const GROUPS: NavGroupData[] = [
     heading: 'Gestão',
     items: [
       { id: 'equipe', title: 'Equipe', icon: Users, href: '/employees' },
-      { id: 'missoes', title: 'Missões', icon: Target, href: '/projects?painel=missoes' },
     ],
   },
 ];
@@ -91,7 +89,8 @@ function isActive(pathname: string, search: string, path?: string) {
   const current = new URLSearchParams(search);
   const target = new URLSearchParams(targetQuery ?? '');
   if ([...target.keys()].length === 0) {
-    return [...current.keys()].length === 0 || targetPath === '/';
+    if (targetPath === '/') return [...current.keys()].length === 0;
+    return true;
   }
   for (const [key, value] of target.entries()) {
     if (current.get(key) !== value) return false;
