@@ -10,7 +10,7 @@ export const RecognitionArtCard: FC<{ name: string; avatar?: string }> = ({ name
   const photo = avatar || personAvatar(name);
   if (!name) return null;
   return (
-    <article className="relative flex h-[128px] w-full max-w-[620px] items-center overflow-hidden rounded-[18px] bg-[linear-gradient(105deg,#6D28D9_0%,#7C3AED_42%,#5B21B6_100%)] shadow-[0_10px_24px_rgba(76,29,149,0.16)]">
+    <article className="relative flex h-[128px] w-full items-center overflow-hidden rounded-[22px] bg-[linear-gradient(105deg,#6D28D9_0%,#7C3AED_42%,#5B21B6_100%)] shadow-[0_10px_24px_rgba(76,29,149,0.16)]">
       <div className="pointer-events-none absolute -left-8 top-1/2 h-36 w-36 -translate-y-1/2 rounded-full bg-white/10 blur-2xl" />
       <img
         src="/reconhecimento/trofeu.png"
