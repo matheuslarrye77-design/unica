@@ -45,9 +45,9 @@ export const RecognitionArtCard: FC<{ name: string; avatar?: string }> = ({ name
           <TrophyMark />
         </div>
         <div className="hidden h-[88px] w-px shrink-0 bg-[#7135C9]/25 sm:block" />
-        <div className="relative min-w-0 flex-1 text-center sm:text-left">
+        <div className="relative flex min-w-0 flex-1 flex-col items-center justify-center text-center">
           <p className="inline-flex rounded-full bg-[#7135C9] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white">Reconhecimento</p>
-          <p className="mt-2 truncate text-[clamp(26px,3.4vw,38px)] font-bold leading-tight tracking-[-0.03em] text-[#29213A]">{name}</p>
+          <p className="mt-2 max-w-full px-2 text-[clamp(26px,3.4vw,38px)] font-bold leading-tight tracking-[-0.03em] text-[#29213A]">{name}</p>
           <p className="mt-1 text-[17px] leading-6 text-[#625578] sm:text-[18px]">pelo seu desempenho e dedicação</p>
         </div>
       </div>
