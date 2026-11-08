@@ -40,17 +40,17 @@ export const ActivityColumn: FC<{
         <span className={cn('grid h-6 w-6 place-items-center rounded-full', paint.icon)}>
           <Icon className="h-3 w-3" strokeWidth={2.4} />
         </span>
-        <h2 className="text-[13px] font-semibold text-[#2C2433]">{STATUS_LABEL[status]}</h2>
-        <span className={cn('ml-auto grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-semibold', paint.count)}>
+        <h2 className="text-[13px] font-light text-[#2C2433]">{STATUS_LABEL[status]}</h2>
+        <span className={cn('ml-auto grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-light', paint.count)}>
           {activities.length}
         </span>
       </header>
-      <div ref={setNodeRef} className="flex min-h-12 flex-1 flex-col gap-2">
+      <div ref={setNodeRef} className="grid min-h-12 flex-1 grid-cols-2 content-start gap-2.5">
         {leadership.length > 0 ? (
           <button
             type="button"
             onClick={() => setLeadershipOpen((open) => !open)}
-            className={cn('flex items-center gap-1.5 rounded-lg px-2 py-1 text-left text-[11.5px] font-medium', paint.group)}
+            className={cn('col-span-2 flex items-center gap-1.5 rounded-lg px-2 py-1 text-left text-[11.5px] font-light', paint.group)}
           >
             {leadershipOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             <img src="/atividades/alfinete.png" alt="" className="h-3.5 w-3.5 object-contain" />
@@ -73,7 +73,7 @@ export const ActivityColumn: FC<{
           ))}
         </SortableContext>
       </div>
-      <button type="button" onClick={onCreate} className={cn('mt-1.5 py-1.5 text-center text-[12px] font-medium hover:opacity-80', paint.action)}>
+      <button type="button" onClick={onCreate} className={cn('mt-1.5 py-1.5 text-center text-[12px] font-light hover:opacity-80', paint.action)}>
         + Adicionar atividade
       </button>
     </section>

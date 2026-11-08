@@ -62,49 +62,36 @@ function PerformanceChart({ activities }: { activities: Activity[] }) {
   const dash = (rate / 100) * circumference;
 
   return (
-    <section className="flex h-full flex-col rounded-2xl border border-[#EDE7FE] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(40,20,60,0.04)]">
-      <h2 className="text-[12px] font-medium tracking-wide text-[#8A7C98]">Resumo da sua performance</h2>
-      <div className="mt-4 grid place-items-center">
-        <div className="relative h-[112px] w-[112px]">
-          <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
-            <circle cx="60" cy="60" r={radius} fill="none" stroke="#F3EEFF" strokeWidth="10" />
-            <circle
-              cx="60"
-              cy="60"
-              r={radius}
-              fill="none"
-              stroke="#4600F3"
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeDasharray={`${dash} ${circumference}`}
-              className="transition-[stroke-dasharray] duration-500 ease-out"
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <p className="text-[24px] font-medium tabular-nums leading-none text-[#2C2433]">{rate}%</p>
-            <p className="mt-1 text-[10px] font-medium tracking-wide text-[#8A7C98]">concluído</p>
-          </div>
+    <div className="group relative shrink-0">
+      <div className="relative h-[108px] w-[108px]">
+        <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" aria-hidden="true">
+          <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(70,0,243,0.12)" strokeWidth="10" />
+          <circle
+            cx="60"
+            cy="60"
+            r={radius}
+            fill="none"
+            stroke="#4600F3"
+            strokeWidth="10"
+            strokeLinecap="round"
+            strokeDasharray={`${dash} ${circumference}`}
+            className="transition-[stroke-dasharray] duration-500 ease-out"
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <p className="text-[22px] font-light tabular-nums leading-none text-[#2C2433]">{rate}%</p>
+          <p className="mt-1 text-[10px] font-extralight tracking-wide text-[#5C5168]">concluídas</p>
         </div>
       </div>
-      <ul className="mt-4 grid gap-2.5 text-[12px] text-[#5C5168]">
-        <li className="flex items-center justify-between">
-          <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-[#2C2433]" />Atividades</span>
-          <strong className="font-medium tabular-nums text-[#2C2433]">{total}</strong>
-        </li>
-        <li className="flex items-center justify-between">
-          <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-[#4600F3]" />Concluídas</span>
-          <strong className="font-medium tabular-nums text-[#2C2433]">{done}</strong>
-        </li>
-        <li className="flex items-center justify-between">
-          <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-[#8A5CF8]" />Em andamento</span>
-          <strong className="font-medium tabular-nums text-[#2C2433]">{progress}</strong>
-        </li>
-        <li className="flex items-center justify-between">
-          <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-[#FB7185]" />Atrasadas</span>
-          <strong className="font-medium tabular-nums text-[#2C2433]">{overdue}</strong>
-        </li>
-      </ul>
-    </section>
+      <div className="pointer-events-none absolute top-1/2 right-[calc(100%+12px)] z-20 w-44 -translate-y-1/2 rounded-xl border border-[#EDE7FE] bg-white/95 px-3 py-2 opacity-0 shadow-[0_8px_24px_rgba(70,0,243,0.12)] transition-opacity duration-150 group-hover:opacity-100">
+        <ul className="grid gap-1.5 text-[11px] font-light text-[#5C5168]">
+          <li className="flex items-center justify-between gap-3"><span>Atividades</span><span className="tabular-nums text-[#2C2433]">{total}</span></li>
+          <li className="flex items-center justify-between gap-3"><span>Concluídas</span><span className="tabular-nums text-[#2C2433]">{done}</span></li>
+          <li className="flex items-center justify-between gap-3"><span>Em andamento</span><span className="tabular-nums text-[#2C2433]">{progress}</span></li>
+          <li className="flex items-center justify-between gap-3"><span>Atrasadas</span><span className="tabular-nums text-[#2C2433]">{overdue}</span></li>
+        </ul>
+      </div>
+    </div>
   );
 }
 
@@ -216,69 +203,67 @@ export const ActivityBoard: FC = () => {
 
   return (
     <div>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-2.5">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#EDE7FE] text-[#4600F3]">
-            <Check className="h-4 w-4" strokeWidth={2.4} />
-          </span>
-          <div>
-            <h1 className="text-[22px] font-medium leading-tight tracking-tight text-[#2C2433]">Atividades</h1>
-            <p className="mt-0.5 text-[12px] font-normal text-[#8A7C98]">Organize suas atividades pessoais e acompanhe as missões da liderança.</p>
-          </div>
+      <section className="relative overflow-visible rounded-[22px]">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[22px]">
+          <img src="/atividades/banner.png" alt="" className="h-full w-full object-cover object-center" />
         </div>
-      </div>
+        <div className="relative flex min-h-[148px] items-center justify-between gap-6 px-6 py-5 pr-10">
+          <div className="flex min-w-0 max-w-[52%] items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/80 text-[#4600F3] shadow-sm">
+              <Check className="h-5 w-5" strokeWidth={1.75} />
+            </span>
+            <div className="min-w-0">
+              <h1 className="text-[22px] font-light leading-tight tracking-tight text-[#2C2433]">Atividades</h1>
+              <p className="mt-1 text-[13px] font-extralight leading-snug text-[#5C5168]">Organize suas atividades pessoais e acompanhe seu progresso</p>
+            </div>
+          </div>
+          <PerformanceChart activities={scoped} />
+        </div>
+      </section>
 
-      <div className="mt-4 flex min-w-0 flex-col items-stretch gap-3 lg:flex-row">
-        <div className="min-w-0 flex-1">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EDE6F3]">
-        <div className="flex gap-5">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#EDE6F3]">
+        <div className="flex items-center gap-5">
           <button
             type="button"
             onClick={() => showTab('mine')}
-            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'mine' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}
+            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-light', tab === 'mine' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}
           >
-            <User className="h-3.5 w-3.5" /> Minhas atividades
+            <User className="h-3.5 w-3.5" strokeWidth={1.5} /> Minhas atividades
           </button>
           <button
             type="button"
             onClick={() => showTab('leadership')}
-            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'leadership' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}
+            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-light', tab === 'leadership' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}
           >
-            <Star className="h-3.5 w-3.5" /> Missões da liderança
-            <span className="grid h-4 min-w-4 place-items-center rounded-full bg-[#EDE7FE] px-1 text-[10px] font-semibold text-[#4600F3]">{leadershipCount}</span>
+            <Star className="h-3.5 w-3.5" strokeWidth={1.5} /> Missões da liderança
+            <span className="grid h-4 min-w-4 place-items-center rounded-full bg-[#EDE7FE] px-1 text-[10px] font-normal text-[#4600F3]">{leadershipCount}</span>
           </button>
         </div>
-        <Button type="button" onClick={() => openCreate('todo')} className="mb-2 h-9 rounded-full bg-[#4600F3] px-3.5 text-[13px] hover:bg-[#3600C2]">
-          <Plus /> Nova atividade
+        <Button type="button" onClick={() => openCreate('todo')} className="mb-px h-9 rounded-full bg-[#4600F3] px-3.5 text-[13px] font-light hover:bg-[#3600C2]">
+          <Plus strokeWidth={1.5} /> Nova atividade
         </Button>
       </div>
 
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
-          <div className="mt-4 grid h-full min-w-0 grid-cols-1 items-stretch gap-2.5 md:grid-cols-3">
-            {ACTIVITY_STATUSES.map((status) => (
-              <ActivityColumn
-                key={status}
-                status={status}
-                activities={columns(status)}
-                canMoveLeadership={gestao}
-                onCreate={() => openCreate(status)}
-                onEdit={(activity) => { setEditing(activity); setDialogOpen(true); }}
-                onDelete={setPendingDelete}
-                onMove={(activity, next) => {
-                  if (activity.origin === 'leadership' && !gestao) return;
-                  setActivities((current) => moveActivity(current, activity.id, next));
-                }}
-              />
-            ))}
-          </div>
-          <DragOverlay>{dragging ? <ActivityCardView activity={dragging} /> : null}</DragOverlay>
-        </DndContext>
+      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
+        <div className="mt-4 grid min-w-0 grid-cols-1 items-start gap-2.5 md:grid-cols-3">
+          {ACTIVITY_STATUSES.map((status) => (
+            <ActivityColumn
+              key={status}
+              status={status}
+              activities={columns(status)}
+              canMoveLeadership={gestao}
+              onCreate={() => openCreate(status)}
+              onEdit={(activity) => { setEditing(activity); setDialogOpen(true); }}
+              onDelete={setPendingDelete}
+              onMove={(activity, next) => {
+                if (activity.origin === 'leadership' && !gestao) return;
+                setActivities((current) => moveActivity(current, activity.id, next));
+              }}
+            />
+          ))}
         </div>
-
-        <aside className="w-full shrink-0 lg:w-[280px] lg:self-stretch">
-          <PerformanceChart activities={scoped} />
-        </aside>
-      </div>
+        <DragOverlay>{dragging ? <ActivityCardView activity={dragging} /> : null}</DragOverlay>
+      </DndContext>
 
       <ActivityDialog
         open={dialogOpen}
