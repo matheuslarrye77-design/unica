@@ -1,5 +1,6 @@
 import { ComposerExtras } from '@/components/social/ComposerExtras';
 import { AudioTrim } from '@/components/social/AudioTrim';
+import { JournalNewsCard } from '@/components/social/JournalNewsCard';
 import { PostCard } from '@/components/social/PostCard';
 import { ExpandProvider } from '@/components/social/ReadMore';
 import type { RecognitionDraft } from '@/components/social/RecognitionComposer';
@@ -67,6 +68,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
   const [attachment, setAttachment] = useState<Attachment | undefined>();
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [pollOpen, setPollOpen] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [panel, setPanel] = useState<'emoji' | 'sticker' | 'gif' | null>(null);
   const [menu, setMenu] = useState(false);
@@ -84,6 +86,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
     setPanel(null);
     setPreview(false);
     setPollOpen(false);
+    setPollQuestion('');
     setOptions(['', '']);
     setAttachment(undefined);
     setAudioFile(null);
@@ -258,7 +261,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
   function previewPost(): SocialPost {
     const built = blocks();
     const images = built ? built.flatMap((block) => (block.type === 'image' ? [block.url] : [])) : photoUrls;
-    const body = text.trim() || (journal ? articleSummary(journal.content) : '');
+    const body = (pollOpen && pollQuestion.trim() ? pollQuestion.trim() : text.trim()) || (journal ? articleSummary(journal.content) : '');
     return {
       id: 'previa-publicacao',
       kind: journal ? 'announcement' : 'recognition',
@@ -296,7 +299,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
     if (pollOpen && (labels.length < 2 || new Set(labels.map((item) => item.toLowerCase())).size !== labels.length)) return false;
     if (props.source === 'journal') return true;
     if (!recognizedName || (props.source === 'recognition-new' && !person)) return false;
-    const hasBody = Boolean(text.trim() || photoUrls.length || stickers.length || gifs.length || attachment || labels.length >= 2);
+    const hasBody = Boolean(text.trim() || pollQuestion.trim() || photoUrls.length || stickers.length || gifs.length || attachment || labels.length >= 2);
     return hasBody;
   })();
 
@@ -307,7 +310,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
       return;
     }
     const built = blocks();
-    const message = text.trim();
+    const message = (pollOpen && pollQuestion.trim() ? pollQuestion.trim() : text.trim());
     setSending(true);
     try {
       if (props.source === 'journal') {
@@ -423,13 +426,6 @@ export const MuralPublishDialog: FC<Props> = (props) => {
 
             {existing ? <p className="mb-3 rounded-xl bg-[#F8EAFB] px-3 py-2 text-[13px] font-medium text-[#6A228C]">{headline}</p> : null}
 
-            {journal ? (
-              <div className="mb-3 rounded-2xl border border-[#EDE4F5] bg-[#FBF8FC] px-3 py-2">
-                <p className="text-[11px] font-semibold tracking-wide text-[#8E35B8]">{categoryLabel(journal.category)}</p>
-                <p className="text-[14px] font-semibold text-[#241B33]">{journal.title}</p>
-              </div>
-            ) : null}
-
             {preview ? (
               <ExpandProvider>
                 <PostCard
@@ -448,15 +444,26 @@ export const MuralPublishDialog: FC<Props> = (props) => {
               </ExpandProvider>
             ) : (
               <>
-                <div className="relative">
+                <div className="relative rounded-2xl border border-[#E7D4F2] bg-white px-4 pb-10 pt-3 focus-within:border-[#C084E0] focus-within:ring-2 focus-within:ring-[#F3E4FA]">
+                  {journal ? <p className="mb-1 text-[12px] font-semibold text-[#8E35B8]">Legenda da publicação (opcional)</p> : null}
                   <textarea
                     ref={field}
                     value={text}
                     maxLength={MAX}
                     onChange={(event) => setText(event.target.value.slice(0, MAX))}
-                    placeholder="Digite o conteúdo da sua publicação…"
-                    className="min-h-[190px] w-full resize-none rounded-2xl border border-[#E7D4F2] bg-white px-4 pb-8 pt-3 text-[15px] leading-6 text-[#241B33] outline-none placeholder:text-[#B7A8C4] focus-visible:border-[#C084E0] focus-visible:ring-2 focus-visible:ring-[#F3E4FA]"
+                    placeholder={journal ? '' : 'Digite o conteúdo da sua publicação…'}
+                    className={`w-full resize-none bg-transparent text-[15px] leading-6 text-[#241B33] outline-none placeholder:text-[#B7A8C4] ${journal ? 'min-h-[52px]' : 'min-h-[190px]'}`}
                   />
+                  {journal ? (
+                    <div className="mt-3">
+                      <JournalNewsCard
+                        title={journal.title}
+                        category={categoryLabel(journal.category)}
+                        excerpt={articleSummary(journal.content)}
+                        href={`/announcements/${journal.id}`}
+                      />
+                    </div>
+                  ) : null}
                   <span className="pointer-events-none absolute bottom-3 right-4 text-[12.5px] text-[#B7A8C4]">{text.length}/{MAX}</span>
                 </div>
 
@@ -511,6 +518,12 @@ export const MuralPublishDialog: FC<Props> = (props) => {
                 {pollOpen ? (
                   <div className="mt-3 space-y-2">
                     <p className="text-[12.5px] font-medium text-[#6A228C]">Enquete</p>
+                    <input
+                      value={pollQuestion}
+                      onChange={(event) => setPollQuestion(event.target.value)}
+                      placeholder="Pergunta da enquete"
+                      className="h-10 w-full rounded-xl border border-[#E7D4F2] px-3 text-sm outline-none focus-visible:border-[#C084E0]"
+                    />
                     {options.map((option, index) => (
                       <div key={index} className="flex items-center gap-2">
                         <input
@@ -525,7 +538,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
                     {options.length < 12 ? (
                       <button type="button" onClick={() => setOptions((current) => [...current, ''])} className="text-sm font-medium text-[#8E35B8]">Adicionar alternativa</button>
                     ) : null}
-                    <button type="button" onClick={() => { setPollOpen(false); setOptions(['', '']); }} className="text-[12.5px] text-[#8A7C98]">Remover enquete</button>
+                    <button type="button" onClick={() => { setPollOpen(false); setPollQuestion(''); setOptions(['', '']); }} className="text-[12.5px] text-[#8A7C98]">Remover enquete</button>
                   </div>
                 ) : null}
 
