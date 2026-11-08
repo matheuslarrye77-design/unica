@@ -201,11 +201,10 @@
     position: fixed;
     inset: 0;
     z-index: -1;
-    background-image: url('/fundo-unica.png');
+    background-image: url('/fundo-plataforma.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    filter: hue-rotate(-42deg) saturate(1.08);
   }
   ::selection {
     background: #E0D6FC;
