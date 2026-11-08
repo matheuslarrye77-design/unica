@@ -9,8 +9,8 @@ export const JournalNewsCard: FC<{
   href: string;
 }> = ({ title, category, excerpt, href }) => (
   <div className="relative overflow-hidden rounded-[22px] px-4 py-4 sm:px-5">
-    <img src="/cards/fundo-grande.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
-    <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/80 via-white/45 to-white/10" />
+    <img src="/cards/fundo-claro.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
+    <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/40 via-white/16 to-transparent" />
     <Newspaper className="absolute right-4 top-4 h-5 w-5 text-[#1C0066]" strokeWidth={1.75} />
     <div className="relative pr-8">
       <p className="inline-flex rounded-full bg-[#4600F3] px-3 py-1 text-[10px] font-bold tracking-[0.08em] text-white shadow-[0_6px_16px_rgba(70,0,243,0.25)]">NOTÍCIA DO JORNAL</p>

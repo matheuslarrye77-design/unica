@@ -138,8 +138,8 @@ export const KudosFeedPage: FC = () => {
       <div className="grid gap-4 pb-16">
             {tab === 'metas' ? (
               <section className="relative overflow-hidden rounded-[22px] px-5 py-4">
-                <img src="/cards/fundo-pequeno.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
-                <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/75 via-white/40 to-white/12" />
+                <img src="/cards/fundo-claro.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
+                <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/40 via-white/16 to-transparent" />
                 <div className="relative flex flex-wrap items-center gap-4">
                   <span className="grid h-[92px] w-[92px] shrink-0 place-items-center rounded-2xl bg-white text-[#4600F3]"><Target className="h-10 w-10" /></span>
                   <div className="min-w-0 flex-1">
@@ -151,8 +151,8 @@ export const KudosFeedPage: FC = () => {
               </section>
             ) : (
               <section className="relative overflow-hidden rounded-[22px] px-5 py-4">
-                <img src="/cards/fundo-pequeno.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
-                <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/75 via-white/40 to-white/12" />
+                <img src="/cards/fundo-claro.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
+                <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/40 via-white/16 to-transparent" />
                 <div className="relative flex flex-wrap items-center gap-4">
                   <img src="/reconhecimento/trofeu.png" alt="" className="h-[92px] w-[92px] shrink-0 object-contain" />
                   <div className="min-w-0 flex-1">

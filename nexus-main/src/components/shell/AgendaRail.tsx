@@ -27,8 +27,8 @@ export const AgendaRail: FC = () => {
   return (
     <div className="grid min-w-0 gap-2">
       <section className="relative min-w-0 overflow-hidden rounded-[22px] p-3">
-        <img src="/cards/fundo-pequeno.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
-        <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/70 via-white/35 to-white/10" />
+        <img src="/cards/fundo-claro.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
+        <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/40 via-white/16 to-transparent" />
         <div className="relative flex items-center gap-2.5">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-[#4600F3]"><Sparkles className="h-4 w-4" /></span>
           <p className="text-[14px] font-bold text-[#1C0066]">Eventos importantes</p>
