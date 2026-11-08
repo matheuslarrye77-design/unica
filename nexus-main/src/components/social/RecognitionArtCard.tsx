@@ -10,15 +10,19 @@ export const RecognitionArtCard: FC<{ name: string; avatar?: string }> = ({ name
   const photo = avatar || personAvatar(name);
   if (!name) return null;
   return (
-    <div className="relative aspect-[2/1] w-full overflow-hidden rounded-[20px] bg-[#6D28D9]">
-      <img src="/reconhecimento/card-banner.jpg?v=2" alt="" className="absolute inset-0 h-full w-full object-cover" />
-      <div className="absolute inset-y-0 right-0 flex w-[40%] items-center gap-3 pr-4 sm:gap-3.5 sm:pr-5">
-        <img src={photo} alt="" className="h-14 w-14 shrink-0 rounded-full bg-white object-cover ring-[3px] ring-white/90 shadow-[0_8px_20px_rgba(40,10,80,0.28)] sm:h-16 sm:w-16" />
-        <div className="min-w-0">
-          <p className="truncate text-[16px] font-bold leading-5 text-white sm:text-[20px] sm:leading-6">{name}</p>
-          <p className="mt-0.5 text-[12px] leading-4 text-white/95 sm:text-[13.5px] sm:leading-5">Reconhecimento pelo seu desempenho e dedicação!</p>
+    <article className="relative overflow-hidden rounded-[24px] shadow-[0_14px_36px_rgba(76,29,149,0.22)]">
+      <img src="/reconhecimento/card-banner.jpg?v=2" alt="" className="aspect-[2/1] w-full object-cover" />
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent from-40% via-[#4C1D95]/10 to-[#3B0764]/40" />
+      <div className="absolute inset-y-0 left-[40%] right-4 flex items-center sm:left-[41%] sm:right-5">
+        <div className="flex min-w-0 items-center gap-3.5 rounded-[22px] bg-white/12 px-3.5 py-3 ring-1 ring-white/25 backdrop-blur-[6px] sm:gap-4 sm:px-4 sm:py-3.5">
+          <img src={photo} alt="" className="h-16 w-16 shrink-0 rounded-full bg-white object-cover ring-[3px] ring-white shadow-[0_8px_18px_rgba(30,10,70,0.35)] sm:h-[72px] sm:w-[72px]" />
+          <div className="min-w-0">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-white/80">Reconhecimento</p>
+            <p className="mt-0.5 truncate text-[18px] font-bold leading-6 text-white sm:text-[22px]">{name}</p>
+            <p className="mt-0.5 text-[12.5px] leading-5 text-white/92">pelo seu desempenho e dedicação</p>
+          </div>
         </div>
       </div>
-    </div>
+    </article>
   );
 };
