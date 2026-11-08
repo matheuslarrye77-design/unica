@@ -336,11 +336,10 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
     <div className="flex w-full flex-col gap-3">
       {mode === 'recognition' ? null : (
         <LilacWash
-          className="min-h-[118px]"
-          icon={<Sun className="h-6 w-6" strokeWidth={1.75} />}
-          title={<h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#2C2438]">{getTimeBasedGreeting()}, {firstName}!</h1>}
+          icon={<Sun className="h-5 w-5" strokeWidth={1.75} />}
+          title={`${getTimeBasedGreeting()}, ${firstName}!`}
         >
-          <p className="mt-1 text-[13.5px] font-medium text-[#5C5168]">Que hoje seja um dia incrível.</p>
+          Que hoje seja um dia incrível.
         </LilacWash>
       )}
 

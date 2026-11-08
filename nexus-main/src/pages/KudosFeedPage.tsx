@@ -10,6 +10,7 @@ import { GoalsAssistant, GoalsCenter, GoalsProvider, type GoalsPayload } from '@
 import { PodiumStage } from '@/components/recognition/PodiumStage';
 import { useInstitution } from '@/lib/institution';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
+import { PageHero } from '@/components/social/LilacWash';
 import { ChevronDown, Heart, Megaphone, Star, Target, Trophy } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -137,37 +138,23 @@ export const KudosFeedPage: FC = () => {
     <PageFrame fitViewport fillRail={tab === 'metas'} rail={tab === 'metas' && goals ? <GoalsAssistant /> : <HomeRail />}>
       <div className="grid gap-4 pb-16">
             {tab === 'metas' ? (
-              <section className="relative overflow-hidden rounded-[22px] px-5 py-4">
-                <img src="/cards/fundo-claro.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
-                <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/40 via-white/16 to-transparent" />
-                <div className="relative flex flex-wrap items-center gap-4">
-                  <span className="grid h-[92px] w-[92px] shrink-0 place-items-center rounded-2xl bg-white text-[#4600F3]"><Target className="h-10 w-10" /></span>
-                  <div className="min-w-0 flex-1">
-                    <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#2C2438]">Central Inteligente de Metas</h1>
-                    <p className="mt-0.5 text-[15px] font-medium text-[#3C3952]">Interprete metas e resultados nos dois modos.</p>
-                    <p className="mt-1 max-w-xl text-[13px] leading-snug text-[#5C5168]">O pódio só muda com pedido explícito e confirmação.</p>
-                  </div>
-                </div>
-              </section>
+              <PageHero
+                icon={<Target className="h-5 w-5" strokeWidth={1.75} />}
+                title="Central Inteligente de Metas"
+                subtitle="Interprete metas e resultados nos dois modos."
+              />
             ) : (
-              <section className="relative overflow-hidden rounded-[22px] px-5 py-4">
-                <img src="/cards/fundo-claro.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
-                <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/40 via-white/16 to-transparent" />
-                <div className="relative flex flex-wrap items-center gap-4">
-                  <img src="/reconhecimento/trofeu.png" alt="" className="h-[92px] w-[92px] shrink-0 object-contain" />
-                  <div className="min-w-0 flex-1">
-                    <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#2C2438]">Reconhecimento</h1>
-                    <p className="mt-0.5 text-[15px] font-medium text-[#3C3952]">Valorize quem faz a diferença!</p>
-                    <p className="mt-1 max-w-xl text-[13px] leading-snug text-[#5C5168]">Aqui você pode reconhecer seus colegas e acompanhar os maiores destaques do mês.</p>
-                  </div>
-                  {gestao ? (
-                    <button type="button" onClick={() => setComposer(true)} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#4600F3] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#3600C2]">
-                      <Star className="h-4 w-4 fill-current" />
-                      Postar reconhecimento
-                    </button>
-                  ) : null}
-                </div>
-              </section>
+              <PageHero
+                icon={<img src="/reconhecimento/trofeu.png" alt="" className="h-7 w-7 object-contain" />}
+                title="Reconhecimento"
+                subtitle="Valorize quem faz a diferença!"
+                aside={gestao ? (
+                  <button type="button" onClick={() => setComposer(true)} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#4600F3] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#3600C2]">
+                    <Star className="h-4 w-4 fill-current" />
+                    Postar reconhecimento
+                  </button>
+                ) : null}
+              />
             )}
 
             {canManageGoals ? (

@@ -1,5 +1,6 @@
 import { FeedbackDialog } from '@/components/FeedbackDialog';
 import { ComposerExtras } from '@/components/social/ComposerExtras';
+import { PageHero } from '@/components/social/LilacWash';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -163,20 +164,16 @@ export const FeedbacksPage: FC = () => {
   return (
     <PageFrame>
       <div className="w-full">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 grid h-10 w-10 place-items-center rounded-2xl bg-[#F3E8FF] text-[#4600F3]">
-              <MessageSquare className="h-5 w-5" />
-            </span>
-            <div>
-              <h1 className="text-[26px] font-semibold tracking-tight text-[#241B33]">Sugestões</h1>
-              <p className="mt-1 max-w-xl text-[13px] leading-5 text-[#8A7C98]">Sua opinião também constrói o nosso futuro. Deixe aqui suas ideias, comentários e sugestões.</p>
-            </div>
-          </div>
-          <Button className="rounded-full" onClick={() => setComposer(true)}>
-            <Plus className="h-4 w-4" /> Nova sugestão
-          </Button>
-        </div>
+        <PageHero
+          icon={<MessageSquare className="h-5 w-5" strokeWidth={1.75} />}
+          title="Sugestões"
+          subtitle="Sua opinião também constrói o nosso futuro. Deixe aqui suas ideias, comentários e sugestões."
+          aside={
+            <Button className="rounded-full" onClick={() => setComposer(true)}>
+              <Plus className="h-4 w-4" /> Nova sugestão
+            </Button>
+          }
+        />
 
         <div className="mt-5 flex items-center gap-2">
           <div className="relative ml-auto">

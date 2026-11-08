@@ -4,6 +4,7 @@ import { calendarEvents, type CalendarEvent } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { directoryPeople, isLeader, useInstitution, wallpaperUrl, type CalendarTheme } from '@/lib/institution';
 import { Calendar, Cake, ChevronLeft, ChevronRight, MapPin, Plus, X } from 'lucide-react';
+import { PageHero } from '@/components/social/LilacWash';
 import { CelebrationsCenter } from '@/components/celebrations/CelebrationsCenter';
 import { EventDialog } from '@/components/calendar/EventDialog';
 import { deleteEvent, notifyEvents, parseAgendaDate, useAgendaEvents, type AgendaEvent } from '@/lib/events';
@@ -357,13 +358,11 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
     if (birthdaysFocus) {
       return (
         <div id="calendario" className="min-w-0">
-          <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]"><Cake className="h-5 w-5" /></span>
-            <div>
-              <h1 className="text-[26px] font-semibold tracking-tight text-[#241B33]">Celebrações</h1>
-              <p className="text-[13.5px] text-[#8A7C98]">Decore o bolo e as datas da equipe. O recado aparece ao tocar no enfeite.</p>
-            </div>
-          </div>
+          <PageHero
+            icon={<Cake className="h-5 w-5" strokeWidth={1.75} />}
+            title="Celebrações"
+            subtitle="Decore o bolo e as datas da equipe. O recado aparece ao tocar no enfeite."
+          />
           {sectionTabs}
           <CelebrationsCenter />
         </div>
@@ -371,25 +370,21 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
     }
     return (
       <div id="calendario" className="min-w-0">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]">
-              <Calendar className="h-5 w-5" />
-            </span>
-            <div className="min-w-0">
-              <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#241B33]">Calendário</h1>
-              <p className="mt-0.5 truncate text-[13.5px] text-[#8A7C98]">Acompanhe seus compromissos, eventos e aniversários da equipe.</p>
+        <PageHero
+          icon={<Calendar className="h-5 w-5" strokeWidth={1.75} />}
+          title="Calendário"
+          subtitle="Acompanhe seus compromissos, eventos e aniversários da equipe."
+          aside={
+            <div className="flex shrink-0 gap-2">
+              <Button className="h-10 rounded-full bg-[#4600F3] px-4 hover:bg-[#3600C2]" onClick={() => { setEditingEvent(null); setCreateType('reuniao'); setEditorOpen(true); }}>
+                <Plus className="h-4 w-4" /> Adicionar evento
+              </Button>
+              <Button variant="outline" className="h-10 rounded-full border-[#DDD4F5] bg-white px-4" onClick={() => { setEditingEvent(null); setCreateType('aniversario'); setEditorOpen(true); }}>
+                <Cake className="h-4 w-4" /> Adicionar aniversário
+              </Button>
             </div>
-          </div>
-          <div className="flex shrink-0 gap-2">
-            <Button className="h-10 rounded-full bg-[#4600F3] px-4 hover:bg-[#3600C2]" onClick={() => { setEditingEvent(null); setCreateType('reuniao'); setEditorOpen(true); }}>
-              <Plus className="h-4 w-4" /> Adicionar evento
-            </Button>
-            <Button variant="outline" className="h-10 rounded-full border-[#DDD4F5] bg-white px-4" onClick={() => { setEditingEvent(null); setCreateType('aniversario'); setEditorOpen(true); }}>
-              <Cake className="h-4 w-4" /> Adicionar aniversário
-            </Button>
-          </div>
-        </div>
+          }
+        />
         {sectionTabs}
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">

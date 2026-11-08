@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PageHero } from '@/components/social/LilacWash';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -137,27 +138,23 @@ export const EmployeeDirectoryPage: FC = () => {
   return (
     <PageFrame>
       <div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]">
-              <Users className="h-5 w-5" />
-            </span>
-            <div className="min-w-0">
-              <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#241B33]">Equipe</h1>
-              <p className="mt-0.5 text-[13.5px] text-[#8A7C98]">Conheça nossos colaboradores e suas informações de contato.</p>
-            </div>
-          </div>
-          <div className="flex shrink-0 gap-2">
-            <Button className="h-10 rounded-full bg-[#4600F3] px-4 hover:bg-[#3600C2]" onClick={() => { setSearchQuery(''); setRoles([...TEAM_FUNCOES]); }}>
-              <Users className="h-4 w-4" /> Ver equipe
-            </Button>
-            {leader ? (
-              <Button variant="outline" className="h-10 rounded-full border-[#DDD4F5] bg-white px-4" onClick={() => setOpen(true)}>
-                <Plus className="h-4 w-4" /> Adicionar colaborador
+        <PageHero
+          icon={<Users className="h-5 w-5" strokeWidth={1.75} />}
+          title="Equipe"
+          subtitle="Conheça nossos colaboradores e suas informações de contato."
+          aside={
+            <div className="flex shrink-0 gap-2">
+              <Button className="h-10 rounded-full bg-[#4600F3] px-4 hover:bg-[#3600C2]" onClick={() => { setSearchQuery(''); setRoles([...TEAM_FUNCOES]); }}>
+                <Users className="h-4 w-4" /> Ver equipe
               </Button>
-            ) : null}
-          </div>
-        </div>
+              {leader ? (
+                <Button variant="outline" className="h-10 rounded-full border-[#DDD4F5] bg-white px-4" onClick={() => setOpen(true)}>
+                  <Plus className="h-4 w-4" /> Adicionar colaborador
+                </Button>
+              ) : null}
+            </div>
+          }
+        />
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <DropdownMenu>

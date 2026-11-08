@@ -26,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { PageHero } from '@/components/social/LilacWash';
 import { Button } from '@/components/ui/button';
 import {
   ACTIVITY_STATUSES,
@@ -63,7 +64,7 @@ function PerformanceChart({ activities }: { activities: Activity[] }) {
 
   return (
     <div className="group relative shrink-0">
-      <div className="relative h-[108px] w-[108px]">
+      <div className="relative h-[80px] w-[80px]">
         <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" aria-hidden="true">
           <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(70,0,243,0.12)" strokeWidth="10" />
           <circle
@@ -79,7 +80,7 @@ function PerformanceChart({ activities }: { activities: Activity[] }) {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-[22px] font-light tabular-nums leading-none text-[#2C2433]">{rate}%</p>
+          <p className="text-[18px] font-light tabular-nums leading-none text-[#2C2433]">{rate}%</p>
           <p className="mt-1 text-[10px] font-extralight tracking-wide text-[#5C5168]">concluídas</p>
         </div>
       </div>
@@ -203,24 +204,12 @@ export const ActivityBoard: FC = () => {
 
   return (
     <div>
-      <section className="relative overflow-visible rounded-[22px]">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[22px]">
-          <img src="/cards/fundo-claro.png" alt="" className="h-full w-full object-cover object-center" />
-          <span className="absolute inset-0 bg-gradient-to-r from-white/40 via-white/16 to-transparent" />
-        </div>
-        <div className="relative flex min-h-[148px] items-center justify-between gap-6 px-6 py-5 pr-10">
-          <div className="flex min-w-0 max-w-[52%] items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-[#4600F3] shadow-sm">
-              <Check className="h-5 w-5" strokeWidth={1.75} />
-            </span>
-            <div className="min-w-0">
-              <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#2C2438]">Atividades</h1>
-              <p className="mt-0.5 text-[15px] font-medium text-[#3C3952]">Organize suas atividades pessoais e acompanhe seu progresso</p>
-            </div>
-          </div>
-          <PerformanceChart activities={scoped} />
-        </div>
-      </section>
+      <PageHero
+        icon={<Check className="h-5 w-5" strokeWidth={1.75} />}
+        title="Atividades"
+        subtitle="Organize suas atividades pessoais e acompanhe seu progresso"
+        aside={<PerformanceChart activities={scoped} />}
+      />
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#EDE6F3]">
         <div className="flex items-center gap-5">

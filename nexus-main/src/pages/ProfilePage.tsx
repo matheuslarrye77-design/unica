@@ -1,5 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHero } from '@/components/social/LilacWash';
 import { PageFrame } from '@/components/shell/PageFrame';
+import { UserRound } from 'lucide-react';
 import { actor } from '@/lib/session';
 import { useInstitution } from '@/lib/institution';
 import { type FC } from 'react';
@@ -11,7 +13,12 @@ export const ProfilePage: FC = () => {
 
   return (
     <PageFrame>
-      <Card>
+      <PageHero
+        icon={<UserRound className="h-5 w-5" strokeWidth={1.75} />}
+        title="Perfil"
+        subtitle="Seus dados na Única Conecta."
+      />
+      <Card className="mt-4">
         <CardHeader>
           <CardTitle>Perfil</CardTitle>
         </CardHeader>

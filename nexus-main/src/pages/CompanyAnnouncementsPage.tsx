@@ -7,6 +7,7 @@ import { usePageSearch } from '@/lib/pageSearch';
 import { archiveJournalArticle, articleSummary, canManageJournal, deleteJournalArticle, journalPlainText, purgeJournalArticle, readingMinutes, restoreJournalArticle, toggleJournalSave, type JournalArticle, type JournalCategory } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
+import { PageHero } from '@/components/social/LilacWash';
 import { Bookmark, Calendar, ChevronRight, ClipboardList, Clock, Newspaper, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useMemo, useState, type FC } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -103,27 +104,23 @@ export const CompanyAnnouncementsPage: FC = () => {
   return (
     <>
     <PageFrame rail={<JournalRail articles={savedArticles} />}>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]">
-                <Newspaper className="h-5 w-5" />
-              </span>
-              <div className="min-w-0">
-                <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#241B33]">Jornal</h1>
-                <p className="mt-0.5 text-[13.5px] text-[#8A7C98]">Notícias e comunicados internos da Única</p>
-              </div>
-            </div>
-            {canManage ? (
-              <div className="flex items-center gap-2">
-                <button type="button" aria-pressed={trashOpen} aria-label="Lixeira" onClick={() => { setTrashOpen((current) => !current); setSeenTrash(removed.length); }} className={cn('relative grid h-9 w-9 place-items-center rounded-full border border-[#DDD4F5] bg-white text-[#3600C2] hover:bg-[#EDE7FE]', trashOpen && 'bg-[#EDE7FE]')}>
-                  <Trash2 className="h-4 w-4" />
-                  {removed.length > seenTrash ? <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#9D174D] px-1 text-[10px] font-semibold text-white">{removed.length}</span> : null}
-                </button>
-                <button type="button" aria-label="Nova publicação" onClick={openCreate} className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90">
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            ) : null}
+          <div className="mb-4">
+            <PageHero
+              icon={<Newspaper className="h-5 w-5" strokeWidth={1.75} />}
+              title="Jornal"
+              subtitle="Notícias e comunicados internos da Única"
+              aside={canManage ? (
+                <div className="flex items-center gap-2">
+                  <button type="button" aria-pressed={trashOpen} aria-label="Lixeira" onClick={() => { setTrashOpen((current) => !current); setSeenTrash(removed.length); }} className={cn('relative grid h-9 w-9 place-items-center rounded-full border border-[#DDD4F5] bg-white text-[#3600C2] hover:bg-[#EDE7FE]', trashOpen && 'bg-[#EDE7FE]')}>
+                    <Trash2 className="h-4 w-4" />
+                    {removed.length > seenTrash ? <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#9D174D] px-1 text-[10px] font-semibold text-white">{removed.length}</span> : null}
+                  </button>
+                  <button type="button" aria-label="Nova publicação" onClick={openCreate} className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90">
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : null}
+            />
           </div>
 
           {canManage && trashOpen ? (

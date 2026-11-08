@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { SystemMark } from '@/components/documents/SystemMark';
+import { PageHero } from '@/components/social/LilacWash';
 import { PageFrame } from '@/components/shell/PageFrame';
 import {
   DOCUMENT_CATEGORIES,
@@ -176,15 +177,11 @@ export const ResourcesPage: FC = () => {
           </section>
     }>
           <section>
-            <div className="flex items-start gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]">
-                <FileText className="h-5 w-5" strokeWidth={2.2} />
-              </span>
-              <div>
-            <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#241B33]">Central de Documentos</h1>
-            <p className="mt-1 text-[13.5px] text-[#8A7C98]">Encontre procedimentos, requerimentos, orientações e documentos internos.</p>
-              </div>
-            </div>
+            <PageHero
+              icon={<FileText className="h-5 w-5" strokeWidth={1.75} />}
+              title="Central de Documentos"
+              subtitle="Encontre procedimentos, requerimentos, orientações e documentos internos."
+            />
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
