@@ -168,7 +168,7 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
       onNavigate={onClose}
       header={(
         <div className={cn('mb-1 flex items-start', collapsed ? 'flex-col items-center gap-1' : 'justify-between gap-1')}>
-          <SidebarBrand name="Única Conecta" detail="Intranet" href="/" collapsed={collapsed} onNavigate={onClose} />
+          <SidebarBrand name="Única" accent="Conecta" href="/" collapsed={collapsed} onNavigate={onClose} />
           <button
             type="button"
             className="mt-1 hidden h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground lg:inline-flex dark:hover:bg-white/5"

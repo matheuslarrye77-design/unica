@@ -100,17 +100,18 @@ export function NavItem({
 
 export function SidebarBrand({
   name,
-  detail,
+  accent,
   href,
   collapsed,
   onNavigate,
 }: {
   name: string;
-  detail?: string;
+  accent?: string;
   href: string;
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
+  const label = accent ? `${name} ${accent}` : name;
   return (
     <Link
       to={href}
@@ -121,10 +122,17 @@ export function SidebarBrand({
       )}
     >
       <img src="/marca-unica.png" alt="" className="h-8 w-8 shrink-0 rounded-[6px] object-cover shadow-sm" />
-      {collapsed ? <span className="sr-only">{name}</span> : (
-        <span className="ml-3 flex min-w-0 flex-col overflow-hidden">
-          <span className="unica-display mb-1 truncate text-[13px] leading-none text-foreground">{name}</span>
-          {detail ? <span className="text-[11px] leading-none text-muted-foreground">{detail}</span> : null}
+      {collapsed ? <span className="sr-only">{label}</span> : (
+        <span className="ml-3 flex min-w-0 overflow-hidden">
+          <span className="unica-display truncate text-[15px] leading-none">
+            {name}
+            {accent ? (
+              <>
+                {' '}
+                <span className="bg-gradient-to-r from-[#4600F3] via-[#6B33F6] to-[#A78BFA] bg-clip-text text-transparent">{accent}</span>
+              </>
+            ) : null}
+          </span>
         </span>
       )}
     </Link>

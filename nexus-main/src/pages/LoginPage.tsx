@@ -29,7 +29,10 @@ export const LoginPage: FC = () => {
       <form onSubmit={(event) => void submit(event)} className="w-full max-w-sm rounded-2xl border bg-card p-6 shadow-[0_1px_2px_rgba(70,0,243,0.05)]">
         <div className="mb-6 flex items-center gap-2">
           <img src="/marca-unica.png" alt="" className="h-8 w-8 rounded-full object-cover" />
-          <span className="unica-display text-lg text-primary">Única Conecta</span>
+          <span className="unica-display text-lg">
+            Única{' '}
+            <span className="bg-gradient-to-r from-[#4600F3] via-[#6B33F6] to-[#A78BFA] bg-clip-text text-transparent">Conecta</span>
+          </span>
         </div>
         <h1 className="text-xl font-semibold">Entrar</h1>
         <div className="mt-4 space-y-3">
