@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..600&display=swap");
 @import "tailwindcss";
 
 @font-face {
@@ -95,51 +95,80 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --font-sans: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-display: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 500;
+  --font-weight-bold: 550;
+  --font-weight-extrabold: 600;
 }
 
 
 :root {
-  --radius: 0.75rem;
-  --background: #FAFAFC;
-  --foreground: #343440;
+  --ds-white: #FFFFFF;
+  --ds-white-2: #FCFCFD;
+  --ds-surface: #F8F9FB;
+  --ds-divider: #E9ECF0;
+  --ds-muted: #929BA8;
+  --ds-slate: #596678;
+  --ds-ink: #283244;
+  --ds-lavender: #F0EEFA;
+  --ds-purple: #7065C5;
+  --ds-space-1: 4px;
+  --ds-space-2: 8px;
+  --ds-space-3: 12px;
+  --ds-space-4: 16px;
+  --ds-space-5: 24px;
+  --ds-space-6: 32px;
+  --ds-space-7: 48px;
+  --ds-space-8: 64px;
+  --ds-radius: 16px;
+  --ds-radius-sm: 12px;
+  --ds-radius-lg: 24px;
+  --ds-control-h: 36px;
+  --ds-ease: 180ms ease;
+  --ds-shadow: 0 1px 1px rgba(40, 50, 68, 0.03);
+  --ds-shadow-hover: 0 6px 20px rgba(40, 50, 68, 0.05);
+  --ds-focus: 0 0 0 3px rgba(112, 101, 197, 0.14);
+  --radius: 16px;
+  --background: #FCFCFD;
+  --foreground: #283244;
   --card: #FFFFFF;
-  --card-foreground: #343440;
+  --card-foreground: #283244;
   --popover: #FFFFFF;
-  --popover-foreground: #343440;
+  --popover-foreground: #283244;
   --primary: #7065C5;
   --primary-foreground: #FFFFFF;
-  --secondary: #EFEDFC;
+  --secondary: #F0EEFA;
   --secondary-foreground: #7065C5;
-  --muted: #F4F4F7;
-  --muted-foreground: #858593;
-  --accent: #EFEDFC;
+  --muted: #F8F9FB;
+  --muted-foreground: #929BA8;
+  --accent: #F0EEFA;
   --accent-foreground: #7065C5;
   --destructive: #C2415B;
   --destructive-foreground: #FFFFFF;
-  --border: #E9E9EF;
-  --input: #E9E9EF;
-  --ring: #8B83D6;
+  --border: #E9ECF0;
+  --input: #E9ECF0;
+  --ring: #7065C5;
   --chart-1: #7065C5;
   --chart-2: #3D9A6A;
   --chart-3: #C48A1A;
   --chart-4: #8B83D6;
   --chart-5: #7065C5;
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #343440;
+  --sidebar-foreground: #283244;
   --sidebar-primary: #7065C5;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EFEDFC;
+  --sidebar-accent: #F0EEFA;
   --sidebar-accent-foreground: #7065C5;
-  --sidebar-border: #E9E9EF;
-  --sidebar-ring: #8B83D6;
-  --unica-hover: #F4F4F7;
+  --sidebar-border: #E9ECF0;
+  --sidebar-ring: #7065C5;
+  --unica-hover: #F8F9FB;
   --unica-positive: #E7F7EC;
   --unica-neutral: #FFF4D9;
   --unica-alert: #FBEAF2;
-  --unica-lilac: #8B83D6;
-  --unica-lavender: #EFEDFC;
-  --unica-ice: #FAFAFC;
-  --unica-shadow: 0 1px 2px rgba(52, 52, 64, 0.05), 0 8px 20px rgba(52, 52, 64, 0.04);
+  --unica-lilac: #7065C5;
+  --unica-lavender: #F0EEFA;
+  --unica-ice: #F8F9FB;
+  --unica-shadow: 0 1px 1px rgba(40, 50, 68, 0.03);
 }
 
 .dark {
@@ -203,6 +232,7 @@
     font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-weight: 400;
     letter-spacing: -0.011em;
+    line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -210,29 +240,33 @@
     font-family: inherit;
   }
   a, button {
-    transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    transition: background-color var(--ds-ease), color var(--ds-ease), border-color var(--ds-ease), box-shadow var(--ds-ease);
   }
   h1,
   [data-slot="dialog-title"],
   [data-slot="alert-dialog-title"] {
     font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-style: normal;
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    font-weight: 500;
+    letter-spacing: -0.022em;
+    line-height: 1.25;
+    color: var(--ds-ink);
   }
   h2, h3 {
     font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-style: normal;
-    font-weight: 600;
+    font-weight: 500;
     letter-spacing: -0.015em;
+    line-height: 1.35;
+    color: var(--ds-ink);
   }
   #root {
     min-height: 100%;
     background: transparent;
   }
   ::selection {
-    background: #EFEDFC;
-    color: #343440;
+    background: var(--ds-lavender);
+    color: var(--ds-ink);
   }
   
   /* YouTube-like dark mode improvements */
@@ -315,38 +349,30 @@
 }
 
 .unica-surface {
-  border-radius: 14px;
-  border: 1px solid #E9E9EF;
-  background: #FFFFFF;
-  box-shadow: var(--unica-shadow);
-  transition: box-shadow 180ms ease, border-color 180ms ease;
-}
-
-.unica-surface:hover {
-  box-shadow: 0 2px 8px rgba(52, 52, 64, 0.06);
-}
-
-form.unica-surface:hover {
-  box-shadow: var(--unica-shadow);
+  border-radius: var(--ds-radius);
+  border: 1px solid var(--ds-divider);
+  background: var(--ds-white);
+  box-shadow: var(--ds-shadow);
+  transition: box-shadow var(--ds-ease), border-color var(--ds-ease);
 }
 
 .unica-icon {
   display: inline-flex;
-  height: 26px;
-  width: 26px;
+  height: 28px;
+  width: 28px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  background: #EFEDFC;
-  color: #7065C5;
+  border-radius: 10px;
+  background: var(--ds-lavender);
+  color: var(--ds-purple);
 }
 
 .unica-script,
 .unica-display {
   font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-style: normal;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.02em;
 }
 

@@ -104,14 +104,14 @@ export const CompanyAnnouncementsPage: FC = () => {
   return (
     <>
     <PageFrame rail={<JournalRail articles={savedArticles} />}>
-          <div className="mb-4">
+          <div className="mb-6">
             <PageHero
               icon={<Newspaper className="h-5 w-5" strokeWidth={1.75} />}
               title="Jornal"
               subtitle="Notícias e comunicados internos da Única"
               aside={canManage ? (
                 <div className="flex items-center gap-2">
-                  <button type="button" aria-pressed={trashOpen} aria-label="Lixeira" onClick={() => { setTrashOpen((current) => !current); setSeenTrash(removed.length); }} className={cn('relative grid h-9 w-9 place-items-center rounded-full border border-[#DDD4F5] bg-white text-[#3600C2] hover:bg-[#EDE7FE]', trashOpen && 'bg-[#EDE7FE]')}>
+                  <button type="button" aria-pressed={trashOpen} aria-label="Lixeira" onClick={() => { setTrashOpen((current) => !current); setSeenTrash(removed.length); }} className={cn('relative grid h-9 w-9 place-items-center rounded-[12px] border border-[var(--ds-divider)] bg-white text-[var(--ds-slate)] hover:bg-[var(--ds-surface)]', trashOpen && 'bg-[var(--ds-lavender)] text-[var(--ds-purple)]')}>
                     <Trash2 className="h-4 w-4" />
                     {removed.length > seenTrash ? <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#9D174D] px-1 text-[10px] font-semibold text-white">{removed.length}</span> : null}
                   </button>

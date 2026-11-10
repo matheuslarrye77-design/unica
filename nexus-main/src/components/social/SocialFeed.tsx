@@ -333,10 +333,10 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
 
   return (
     <ExpandProvider>
-    <div className="flex w-full flex-col gap-3">
+    <div className="flex w-full flex-col gap-6">
       {mode === 'recognition' ? null : (
         <LilacWash
-          icon={<Sun className="h-5 w-5" strokeWidth={1.75} />}
+          icon={<Sun className="h-5 w-5" strokeWidth={1.5} />}
           title={`${getTimeBasedGreeting()}, ${firstName}!`}
         >
           Que hoje seja um dia incrível.

@@ -31,7 +31,7 @@ export const LoginPage: FC = () => {
           <img src="/marca-unica.png" alt="" className="h-8 w-8 rounded-full object-cover" />
           <span className="unica-display text-lg">
             Única{' '}
-            <span className="bg-gradient-to-r from-[#7065C5] to-[#8B83D6] bg-clip-text text-transparent">Conecta</span>
+            <span className="text-[var(--ds-purple)]">Conecta</span>
           </span>
         </div>
         <h1 className="text-xl font-semibold">Entrar</h1>

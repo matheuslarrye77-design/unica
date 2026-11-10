@@ -136,7 +136,7 @@ export const KudosFeedPage: FC = () => {
 
   const page = (
     <PageFrame fitViewport fillRail={tab === 'metas'} rail={tab === 'metas' && goals ? <GoalsAssistant /> : <HomeRail />}>
-      <div className="grid gap-4 pb-16">
+      <div className="grid gap-6 pb-16">
             {tab === 'metas' ? (
               <PageHero
                 icon={<Target className="h-5 w-5" strokeWidth={1.75} />}
@@ -158,11 +158,11 @@ export const KudosFeedPage: FC = () => {
             )}
 
             {canManageGoals ? (
-              <div className="flex gap-5 border-b border-[#E9E9EF]">
-                <button type="button" onClick={() => showTab('mural')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', tab === 'mural' ? 'border-[#7065C5] text-[#7065C5]' : 'border-transparent text-[#858593]')}>
-                  <Trophy className="h-3.5 w-3.5" /> Mural de reconhecimento
+              <div className="flex gap-6 border-b border-[var(--ds-divider)]">
+                <button type="button" onClick={() => showTab('mural')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2.5 text-[13px] font-medium', tab === 'mural' ? 'border-[var(--ds-purple)] text-[var(--ds-purple)]' : 'border-transparent text-[var(--ds-muted)]')}>
+                  <Trophy className="h-3.5 w-3.5" strokeWidth={1.5} /> Mural de reconhecimento
                 </button>
-                <button type="button" onClick={() => showTab('metas')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', tab === 'metas' ? 'border-[#7065C5] text-[#7065C5]' : 'border-transparent text-[#858593]')}>
+                <button type="button" onClick={() => showTab('metas')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2.5 text-[13px] font-medium', tab === 'metas' ? 'border-[var(--ds-purple)] text-[var(--ds-purple)]' : 'border-transparent text-[var(--ds-muted)]')}>
                   <Target className="h-3.5 w-3.5" /> Central de Metas
                 </button>
               </div>
@@ -174,7 +174,7 @@ export const KudosFeedPage: FC = () => {
             <>
             <PodiumStage podiums={goals?.podiums ?? []} periodKey={podiumKey} onPeriod={setPodiumMonth} />
 
-            <section className="rounded-[14px] border border-[#E9E9EF] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(52,52,64,0.04)]">
+            <section className="rounded-[var(--ds-radius-lg)] border border-[var(--ds-divider)] bg-white px-6 py-6 shadow-[var(--ds-shadow)]">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="flex items-center gap-2 text-[16px] font-semibold text-[#343440]">
                   <span className="text-[#7065C5]">★</span> Últimos reconhecimentos

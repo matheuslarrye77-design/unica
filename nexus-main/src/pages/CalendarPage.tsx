@@ -346,11 +346,11 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
       setParams(next);
     };
     const sectionTabs = (
-      <div className="mt-4 flex gap-5 border-b border-[#E9E9EF]">
-        <button type="button" onClick={openCalendar} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', !birthdaysFocus ? 'border-[#7065C5] text-[#7065C5]' : 'border-transparent text-[#858593]')}>
-          <Calendar className="h-3.5 w-3.5" /> Calendário
+      <div className="mt-6 flex gap-6 border-b border-[var(--ds-divider)]">
+        <button type="button" onClick={openCalendar} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2.5 text-[13px] font-medium', !birthdaysFocus ? 'border-[var(--ds-purple)] text-[var(--ds-purple)]' : 'border-transparent text-[var(--ds-muted)]')}>
+          <Calendar className="h-3.5 w-3.5" strokeWidth={1.5} /> Calendário
         </button>
-        <button type="button" onClick={openBirthdays} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', birthdaysFocus ? 'border-[#7065C5] text-[#7065C5]' : 'border-transparent text-[#858593]')}>
+        <button type="button" onClick={openBirthdays} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2.5 text-[13px] font-medium', birthdaysFocus ? 'border-[var(--ds-purple)] text-[var(--ds-purple)]' : 'border-transparent text-[var(--ds-muted)]')}>
           <Cake className="h-3.5 w-3.5" /> Aniversários
         </button>
       </div>

@@ -34,11 +34,11 @@ export const ActivityColumn: FC<{
   }
 
   return (
-    <section className={cn('flex h-full min-w-[240px] flex-col rounded-[14px] bg-[#FAFAFC] p-2.5', isOver && 'ring-2 ring-[#8B83D6]/20')}>
-      <header className="flex items-center gap-2 px-1 pb-2.5">
-        <span className={cn('h-2 w-2 shrink-0 rounded-full', paint.mark)} />
-        <h2 className="text-[13px] font-semibold text-[#343440]">{STATUS_LABEL[status]}</h2>
-        <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-white px-1.5 text-[11px] font-medium text-[#858593]">
+    <section className={cn('flex h-full min-w-[240px] flex-col rounded-[var(--ds-radius)] bg-[var(--ds-surface)] p-3', isOver && 'ring-1 ring-[var(--ds-purple)]/20')}>
+      <header className="flex items-center gap-2 px-1 pb-3">
+        <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', paint.mark)} />
+        <h2 className="text-[13px] font-medium text-[var(--ds-ink)]">{STATUS_LABEL[status]}</h2>
+        <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-white px-1.5 text-[11px] font-normal text-[var(--ds-muted)]">
           {activities.length}
         </span>
       </header>
@@ -47,7 +47,7 @@ export const ActivityColumn: FC<{
           <button
             type="button"
             onClick={() => setLeadershipOpen((open) => !open)}
-            className="flex items-center gap-1.5 rounded-[10px] bg-white px-2 py-1.5 text-left text-[11.5px] font-medium text-[#7065C5]"
+            className="flex items-center gap-1.5 rounded-[12px] bg-white px-2 py-1.5 text-left text-[11.5px] font-medium text-[var(--ds-purple)]"
           >
             {leadershipOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             <img src="/atividades/alfinete.png" alt="" className="h-3.5 w-3.5 object-contain" />
@@ -70,7 +70,7 @@ export const ActivityColumn: FC<{
           ))}
         </SortableContext>
       </div>
-      <button type="button" onClick={onCreate} className="mt-1.5 rounded-[10px] py-1.5 text-center text-[12px] font-medium text-[#858593] transition-colors hover:bg-white hover:text-[#7065C5]">
+      <button type="button" onClick={onCreate} className="mt-2 rounded-[12px] py-2 text-center text-[12px] font-medium text-[var(--ds-muted)] transition-colors duration-[180ms] hover:bg-white hover:text-[var(--ds-purple)]">
         + Adicionar atividade
       </button>
     </section>

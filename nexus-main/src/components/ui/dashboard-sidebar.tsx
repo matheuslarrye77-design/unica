@@ -35,21 +35,21 @@ export function NavItem({
 }) {
   const Icon = item.icon;
   const className = cn(
-    'group flex w-full items-center justify-between rounded-[10px] px-2.5 py-[8px] text-[13px] font-medium tracking-[-0.01em] transition-all duration-200 select-none',
+    'group flex w-full items-center justify-between rounded-[12px] px-2.5 py-[9px] text-[13.5px] font-normal tracking-[-0.01em] transition-all duration-[180ms] select-none',
     collapsed && 'justify-center px-0',
     active
-      ? 'bg-[#EFEDFC] text-[#343440]'
-      : 'text-[#858593] hover:bg-[#F4F4F7] hover:text-[#343440]',
+      ? 'bg-[var(--ds-lavender)] font-medium text-[var(--ds-purple)]'
+      : 'text-[var(--ds-slate)] hover:bg-[var(--ds-surface)] hover:text-[var(--ds-ink)]',
   );
   const inner = (
     <>
       <span className={cn('flex min-w-0 items-center gap-2.5', collapsed && 'justify-center')}>
         <Icon
           className={cn(
-            'h-4 w-4 shrink-0 transition-colors',
-            active ? 'text-[#7065C5]' : 'text-[#858593] group-hover:text-[#7065C5]',
+            'h-4 w-4 shrink-0 transition-colors duration-[180ms]',
+            active ? 'text-[var(--ds-purple)]' : 'text-[var(--ds-muted)] group-hover:text-[var(--ds-purple)]',
           )}
-          strokeWidth={1.6}
+          strokeWidth={1.5}
         />
         {collapsed ? <span className="sr-only">{item.title}</span> : <span className="truncate">{item.title}</span>}
       </span>
@@ -117,19 +117,19 @@ export function SidebarBrand({
       to={href}
       onClick={onNavigate}
       className={cn(
-        'flex items-center rounded-[10px] px-2 py-2 transition-colors select-none hover:bg-[#F4F4F7]',
+        'flex items-center rounded-[12px] px-2 py-2 transition-colors duration-[180ms] select-none hover:bg-[var(--ds-surface)]',
         collapsed && 'justify-center px-0',
       )}
     >
       <img src="/marca-unica.png" alt="" className="h-8 w-8 shrink-0 rounded-[6px] object-cover shadow-sm" />
       {collapsed ? <span className="sr-only">{label}</span> : (
         <span className="ml-3 flex min-w-0 overflow-hidden">
-          <span className="unica-display truncate text-[15px] leading-none">
+          <span className="unica-display truncate text-[15px] leading-none text-[var(--ds-ink)]">
             {name}
             {accent ? (
               <>
                 {' '}
-                <span className="bg-gradient-to-r from-[#7065C5] to-[#8B83D6] bg-clip-text text-transparent">{accent}</span>
+                <span className="text-[var(--ds-purple)]">{accent}</span>
               </>
             ) : null}
           </span>
@@ -165,7 +165,7 @@ export function SidebarNav({
         {groups.map((group) => (
           <div key={group.heading ?? group.items[0]?.id} className="flex flex-col gap-0.5">
             {group.heading && !collapsed ? (
-              <span className="mb-1 px-2.5 text-[11px] font-medium tracking-[0.08em] text-[#858593] uppercase">
+              <span className="mb-1.5 px-2.5 text-[11px] font-medium tracking-[0.04em] text-[var(--ds-muted)]">
                 {group.heading}
               </span>
             ) : null}
@@ -176,7 +176,7 @@ export function SidebarNav({
         ))}
       </div>
       {bottomItems?.length ? (
-        <div className="mt-auto flex flex-col gap-0.5 border-t border-border/50 pt-4">
+        <div className="mt-auto flex flex-col gap-0.5 border-t border-[var(--ds-divider)] pt-4">
           {bottomItems.map((item) => (
             <NavItem key={item.id} item={item} active={isActive(item)} collapsed={collapsed} onSelect={onNavigate} />
           ))}

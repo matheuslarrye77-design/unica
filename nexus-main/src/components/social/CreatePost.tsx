@@ -422,7 +422,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
       <div className="flex items-start gap-3">
         <img src={user.avatar} alt="" className="mt-1 h-10 w-10 shrink-0 rounded-full bg-muted object-cover" />
         <div className="min-w-0 flex-1">
-          <div className={`rounded-[12px] border bg-[#F4F4F7] px-3 py-2 focus-within:border-[#8B83D6] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#EFEDFC] ${over ? 'border-[#7065C5] ring-2 ring-[#EFEDFC]' : 'border-transparent'}`}>
+          <div className={`rounded-[var(--ds-radius-sm)] border bg-[var(--ds-surface)] px-3 py-2 transition-all duration-[180ms] focus-within:border-[var(--ds-purple)] focus-within:bg-white focus-within:ring-[3px] focus-within:ring-[var(--ds-purple)]/15 ${over ? 'border-[var(--ds-purple)] ring-[3px] ring-[var(--ds-purple)]/15' : 'border-[var(--ds-divider)]'}`}>
             {blocks.map((block, index) => block.type === 'text' ? (
               <textarea
                 key={block.id}

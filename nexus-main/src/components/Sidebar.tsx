@@ -187,7 +187,7 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
 
   return (
     <>
-      <aside className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[#E9E9EF] bg-white text-sidebar-foreground transition-[width] duration-300 ease-out lg:flex', leftCollapsed ? 'w-16' : 'w-[248px]')}>
+      <aside className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[var(--ds-divider)] bg-white text-sidebar-foreground transition-[width] duration-[220ms] ease-out lg:flex', leftCollapsed ? 'w-16' : 'w-[248px]')}>
         {nav(leftCollapsed)}
       </aside>
       {open ? (

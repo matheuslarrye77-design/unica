@@ -80,8 +80,8 @@ function PerformanceChart({ activities }: { activities: Activity[] }) {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-[18px] font-semibold tabular-nums leading-none text-[#343440]">{rate}%</p>
-          <p className="mt-1 text-[10px] font-medium tracking-wide text-[#858593]">concluídas</p>
+          <p className="text-[18px] font-medium tabular-nums leading-none text-[var(--ds-ink)]">{rate}%</p>
+          <p className="mt-1 text-[10px] font-normal tracking-wide text-[var(--ds-muted)]">concluídas</p>
         </div>
       </div>
       <div className="pointer-events-none absolute top-1/2 right-[calc(100%+12px)] z-20 w-44 -translate-y-1/2 rounded-[12px] border border-[#E9E9EF] bg-white px-3 py-2 opacity-0 shadow-[0_8px_24px_rgba(52,52,64,0.08)] transition-opacity duration-150 group-hover:opacity-100">
@@ -211,31 +211,31 @@ export const ActivityBoard: FC = () => {
         aside={<PerformanceChart activities={scoped} />}
       />
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#E9E9EF]">
-        <div className="flex items-center gap-5">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--ds-divider)]">
+        <div className="flex items-center gap-6">
           <button
             type="button"
             onClick={() => showTab('mine')}
-            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', tab === 'mine' ? 'border-[#7065C5] text-[#7065C5]' : 'border-transparent text-[#858593]')}
+            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2.5 text-[13px] font-medium', tab === 'mine' ? 'border-[var(--ds-purple)] text-[var(--ds-purple)]' : 'border-transparent text-[var(--ds-muted)]')}
           >
             <User className="h-3.5 w-3.5" strokeWidth={1.5} /> Minhas atividades
           </button>
           <button
             type="button"
             onClick={() => showTab('leadership')}
-            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', tab === 'leadership' ? 'border-[#7065C5] text-[#7065C5]' : 'border-transparent text-[#858593]')}
+            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2.5 text-[13px] font-medium', tab === 'leadership' ? 'border-[var(--ds-purple)] text-[var(--ds-purple)]' : 'border-transparent text-[var(--ds-muted)]')}
           >
             <Star className="h-3.5 w-3.5" strokeWidth={1.5} /> Missões da liderança
-            <span className="grid h-4 min-w-4 place-items-center rounded-full bg-[#EFEDFC] px-1 text-[10px] font-medium text-[#7065C5]">{leadershipCount}</span>
+            <span className="grid h-4 min-w-4 place-items-center rounded-full bg-[var(--ds-lavender)] px-1 text-[10px] font-medium text-[var(--ds-purple)]">{leadershipCount}</span>
           </button>
         </div>
-        <Button type="button" onClick={() => openCreate('todo')} className="mb-px h-8 rounded-[10px] px-3 text-[13px] font-medium">
+        <Button type="button" onClick={() => openCreate('todo')} className="mb-px h-8 px-3 text-[13px] font-medium">
           <Plus strokeWidth={1.5} /> Nova atividade
         </Button>
       </div>
 
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
-        <div className="mt-4 grid min-w-0 grid-cols-1 items-start gap-3 overflow-x-auto md:grid-cols-3">
+        <div className="mt-6 grid min-w-0 grid-cols-1 items-start gap-4 overflow-x-auto md:grid-cols-3">
           {ACTIVITY_STATUSES.map((status) => (
             <ActivityColumn
               key={status}
