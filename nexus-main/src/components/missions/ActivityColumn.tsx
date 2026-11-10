@@ -40,7 +40,7 @@ export const ActivityColumn: FC<{
         <span className={cn('grid h-6 w-6 place-items-center rounded-full', paint.icon)}>
           <Icon className="h-3 w-3" strokeWidth={2.4} />
         </span>
-        <h2 className="text-[13px] font-light text-[#2C2433]">{STATUS_LABEL[status]}</h2>
+        <h2 className="text-[13px] font-semibold text-[#2C2433]">{STATUS_LABEL[status]}</h2>
         <span className={cn('ml-auto grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-light', paint.count)}>
           {activities.length}
         </span>

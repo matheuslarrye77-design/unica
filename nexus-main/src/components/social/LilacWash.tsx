@@ -17,8 +17,8 @@ export const PageHero: FC<{
       <div className="flex min-w-0 items-center gap-3">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-[#4600F3] shadow-sm">{icon}</span>
         <div className="min-w-0">
-          <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-[#2C2438]">{title}</h1>
-          {subtitle ? <p className="mt-0.5 text-[15px] font-medium text-[#3C3952]">{subtitle}</p> : null}
+          <h1 className="unica-display text-[26px] font-normal leading-tight text-[#2C2438]">{title}</h1>
+          {subtitle ? <p className="mt-0.5 text-[15px] font-normal text-[#3C3952]">{subtitle}</p> : null}
         </div>
       </div>
       {aside ? <div className="relative shrink-0">{aside}</div> : null}
