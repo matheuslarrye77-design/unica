@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { CalendarDays, Check, ChevronDown, ChevronUp, Mail, MoreHorizontal, User, Users } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, ChevronUp, Clock, Mail, MoreHorizontal, Star, User, Users } from 'lucide-react';
 import { type FC } from 'react';
 import {
   DropdownMenu,
@@ -13,25 +13,36 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   ACTIVITY_STATUSES,
-  ORIGIN_LABEL,
   PRIORITY_LABEL,
   STATUS_LABEL,
-  formatDueDate,
   type Activity,
   type ActivityStatus,
 } from '@/data/activities';
 import { cn } from '@/lib/utils';
 
-const priorityClass: Record<Activity['priority'], string> = {
-  high: 'bg-[#FCE7F3] text-[#BE185D]',
-  medium: 'bg-[#EDE9FE] text-[#3600C2]',
-  low: 'bg-[#E0E7FF] text-[#4600F3]',
+const priorityTone: Record<Activity['priority'], { dot: string; text: string }> = {
+  high: { dot: 'bg-[#E25B84]', text: 'text-[#C43B68]' },
+  medium: { dot: 'bg-[#4C7BD9]', text: 'text-[#3E68C4]' },
+  low: { dot: 'bg-[#A4A8B5]', text: 'text-[#777987]' },
 };
 
 function SourceIcon({ source }: { source: string }) {
-  if (source === 'E-mail') return <Mail className="h-3 w-3" />;
-  if (source.startsWith('Equipe')) return <Users className="h-3 w-3" />;
-  return <User className="h-3 w-3" />;
+  if (source === 'E-mail') return <Mail className="h-3 w-3 shrink-0" strokeWidth={1.6} />;
+  if (source.startsWith('Equipe')) return <Users className="h-3 w-3 shrink-0" strokeWidth={1.6} />;
+  return <User className="h-3 w-3 shrink-0" strokeWidth={1.6} />;
+}
+
+function shortDate(value: string | null) {
+  if (!value) return null;
+  const date = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  const month = date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+  return `${date.getDate()} ${month} ${date.getFullYear()}`;
+}
+
+function isOverdue(activity: Activity) {
+  if (activity.status === 'done' || !activity.dueDate) return false;
+  return activity.dueDate < new Date().toISOString().slice(0, 10);
 }
 
 export const ActivityCardView: FC<{
@@ -44,25 +55,30 @@ export const ActivityCardView: FC<{
   onMove?: (status: ActivityStatus) => void;
 }> = ({ activity, dragging = false, collapsed = false, onToggle, onEdit, onDelete, onMove }) => {
   const done = activity.status === 'done';
-  const when = formatDueDate(done ? activity.completedOn ?? activity.dueDate : activity.dueDate);
+  const overdue = isOverdue(activity);
+  const when = shortDate(done ? activity.completedOn ?? activity.dueDate : activity.dueDate);
   const leadership = activity.origin === 'leadership';
+  const priority = priorityTone[activity.priority];
+  const whenLabel = done ? `Concluída em ${when}` : overdue ? `Prazo atrasado: ${when}` : `Prazo: ${when}`;
 
   return (
-    <article className={cn('relative overflow-hidden rounded-[var(--ds-radius)] border border-[var(--ds-divider)] bg-white px-3.5 py-3 font-sans shadow-[var(--ds-shadow)] transition-shadow duration-[180ms] hover:shadow-[var(--ds-shadow-hover)]', dragging && 'opacity-40')}>
-      <div className="relative flex items-center gap-1.5">
-        {leadership ? <img src="/atividades/alfinete.png" alt="" className="h-5 w-5 shrink-0 object-contain" /> : null}
-        <span className={cn('rounded-md px-1.5 py-0.5 text-[11px] font-normal', leadership ? 'bg-[var(--ds-lavender)] text-[var(--ds-purple)]' : 'bg-[var(--ds-surface)] text-[var(--ds-muted)]')}>
-          {ORIGIN_LABEL[activity.origin]}
-        </span>
+    <article className={cn(
+      'relative overflow-hidden rounded-[9px] border border-[rgba(45,40,70,0.09)] bg-white px-3 py-2.5 shadow-[0_2px_7px_rgba(40,35,65,0.035)] transition-shadow duration-[180ms] hover:shadow-[0_3px_10px_rgba(40,35,65,0.05)]',
+      dragging && 'opacity-40',
+    )}>
+      <div className="flex items-center gap-1.5">
+        {leadership ? <Star className="h-3 w-3 shrink-0 text-[#8878D6]" strokeWidth={1.6} /> : null}
+        <span className="min-w-0 truncate text-[11px] font-normal text-[#777987]">{activity.category}</span>
+        <span className="ml-auto flex items-center">
         {onToggle ? (
           <button
             type="button"
             aria-label={collapsed ? `Expandir ${activity.title}` : `Minimizar ${activity.title}`}
-            className="rounded-md p-0.5 text-[#B7A8C4] hover:bg-white/70"
+            className="rounded-[6px] p-0.5 text-[#9A96A8] hover:bg-[#F4F2FB] hover:text-[#252631]"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={onToggle}
           >
-            {collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+            {collapsed ? <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.6} /> : <ChevronUp className="h-3.5 w-3.5" strokeWidth={1.6} />}
           </button>
         ) : null}
         {onEdit && onDelete ? (
@@ -71,56 +87,58 @@ export const ActivityCardView: FC<{
               <button
                 type="button"
                 aria-label={`Ações de ${activity.title}`}
-                className="ml-auto rounded-md p-0.5 text-[#B7A8C4] hover:bg-[#F8F2FB]"
+                className="ml-auto rounded-[6px] p-0.5 text-[#9A96A8] hover:bg-[#F4F2FB] hover:text-[#252631]"
                 onPointerDown={(event) => event.stopPropagation()}
               >
-                <MoreHorizontal className="h-3.5 w-3.5" />
+                <MoreHorizontal className="h-3.5 w-3.5" strokeWidth={1.6} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={onEdit}>Editar</DropdownMenuItem>
               {onMove ? (
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>Mover para...</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  {ACTIVITY_STATUSES.map((status) => (
-                    <DropdownMenuItem key={status} disabled={status === activity.status} onSelect={() => onMove(status)}>
-                      {STATUS_LABEL[status]}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>Mover para...</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {ACTIVITY_STATUSES.map((status) => (
+                      <DropdownMenuItem key={status} disabled={status === activity.status} onSelect={() => onMove(status)}>
+                        {STATUS_LABEL[status]}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
               ) : null}
               <DropdownMenuItem variant="destructive" onSelect={onDelete}>Excluir</DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
-        ) : <span className="ml-auto" />}
+            </DropdownMenu>
+          ) : null}
+        </span>
       </div>
-      <h3 title={activity.title} className="relative mt-2 line-clamp-2 text-[13.5px] font-medium leading-snug text-[var(--ds-ink)]">{activity.title}</h3>
+      <h3 title={activity.title} className="mt-1.5 line-clamp-2 text-[13.5px] font-medium leading-snug tracking-[-0.01em] text-[#252631]">{activity.title}</h3>
       {collapsed ? null : (
-      <div className="relative">
-      <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[12px] font-normal text-[var(--ds-muted)]">
-        <SourceIcon source={activity.source} />
-        <span className="truncate">{activity.source}</span>
-      </p>
-      <div className="mt-2 flex items-end gap-2">
-        {when ? (
-          <p className="flex min-w-0 items-center gap-1 text-[11.5px] font-normal text-[var(--ds-muted)]">
-            <CalendarDays className="h-3 w-3 shrink-0" />
-            <span className="truncate">{done ? `Concluída em: ${when}` : `Prazo: ${when}`}</span>
+        <div>
+          <p className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12px] font-normal text-[#777987]">
+            <SourceIcon source={activity.source} />
+            <span className="truncate">{activity.source}</span>
           </p>
-        ) : <span />}
-        {done ? (
-          <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-[#D1FAE5] px-1.5 py-0.5 text-[11px] font-light text-[#047857]">
-            <Check className="h-3 w-3" strokeWidth={1.5} /> Concluída
-          </span>
-        ) : (
-          <span className={cn('ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-light', priorityClass[activity.priority])}>
-            {PRIORITY_LABEL[activity.priority]}
-          </span>
-        )}
-      </div>
-      </div>
+          <div className="mt-2 flex items-center gap-2">
+            {when ? (
+              <p title={whenLabel} className={cn('flex min-w-0 items-center gap-1 text-[11.5px] font-normal', overdue ? 'text-[#D97706]' : 'text-[#777987]')}>
+                {overdue ? <Clock className="h-3 w-3 shrink-0" strokeWidth={1.6} /> : <CalendarDays className="h-3 w-3 shrink-0" strokeWidth={1.6} />}
+                <span className="truncate">{when}</span>
+              </p>
+            ) : <span />}
+            {done ? (
+              <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-[11px] font-normal text-[#2F8F62]">
+                <Check className="h-3 w-3" strokeWidth={1.7} /> Concluída
+              </span>
+            ) : (
+              <span className={cn('ml-auto inline-flex shrink-0 items-center gap-1.5 text-[11px] font-normal', priority.text)}>
+                <span className={cn('h-1.5 w-1.5 rounded-full', priority.dot)} />
+                {PRIORITY_LABEL[activity.priority]}
+              </span>
+            )}
+          </div>
+        </div>
       )}
     </article>
   );

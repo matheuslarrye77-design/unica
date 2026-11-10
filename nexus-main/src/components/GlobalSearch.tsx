@@ -2,11 +2,13 @@ import { Search } from 'lucide-react';
 import { type FC } from 'react';
 import { usePageSearch } from '@/lib/pageSearch';
 
-export const GlobalSearch: FC = () => {
+export const GlobalSearch: FC<{ paper?: boolean }> = ({ paper = false }) => {
   const { query, setQuery, placeholder } = usePageSearch();
 
   return (
-    <label className="relative flex h-8 w-full cursor-text items-center gap-2 rounded-[8px] border border-[var(--ds-divider)] bg-[var(--ds-surface)] px-3 text-[13px] font-normal text-[var(--ds-muted)] transition-all duration-[180ms] focus-within:border-[var(--ds-purple)] focus-within:bg-white focus-within:shadow-[var(--ds-focus)]">
+    <label className={paper
+      ? 'relative flex h-8 w-full cursor-text items-center gap-2 rounded-[8px] border border-[rgba(45,40,70,0.09)] bg-white px-3 text-[13px] font-normal text-[#777987] shadow-[0_2px_7px_rgba(40,35,65,0.035)] transition-all duration-[180ms] focus-within:border-[var(--ds-purple)] focus-within:shadow-[var(--ds-focus)]'
+      : 'relative flex h-8 w-full cursor-text items-center gap-2 rounded-[8px] border border-[var(--ds-divider)] bg-[var(--ds-surface)] px-3 text-[13px] font-normal text-[var(--ds-muted)] transition-all duration-[180ms] focus-within:border-[var(--ds-purple)] focus-within:bg-white focus-within:shadow-[var(--ds-focus)]'}>
       <Search className="h-4 w-4 shrink-0" />
       <input
         type="search"

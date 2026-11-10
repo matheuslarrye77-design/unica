@@ -187,13 +187,13 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
 
   return (
     <>
-      <aside className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[var(--ds-divider)] bg-[#FAFAFB] text-sidebar-foreground transition-[width] duration-[220ms] ease-out lg:flex', leftCollapsed ? 'w-16' : 'w-[232px]')}>
+      <aside className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[rgba(45,40,70,0.08)] bg-white text-sidebar-foreground transition-[width] duration-[220ms] ease-out lg:flex', leftCollapsed ? 'w-16' : 'w-[232px]')}>
         {nav(leftCollapsed)}
       </aside>
       {open ? (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button type="button" className="absolute inset-0 bg-foreground/30" aria-label="Fechar menu" onClick={onClose} />
-          <aside className="absolute inset-y-0 left-0 flex w-[232px] flex-col border-r border-[var(--ds-divider)] bg-[#FAFAFB] text-sidebar-foreground shadow-[var(--ds-shadow)]">
+          <aside className="absolute inset-y-0 left-0 flex w-[232px] flex-col border-r border-[rgba(45,40,70,0.08)] bg-white text-sidebar-foreground shadow-[0_2px_7px_rgba(40,35,65,0.035)]">
             {nav(false)}
           </aside>
         </div>
