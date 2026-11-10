@@ -66,13 +66,13 @@ function PerformanceChart({ activities }: { activities: Activity[] }) {
     <div className="group relative shrink-0">
       <div className="relative h-[80px] w-[80px]">
         <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" aria-hidden="true">
-          <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(70,0,243,0.12)" strokeWidth="10" />
+          <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(112,101,197,0.16)" strokeWidth="10" />
           <circle
             cx="60"
             cy="60"
             r={radius}
             fill="none"
-            stroke="#4600F3"
+            stroke="#7065C5"
             strokeWidth="10"
             strokeLinecap="round"
             strokeDasharray={`${dash} ${circumference}`}
@@ -80,12 +80,12 @@ function PerformanceChart({ activities }: { activities: Activity[] }) {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-[18px] font-light tabular-nums leading-none text-[#2C2433]">{rate}%</p>
-          <p className="mt-1 text-[10px] font-extralight tracking-wide text-[#5C5168]">concluídas</p>
+          <p className="text-[18px] font-semibold tabular-nums leading-none text-[#343440]">{rate}%</p>
+          <p className="mt-1 text-[10px] font-medium tracking-wide text-[#858593]">concluídas</p>
         </div>
       </div>
-      <div className="pointer-events-none absolute top-1/2 right-[calc(100%+12px)] z-20 w-44 -translate-y-1/2 rounded-xl border border-[#EDE7FE] bg-white/95 px-3 py-2 opacity-0 shadow-[0_8px_24px_rgba(70,0,243,0.12)] transition-opacity duration-150 group-hover:opacity-100">
-        <ul className="grid gap-1.5 text-[11px] font-light text-[#5C5168]">
+      <div className="pointer-events-none absolute top-1/2 right-[calc(100%+12px)] z-20 w-44 -translate-y-1/2 rounded-[12px] border border-[#E9E9EF] bg-white px-3 py-2 opacity-0 shadow-[0_8px_24px_rgba(52,52,64,0.08)] transition-opacity duration-150 group-hover:opacity-100">
+        <ul className="grid gap-1.5 text-[11px] font-normal text-[#858593]">
           <li className="flex items-center justify-between gap-3"><span>Atividades</span><span className="tabular-nums text-[#2C2433]">{total}</span></li>
           <li className="flex items-center justify-between gap-3"><span>Concluídas</span><span className="tabular-nums text-[#2C2433]">{done}</span></li>
           <li className="flex items-center justify-between gap-3"><span>Em andamento</span><span className="tabular-nums text-[#2C2433]">{progress}</span></li>
@@ -211,31 +211,31 @@ export const ActivityBoard: FC = () => {
         aside={<PerformanceChart activities={scoped} />}
       />
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#EDE6F3]">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#E9E9EF]">
         <div className="flex items-center gap-5">
           <button
             type="button"
             onClick={() => showTab('mine')}
-            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-light', tab === 'mine' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}
+            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', tab === 'mine' ? 'border-[#7065C5] text-[#7065C5]' : 'border-transparent text-[#858593]')}
           >
             <User className="h-3.5 w-3.5" strokeWidth={1.5} /> Minhas atividades
           </button>
           <button
             type="button"
             onClick={() => showTab('leadership')}
-            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-light', tab === 'leadership' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}
+            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', tab === 'leadership' ? 'border-[#7065C5] text-[#7065C5]' : 'border-transparent text-[#858593]')}
           >
             <Star className="h-3.5 w-3.5" strokeWidth={1.5} /> Missões da liderança
-            <span className="grid h-4 min-w-4 place-items-center rounded-full bg-[#EDE7FE] px-1 text-[10px] font-normal text-[#4600F3]">{leadershipCount}</span>
+            <span className="grid h-4 min-w-4 place-items-center rounded-full bg-[#EFEDFC] px-1 text-[10px] font-medium text-[#7065C5]">{leadershipCount}</span>
           </button>
         </div>
-        <Button type="button" onClick={() => openCreate('todo')} className="mb-px h-9 rounded-full bg-[#4600F3] px-3.5 text-[13px] font-light hover:bg-[#3600C2]">
+        <Button type="button" onClick={() => openCreate('todo')} className="mb-px h-8 rounded-[10px] px-3 text-[13px] font-medium">
           <Plus strokeWidth={1.5} /> Nova atividade
         </Button>
       </div>
 
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
-        <div className="mt-4 grid min-w-0 grid-cols-1 items-start gap-2.5 md:grid-cols-3">
+        <div className="mt-4 grid min-w-0 grid-cols-1 items-start gap-3 overflow-x-auto md:grid-cols-3">
           {ACTIVITY_STATUSES.map((status) => (
             <ActivityColumn
               key={status}

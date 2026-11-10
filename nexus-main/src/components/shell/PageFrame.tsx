@@ -12,7 +12,7 @@ export const PageFrame: FC<{ children: ReactNode; rail?: ReactNode; fitViewport?
       <div className="flex min-w-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
           <Header trailing={dockAccount ? <div className="xl:hidden"><AccountCluster /></div> : <AccountCluster />} />
-          <main className="relative min-w-0 flex-1 overflow-x-clip px-4 py-3 sm:px-5">
+          <main className="relative min-w-0 flex-1 overflow-x-clip px-4 py-4 sm:px-6">
             {children}
           </main>
         </div>

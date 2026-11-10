@@ -149,7 +149,7 @@ export const KudosFeedPage: FC = () => {
                 title="Reconhecimento"
                 subtitle="Valorize quem faz a diferença!"
                 aside={gestao ? (
-                  <button type="button" onClick={() => setComposer(true)} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#4600F3] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#3600C2]">
+                  <button type="button" onClick={() => setComposer(true)} className="inline-flex shrink-0 items-center gap-2 rounded-[10px] bg-[#7065C5] px-3.5 py-2 text-[13px] font-medium text-white hover:bg-[#5D54B5]">
                     <Star className="h-4 w-4 fill-current" />
                     Postar reconhecimento
                   </button>
@@ -158,11 +158,11 @@ export const KudosFeedPage: FC = () => {
             )}
 
             {canManageGoals ? (
-              <div className="flex gap-5 border-b border-[#EDE6F3]">
-                <button type="button" onClick={() => showTab('mural')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'mural' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}>
+              <div className="flex gap-5 border-b border-[#E9E9EF]">
+                <button type="button" onClick={() => showTab('mural')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', tab === 'mural' ? 'border-[#7065C5] text-[#7065C5]' : 'border-transparent text-[#858593]')}>
                   <Trophy className="h-3.5 w-3.5" /> Mural de reconhecimento
                 </button>
-                <button type="button" onClick={() => showTab('metas')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[12.5px] font-medium', tab === 'metas' ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}>
+                <button type="button" onClick={() => showTab('metas')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', tab === 'metas' ? 'border-[#7065C5] text-[#7065C5]' : 'border-transparent text-[#858593]')}>
                   <Target className="h-3.5 w-3.5" /> Central de Metas
                 </button>
               </div>
@@ -174,19 +174,19 @@ export const KudosFeedPage: FC = () => {
             <>
             <PodiumStage podiums={goals?.podiums ?? []} periodKey={podiumKey} onPeriod={setPodiumMonth} />
 
-            <section className="rounded-[22px] border border-[#EDE7FE] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(70,0,243,0.04)]">
+            <section className="rounded-[14px] border border-[#E9E9EF] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(52,52,64,0.04)]">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="flex items-center gap-2 text-[16px] font-semibold text-[#241B33]">
-                  <span className="text-[#4600F3]">★</span> Últimos reconhecimentos
+                <h2 className="flex items-center gap-2 text-[16px] font-semibold text-[#343440]">
+                  <span className="text-[#7065C5]">★</span> Últimos reconhecimentos
                 </h2>
                 <div className="relative">
-                  <button type="button" onClick={() => setMenu((value) => !value)} className="inline-flex items-center gap-1 rounded-full border border-[#DDD4F5] px-3 py-1.5 text-[12.5px] font-medium text-[#5C5168]">
+                  <button type="button" onClick={() => setMenu((value) => !value)} className="inline-flex items-center gap-1 rounded-[10px] border border-[#E9E9EF] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#858593]">
                     {filter} <ChevronDown className="h-3.5 w-3.5" />
                   </button>
                   {menu ? (
-                    <div className="absolute right-0 z-10 mt-1 w-32 rounded-xl border border-[#DDD4F5] bg-white p-1 shadow-lg">
+                    <div className="absolute right-0 z-10 mt-1 w-32 rounded-[12px] border border-[#E9E9EF] bg-white p-1 shadow-[0_8px_24px_rgba(52,52,64,0.08)]">
                       {(['Todos', 'Gestão', 'Suporte'] as const).map((option) => (
-                        <button key={option} type="button" onClick={() => { setFilter(option); setMenu(false); }} className={cn('block w-full rounded-lg px-3 py-1.5 text-left text-[13px]', filter === option ? 'bg-[#EDE7FE] text-[#3600C2]' : 'text-[#5C5168] hover:bg-[#F8F6FF]')}>
+                        <button key={option} type="button" onClick={() => { setFilter(option); setMenu(false); }} className={cn('block w-full rounded-[8px] px-3 py-1.5 text-left text-[13px]', filter === option ? 'bg-[#EFEDFC] text-[#7065C5]' : 'text-[#858593] hover:bg-[#F4F4F7]')}>
                           {option}
                         </button>
                       ))}
@@ -200,7 +200,7 @@ export const KudosFeedPage: FC = () => {
                     <div className="flex items-start gap-4">
                       <div className="relative shrink-0">
                         <img src={face(item.to)} alt="" className="h-16 w-16 rounded-full bg-[#EDE7FE] ring-4 ring-[#EDE7FE]" />
-                        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#4600F3] px-2 py-0.5 text-[10px] font-semibold text-white">Reconhecido</span>
+                        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#7065C5] px-2 py-0.5 text-[10px] font-medium text-white">Reconhecido</span>
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-3">

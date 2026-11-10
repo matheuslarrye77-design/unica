@@ -26,16 +26,14 @@ export const AgendaRail: FC = () => {
 
   return (
     <div className="grid min-w-0 gap-2">
-      <section className="relative min-w-0 overflow-hidden rounded-[22px] p-3">
-        <img src="/cards/fundo-claro.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
-        <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/40 via-white/16 to-transparent" />
+      <section className="relative min-w-0 overflow-hidden rounded-[14px] border border-[#E9E9EF] bg-white p-3 shadow-[0_1px_2px_rgba(52,52,64,0.04)]">
         <div className="relative flex items-center gap-2.5">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-[#4600F3]"><Sparkles className="h-4 w-4" /></span>
-          <p className="text-[14px] font-semibold text-[#2C2438]">Eventos importantes</p>
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[#EFEDFC] text-[#7065C5]"><Sparkles className="h-4 w-4" /></span>
+          <p className="text-[14px] font-semibold text-[#343440]">Eventos importantes</p>
         </div>
         {featured ? (
-          <div className="relative mt-2.5 flex items-center gap-2.5 rounded-xl bg-white/80 px-2.5 py-2">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#EDE7FE] text-center leading-tight text-[#3600C2]">
+          <div className="relative mt-2.5 flex items-center gap-2.5 rounded-[10px] bg-[#FAFAFC] px-2.5 py-2">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#EFEDFC] text-center leading-tight text-[#7065C5]">
               <span className="text-[13px] font-semibold">{featured.date.toLocaleDateString('pt-BR', { day: '2-digit' })}</span>
               <span className="text-[10px] capitalize">{featured.date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
             </span>
@@ -47,7 +45,7 @@ export const AgendaRail: FC = () => {
         ) : null}
       </section>
 
-      <section className="min-w-0 rounded-[22px] border border-[#EDE7FE] bg-white p-3 shadow-[0_8px_22px_rgba(70,0,243,0.04)]">
+      <section className="min-w-0 rounded-[14px] border border-[#E9E9EF] bg-white p-3 shadow-[0_1px_2px_rgba(52,52,64,0.04)]">
         <div className="flex items-center justify-between">
           <h2 className="text-[15px] font-semibold text-[#2C2433]">Próximos</h2>
           <a href="#calendario" className="text-[12.5px] font-medium text-[#4600F3]">Ver todos</a>
@@ -92,7 +90,7 @@ export const AgendaRail: FC = () => {
         ) : null}
       </section>
 
-      <section className="min-w-0 rounded-[22px] border border-[#EDE7FE] bg-white p-3 shadow-[0_8px_22px_rgba(70,0,243,0.04)]">
+      <section className="min-w-0 rounded-[14px] border border-[#E9E9EF] bg-white p-3 shadow-[0_1px_2px_rgba(52,52,64,0.04)]">
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold text-[#2C2433]"><Cake className="h-4 w-4 text-[#4600F3]" /> Aniversários do mês</h2>
         </div>

@@ -48,10 +48,10 @@ export const ActivityCardView: FC<{
   const leadership = activity.origin === 'leadership';
 
   return (
-    <article className={cn('relative overflow-hidden rounded-xl border border-[#F3EEF6] bg-white px-3 py-2.5 font-sans shadow-[0_1px_2px_rgba(40,20,60,0.04)]', dragging && 'opacity-40')}>
+    <article className={cn('relative overflow-hidden rounded-[12px] border border-[#E9E9EF] bg-white px-3 py-2.5 font-sans shadow-[0_1px_2px_rgba(52,52,64,0.04)] transition-shadow duration-150 hover:shadow-[0_4px_14px_rgba(52,52,64,0.06)]', dragging && 'opacity-40')}>
       <div className="relative flex items-center gap-1.5">
         {leadership ? <img src="/atividades/alfinete.png" alt="" className="h-5 w-5 shrink-0 object-contain" /> : null}
-        <span className={cn('rounded-md px-1.5 py-0.5 text-[11px] font-light', leadership ? 'bg-[#F3EFFF] text-[#3600C2]' : 'bg-[#F3EFFF] text-[#4600F3]')}>
+        <span className={cn('rounded-md px-1.5 py-0.5 text-[11px] font-medium', leadership ? 'bg-[#EFEDFC] text-[#7065C5]' : 'bg-[#F4F4F7] text-[#858593]')}>
           {ORIGIN_LABEL[activity.origin]}
         </span>
         {onToggle ? (
@@ -96,16 +96,16 @@ export const ActivityCardView: FC<{
           </DropdownMenu>
         ) : <span className="ml-auto" />}
       </div>
-      <h3 title={activity.title} className="relative mt-1.5 line-clamp-2 text-[14px] font-semibold leading-snug text-[#1F1828]">{activity.title}</h3>
+      <h3 title={activity.title} className="relative mt-1.5 line-clamp-2 text-[13.5px] font-semibold leading-snug text-[#343440]">{activity.title}</h3>
       {collapsed ? null : (
       <div className="relative">
-      <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[12.5px] font-light text-[#4A4358]">
+      <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[12px] font-normal text-[#858593]">
         <SourceIcon source={activity.source} />
         <span className="truncate">{activity.source}</span>
       </p>
       <div className="mt-2 flex items-end gap-2">
         {when ? (
-          <p className="flex min-w-0 items-center gap-1 text-[12px] font-light text-[#4A4358]">
+          <p className="flex min-w-0 items-center gap-1 text-[11.5px] font-normal text-[#858593]">
             <CalendarDays className="h-3 w-3 shrink-0" />
             <span className="truncate">{done ? `Concluída em: ${when}` : `Prazo: ${when}`}</span>
           </p>

@@ -16,7 +16,7 @@ export const MissionsRail: FC = () => {
           <ChevronRight className="h-4 w-4" />
         </Link>
       </div>
-      <Link to="/projects" className="mt-1.5 flex items-center gap-2 rounded-[12px] border border-[#F0D4EE] bg-[#F8E8F6] px-2 py-1.5 hover:bg-accent">
+      <Link to="/projects" className="mt-1.5 flex items-center gap-2 rounded-[12px] border border-[#E9E9EF] bg-[#FAFAFC] px-2 py-1.5 hover:bg-[#F4F4F7]">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-white text-primary">
           <Target className="h-4 w-4" strokeWidth={1.75} />
         </span>

@@ -346,11 +346,11 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
       setParams(next);
     };
     const sectionTabs = (
-      <div className="mt-4 flex gap-5 border-b border-[#EDE6F3]">
-        <button type="button" onClick={openCalendar} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', !birthdaysFocus ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}>
+      <div className="mt-4 flex gap-5 border-b border-[#E9E9EF]">
+        <button type="button" onClick={openCalendar} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', !birthdaysFocus ? 'border-[#7065C5] text-[#7065C5]' : 'border-transparent text-[#858593]')}>
           <Calendar className="h-3.5 w-3.5" /> Calendário
         </button>
-        <button type="button" onClick={openBirthdays} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', birthdaysFocus ? 'border-[#4600F3] text-[#3600C2]' : 'border-transparent text-[#8A7C98]')}>
+        <button type="button" onClick={openBirthdays} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', birthdaysFocus ? 'border-[#7065C5] text-[#7065C5]' : 'border-transparent text-[#858593]')}>
           <Cake className="h-3.5 w-3.5" /> Aniversários
         </button>
       </div>
@@ -376,7 +376,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           subtitle="Acompanhe seus compromissos, eventos e aniversários da equipe."
           aside={
             <div className="flex shrink-0 gap-2">
-              <Button className="h-10 rounded-full bg-[#4600F3] px-4 hover:bg-[#3600C2]" onClick={() => { setEditingEvent(null); setCreateType('reuniao'); setEditorOpen(true); }}>
+              <Button className="h-9 px-3.5" onClick={() => { setEditingEvent(null); setCreateType('reuniao'); setEditorOpen(true); }}>
                 <Plus className="h-4 w-4" /> Adicionar evento
               </Button>
               <Button variant="outline" className="h-10 rounded-full border-[#DDD4F5] bg-white px-4" onClick={() => { setEditingEvent(null); setCreateType('aniversario'); setEditorOpen(true); }}>
@@ -392,9 +392,9 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
             <p className="min-w-[140px] text-center text-[15px] font-semibold text-[#2C2433]">{monthLabel}</p>
             <button type="button" aria-label="Próximo mês" onClick={() => boardView === 'week' ? shiftWeek(1) : shiftMonth(1)} className="grid h-8 w-8 place-items-center rounded-full text-[#5C5168] hover:bg-white"><ChevronRight className="h-4 w-4" /></button>
           </div>
-          <div className="flex rounded-full bg-white p-1 shadow-[0_4px_14px_rgba(70,0,243,0.05)]">
+          <div className="flex rounded-[10px] border border-[#E9E9EF] bg-white p-1">
             {([['month', 'Mês'], ['week', 'Semana'], ['agenda', 'Agenda']] as const).map(([id, label]) => (
-              <button key={id} type="button" onClick={() => setBoardView(id)} className={cn('rounded-full px-4 py-1.5 text-[13px] font-medium', boardView === id ? 'bg-[#4600F3] text-white' : 'text-[#8A7C98]')}>{label}</button>
+              <button key={id} type="button" onClick={() => setBoardView(id)} className={cn('rounded-[10px] px-3 py-1.5 text-[13px] font-medium', boardView === id ? 'bg-[#EFEDFC] text-[#7065C5]' : 'text-[#858593] hover:bg-[#F4F4F7]')}>{label}</button>
             ))}
           </div>
         </div>
@@ -430,7 +430,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
               return (
                 <div key={date.toISOString()} className="flex aspect-square flex-col overflow-hidden rounded-2xl border border-[#EDE7FE] bg-white p-2">
                   <p className="text-center text-[11px] text-[#8A7C98]">{weekdays[date.getDay()]}</p>
-                  <p className={cn('mx-auto mt-1 grid h-7 w-7 place-items-center rounded-full text-[13px] font-semibold', isCurrent ? 'bg-[#4600F3] text-white' : 'text-[#2C2433]')}>{date.getDate()}</p>
+                  <p className={cn('mx-auto mt-1 grid h-7 w-7 place-items-center rounded-full text-[13px] font-semibold', isCurrent ? 'bg-[#7065C5] text-white' : 'text-[#343440]')}>{date.getDate()}</p>
                   <div className="mt-1 grid min-h-0 gap-1 overflow-hidden">
                     {dayEvents.slice(0, 2).map((event) => (
                       <button key={event.id} type="button" onClick={(click) => openEvent(event, click.currentTarget)} className={cn('truncate rounded-md px-1.5 py-0.5 text-left text-[10px]', eventTone(event))}>
@@ -454,7 +454,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
                 const isCurrent = !cell.outside && sameDay(new Date(year, month, cell.day), today);
                 return (
                   <div key={`${cell.outside}-${cell.day}-${index}`} className="min-h-[112px] min-w-0 border-r border-b border-[#F6F1F8] p-1.5">
-                    <p className={cn('mb-1 grid h-6 w-6 place-items-center rounded-full text-[12px]', cell.outside && 'text-[#C4B6D4]', isCurrent && 'bg-[#4600F3] font-semibold text-white')}>{cell.day}</p>
+                    <p className={cn('mb-1 grid h-6 w-6 place-items-center rounded-full text-[12px]', cell.outside && 'text-[#C4B6D4]', isCurrent && 'bg-[#7065C5] font-semibold text-white')}>{cell.day}</p>
                     <div className="grid gap-1">
                       {dayEvents.slice(0, 2).map((event) => {
                         const first = event.personName?.split(' ')[0];

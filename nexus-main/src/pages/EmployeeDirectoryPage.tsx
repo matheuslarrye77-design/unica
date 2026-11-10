@@ -144,7 +144,7 @@ export const EmployeeDirectoryPage: FC = () => {
           subtitle="Conheça nossos colaboradores e suas informações de contato."
           aside={
             <div className="flex shrink-0 gap-2">
-              <Button className="h-10 rounded-full bg-[#4600F3] px-4 hover:bg-[#3600C2]" onClick={() => { setSearchQuery(''); setRoles([...TEAM_FUNCOES]); }}>
+              <Button className="h-9 px-3.5" onClick={() => { setSearchQuery(''); setRoles([...TEAM_FUNCOES]); }}>
                 <Users className="h-4 w-4" /> Ver equipe
               </Button>
               {leader ? (

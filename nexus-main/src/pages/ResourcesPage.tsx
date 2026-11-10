@@ -230,7 +230,7 @@ export const ResourcesPage: FC = () => {
           <section id="todos-documentos" className="mt-8">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="text-[16px] font-semibold text-[#2C2433]">Todos os documentos</h2>
-              {canSend ? <Button className="h-9 rounded-xl bg-[#4600F3] hover:bg-[#3600C2]" onClick={() => openEditor()}><Plus className="h-4 w-4" />Enviar documento</Button> : null}
+              {canSend ? <Button className="h-9" onClick={() => openEditor()}><Plus className="h-4 w-4" />Enviar documento</Button> : null}
             </div>
             {visible.length === 0 ? (
               <p className="rounded-2xl border bg-card px-4 py-10 text-center text-sm text-muted-foreground">Nenhum documento encontrado.</p>

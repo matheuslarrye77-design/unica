@@ -35,11 +35,11 @@ export function NavItem({
 }) {
   const Icon = item.icon;
   const className = cn(
-    'group flex w-full items-center justify-between rounded-[6px] px-2.5 py-[7px] text-[13px] tracking-wide transition-all duration-200 select-none',
+    'group flex w-full items-center justify-between rounded-[10px] px-2.5 py-[8px] text-[13px] font-medium tracking-[-0.01em] transition-all duration-200 select-none',
     collapsed && 'justify-center px-0',
     active
-      ? 'bg-black/5 font-medium text-foreground dark:bg-white/10'
-      : 'text-muted-foreground hover:bg-black/5 hover:text-foreground/90 dark:hover:bg-white/5',
+      ? 'bg-[#EFEDFC] text-[#343440]'
+      : 'text-[#858593] hover:bg-[#F4F4F7] hover:text-[#343440]',
   );
   const inner = (
     <>
@@ -47,9 +47,9 @@ export function NavItem({
         <Icon
           className={cn(
             'h-4 w-4 shrink-0 transition-colors',
-            active ? 'text-foreground' : 'text-muted-foreground/70 group-hover:text-foreground/70',
+            active ? 'text-[#7065C5]' : 'text-[#858593] group-hover:text-[#7065C5]',
           )}
-          strokeWidth={1.5}
+          strokeWidth={1.6}
         />
         {collapsed ? <span className="sr-only">{item.title}</span> : <span className="truncate">{item.title}</span>}
       </span>
@@ -117,7 +117,7 @@ export function SidebarBrand({
       to={href}
       onClick={onNavigate}
       className={cn(
-        'flex items-center rounded-lg px-2 py-2 transition-colors select-none hover:bg-black/5 dark:hover:bg-white/5',
+        'flex items-center rounded-[10px] px-2 py-2 transition-colors select-none hover:bg-[#F4F4F7]',
         collapsed && 'justify-center px-0',
       )}
     >
@@ -129,7 +129,7 @@ export function SidebarBrand({
             {accent ? (
               <>
                 {' '}
-                <span className="bg-gradient-to-r from-[#4600F3] via-[#6B33F6] to-[#A78BFA] bg-clip-text text-transparent">{accent}</span>
+                <span className="bg-gradient-to-r from-[#7065C5] to-[#8B83D6] bg-clip-text text-transparent">{accent}</span>
               </>
             ) : null}
           </span>
@@ -159,13 +159,13 @@ export function SidebarNav({
   className?: string;
 }) {
   return (
-    <div className={cn('flex h-full w-full flex-col bg-card/50 p-3 font-sans', className)}>
+    <div className={cn('flex h-full w-full flex-col bg-white p-3 font-sans', className)}>
       {header}
       <div className="mt-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {groups.map((group) => (
           <div key={group.heading ?? group.items[0]?.id} className="flex flex-col gap-0.5">
             {group.heading && !collapsed ? (
-              <span className="mb-1 px-2.5 text-[11px] font-semibold tracking-wider text-muted-foreground/50 uppercase">
+              <span className="mb-1 px-2.5 text-[11px] font-medium tracking-[0.08em] text-[#858593] uppercase">
                 {group.heading}
               </span>
             ) : null}

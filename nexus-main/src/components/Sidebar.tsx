@@ -130,7 +130,7 @@ export const AppFrame: FC<{ children: ReactNode }> = ({ children }) => {
       <MenuContext.Provider value={() => setOpen(true)}>
         <PageSearchProvider>
         <Sidebar open={open} onClose={() => setOpen(false)} />
-        <div className={cn('min-h-0', leftCollapsed ? 'lg:pl-16' : 'lg:pl-[260px]')}>{children}</div>
+        <div className={cn('min-h-0', leftCollapsed ? 'lg:pl-16' : 'lg:pl-[248px]')}>{children}</div>
         </PageSearchProvider>
       </MenuContext.Provider>
     </ShellContext.Provider>
@@ -171,7 +171,7 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
           <SidebarBrand name="Única" accent="Conecta" href="/" collapsed={collapsed} onNavigate={onClose} />
           <button
             type="button"
-            className="mt-1 hidden h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground lg:inline-flex dark:hover:bg-white/5"
+            className="mt-1 hidden h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[#858593] transition-colors hover:bg-[#F4F4F7] hover:text-[#343440] lg:inline-flex"
             aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
             onClick={toggleLeft}
           >
@@ -187,13 +187,13 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
 
   return (
     <>
-      <aside className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-border/50 bg-card/80 text-sidebar-foreground backdrop-blur-sm transition-[width] duration-300 ease-out lg:flex', leftCollapsed ? 'w-16' : 'w-[260px]')}>
+      <aside className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[#E9E9EF] bg-white text-sidebar-foreground transition-[width] duration-300 ease-out lg:flex', leftCollapsed ? 'w-16' : 'w-[248px]')}>
         {nav(leftCollapsed)}
       </aside>
       {open ? (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button type="button" className="absolute inset-0 bg-foreground/30" aria-label="Fechar menu" onClick={onClose} />
-          <aside className="absolute inset-y-0 left-0 flex w-[260px] flex-col border-r border-border/50 bg-card text-sidebar-foreground shadow-lg">
+          <aside className="absolute inset-y-0 left-0 flex w-[248px] flex-col border-r border-[#E9E9EF] bg-white text-sidebar-foreground shadow-[0_8px_24px_rgba(52,52,64,0.08)]">
             {nav(false)}
           </aside>
         </div>

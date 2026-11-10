@@ -85,7 +85,7 @@ export const PostCard: FC<{
   const recognition = post.kind === 'recognition';
 
   return (
-      <article id={domId} className={recognition ? 'rounded-[18px] border border-[#DDD4F5] bg-white p-[18px] shadow-[0_8px_24px_rgba(70,0,243,0.06)]' : 'unica-surface px-4 py-3'}>
+      <article id={domId} className={recognition ? 'rounded-[14px] border border-[#E9E9EF] bg-white p-[18px] shadow-[0_1px_2px_rgba(52,52,64,0.04)]' : 'unica-surface px-4 py-3'}>
       {repost ? (
         <div className="mb-3 flex items-center gap-2 text-[12px] text-muted-foreground">
           <img src={repost.avatar} alt="" className="h-6 w-6 rounded-full bg-muted" />
@@ -100,7 +100,7 @@ export const PostCard: FC<{
             <>
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <p className="truncate text-[15px] font-semibold leading-5 text-[#29213A]">{post.author}</p>
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#E8E0FD] px-2.5 py-0.5 text-[11px] font-semibold text-[#4600F3]">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#EFEDFC] px-2.5 py-0.5 text-[11px] font-medium text-[#7065C5]">
                   <Award className="h-3 w-3" />
                   Reconhecimento
                 </span>
