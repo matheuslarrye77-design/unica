@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&display=swap");
 @import "tailwindcss";
 
 @font-face {
@@ -93,12 +93,12 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --font-sans: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-display: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sans: Manrope, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-display: Manrope, "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-weight-medium: 500;
   --font-weight-semibold: 500;
-  --font-weight-bold: 550;
-  --font-weight-extrabold: 600;
+  --font-weight-bold: 500;
+  --font-weight-extrabold: 500;
 }
 
 
@@ -108,8 +108,8 @@
   --ds-surface: #F8F9FB;
   --ds-divider: #E9ECF0;
   --ds-muted: #929BA8;
-  --ds-slate: #596678;
-  --ds-ink: #283244;
+  --ds-slate: #5E6A7A;
+  --ds-ink: #3A4556;
   --ds-lavender: #F0EEFA;
   --ds-purple: #7065C5;
   --ds-space-1: 4px;
@@ -130,11 +130,11 @@
   --ds-focus: 0 0 0 3px rgba(112, 101, 197, 0.14);
   --radius: 16px;
   --background: #FCFCFD;
-  --foreground: #283244;
+  --foreground: #3A4556;
   --card: #FFFFFF;
-  --card-foreground: #283244;
+  --card-foreground: #3A4556;
   --popover: #FFFFFF;
-  --popover-foreground: #283244;
+  --popover-foreground: #3A4556;
   --primary: #7065C5;
   --primary-foreground: #FFFFFF;
   --secondary: #F0EEFA;
@@ -154,7 +154,7 @@
   --chart-4: #8B83D6;
   --chart-5: #7065C5;
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #283244;
+  --sidebar-foreground: #3A4556;
   --sidebar-primary: #7065C5;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: #F0EEFA;
@@ -168,7 +168,12 @@
   --unica-lilac: #7065C5;
   --unica-lavender: #F0EEFA;
   --unica-ice: #F8F9FB;
-  --unica-shadow: 0 1px 1px rgba(40, 50, 68, 0.03);
+  --unica-shadow: 0 1px 1px rgba(58, 69, 86, 0.03);
+  --ds-font: Manrope, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --ds-leading-body: 1.65;
+  --ds-leading-title: 1.28;
+  --ds-tracking-body: 0.012em;
+  --ds-tracking-title: -0.018em;
 }
 
 .dark {
@@ -229,11 +234,13 @@
     min-height: 100%;
     background-color: transparent;
     color: var(--foreground);
-    font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--ds-font);
     font-weight: 400;
-    letter-spacing: -0.011em;
-    line-height: 1.55;
+    letter-spacing: var(--ds-tracking-body);
+    line-height: var(--ds-leading-body);
+    font-kerning: normal;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
   button, input, textarea, select {
@@ -242,22 +249,35 @@
   a, button {
     transition: background-color var(--ds-ease), color var(--ds-ease), border-color var(--ds-ease), box-shadow var(--ds-ease);
   }
+  p, li, dd, figcaption, textarea {
+    font-weight: 400;
+    line-height: var(--ds-leading-body);
+  }
+  label {
+    font-weight: 400;
+    letter-spacing: var(--ds-tracking-body);
+    color: var(--ds-slate);
+  }
+  strong, b {
+    font-weight: 500;
+  }
   h1,
+  h4,
   [data-slot="dialog-title"],
   [data-slot="alert-dialog-title"] {
-    font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--ds-font);
     font-style: normal;
     font-weight: 500;
-    letter-spacing: -0.022em;
-    line-height: 1.25;
+    letter-spacing: var(--ds-tracking-title);
+    line-height: var(--ds-leading-title);
     color: var(--ds-ink);
   }
   h2, h3 {
-    font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--ds-font);
     font-style: normal;
     font-weight: 500;
-    letter-spacing: -0.015em;
-    line-height: 1.35;
+    letter-spacing: -0.012em;
+    line-height: 1.38;
     color: var(--ds-ink);
   }
   #root {
@@ -370,10 +390,10 @@
 
 .unica-script,
 .unica-display {
-  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: var(--ds-font);
   font-style: normal;
   font-weight: 500;
-  letter-spacing: -0.02em;
+  letter-spacing: var(--ds-tracking-title);
 }
 
 #bmc-wbtn {

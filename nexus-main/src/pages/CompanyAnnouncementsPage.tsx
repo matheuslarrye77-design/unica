@@ -21,7 +21,7 @@ const FeaturedCard: FC<{ article: JournalArticle; saved: boolean; onRemove?: () 
   return (
     <Link to={`/announcements/${article.id}`} className="group flex flex-col rounded-[22px] border border-[#E5DDF8] bg-white p-3.5 shadow-[0_10px_28px_rgba(70,0,243,0.06)]">
       <JournalCover article={article} />
-      <h3 className="mt-3.5 line-clamp-2 min-h-[46px] text-[17px] font-semibold leading-[1.28] tracking-tight text-[#1A1428] group-hover:text-[#3600C2]">{article.title}</h3>
+      <h3 className="mt-3.5 line-clamp-2 min-h-[46px] text-[17px] font-medium leading-[1.35] tracking-[-0.012em] text-[var(--ds-ink)] group-hover:text-[var(--ds-purple)]">{article.title}</h3>
       <p className="mt-2 line-clamp-3 min-h-[60px] text-[13px] leading-5 text-[#625C70]">{articleSummary(article.content)}</p>
       <div className="mt-3.5 flex items-center gap-4 text-[12.5px] text-[#948D9E]">
         <span className="inline-flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" strokeWidth={1.75} />{formatDate(article.date)}</span>

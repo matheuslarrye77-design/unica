@@ -391,7 +391,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
               <Megaphone className="h-5 w-5" />
             </span>
             <div className="min-w-0 flex-1">
-              <DialogTitle className="text-[22px] font-bold tracking-tight text-[#1C0066]">Publicar no mural</DialogTitle>
+              <DialogTitle className="text-[22px] font-medium tracking-[-0.018em] text-[var(--ds-ink)]">Publicar no mural</DialogTitle>
               {isRecognition ? <p className="mt-0.5 text-[13px] text-[#8A7C98]">Compartilhe um reconhecimento com sua equipe.</p> : null}
             </div>
             <button type="button" aria-label="Fechar" onClick={close} disabled={sending} className="grid h-9 w-9 place-items-center rounded-full text-[#6B6280] hover:bg-[#F3EFFF]">

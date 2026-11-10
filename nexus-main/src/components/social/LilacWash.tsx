@@ -13,8 +13,8 @@ export const PageHero: FC<{
       <div className="flex min-w-0 items-center gap-4">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] bg-[var(--ds-lavender)] text-[var(--ds-purple)]">{icon}</span>
         <div className="min-w-0">
-          <h1 className="text-[22px] font-medium leading-tight tracking-tight text-[var(--ds-ink)]">{title}</h1>
-          {subtitle ? <p className="mt-1 text-[14px] font-normal leading-relaxed text-[var(--ds-muted)]">{subtitle}</p> : null}
+          <h1 className="text-[22px] font-medium leading-[1.28] tracking-[-0.018em] text-[var(--ds-ink)]">{title}</h1>
+          {subtitle ? <p className="mt-1.5 text-[14px] font-normal leading-[1.7] tracking-[0.01em] text-[var(--ds-muted)]">{subtitle}</p> : null}
         </div>
       </div>
       {aside ? <div className="relative shrink-0">{aside}</div> : null}

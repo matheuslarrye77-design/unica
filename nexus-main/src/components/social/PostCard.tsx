@@ -99,7 +99,7 @@ export const PostCard: FC<{
           {recognition ? (
             <>
               <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <p className="truncate text-[15px] font-semibold leading-5 text-[#29213A]">{post.author}</p>
+                <p className="truncate text-[15px] font-medium leading-5 text-[var(--ds-ink)]">{post.author}</p>
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#EFEDFC] px-2.5 py-0.5 text-[11px] font-medium text-[#7065C5]">
                   <Award className="h-3 w-3" />
                   Reconhecimento

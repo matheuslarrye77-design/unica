@@ -35,7 +35,7 @@ export function NavItem({
 }) {
   const Icon = item.icon;
   const className = cn(
-    'group flex w-full items-center justify-between rounded-[12px] px-2.5 py-[9px] text-[13.5px] font-normal tracking-[-0.01em] transition-all duration-[180ms] select-none',
+    'group flex w-full items-center justify-between rounded-[12px] px-2.5 py-[9px] text-[13.5px] font-normal tracking-[0.01em] transition-all duration-[180ms] select-none',
     collapsed && 'justify-center px-0',
     active
       ? 'bg-[var(--ds-lavender)] font-medium text-[var(--ds-purple)]'
