@@ -97,22 +97,23 @@
   --font-display: Manrope, "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-weight-medium: 500;
   --font-weight-semibold: 500;
-  --font-weight-bold: 500;
-  --font-weight-extrabold: 500;
+  --font-weight-bold: 600;
+  --font-weight-extrabold: 600;
 }
 
 
 :root {
   --ds-white: #FFFFFF;
-  --ds-white-2: #FAFBFC;
-  --ds-surface: #F4F5F8;
-  --ds-divider: #E9ECF1;
-  --ds-muted: #8A93A3;
-  --ds-slate: #647084;
-  --ds-ink: #273247;
-  --ds-lavender: #F3F1FB;
-  --ds-lilac: #A69AE8;
-  --ds-purple: #8375D8;
+  --ds-white-2: #FAFAFB;
+  --ds-surface: #F7F8FA;
+  --ds-divider: rgba(35, 40, 55, 0.055);
+  --ds-border-hover: rgba(35, 40, 55, 0.10);
+  --ds-muted: #969CA8;
+  --ds-slate: #737987;
+  --ds-ink: #30343B;
+  --ds-lavender: #F1EEFC;
+  --ds-lilac: #A89BE0;
+  --ds-purple: #8878D6;
   --ds-space-1: 4px;
   --ds-space-2: 8px;
   --ds-space-3: 12px;
@@ -122,60 +123,60 @@
   --ds-space-7: 32px;
   --ds-space-8: 40px;
   --ds-space-9: 48px;
-  --ds-radius: 16px;
-  --ds-radius-sm: 12px;
-  --ds-radius-lg: 20px;
-  --ds-control-h: 36px;
+  --ds-radius: 12px;
+  --ds-radius-sm: 8px;
+  --ds-radius-lg: 14px;
+  --ds-control-h: 32px;
   --ds-ease: 180ms ease;
-  --ds-shadow: 0 1px 2px rgba(39, 50, 71, 0.04);
-  --ds-shadow-hover: 0 8px 24px rgba(39, 50, 71, 0.06);
-  --ds-focus: 0 0 0 3px rgba(131, 117, 216, 0.16);
-  --radius: 16px;
-  --background: #FAFBFC;
-  --foreground: #273247;
+  --ds-shadow: 0 1px 3px rgba(20, 25, 40, 0.025), 0 4px 14px rgba(20, 25, 40, 0.018);
+  --ds-shadow-hover: 0 3px 12px rgba(20, 25, 40, 0.035);
+  --ds-focus: 0 0 0 3px rgba(136, 120, 214, 0.16);
+  --radius: 12px;
+  --background: #FAFAFB;
+  --foreground: #30343B;
   --card: #FFFFFF;
-  --card-foreground: #273247;
+  --card-foreground: #30343B;
   --popover: #FFFFFF;
-  --popover-foreground: #273247;
-  --primary: #8375D8;
+  --popover-foreground: #30343B;
+  --primary: #8878D6;
   --primary-foreground: #FFFFFF;
-  --secondary: #F3F1FB;
-  --secondary-foreground: #8375D8;
-  --muted: #F4F5F8;
-  --muted-foreground: #8A93A3;
-  --accent: #F3F1FB;
-  --accent-foreground: #8375D8;
+  --secondary: #F1EEFC;
+  --secondary-foreground: #8878D6;
+  --muted: #F7F8FA;
+  --muted-foreground: #969CA8;
+  --accent: #F1EEFC;
+  --accent-foreground: #8878D6;
   --destructive: #C2415B;
   --destructive-foreground: #FFFFFF;
-  --border: #E9ECF1;
-  --input: #E9ECF1;
-  --ring: #8375D8;
-  --chart-1: #8375D8;
+  --border: rgba(35, 40, 55, 0.055);
+  --input: rgba(35, 40, 55, 0.08);
+  --ring: #8878D6;
+  --chart-1: #8878D6;
   --chart-2: #3D9A6A;
   --chart-3: #C48A1A;
-  --chart-4: #A69AE8;
-  --chart-5: #647084;
+  --chart-4: #A89BE0;
+  --chart-5: #737987;
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #273247;
-  --sidebar-primary: #8375D8;
+  --sidebar-foreground: #30343B;
+  --sidebar-primary: #8878D6;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F3F1FB;
-  --sidebar-accent-foreground: #8375D8;
-  --sidebar-border: #E9ECF1;
-  --sidebar-ring: #8375D8;
-  --unica-hover: #F4F5F8;
+  --sidebar-accent: #F1EEFC;
+  --sidebar-accent-foreground: #8878D6;
+  --sidebar-border: rgba(35, 40, 55, 0.055);
+  --sidebar-ring: #8878D6;
+  --unica-hover: #F7F8FA;
   --unica-positive: #E7F7EC;
   --unica-neutral: #FFF4D9;
   --unica-alert: #FBEAF2;
-  --unica-lilac: #8375D8;
-  --unica-lavender: #F3F1FB;
-  --unica-ice: #F4F5F8;
-  --unica-shadow: 0 1px 2px rgba(39, 50, 71, 0.04);
+  --unica-lilac: #8878D6;
+  --unica-lavender: #F1EEFC;
+  --unica-ice: #F7F8FA;
+  --unica-shadow: 0 1px 3px rgba(20, 25, 40, 0.025), 0 4px 14px rgba(20, 25, 40, 0.018);
   --ds-font: Manrope, "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --ds-leading-body: 1.65;
-  --ds-leading-title: 1.3;
-  --ds-tracking-body: 0.01em;
-  --ds-tracking-title: -0.016em;
+  --ds-leading-body: 1.5;
+  --ds-leading-title: 1.28;
+  --ds-tracking-body: -0.006em;
+  --ds-tracking-title: -0.022em;
 }
 
 .dark {
@@ -237,6 +238,7 @@
     background-color: transparent;
     color: var(--foreground);
     font-family: var(--ds-font);
+    font-size: 13.5px;
     font-weight: 400;
     letter-spacing: var(--ds-tracking-body);
     line-height: var(--ds-leading-body);
@@ -264,22 +266,29 @@
     font-weight: 500;
   }
   h1,
-  h4,
   [data-slot="dialog-title"],
   [data-slot="alert-dialog-title"] {
     font-family: var(--ds-font);
     font-style: normal;
-    font-weight: 500;
+    font-weight: 600;
     letter-spacing: var(--ds-tracking-title);
     line-height: var(--ds-leading-title);
     color: var(--ds-ink);
   }
-  h2, h3 {
+  h2 {
+    font-family: var(--ds-font);
+    font-style: normal;
+    font-weight: 600;
+    letter-spacing: -0.018em;
+    line-height: 1.35;
+    color: var(--ds-ink);
+  }
+  h3, h4 {
     font-family: var(--ds-font);
     font-style: normal;
     font-weight: 500;
-    letter-spacing: -0.012em;
-    line-height: 1.38;
+    letter-spacing: -0.014em;
+    line-height: 1.4;
     color: var(--ds-ink);
   }
   #root {
@@ -370,7 +379,8 @@
   font-weight: 400;
 }
 
-.unica-surface {
+.unica-surface,
+.surface-card {
   border-radius: var(--ds-radius);
   border: 1px solid var(--ds-divider);
   background: var(--ds-white);
@@ -378,20 +388,22 @@
   transition: box-shadow var(--ds-ease), border-color var(--ds-ease);
 }
 
-.unica-surface:hover {
+.unica-surface:hover,
+.surface-card:hover {
+  border-color: var(--ds-border-hover);
   box-shadow: var(--ds-shadow-hover);
 }
 
 .unica-icon {
   display: inline-flex;
-  height: 32px;
-  width: 32px;
+  height: 28px;
+  width: 28px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  background: var(--ds-lavender);
-  color: var(--ds-purple);
+  border-radius: 8px;
+  background: var(--ds-surface);
+  color: var(--ds-slate);
 }
 
 .unica-icon-plain {
@@ -400,10 +412,10 @@
 }
 
 .unica-meta {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 400;
-  line-height: 1.5;
-  letter-spacing: 0.01em;
+  line-height: 1.45;
+  letter-spacing: -0.004em;
   color: var(--ds-muted);
 }
 
@@ -420,14 +432,14 @@
 }
 
 svg.lucide {
-  stroke-width: 1.5;
+  stroke-width: 1.4;
 }
 
 .unica-script,
 .unica-display {
   font-family: var(--ds-font);
   font-style: normal;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: var(--ds-tracking-title);
 }
 

@@ -130,7 +130,7 @@ export const AppFrame: FC<{ children: ReactNode }> = ({ children }) => {
       <MenuContext.Provider value={() => setOpen(true)}>
         <PageSearchProvider>
         <Sidebar open={open} onClose={() => setOpen(false)} />
-        <div className={cn('min-h-0', leftCollapsed ? 'lg:pl-16' : 'lg:pl-[248px]')}>{children}</div>
+        <div className={cn('min-h-0', leftCollapsed ? 'lg:pl-16' : 'lg:pl-[232px]')}>{children}</div>
         </PageSearchProvider>
       </MenuContext.Provider>
     </ShellContext.Provider>
@@ -187,13 +187,13 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
 
   return (
     <>
-      <aside className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[var(--ds-divider)] bg-white text-sidebar-foreground transition-[width] duration-[220ms] ease-out lg:flex', leftCollapsed ? 'w-16' : 'w-[248px]')}>
+      <aside className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[var(--ds-divider)] bg-[#FAFAFB] text-sidebar-foreground transition-[width] duration-[220ms] ease-out lg:flex', leftCollapsed ? 'w-16' : 'w-[232px]')}>
         {nav(leftCollapsed)}
       </aside>
       {open ? (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button type="button" className="absolute inset-0 bg-foreground/30" aria-label="Fechar menu" onClick={onClose} />
-          <aside className="absolute inset-y-0 left-0 flex w-[248px] flex-col border-r border-[#E9E9EF] bg-white text-sidebar-foreground shadow-[0_8px_24px_rgba(52,52,64,0.08)]">
+          <aside className="absolute inset-y-0 left-0 flex w-[232px] flex-col border-r border-[var(--ds-divider)] bg-[#FAFAFB] text-sidebar-foreground shadow-[var(--ds-shadow)]">
             {nav(false)}
           </aside>
         </div>

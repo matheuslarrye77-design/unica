@@ -35,7 +35,7 @@ export function NavItem({
 }) {
   const Icon = item.icon;
   const className = cn(
-    'group flex w-full items-center justify-between rounded-[12px] px-2.5 py-[9px] text-[13.5px] font-normal tracking-[0.01em] transition-all duration-[180ms] select-none',
+    'group flex w-full items-center justify-between rounded-[8px] px-2.5 py-2 text-[13px] font-normal tracking-[-0.006em] transition-all duration-[180ms] select-none',
     collapsed && 'justify-center px-0',
     active
       ? 'bg-[var(--ds-lavender)] font-medium text-[var(--ds-purple)]'
@@ -124,7 +124,7 @@ export function SidebarBrand({
       <img src="/marca-unica.png" alt="" className="h-8 w-8 shrink-0 rounded-[6px] object-cover shadow-sm" />
       {collapsed ? <span className="sr-only">{label}</span> : (
         <span className="ml-3 flex min-w-0 overflow-hidden">
-          <span className="unica-display truncate text-[15px] leading-none text-[var(--ds-ink)]">
+          <span className="unica-display truncate text-[14px] leading-none text-[var(--ds-ink)]">
             {name}
             {accent ? (
               <>
@@ -159,7 +159,7 @@ export function SidebarNav({
   className?: string;
 }) {
   return (
-    <div className={cn('flex h-full w-full flex-col bg-white p-3 font-sans', className)}>
+    <div className={cn('flex h-full w-full flex-col bg-transparent p-3 font-sans', className)}>
       {header}
       <div className="mt-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {groups.map((group) => (
