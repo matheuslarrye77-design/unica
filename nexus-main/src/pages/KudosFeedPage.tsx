@@ -174,19 +174,19 @@ export const KudosFeedPage: FC = () => {
             <>
             <PodiumStage podiums={goals?.podiums ?? []} periodKey={podiumKey} onPeriod={setPodiumMonth} />
 
-            <section className="rounded-[var(--ds-radius-lg)] border border-[var(--ds-divider)] bg-white px-6 py-6 shadow-[var(--ds-shadow)]">
+            <section className="unica-surface rounded-[var(--ds-radius-lg)] px-6 py-6">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="flex items-center gap-2 text-[16px] font-semibold text-[#343440]">
-                  <span className="text-[#7065C5]">★</span> Últimos reconhecimentos
+                <h2 className="flex items-center gap-2 text-[16px] font-medium text-[var(--ds-ink)]">
+                  <Star className="h-4 w-4 text-[var(--ds-purple)]" /> Últimos reconhecimentos
                 </h2>
                 <div className="relative">
-                  <button type="button" onClick={() => setMenu((value) => !value)} className="inline-flex items-center gap-1 rounded-[10px] border border-[#E9E9EF] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#858593]">
+                  <button type="button" onClick={() => setMenu((value) => !value)} className="inline-flex items-center gap-1 rounded-[10px] border border-[var(--ds-divider)] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[var(--ds-slate)]">
                     {filter} <ChevronDown className="h-3.5 w-3.5" />
                   </button>
                   {menu ? (
-                    <div className="absolute right-0 z-10 mt-1 w-32 rounded-[12px] border border-[#E9E9EF] bg-white p-1 shadow-[0_8px_24px_rgba(52,52,64,0.08)]">
+                    <div className="absolute right-0 z-10 mt-1 w-32 rounded-[12px] border border-[var(--ds-divider)] bg-white p-1 shadow-[var(--ds-shadow-hover)]">
                       {(['Todos', 'Gestão', 'Suporte'] as const).map((option) => (
-                        <button key={option} type="button" onClick={() => { setFilter(option); setMenu(false); }} className={cn('block w-full rounded-[8px] px-3 py-1.5 text-left text-[13px]', filter === option ? 'bg-[#EFEDFC] text-[#7065C5]' : 'text-[#858593] hover:bg-[#F4F4F7]')}>
+                        <button key={option} type="button" onClick={() => { setFilter(option); setMenu(false); }} className={cn('block w-full rounded-[8px] px-3 py-1.5 text-left text-[13px]', filter === option ? 'bg-[var(--ds-lavender)] text-[var(--ds-purple)]' : 'text-[var(--ds-slate)] hover:bg-[var(--ds-surface)]')}>
                           {option}
                         </button>
                       ))}
@@ -194,38 +194,38 @@ export const KudosFeedPage: FC = () => {
                   ) : null}
                 </div>
               </div>
-              <ul className="mt-3 grid gap-3">
+              <ul className="mt-5 grid gap-3">
                 {items.map((item) => (
-                  <li key={item.id} className="rounded-2xl border border-[#DDD4F5] bg-gradient-to-r from-white to-[#FBF6FC] p-4">
+                  <li key={item.id} className="rounded-[16px] border border-[var(--ds-divider)] bg-white p-4">
                     <div className="flex items-start gap-4">
                       <div className="relative shrink-0">
-                        <img src={face(item.to)} alt="" className="h-16 w-16 rounded-full bg-[#EDE7FE] ring-4 ring-[#EDE7FE]" />
-                        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#7065C5] px-2 py-0.5 text-[10px] font-medium text-white">Reconhecido</span>
+                        <img src={face(item.to)} alt="" className="h-16 w-16 rounded-full bg-[var(--ds-lavender)] ring-4 ring-[var(--ds-lavender)]" />
+                        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[var(--ds-purple)] px-2 py-0.5 text-[10px] font-medium text-white">Reconhecido</span>
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-[15px] font-semibold leading-5 text-[#241B33]">{recognitionHeadline(item.from, item.to, Boolean(item.received))}</p>
-                            <p className="mt-0.5 text-[12.5px] text-[#8A7C98]">
+                            <p className="text-[15px] font-medium leading-5 text-[var(--ds-ink)]">{recognitionHeadline(item.from, item.to, Boolean(item.received))}</p>
+                            <p className="mt-0.5 text-[12.5px] text-[var(--ds-muted)]">
                               {item.received ? `${item.to} recebeu de ${item.from}` : `${item.from} reconheceu ${item.to}`} · {item.when}
                             </p>
                           </div>
                           <div className="inline-flex shrink-0 items-center gap-1">
-                            <span className="inline-flex items-center gap-1 text-[12.5px] text-[#8A7C98]"><Heart className="h-3.5 w-3.5 text-[#4600F3]" /> {item.likes}</span>
+                            <span className="inline-flex items-center gap-1 text-[12.5px] text-[var(--ds-muted)]"><Heart className="h-3.5 w-3.5 text-[var(--ds-purple)]" /> {item.likes}</span>
                             <button
                               type="button"
                               aria-label={posted[item.id] ? 'Publicado no mural' : 'Postar no mural'}
                               title={posted[item.id] ? 'Publicado no mural' : 'Postar no mural'}
                               disabled={posted[item.id]}
                               onClick={() => setMuralTarget(item)}
-                              className="grid h-8 w-8 place-items-center rounded-full text-[#4600F3] hover:bg-[#EDE7FE] disabled:text-[#B09AF5]"
+                              className="grid h-8 w-8 place-items-center rounded-full text-[var(--ds-purple)] hover:bg-[var(--ds-lavender)] disabled:text-[var(--ds-lilac)]"
                             >
                               <Megaphone className="h-4 w-4" />
                             </button>
                           </div>
                         </div>
-                        <span className={cn('mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium', item.area === 'Gestão' ? 'bg-[#EDE7FE] text-[#3600C2]' : 'bg-[#EDE7FE] text-[#8A4A66]')}>{item.area}</span>
-                        <p className="mt-2 text-[14.5px] leading-6 text-[#3C3148]">“{item.quote}”</p>
+                        <span className={cn('mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium', item.area === 'Gestão' ? 'bg-[var(--ds-lavender)] text-[var(--ds-purple)]' : 'bg-[var(--ds-surface)] text-[var(--ds-slate)]')}>{item.area}</span>
+                        <p className="mt-2 text-[14.5px] leading-6 text-[var(--ds-ink)]">“{item.quote}”</p>
                         {item.caption ? <p className="mt-2 text-[13.5px] text-[#5C5168]">{item.caption}</p> : null}
                         {item.comment ? <p className="mt-1 text-[13px] text-[#8A7C98]">{item.comment}</p> : null}
                         {item.photos?.length ? (

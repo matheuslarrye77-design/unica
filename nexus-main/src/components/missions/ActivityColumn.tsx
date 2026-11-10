@@ -8,7 +8,7 @@ import { SortableActivityCard } from './ActivityCard';
 
 const tone: Record<ActivityStatus, { mark: string }> = {
   todo: { mark: 'bg-[#8B83D6]' },
-  in_progress: { mark: 'bg-[#7065C5]' },
+  in_progress: { mark: 'bg-[var(--ds-purple)]' },
   done: { mark: 'bg-[#5B8C7A]' },
 };
 

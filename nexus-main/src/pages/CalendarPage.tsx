@@ -244,7 +244,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
       <>
         <section className="unica-surface shrink-0 px-3 py-2.5">
           <div className="flex items-center justify-between gap-1">
-            <h2 className="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold">
+            <h2 className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium">
               <Calendar className="h-3.5 w-3.5 shrink-0 text-primary" />
               <Link to="/calendar" className="truncate hover:text-primary">{rangeLabel}</Link>
             </h2>

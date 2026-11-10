@@ -17,7 +17,7 @@ export const Header: FC<{ trailing?: ReactNode }> = ({ trailing }) => {
   const onMenu = useOpenMenu();
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b border-[var(--ds-divider)] bg-white/90 backdrop-blur-md">
+    <header className="sticky top-0 z-30 w-full border-b border-[var(--ds-divider)] bg-white/92 backdrop-blur-[8px]">
       <div className="flex h-16 items-center gap-4 px-4 sm:px-8">
         <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 rounded-[10px] lg:hidden" aria-label="Abrir menu" onClick={onMenu}>
           <Menu className="h-4 w-4" />

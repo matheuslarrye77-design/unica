@@ -25,54 +25,54 @@ export const AgendaRail: FC = () => {
   const visibleUpcoming = expanded ? upcoming : upcoming.slice(0, 3);
 
   return (
-    <div className="grid min-w-0 gap-2">
-      <section className="relative min-w-0 overflow-hidden rounded-[14px] border border-[#E9E9EF] bg-white p-3 shadow-[0_1px_2px_rgba(52,52,64,0.04)]">
-        <div className="relative flex items-center gap-2.5">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[#EFEDFC] text-[#7065C5]"><Sparkles className="h-4 w-4" /></span>
-          <p className="text-[14px] font-semibold text-[#343440]">Eventos importantes</p>
+    <div className="grid min-w-0 gap-3">
+      <section className="unica-surface relative min-w-0 overflow-hidden p-4">
+        <div className="relative flex items-center gap-3">
+          <span className="unica-icon"><Sparkles className="h-4 w-4" /></span>
+          <p className="text-[14px] font-medium text-[var(--ds-ink)]">Eventos importantes</p>
         </div>
         {featured ? (
-          <div className="relative mt-2.5 flex items-center gap-2.5 rounded-[10px] bg-[#FAFAFC] px-2.5 py-2">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#EFEDFC] text-center leading-tight text-[#7065C5]">
-              <span className="text-[13px] font-semibold">{featured.date.toLocaleDateString('pt-BR', { day: '2-digit' })}</span>
-              <span className="text-[10px] capitalize">{featured.date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
+          <div className="relative mt-3 flex items-center gap-3 rounded-[12px] bg-[var(--ds-surface)] px-3 py-2.5">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-white text-center leading-tight text-[var(--ds-purple)]">
+              <span className="text-[13px] font-medium">{featured.date.toLocaleDateString('pt-BR', { day: '2-digit' })}</span>
+              <span className="unica-meta capitalize">{featured.date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-[13px] font-semibold text-[#2C2433]">{featured.title}</span>
-              <span className="mt-0.5 block truncate text-[12px] text-[#6B33F6]">{[featured.time, featured.place].filter(Boolean).join(' · ')}</span>
+              <span className="block truncate text-[13px] font-medium text-[var(--ds-ink)]">{featured.title}</span>
+              <span className="mt-0.5 block truncate text-[12px] text-[var(--ds-slate)]">{[featured.time, featured.place].filter(Boolean).join(' · ')}</span>
             </span>
           </div>
         ) : null}
       </section>
 
-      <section className="min-w-0 rounded-[14px] border border-[#E9E9EF] bg-white p-3 shadow-[0_1px_2px_rgba(52,52,64,0.04)]">
+      <section className="unica-surface min-w-0 p-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-[#2C2433]">Próximos</h2>
-          <a href="#calendario" className="text-[12.5px] font-medium text-[#4600F3]">Ver todos</a>
+          <h2 className="text-[14px] font-medium text-[var(--ds-ink)]">Próximos</h2>
+          <a href="#calendario" className="text-[12.5px] font-medium text-[var(--ds-purple)]">Ver todos</a>
         </div>
-        <ul className="mt-2.5 grid gap-2.5">
+        <ul className="mt-3 grid gap-3">
           {visibleUpcoming.map((event) => {
             const day = event.date.toLocaleDateString('pt-BR', { day: '2-digit' });
             const month = event.date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
             const showNote = event.id === noteTarget?.id;
             return (
-              <li key={event.id} className="flex items-start gap-2.5">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F5F1FF] text-center leading-tight text-[#3600C2]">
-                  <span className="text-[13px] font-semibold">{day}</span>
-                  <span className="text-[10px] capitalize">{month}</span>
+              <li key={event.id} className="flex items-start gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-[var(--ds-lavender)] text-center leading-tight text-[var(--ds-purple)]">
+                  <span className="text-[13px] font-medium">{day}</span>
+                  <span className="unica-meta capitalize">{month}</span>
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-semibold text-[#2C2433]">{event.type === 'birthday' ? `Aniversário de ${event.personName?.split(' ')[0]}` : event.title}</span>
-                  <span className="mt-0.5 block truncate text-[12px] text-[#8A7C98]">
+                  <span className="block truncate text-[13px] font-medium text-[var(--ds-ink)]">{event.type === 'birthday' ? `Aniversário de ${event.personName?.split(' ')[0]}` : event.title}</span>
+                  <span className="mt-0.5 block truncate text-[12px] text-[var(--ds-muted)]">
                     {event.type === 'birthday' ? `${event.date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} · Equipe` : [event.place, event.time].filter(Boolean).join(' · ')}
                   </span>
                   {showNote && event.personName ? (
-                    <Link to={`/calendar?tipo=aniversarios&pessoa=${celebrationPersonId(event.personName)}`} className="mt-1 inline-flex items-center gap-1 text-[12px] font-medium text-[#4600F3]">
+                    <Link to={`/calendar?tipo=aniversarios&pessoa=${celebrationPersonId(event.personName)}`} className="mt-1 inline-flex items-center gap-1 text-[12px] font-medium text-[var(--ds-purple)]">
                       <Cake className="h-3.5 w-3.5" /> Deixe um recado
                     </Link>
                   ) : null}
                 </span>
-                {event.avatar ? <img src={event.avatar} alt="" className="h-8 w-8 shrink-0 rounded-full bg-[#EDE7FE]" /> : <ChevronRight className="mt-2 h-4 w-4 shrink-0 text-[#C4B6D4]" />}
+                {event.avatar ? <img src={event.avatar} alt="" className="h-8 w-8 shrink-0 rounded-full bg-[var(--ds-lavender)]" /> : <ChevronRight className="mt-2 h-4 w-4 shrink-0 text-[var(--ds-muted)]" />}
               </li>
             );
           })}
@@ -83,23 +83,23 @@ export const AgendaRail: FC = () => {
             aria-expanded={expanded}
             aria-label={expanded ? 'Mostrar menos próximos' : 'Mostrar todos os próximos'}
             onClick={() => setExpanded((value) => !value)}
-            className="mt-1.5 w-full text-center text-[18px] font-semibold leading-none tracking-[0.2em] text-[#4600F3]"
+            className="mt-2 w-full text-center text-[18px] font-medium leading-none tracking-[0.2em] text-[var(--ds-lilac)]"
           >
             {expanded ? '–' : '…'}
           </button>
         ) : null}
       </section>
 
-      <section className="min-w-0 rounded-[14px] border border-[#E9E9EF] bg-white p-3 shadow-[0_1px_2px_rgba(52,52,64,0.04)]">
+      <section className="unica-surface min-w-0 p-4">
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-[#2C2433]"><Cake className="h-4 w-4 text-[#4600F3]" /> Aniversários do mês</h2>
+          <h2 className="flex items-center gap-2 text-[14px] font-medium text-[var(--ds-ink)]"><Cake className="h-4 w-4 text-[var(--ds-purple)]" /> Aniversários do mês</h2>
         </div>
-        <div className="mt-2.5 flex min-w-0 justify-start gap-3">
+        <div className="mt-3 flex min-w-0 justify-start gap-3">
           {birthdays.map((event) => (
             <div key={event.id} className="w-12 min-w-0 shrink text-center">
-              <img src={event.avatar} alt="" className="mx-auto h-10 w-10 rounded-full bg-[#EDE7FE]" />
-              <p className="mt-1 truncate text-[12px] font-medium text-[#2C2433]">{event.personName?.split(' ')[0]}</p>
-              <p className="text-[10px] text-[#8A7C98]">{event.date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</p>
+              <img src={event.avatar} alt="" className="mx-auto h-10 w-10 rounded-full bg-[var(--ds-lavender)]" />
+              <p className="mt-1 truncate text-[12px] font-medium text-[var(--ds-ink)]">{event.personName?.split(' ')[0]}</p>
+              <p className="unica-meta">{event.date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</p>
             </div>
           ))}
         </div>

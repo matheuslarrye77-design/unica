@@ -18,7 +18,7 @@ export const ProfilePage: FC = () => {
         title="Perfil"
         subtitle="Seus dados na Única Conecta."
       />
-      <Card className="mt-4">
+      <Card className="mt-6">
         <CardHeader>
           <CardTitle>Perfil</CardTitle>
         </CardHeader>

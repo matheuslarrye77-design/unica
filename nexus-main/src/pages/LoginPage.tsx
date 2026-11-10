@@ -26,7 +26,7 @@ export const LoginPage: FC = () => {
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-transparent px-4">
-      <form onSubmit={(event) => void submit(event)} className="w-full max-w-sm rounded-2xl border bg-card p-6 shadow-[0_1px_2px_rgba(70,0,243,0.05)]">
+      <form onSubmit={(event) => void submit(event)} className="unica-surface w-full max-w-sm p-8">
         <div className="mb-6 flex items-center gap-2">
           <img src="/marca-unica.png" alt="" className="h-8 w-8 rounded-full object-cover" />
           <span className="unica-display text-lg">
@@ -34,8 +34,9 @@ export const LoginPage: FC = () => {
             <span className="text-[var(--ds-purple)]">Conecta</span>
           </span>
         </div>
-        <h1 className="text-xl font-semibold">Entrar</h1>
-        <div className="mt-4 space-y-3">
+        <h1 className="text-xl font-medium">Entrar</h1>
+        <p className="mt-1.5 text-[14px] font-normal leading-relaxed text-[var(--ds-slate)]">Acesse a Única Conecta com sua conta.</p>
+        <div className="mt-6 space-y-4">
           <div className="space-y-1">
             <Label htmlFor="email">Usuário</Label>
             <Input id="email" type="text" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" />

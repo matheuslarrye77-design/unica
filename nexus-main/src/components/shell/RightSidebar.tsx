@@ -15,7 +15,7 @@ export const RightSidebar: FC<{ children: ReactNode; dock?: boolean; locked?: bo
       </div>
     </div>
   ) : (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
       {children}
     </div>
   );

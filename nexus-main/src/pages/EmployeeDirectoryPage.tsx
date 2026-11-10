@@ -26,7 +26,7 @@ const ROLE_ICON: Record<TeamFuncao, FC<{ className?: string }>> = {
 function RoleBadge({ funcao }: { funcao: TeamFuncao }) {
   const Icon = ROLE_ICON[funcao];
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-[#EDE7FE] px-2 py-0.5 text-[11px] font-medium text-[#3600C2]">
+    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--ds-lavender)] px-2 py-0.5 text-[11px] font-medium text-[var(--ds-purple)]">
       <Icon className="h-3 w-3" />
       {funcao}
     </span>

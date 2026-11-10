@@ -43,9 +43,9 @@ export const BirthdayRail: FC = () => {
   return (
     <section className="unica-surface shrink-0 px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-[13.5px] font-semibold">
-          <span className="unica-icon">
-            <Cake className="h-3.5 w-3.5" strokeWidth={1.75} />
+        <h2 className="flex items-center gap-2 text-[13.5px] font-medium">
+          <span className="unica-icon h-7 w-7">
+            <Cake className="h-3.5 w-3.5" />
           </span>
           Aniversariantes
         </h2>

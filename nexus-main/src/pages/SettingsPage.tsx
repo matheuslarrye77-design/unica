@@ -15,13 +15,13 @@ export const SettingsPage: FC = () => {
         title="Configurações"
         subtitle="Preferências da conta na Única Conecta."
       />
-      <section className="mt-4 rounded-2xl border border-border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(70,0,243,0.05)]">
-        <h2 className="text-sm font-semibold">Conta</h2>
-        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-          <div><dt className="text-xs text-muted-foreground">Nome</dt><dd>{user.name}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">E-mail</dt><dd>{user.email}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">Cargo</dt><dd>{user.role}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">Área</dt><dd>{user.department}</dd></div>
+      <section className="unica-surface mt-6 px-6 py-6">
+        <h2 className="text-[15px] font-medium text-[var(--ds-ink)]">Conta</h2>
+        <dl className="unica-bento mt-5 text-sm">
+          <div className="rounded-[14px] bg-[var(--ds-surface)] px-4 py-3.5"><dt className="unica-meta">Nome</dt><dd className="mt-1 font-medium text-[var(--ds-ink)]">{user.name}</dd></div>
+          <div className="rounded-[14px] bg-[var(--ds-surface)] px-4 py-3.5"><dt className="unica-meta">E-mail</dt><dd className="mt-1 font-medium text-[var(--ds-ink)]">{user.email}</dd></div>
+          <div className="rounded-[14px] bg-[var(--ds-surface)] px-4 py-3.5"><dt className="unica-meta">Cargo</dt><dd className="mt-1 font-medium text-[var(--ds-ink)]">{user.role}</dd></div>
+          <div className="rounded-[14px] bg-[var(--ds-surface)] px-4 py-3.5"><dt className="unica-meta">Área</dt><dd className="mt-1 font-medium text-[var(--ds-ink)]">{user.department}</dd></div>
         </dl>
       </section>
       {isLeader(user) ? <div className="mt-4"><ManagementSettingsPage embedded /></div> : null}

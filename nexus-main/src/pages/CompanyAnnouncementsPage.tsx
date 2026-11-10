@@ -19,17 +19,17 @@ function formatDate(iso: string) {
 const FeaturedCard: FC<{ article: JournalArticle; saved: boolean; onRemove?: () => void }> = ({ article, saved, onRemove }) => {
   const minutes = readingMinutes(article.content);
   return (
-    <Link to={`/announcements/${article.id}`} className="group flex flex-col rounded-[22px] border border-[#E5DDF8] bg-white p-3.5 shadow-[0_10px_28px_rgba(70,0,243,0.06)]">
+    <Link to={`/announcements/${article.id}`} className="unica-surface group flex flex-col rounded-[var(--ds-radius-lg)] p-4">
       <JournalCover article={article} />
-      <h3 className="mt-3.5 line-clamp-2 min-h-[46px] text-[17px] font-medium leading-[1.35] tracking-[-0.012em] text-[var(--ds-ink)] group-hover:text-[var(--ds-purple)]">{article.title}</h3>
-      <p className="mt-2 line-clamp-3 min-h-[60px] text-[13px] leading-5 text-[#625C70]">{articleSummary(article.content)}</p>
-      <div className="mt-3.5 flex items-center gap-4 text-[12.5px] text-[#948D9E]">
-        <span className="inline-flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" strokeWidth={1.75} />{formatDate(article.date)}</span>
-        <span className="inline-flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" strokeWidth={1.75} />{minutes} min</span>
+      <h3 className="mt-4 line-clamp-2 min-h-[46px] text-[17px] font-medium leading-[1.35] tracking-[-0.012em] text-[var(--ds-ink)] group-hover:text-[var(--ds-purple)]">{article.title}</h3>
+      <p className="mt-2 line-clamp-3 min-h-[60px] text-[13px] leading-[1.65] text-[var(--ds-slate)]">{articleSummary(article.content)}</p>
+      <div className="mt-4 flex items-center gap-4 text-[12.5px] text-[var(--ds-muted)]">
+        <span className="inline-flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{formatDate(article.date)}</span>
+        <span className="inline-flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" />{minutes} min</span>
       </div>
-      <div className="mt-auto flex items-center gap-2 pt-3.5">
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#3600C2] text-[10px] font-bold tracking-tight text-white">U1</span>
-        <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-[#3600C2]">{article.author}</span>
+      <div className="mt-auto flex items-center gap-2 pt-4">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--ds-lavender)] text-[10px] font-medium text-[var(--ds-purple)]">U1</span>
+        <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-[var(--ds-purple)]">{article.author}</span>
         <button
           type="button"
           aria-label={saved ? 'Remover dos salvos' : 'Salvar'}
@@ -124,10 +124,10 @@ export const CompanyAnnouncementsPage: FC = () => {
           </div>
 
           {canManage && trashOpen ? (
-            <section className="mb-4 rounded-2xl border border-[#DDD4F5] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(70,0,243,0.04)]">
-              <h2 className="flex items-center gap-2 text-[14px] font-semibold">
-                <span className="unica-icon">
-                  <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+            <section className="unica-surface mb-4 px-4 py-4">
+              <h2 className="flex items-center gap-2 text-[14px] font-medium">
+                <span className="unica-icon h-7 w-7">
+                  <Trash2 className="h-3.5 w-3.5" />
                 </span>
                 Lixeira
               </h2>
@@ -159,10 +159,10 @@ export const CompanyAnnouncementsPage: FC = () => {
           ) : null}
 
           {canManage && drafts.length > 0 && showingDefault ? (
-            <section className="mb-4 rounded-2xl border border-[#DDD4F5] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(70,0,243,0.04)]">
-              <h2 className="flex items-center gap-2 text-[14px] font-semibold">
-                <span className="unica-icon">
-                  <ClipboardList className="h-3.5 w-3.5" strokeWidth={1.75} />
+            <section className="unica-surface mb-4 px-4 py-4">
+              <h2 className="flex items-center gap-2 text-[14px] font-medium">
+                <span className="unica-icon h-7 w-7">
+                  <ClipboardList className="h-3.5 w-3.5" />
                 </span>
                 Rascunhos
               </h2>
@@ -194,7 +194,7 @@ export const CompanyAnnouncementsPage: FC = () => {
                 key={id}
                 type="button"
                 onClick={() => selectCategory(id)}
-                className={cn('rounded-full px-3 py-1.5 text-[13px] font-semibold', category === id ? (id === 'todos' ? 'bg-[#EDE7FE] text-[#3600C2]' : categoryTone[id as JournalCategory].badge) : 'font-medium text-muted-foreground hover:bg-white hover:text-foreground')}
+                className={cn('rounded-full px-3 py-1.5 text-[13px] font-medium', category === id ? (id === 'todos' ? 'bg-[var(--ds-lavender)] text-[var(--ds-purple)]' : categoryTone[id as JournalCategory].badge) : 'text-muted-foreground hover:bg-white hover:text-foreground')}
               >
                 {label}
               </button>
@@ -202,7 +202,7 @@ export const CompanyAnnouncementsPage: FC = () => {
           </div>
 
           <section>
-            <h2 className="mb-3 text-[18px] font-semibold">{showingDefault ? 'Em destaque' : 'Publicações'}</h2>
+            <h2 className="mb-4 text-[18px] font-medium">{showingDefault ? 'Em destaque' : 'Publicações'}</h2>
             {cards.length === 0 ? (
               <p className="rounded-2xl border border-[#DDD4F5] bg-white px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma publicação encontrada.</p>
             ) : (
@@ -213,7 +213,7 @@ export const CompanyAnnouncementsPage: FC = () => {
           </section>
           {recent.length > 0 ? (
             <section className="mt-8">
-              <h2 className="mb-3 text-[18px] font-semibold">Publicações recentes</h2>
+              <h2 className="mb-4 text-[18px] font-medium">Publicações recentes</h2>
               <div className="grid items-stretch gap-3 md:grid-cols-3">
                 {recent.map((article) => <FeaturedCard key={article.id} article={article} saved={savedIds.includes(article.id)} onRemove={canManage ? () => { if (window.confirm('Mover esta publicação para a lixeira?')) archiveJournalArticle(article.id); } : undefined} />)}
               </div>
