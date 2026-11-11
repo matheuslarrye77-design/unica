@@ -12,6 +12,7 @@ import {
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Plus, Star, User } from 'lucide-react';
+
 import { usePageSearch } from '@/lib/pageSearch';
 import { useInstitution } from '@/lib/institution';
 import { type FC, useEffect, useMemo, useState } from 'react';
@@ -26,7 +27,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
 import {
   ACTIVITY_STATUSES,
   activitiesInStatus,
@@ -49,34 +49,6 @@ import { ActivityDialog } from './ActivityDialog';
 function isOverdue(activity: Activity) {
   if (activity.status === 'done' || !activity.dueDate) return false;
   return activity.dueDate < new Date().toISOString().slice(0, 10);
-}
-
-function PerformanceChart({ activities }: { activities: Activity[] }) {
-  const total = activities.length;
-  const done = activities.filter((item) => item.status === 'done').length;
-  const progress = activities.filter((item) => item.status === 'in_progress').length;
-  const overdue = activities.filter((item) => isOverdue(item)).length;
-  const rate = total === 0 ? 0 : Math.round((done / total) * 100);
-
-  return (
-    <div className="group relative w-[156px] shrink-0">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-[11px] font-normal text-[#777987]">Concluídas</span>
-        <span className="text-[13px] font-medium tabular-nums text-[#252631]">{rate}%</span>
-      </div>
-      <div className="mt-1.5 h-[5px] overflow-hidden rounded-full bg-[#E4E0F2]" aria-hidden="true">
-        <div className="h-full rounded-full bg-[#8878D6] transition-[width] duration-500 ease-out" style={{ width: `${rate}%` }} />
-      </div>
-      <div className="pointer-events-none absolute top-1/2 left-[calc(100%+12px)] z-20 w-44 -translate-y-1/2 rounded-[9px] border border-[rgba(45,40,70,0.09)] bg-white px-3 py-2 opacity-0 shadow-[0_2px_7px_rgba(40,35,65,0.035)] transition-opacity duration-150 group-hover:opacity-100">
-        <ul className="grid gap-1.5 text-[11px] font-normal text-[#777987]">
-          <li className="flex items-center justify-between gap-3"><span>Atividades</span><span className="tabular-nums text-[#252631]">{total}</span></li>
-          <li className="flex items-center justify-between gap-3"><span>Concluídas</span><span className="tabular-nums text-[#252631]">{done}</span></li>
-          <li className="flex items-center justify-between gap-3"><span>Em andamento</span><span className="tabular-nums text-[#252631]">{progress}</span></li>
-          <li className="flex items-center justify-between gap-3"><span>Atrasadas</span><span className="tabular-nums text-[#252631]">{overdue}</span></li>
-        </ul>
-      </div>
-    </div>
-  );
 }
 
 export const ActivityBoard: FC = () => {
@@ -104,6 +76,9 @@ export const ActivityBoard: FC = () => {
 
   const leadershipCount = activities.filter((activity) => activity.origin === 'leadership').length;
   const scoped = activities.filter((activity) => (tab === 'leadership' ? activity.origin === 'leadership' : activity.origin === 'mine'));
+  const scopedDone = scoped.filter((item) => item.status === 'done').length;
+  const scopedProgress = scoped.filter((item) => item.status === 'in_progress').length;
+  const scopedOverdue = scoped.filter((item) => isOverdue(item)).length;
 
   const visible = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -186,40 +161,49 @@ export const ActivityBoard: FC = () => {
   }
 
   return (
-    <div>
-      <div className="flex flex-wrap items-end gap-x-10 gap-y-3">
-        <div className="min-w-0">
-          <h1 className="text-[22px] font-[600] leading-[1.25] tracking-[-0.022em] text-[#252631]">Atividades</h1>
-          <p className="mt-1 max-w-[36rem] text-[12.5px] font-normal leading-[1.45] text-[#777987]">Organize suas atividades pessoais e acompanhe seu progresso</p>
-        </div>
-        <PerformanceChart activities={scoped} />
-      </div>
+    <div className="space-y-8">
+      <section className="flex flex-col gap-3">
+        <span className="inline-flex w-fit items-center rounded-full bg-blue-100 px-4 py-1 text-sm font-semibold text-blue-700">
+          Quadro de atividades
+        </span>
+        <h1 className="text-4xl font-bold tracking-tight text-gray-800">Atividades</h1>
+        <p className="max-w-2xl text-base leading-7 text-gray-500">
+          Organize as atividades por status, acompanhe o progresso e mova o trabalho pelo quadro.
+        </p>
+        <p className="text-sm text-gray-500">
+          {scoped.length} atividades · {scopedDone} concluídas · {scopedProgress} em andamento · {scopedOverdue} atrasadas
+        </p>
+      </section>
 
-      <div className="mt-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-        <div className="flex items-center gap-5 border-b border-[rgba(45,40,70,0.08)]">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => showTab('mine')}
-            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', tab === 'mine' ? '-mb-px border-[var(--ds-purple)] text-[var(--ds-purple)]' : '-mb-px border-transparent text-[#777987]')}
+            className={cn('inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-colors', tab === 'mine' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-600')}
           >
-            <User className="h-3.5 w-3.5" strokeWidth={1.6} /> Minhas atividades
+            <User className="h-4 w-4" /> Minhas atividades
           </button>
           <button
             type="button"
             onClick={() => showTab('leadership')}
-            className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2 text-[13px] font-medium', tab === 'leadership' ? '-mb-px border-[var(--ds-purple)] text-[var(--ds-purple)]' : '-mb-px border-transparent text-[#777987]')}
+            className={cn('inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-colors', tab === 'leadership' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-600')}
           >
-            <Star className="h-3.5 w-3.5" strokeWidth={1.6} /> Missões da liderança
-            <span className="grid h-4 min-w-4 place-items-center rounded-full bg-[#EDE9FE] px-1 text-[10px] font-medium text-[#6E62C4]">{leadershipCount}</span>
+            <Star className="h-4 w-4" /> Missões da liderança
+            <span className={cn('grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px]', tab === 'leadership' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700')}>{leadershipCount}</span>
           </button>
         </div>
-        <Button type="button" onClick={() => openCreate('todo')} size="sm" className="mb-1.5">
-          <Plus strokeWidth={1.7} /> Nova atividade
-        </Button>
+        <button
+          type="button"
+          onClick={() => openCreate('todo')}
+          className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-colors hover:bg-blue-500"
+        >
+          <Plus className="h-4 w-4" /> Nova atividade
+        </button>
       </div>
 
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
-        <div className="mt-4 grid min-w-0 grid-cols-1 items-start gap-3 overflow-x-auto md:grid-cols-3">
+        <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-3">
           {ACTIVITY_STATUSES.map((status) => (
             <ActivityColumn
               key={status}

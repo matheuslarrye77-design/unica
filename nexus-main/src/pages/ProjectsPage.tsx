@@ -4,7 +4,7 @@ import { type FC } from 'react';
 
 export const ProjectsPage: FC = () => {
   return (
-    <PageFrame canvas="lilac">
+    <PageFrame canvas="board">
       <ActivityBoard />
     </PageFrame>
   );
