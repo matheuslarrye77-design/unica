@@ -85,7 +85,7 @@ export const PostCard: FC<{
   const recognition = post.kind === 'recognition';
 
   return (
-      <article id={domId} className={recognition ? 'unica-surface p-5' : 'unica-surface px-4 py-3.5'}>
+      <article id={domId} className="unica-surface p-5">
       {repost ? (
         <div className="mb-3 flex items-center gap-2 text-[12px] text-muted-foreground">
           <img src={repost.avatar} alt="" className="h-6 w-6 rounded-full bg-muted" />

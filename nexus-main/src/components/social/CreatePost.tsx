@@ -417,7 +417,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
       }}
       onDragLeave={() => setOver(false)}
       onDrop={onDropFiles}
-      className="unica-surface relative px-4 py-3"
+      className="unica-surface relative p-5"
     >
       <div className="flex items-start gap-3">
         <img src={user.avatar} alt="" className="mt-1 h-10 w-10 shrink-0 rounded-full bg-muted object-cover" />
@@ -536,7 +536,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
         <button type="button" data-composer-tool aria-label="Adicionar conteúdo" aria-expanded={menu === 'add'} title="Adicionar conteúdo" onClick={(event) => toggleMenu('add', event)} className={`grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#EDE7FE] text-[#4600F3] transition-colors hover:bg-[#EBD4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4600F3]/40 active:bg-[#E0D6FC] ${menu === 'add' ? 'ring-2 ring-[#4600F3]/30' : ''}`}>
           <Plus className="h-3.5 w-3.5" />
         </button>
-        <button type="submit" aria-label="Publicar" title="Publicar" aria-busy={sending} disabled={!ready} className="ml-auto grid h-7 w-9 shrink-0 place-items-center rounded-full bg-[#4600F3] text-white transition-colors hover:bg-[#3600C2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4600F3]/40 active:bg-[#3600C2] disabled:cursor-not-allowed disabled:opacity-45">
+        <button type="submit" aria-label="Publicar" title="Publicar" aria-busy={sending} disabled={!ready} className="ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 transition-colors hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-45">
           {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
         </button>
       </div>

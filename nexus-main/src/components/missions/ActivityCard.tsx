@@ -20,10 +20,10 @@ import {
 } from '@/data/activities';
 import { cn } from '@/lib/utils';
 
-const priorityStyle: Record<Activity['priority'], { border: string; pill: string; icon: string }> = {
-  high: { border: 'border-red-500', pill: 'bg-red-100 text-red-700', icon: 'text-red-500' },
-  medium: { border: 'border-yellow-500', pill: 'bg-yellow-100 text-yellow-700', icon: 'text-yellow-500' },
-  low: { border: 'border-green-500', pill: 'bg-green-100 text-green-700', icon: 'text-green-500' },
+const priorityStyle: Record<Activity['priority'], { pill: string; icon: string }> = {
+  high: { pill: 'bg-red-100 text-red-700', icon: 'text-red-500' },
+  medium: { pill: 'bg-yellow-100 text-yellow-700', icon: 'text-yellow-500' },
+  low: { pill: 'bg-green-100 text-green-700', icon: 'text-green-500' },
 };
 
 export function visualProgress(activity: Activity) {
@@ -33,9 +33,9 @@ export function visualProgress(activity: Activity) {
 }
 
 function progressColor(value: number) {
-  if (value <= 30) return 'bg-red-500';
-  if (value <= 70) return 'bg-yellow-500';
-  return 'bg-green-500';
+  if (value <= 0) return 'bg-red-500';
+  if (value >= 100) return 'bg-[#4600F3]';
+  return 'bg-[#DB2777]';
 }
 
 function cardDate(activity: Activity) {
@@ -59,11 +59,10 @@ export const ActivityCardView: FC<{
 
   return (
     <article className={cn(
-      'group relative overflow-hidden rounded-2xl border border-l-4 bg-white select-none',
-      tone.border,
-      dragging ? 'z-50 cursor-grabbing shadow-2xl ring-2 ring-blue-400' : 'shadow-sm transition-shadow duration-300 hover:shadow-xl',
+      'group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] select-none transition-shadow duration-300 hover:shadow-[0_10px_28px_rgba(15,23,42,0.09)]',
+      leadership && 'border-l-4 border-l-[#6B33F6]',
+      dragging && 'z-50 shadow-[0_16px_36px_rgba(15,23,42,0.12)]',
     )}>
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-400" />
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 title={activity.title} className="text-lg font-bold leading-6 text-gray-800">{activity.title}</h3>
@@ -140,7 +139,7 @@ export const ActivityCardView: FC<{
             </div>
 
             {progress === 100 ? (
-              <div className="mt-4 flex items-center gap-2 text-sm font-medium text-green-600">
+              <div className="mt-4 flex items-center gap-2 text-sm font-medium text-[#4600F3]">
                 <CheckCircle className="h-4 w-4" />
                 Atividade concluída
               </div>

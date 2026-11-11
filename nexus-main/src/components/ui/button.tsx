@@ -5,27 +5,27 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-[8px] text-[13px] font-medium transition-all duration-[180ms] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-3.5 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/30 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-2xl text-sm font-semibold transition-colors duration-200 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-none hover:opacity-90",
+          "bg-blue-600 text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500",
         destructive:
-          "bg-destructive text-white shadow-none hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "bg-destructive text-white shadow-none hover:bg-destructive/90",
         outline:
-          "border border-[var(--ds-divider)] bg-white text-[var(--ds-ink)] shadow-none hover:border-[var(--ds-border-hover)] hover:bg-[var(--ds-surface)]",
+          "border border-gray-200 bg-white text-gray-700 shadow-none hover:bg-blue-50 hover:text-blue-600",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-none hover:bg-[var(--ds-lavender)]",
+          "bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:bg-blue-50 hover:text-blue-600",
         ghost:
-          "text-[var(--ds-slate)] hover:bg-[var(--ds-surface)] hover:text-[var(--ds-ink)]",
-        link: "text-primary underline-offset-4 hover:underline",
+          "text-gray-600 hover:bg-white hover:text-gray-800",
+        link: "text-blue-600 underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-8 px-3 py-1.5 has-[>svg]:px-2.5",
-        sm: "h-7 rounded-[8px] gap-1 px-2.5 has-[>svg]:px-2",
-        lg: "h-9 rounded-[8px] px-4 has-[>svg]:px-3.5",
-        icon: "size-8",
+        default: "h-auto px-4 py-2.5",
+        sm: "h-9 rounded-xl px-3 text-[13px]",
+        lg: "h-11 px-5",
+        icon: "size-9 rounded-xl",
       },
     },
     defaultVariants: {

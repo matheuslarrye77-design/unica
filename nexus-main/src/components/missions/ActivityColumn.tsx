@@ -33,7 +33,7 @@ export const ActivityColumn: FC<{
   }
 
   return (
-    <section className="flex min-h-[520px] flex-col rounded-3xl border border-gray-200 bg-white shadow-sm transition-shadow duration-300 hover:shadow-xl">
+    <section className="flex min-h-[520px] flex-col rounded-3xl border border-gray-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
       <header className="sticky top-0 z-10 rounded-t-3xl border-b border-gray-200 bg-white px-5 py-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
