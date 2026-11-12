@@ -42,8 +42,8 @@ export const JournalBadge: FC<{ category: JournalCategory; onHeader?: boolean; c
   <span className={cn(
     'inline-flex items-center rounded-full font-semibold leading-none',
     onHeader
-      ? cn('bg-white px-3.5 py-[7px] text-[13px]', categoryTone[category].badgeText)
-      : cn('px-2.5 py-1 text-[12px]', categoryTone[category].badge),
+      ? cn('bg-white px-4 py-2 text-base', categoryTone[category].badgeText)
+      : cn('px-3 py-1.5 text-sm', categoryTone[category].badge),
     className,
   )}>
     {categoryLabel(category)}
@@ -80,7 +80,7 @@ export const JournalCover: FC<{ article: Pick<JournalArticle, 'title' | 'content
     return (
       <div className="relative overflow-hidden rounded-[18px]">
         <img src={photo} alt="" className="block aspect-[1400/320] h-auto w-full object-cover" />
-        <span className={cn('absolute flex items-center justify-center rounded-full bg-white text-center font-semibold leading-none', art.label, tone.badgeText, compact ? 'text-[8px]' : 'text-[13px]')}>
+        <span className={cn('absolute flex items-center justify-center rounded-full bg-white text-center font-semibold leading-none', art.label, tone.badgeText, compact ? 'text-lg' : 'text-xl')}>
           {categoryLabel(article.category)}
         </span>
       </div>
@@ -90,7 +90,7 @@ export const JournalCover: FC<{ article: Pick<JournalArticle, 'title' | 'content
     return (
       <div className="relative">
         <img src={art.src} alt="" className="block h-auto w-full" />
-        <span className={cn('absolute flex items-center justify-center text-center font-semibold leading-none', art.label, tone.badgeText, compact ? 'text-[8px]' : 'text-[13px]')}>
+        <span className={cn('absolute flex items-center justify-center text-center font-semibold leading-none', art.label, tone.badgeText, compact ? 'text-lg' : 'text-xl')}>
           {categoryLabel(article.category)}
         </span>
       </div>
@@ -103,13 +103,13 @@ export const JournalCover: FC<{ article: Pick<JournalArticle, 'title' | 'content
     return (
       <div className={cn('relative overflow-hidden rounded-[18px]', height)}>
         <img src={image} alt="" className="h-full w-full object-cover" />
-        <JournalBadge category={article.category} onHeader className={cn('absolute top-3 left-3', compact && 'top-2 left-2 px-2 py-1 text-[11px]')} />
+        <JournalBadge category={article.category} onHeader className="absolute top-3 left-3" />
       </div>
     );
   }
   return (
     <div className={cn('flex aspect-[4.76/1] items-center justify-between rounded-[18px] px-4', tone.header)}>
-      <JournalBadge category={article.category} onHeader className={compact ? 'px-2 py-1 text-[11px]' : undefined} />
+      <JournalBadge category={article.category} onHeader />
       <Icon className={cn(compact ? 'h-5 w-5' : 'h-7 w-7', tone.icon)} strokeWidth={1.75} />
     </div>
   );

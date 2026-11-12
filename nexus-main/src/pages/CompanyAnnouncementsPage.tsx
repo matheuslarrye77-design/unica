@@ -19,7 +19,7 @@ function formatDate(iso: string) {
 const FeaturedCard: FC<{ article: JournalArticle; saved: boolean; onRemove?: () => void }> = ({ article, saved, onRemove }) => {
   const minutes = readingMinutes(article.content);
   return (
-    <Link to={`/announcements/${article.id}`} className={cn('group flex h-full flex-col rounded-2xl border-2 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]', journalBorder[article.category])}>
+    <Link to={`/announcements/${article.id}`} className={cn('group flex h-full flex-col rounded-2xl border border-gray-100 border-l-4 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]', journalBorder[article.category])}>
       <div className="overflow-hidden rounded-xl [&_img]:max-h-28 [&_img]:w-full [&_img]:object-cover">
         <JournalCover article={article} compact />
       </div>
@@ -198,7 +198,7 @@ export const CompanyAnnouncementsPage: FC = () => {
                 key={id}
                 type="button"
                 onClick={() => selectCategory(id)}
-                className={cn('rounded-2xl px-4 py-2.5 text-sm font-semibold', category === id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600')}
+                className={cn('rounded-2xl px-4 py-2.5 text-base font-semibold', category === id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600')}
               >
                 {label}
               </button>

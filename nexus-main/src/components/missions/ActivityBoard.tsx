@@ -163,9 +163,6 @@ export const ActivityBoard: FC = () => {
   return (
     <div className="space-y-8">
       <section className="flex flex-col gap-3">
-        <span className="inline-flex w-fit items-center rounded-full bg-blue-100 px-4 py-1 text-sm font-semibold text-blue-700">
-          Quadro de atividades
-        </span>
         <h1 className="text-4xl font-bold tracking-tight text-gray-800">Atividades</h1>
         <p className="max-w-2xl text-base leading-7 text-gray-500">
           Organize as atividades por status, acompanhe o progresso e mova o trabalho pelo quadro.
