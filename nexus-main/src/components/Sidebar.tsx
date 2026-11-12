@@ -9,8 +9,6 @@ import {
   LogOut,
   Megaphone,
   MessageSquare,
-  PanelLeftClose,
-  PanelLeftOpen,
   Settings,
   Users,
   X,
@@ -130,7 +128,7 @@ export const AppFrame: FC<{ children: ReactNode }> = ({ children }) => {
       <MenuContext.Provider value={() => setOpen(true)}>
         <PageSearchProvider>
         <Sidebar open={open} onClose={() => setOpen(false)} />
-        <div className={cn('min-h-0', leftCollapsed ? 'lg:pl-16' : 'lg:pl-[232px]')}>{children}</div>
+        <div className="min-h-0 lg:pl-[104px]">{children}</div>
         </PageSearchProvider>
       </MenuContext.Provider>
     </ShellContext.Provider>
@@ -140,7 +138,6 @@ export const AppFrame: FC<{ children: ReactNode }> = ({ children }) => {
 export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { leftCollapsed, toggleLeft } = useShell();
   const institution = useInstitution();
   const groups = GROUPS.map((group) => ({
     ...group,
@@ -148,10 +145,11 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
   }));
   const activeOf = (item: NavItemData) => isActive(location.pathname, location.search, item.href);
 
-  const nav = (collapsed: boolean) => (
+  const nav = (collapsed: boolean, inverted = false) => (
     <SidebarNav
-      className={cn('border-none bg-transparent', collapsed ? 'p-2' : 'p-3')}
+      className={cn('border-none bg-transparent', collapsed ? 'items-center p-2' : 'p-3')}
       groups={groups}
+      inverted={inverted}
       bottomItems={[
         ...BOTTOM_ITEMS,
         {
@@ -169,15 +167,7 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
       header={(
         <div className={cn('mb-1 flex items-start', collapsed ? 'flex-col items-center gap-1' : 'justify-between gap-1')}>
           <SidebarBrand name="Única" accent="Conecta" href="/" collapsed={collapsed} onNavigate={onClose} />
-          <button
-            type="button"
-            className="mt-1 hidden h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[#858593] transition-colors hover:bg-[#F4F4F7] hover:text-[#343440] lg:inline-flex"
-            aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
-            onClick={toggleLeft}
-          >
-            {collapsed ? <PanelLeftOpen className="h-[18px] w-[18px]" strokeWidth={1.5} /> : <PanelLeftClose className="h-[18px] w-[18px]" strokeWidth={1.5} />}
-          </button>
-          <button type="button" className="mt-1 rounded-md p-1.5 text-muted-foreground lg:hidden" aria-label="Fechar menu" onClick={onClose}>
+          <button type="button" className={cn('mt-1 rounded-md p-1.5 lg:hidden', inverted ? 'text-white/80' : 'text-[#3C3952]')} aria-label="Fechar menu" onClick={onClose}>
             <X className="h-4 w-4" strokeWidth={1.5} />
           </button>
         </div>
@@ -187,8 +177,8 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
 
   return (
     <>
-      <aside className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[rgba(45,40,70,0.08)] bg-white text-sidebar-foreground transition-[width] duration-[220ms] ease-out lg:flex', leftCollapsed ? 'w-16' : 'w-[232px]')}>
-        {nav(leftCollapsed)}
+      <aside className="fixed top-3 bottom-3 left-3 z-40 hidden w-[76px] flex-col overflow-visible rounded-[28px] bg-[#6B33F6] text-white shadow-[0_12px_30px_rgba(70,0,243,0.28)] lg:flex">
+        {nav(true, true)}
       </aside>
       {open ? (
         <div className="fixed inset-0 z-50 lg:hidden">

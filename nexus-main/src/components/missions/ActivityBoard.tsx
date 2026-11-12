@@ -32,6 +32,7 @@ import {
   activitiesInStatus,
   createActivity,
   isActivityStatus,
+  canSeeMission,
   loadActivityStore,
   moveActivity,
   removeActivity,
@@ -74,20 +75,21 @@ export const ActivityBoard: FC = () => {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const leadershipCount = activities.filter((activity) => activity.origin === 'leadership').length;
-  const scoped = activities.filter((activity) => (tab === 'leadership' ? activity.origin === 'leadership' : activity.origin === 'mine'));
+  const allowed = activities.filter(canSeeMission);
+  const leadershipCount = allowed.filter((activity) => activity.origin === 'leadership').length;
+  const scoped = allowed.filter((activity) => (tab === 'leadership' ? activity.origin === 'leadership' : true));
   const scopedDone = scoped.filter((item) => item.status === 'done').length;
   const scopedProgress = scoped.filter((item) => item.status === 'in_progress').length;
   const scopedOverdue = scoped.filter((item) => isOverdue(item)).length;
 
   const visible = useMemo(() => {
     const term = query.trim().toLowerCase();
-    return activities.filter((activity) => {
+    return allowed.filter((activity) => {
       const matchesTab = tab === 'mine' || activity.origin === 'leadership';
       const matchesTerm = !term || activity.title.toLowerCase().includes(term) || activity.description.toLowerCase().includes(term) || activity.source.toLowerCase().includes(term);
       return matchesTab && matchesTerm;
     });
-  }, [activities, query, tab]);
+  }, [allowed, query, tab]);
 
   function columns(status: ActivityStatus) {
     return activitiesInStatus(visible, status);
@@ -226,6 +228,7 @@ export const ActivityBoard: FC = () => {
         activity={editing}
         status={createStatus}
         categories={categories}
+        leadership={editing ? editing.origin === 'leadership' : tab === 'leadership'}
         onOpenChange={setDialogOpen}
         onSubmit={submit}
       />

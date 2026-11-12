@@ -13,7 +13,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   ACTIVITY_STATUSES,
+  CHANNEL_LABEL,
   PRIORITY_LABEL,
+  missionChannel,
   STATUS_LABEL,
   type Activity,
   type ActivityStatus,
@@ -21,9 +23,9 @@ import {
 import { cn } from '@/lib/utils';
 
 const priorityStyle: Record<Activity['priority'], { pill: string; icon: string }> = {
-  high: { pill: 'bg-red-100 text-red-700', icon: 'text-red-500' },
-  medium: { pill: 'bg-yellow-100 text-yellow-700', icon: 'text-yellow-500' },
-  low: { pill: 'bg-green-100 text-green-700', icon: 'text-green-500' },
+  high: { pill: 'bg-[#EDE7FE] text-[#4600F3]', icon: 'text-[#4600F3]' },
+  medium: { pill: 'bg-[#FDE7F3] text-[#DB2777]', icon: 'text-[#DB2777]' },
+  low: { pill: 'bg-[#F3E8FF] text-[#6B33F6]', icon: 'text-[#6B33F6]' },
 };
 
 export function visualProgress(activity: Activity) {
@@ -116,7 +118,7 @@ export const ActivityCardView: FC<{
             {detail ? <p className="mt-3 line-clamp-3 text-sm leading-6 text-gray-500">{detail}</p> : null}
 
             <div className="mt-5 flex flex-wrap gap-2">
-              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">{activity.category}</span>
+              {leadership && missionChannel(activity) ? <span className="rounded-full bg-[#EDE7FE] px-3 py-1 text-xs font-semibold text-[#4600F3]">{CHANNEL_LABEL[missionChannel(activity)!]}</span> : null}
               {leadership ? <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700">Missão</span> : null}
               <span className={cn('inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold', tone.pill)}>
                 <Flag className={cn('h-3 w-3', tone.icon)} />

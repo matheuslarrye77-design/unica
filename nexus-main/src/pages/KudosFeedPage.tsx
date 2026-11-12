@@ -1,7 +1,6 @@
 import { MuralPublishDialog } from '@/components/social/MuralPublishDialog';
 import { ZoomImage } from '@/components/social/PhotoGallery';
 import { recognitionHeadline } from '@/lib/recognitionText';
-import { HomeRail } from '@/components/shell/HomeRail';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { teamRoster } from '@/data/team';
 import { authHeaders, getDemoId } from '@/lib/session';
@@ -12,8 +11,9 @@ import { PodiumStage } from '@/components/recognition/PodiumStage';
 import { useInstitution } from '@/lib/institution';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { PageHero } from '@/components/social/LilacWash';
-import { ChevronDown, Heart, Megaphone, Star, Target, Trophy } from 'lucide-react';
+import { ChevronDown, Heart, Megaphone, Sparkles, Star, Target, Trophy } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 
 type Area = 'Gestão' | 'Suporte';
@@ -81,6 +81,7 @@ export const KudosFeedPage: FC = () => {
   const [goals, setGoals] = useState<GoalsPayload | null>(null);
   const [week, setWeek] = useState('');
   const [podiumMonth, setPodiumMonth] = useState('');
+  const [assistant, setAssistant] = useState(false);
   const stamp = useRef('');
   useEffect(() => {
     let cancelled = false;
@@ -136,7 +137,7 @@ export const KudosFeedPage: FC = () => {
   }
 
   const page = (
-    <PageFrame fitViewport fillRail={tab === 'metas'} rail={tab === 'metas' && goals ? <GoalsAssistant /> : <HomeRail />}>
+    <PageFrame fitViewport>
       <div className="grid gap-6 pb-16">
             {tab === 'metas' ? (
               <PageHero
@@ -287,6 +288,19 @@ export const KudosFeedPage: FC = () => {
             setMuralTarget(null);
           }}
         />
+      ) : null}
+      {tab === 'metas' && goals ? createPortal(
+        <>
+          <button type="button" aria-pressed={assistant} aria-label="Assistente de metas" onClick={() => setAssistant((value) => !value)} className="fixed right-5 bottom-24 z-[60] grid h-12 w-12 place-items-center rounded-full border-2 border-[#4600F3] bg-white text-[#4600F3] shadow-lg">
+            <Sparkles className="h-5 w-5" />
+          </button>
+          {assistant ? (
+            <div className="fixed right-5 bottom-40 z-[60] flex h-[min(70vh,640px)] w-[min(92vw,380px)] overflow-hidden rounded-3xl shadow-[0_16px_40px_rgba(15,23,42,0.16)]">
+              <GoalsAssistant />
+            </div>
+          ) : null}
+        </>,
+        document.body,
       ) : null}
     </PageFrame>
   );

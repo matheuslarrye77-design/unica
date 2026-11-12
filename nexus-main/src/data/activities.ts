@@ -1,9 +1,20 @@
+import { isLeader } from '@/lib/institution';
+
+import { DEMO_PROFILES, actor } from '@/lib/session';
+import { teamRoster } from '@/data/team';
 import { generateId } from '@/lib/utils';
 
 export type ActivityStatus = 'todo' | 'in_progress' | 'done';
 export type ActivityPriority = 'high' | 'medium' | 'low';
 
 export type ActivityOrigin = 'mine' | 'leadership';
+export type MissionChannel = 'email' | 'ligacao' | 'chat';
+
+export const CHANNEL_LABEL: Record<MissionChannel, string> = {
+  email: 'E-mail',
+  ligacao: 'Ligação',
+  chat: 'Chat',
+};
 
 export type Activity = {
   id: string;
@@ -14,6 +25,7 @@ export type Activity = {
   category: string;
   source: string;
   origin: ActivityOrigin;
+  channel?: MissionChannel | null;
   assignee: string;
   dueDate: string | null;
   completedOn: string | null;
@@ -30,6 +42,7 @@ export type ActivityDraft = {
   category: string;
   source?: string;
   origin?: ActivityOrigin;
+  channel?: MissionChannel | null;
   assignee: string;
   dueDate: string | null;
   completedOn?: string | null;
@@ -97,6 +110,7 @@ export const seedActivities: Activity[] = [
     category: 'Atendimento',
     source: 'Equipe do Chat',
     origin: 'leadership',
+    channel: 'chat',
     assignee: 'Matheus Larrie',
     dueDate: '2026-10-31',
     completedOn: null,
@@ -153,6 +167,7 @@ export const seedActivities: Activity[] = [
     category: 'Qualidade',
     source: 'Equipe do Atendimento',
     origin: 'leadership',
+    channel: 'ligacao',
     assignee: 'Matheus Larrie',
     dueDate: '2026-10-20',
     completedOn: null,
@@ -195,6 +210,7 @@ export const seedActivities: Activity[] = [
     category: 'Qualidade',
     source: 'Equipe do Chat',
     origin: 'leadership',
+    channel: 'chat',
     assignee: 'Matheus Larrie',
     dueDate: '2026-10-13',
     completedOn: '2026-10-13',
@@ -206,6 +222,31 @@ export type ActivityStore = {
   activities: Activity[];
   categories: string[];
 };
+
+export function missionChannel(activity: Pick<Activity, 'origin' | 'source' | 'category' | 'channel'>): MissionChannel | null {
+  if (activity.channel === 'email' || activity.channel === 'ligacao' || activity.channel === 'chat') return activity.channel;
+  if (activity.origin !== 'leadership') return null;
+  const hint = `${activity.source} ${activity.category}`;
+  if (/e-?mail/i.test(hint)) return 'email';
+  if (/chat/i.test(hint)) return 'chat';
+  if (/liga|atendimento/i.test(hint)) return 'ligacao';
+  return null;
+}
+
+export function canSeeMission(activity: Activity) {
+  if (activity.origin !== 'leadership') return true;
+  const channel = missionChannel(activity);
+  if (!channel) return true;
+  const user = actor();
+  if (isLeader(user)) return true;
+  const demo = DEMO_PROFILES.find((item) => item.userId === user.id) as { funcao?: string } | undefined;
+  const funcao = demo?.funcao ?? teamRoster.find((person) => person.name === user.name)?.funcao;
+  if (funcao === 'Líder' || funcao === 'Supervisor') return true;
+  if (funcao === 'E-mail') return channel === 'email';
+  if (funcao === 'Ligação') return channel === 'ligacao';
+  if (funcao === 'Chat') return channel === 'chat';
+  return false;
+}
 
 export function isActivityStatus(value: string): value is ActivityStatus {
   return value === 'todo' || value === 'in_progress' || value === 'done';
@@ -346,6 +387,7 @@ export function createActivity(activities: Activity[], draft: ActivityDraft): Ac
     assignee: draft.assignee,
     dueDate: draft.dueDate,
     completedOn: draft.completedOn ?? null,
+    channel: draft.channel ?? null,
     position: column.length,
     createdAt: now,
     updatedAt: now,
@@ -367,6 +409,7 @@ export function updateActivity(activities: Activity[], id: string, draft: Activi
           category: draft.category.trim(),
           source: draft.source?.trim() || item.source,
           origin: draft.origin ?? item.origin,
+          channel: draft.channel ?? null,
           assignee: draft.assignee,
           dueDate: draft.dueDate,
           completedOn: draft.completedOn ?? item.completedOn,
@@ -383,6 +426,7 @@ export function updateActivity(activities: Activity[], id: string, draft: Activi
         category: draft.category.trim(),
         source: draft.source?.trim() || item.source,
         origin: draft.origin ?? item.origin,
+        channel: draft.channel ?? null,
         assignee: draft.assignee,
         dueDate: draft.dueDate,
         completedOn: draft.completedOn ?? item.completedOn,

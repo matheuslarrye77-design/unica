@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { ACTIVITY_ASSIGNEES, PRIORITY_LABEL, type Activity, type ActivityDraft, type ActivityPriority, type ActivityStatus } from '@/data/activities';
+import { ACTIVITY_ASSIGNEES, CHANNEL_LABEL, PRIORITY_LABEL, missionChannel, type Activity, type ActivityDraft, type ActivityPriority, type ActivityStatus, type MissionChannel } from '@/data/activities';
 
 const priorities: ActivityPriority[] = ['high', 'medium', 'low'];
 
@@ -15,9 +15,10 @@ export const ActivityDialog: FC<{
   activity: Activity | null;
   status: ActivityStatus;
   categories: string[];
+  leadership?: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (draft: ActivityDraft) => void;
-}> = ({ open, mode, activity, status, categories, onOpenChange, onSubmit }) => {
+}> = ({ open, mode, activity, status, categories, leadership = false, onOpenChange, onSubmit }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [assignee, setAssignee] = useState(ACTIVITY_ASSIGNEES[0]);
@@ -25,6 +26,7 @@ export const ActivityDialog: FC<{
   const [category, setCategory] = useState(categories[0] ?? 'Geral');
   const [customCategory, setCustomCategory] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [channel, setChannel] = useState<MissionChannel>('chat');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -36,6 +38,7 @@ export const ActivityDialog: FC<{
     setCategory(activity?.category ?? categories[0] ?? 'Geral');
     setCustomCategory('');
     setDueDate(activity?.dueDate ?? '');
+    setChannel(activity ? (missionChannel(activity) ?? 'chat') : 'chat');
     setError('');
   }, [open, activity, categories]);
 
@@ -45,13 +48,14 @@ export const ActivityDialog: FC<{
       setError('Informe o título da atividade.');
       return;
     }
-    const nextCategory = customCategory.trim() || category;
+    const nextCategory = leadership ? CHANNEL_LABEL[channel] : (customCategory.trim() || category || 'Pessoal');
     onSubmit({
       title,
       description,
       assignee,
       priority,
       category: nextCategory,
+      channel: leadership ? channel : null,
       dueDate: dueDate || null,
       status: activity?.status ?? status,
     });
@@ -85,30 +89,27 @@ export const ActivityDialog: FC<{
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-2">
-              <Label>Prioridade</Label>
-              <Select value={priority} onValueChange={(value) => setPriority(value as ActivityPriority)}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {priorities.map((item) => <SelectItem key={item} value={item}>{PRIORITY_LABEL[item]}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>Categoria</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
           <div className="grid gap-2">
-            <Label htmlFor="atividade-categoria">Nova categoria</Label>
-            <Input id="atividade-categoria" value={customCategory} onChange={(event) => setCustomCategory(event.target.value)} placeholder="Opcional. Substitui a categoria selecionada" />
+            <Label>Prioridade</Label>
+            <Select value={priority} onValueChange={(value) => setPriority(value as ActivityPriority)}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {priorities.map((item) => <SelectItem key={item} value={item}>{PRIORITY_LABEL[item]}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
+          {leadership ? (
+            <div className="grid gap-2">
+              <Label>Quem vê a missão</Label>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(CHANNEL_LABEL) as MissionChannel[]).map((item) => (
+                  <button key={item} type="button" aria-pressed={channel === item} onClick={() => setChannel(item)} className={`rounded-2xl px-4 py-2 text-sm font-semibold ${channel === item ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]'}`}>
+                    {CHANNEL_LABEL[item]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="grid gap-2">
             <Label htmlFor="atividade-prazo">Prazo</Label>
             <Input id="atividade-prazo" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />

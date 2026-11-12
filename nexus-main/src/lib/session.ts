@@ -22,6 +22,7 @@ export const DEMO_PROFILES = [
     avatar: currentUser.avatar,
     email: 'matheus.larrie@unica.local',
     userId: currentUser.id,
+    funcao: 'Chat' as const,
   },
   {
     id: 'helena' as const,

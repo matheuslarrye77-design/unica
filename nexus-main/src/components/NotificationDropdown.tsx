@@ -41,7 +41,7 @@ const getTypeColor = (type: FeedItem['type']) => {
   }
 };
 
-export const NotificationDropdown: FC = () => {
+export const NotificationDropdown: FC<{ compact?: boolean }> = ({ compact = false }) => {
   const displayItems = forYouFeed.slice(0, 5);
   const unreadCount = 3;
   const [open, setOpen] = useState(false);
@@ -55,12 +55,12 @@ export const NotificationDropdown: FC = () => {
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-[10px] text-muted-foreground hover:text-foreground" aria-label="Notificações">
-          <Bell className="h-[1.2rem] w-[1.2rem]" />
+        <Button variant="ghost" size="icon" className={compact ? 'relative h-8 w-8 rounded-full text-[#6B33F6] hover:bg-white hover:text-[#6B33F6]' : 'relative h-9 w-9 rounded-[10px] text-muted-foreground hover:text-foreground'} aria-label="Notificações">
+          <Bell className={compact ? 'h-4 w-4' : 'h-[1.2rem] w-[1.2rem]'} />
           {unreadCount > 0 && (
             <Badge 
               variant="destructive" 
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+              className={compact ? 'absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center p-0 text-[10px]' : 'absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs'}
             >
               {unreadCount > 9 ? '9+' : unreadCount}
             </Badge>

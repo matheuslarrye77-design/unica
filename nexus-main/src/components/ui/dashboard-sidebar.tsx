@@ -24,30 +24,36 @@ export function NavItem({
   item,
   active,
   collapsed,
+  inverted,
   onSelect,
   level = 0,
 }: {
   item: NavItemData;
   active: boolean;
   collapsed?: boolean;
+  inverted?: boolean;
   onSelect?: () => void;
   level?: number;
 }) {
   const Icon = item.icon;
   const className = cn(
     'group flex w-full items-center justify-between rounded-[8px] px-2.5 py-2 text-[13px] font-normal tracking-[-0.006em] transition-all duration-[180ms] select-none',
-    collapsed && 'justify-center px-0',
-    active
-      ? 'bg-[var(--ds-lavender)] font-medium text-[var(--ds-purple)]'
-      : 'text-[var(--ds-slate)] hover:bg-[var(--ds-surface)] hover:text-[var(--ds-ink)]',
+    collapsed && 'mx-auto h-11 w-11 justify-center rounded-2xl px-0',
+    inverted && collapsed
+      ? (active ? 'bg-white font-medium text-[#6B33F6] shadow-sm' : 'text-white/90 hover:bg-white/15')
+      : (active
+        ? 'bg-[var(--ds-lavender)] font-medium text-[var(--ds-purple)]'
+        : 'text-[var(--ds-slate)] hover:bg-[var(--ds-surface)] hover:text-[var(--ds-ink)]'),
   );
   const inner = (
     <>
       <span className={cn('flex min-w-0 items-center gap-2.5', collapsed && 'justify-center')}>
         <Icon
           className={cn(
-            'h-4 w-4 shrink-0 transition-colors duration-[180ms]',
-            active ? 'text-[var(--ds-purple)]' : 'text-[var(--ds-muted)] group-hover:text-[var(--ds-purple)]',
+            'h-[18px] w-[18px] shrink-0 transition-colors duration-[180ms]',
+            inverted && collapsed
+              ? (active ? 'text-[#6B33F6]' : 'text-white')
+              : (active ? 'text-[var(--ds-purple)]' : 'text-[var(--ds-muted)] group-hover:text-[var(--ds-purple)]'),
           )}
           strokeWidth={1.5}
         />
@@ -93,7 +99,7 @@ export function NavItem({
   return (
     <Tooltip>
       <TooltipTrigger asChild>{control}</TooltipTrigger>
-      <TooltipContent side="right">{item.title}</TooltipContent>
+      <TooltipContent side="right" sideOffset={10} arrowClassName="bg-[#1F2937] fill-[#1F2937]" className="rounded-lg bg-[#1F2937] px-2.5 py-1.5 text-xs font-medium text-white">{item.title}</TooltipContent>
     </Tooltip>
   );
 }
@@ -143,6 +149,7 @@ export function SidebarNav({
   groups,
   bottomItems,
   collapsed,
+  inverted,
   isActive,
   onNavigate,
   header,
@@ -152,6 +159,7 @@ export function SidebarNav({
   groups: NavGroupData[];
   bottomItems?: NavItemData[];
   collapsed?: boolean;
+  inverted?: boolean;
   isActive: (item: NavItemData) => boolean;
   onNavigate?: () => void;
   header?: ReactNode;
@@ -170,15 +178,15 @@ export function SidebarNav({
               </span>
             ) : null}
             {group.items.map((item) => (
-              <NavItem key={item.id} item={item} active={isActive(item)} collapsed={collapsed} onSelect={onNavigate} />
+              <NavItem key={item.id} item={item} active={isActive(item)} collapsed={collapsed} inverted={inverted} onSelect={onNavigate} />
             ))}
           </div>
         ))}
       </div>
       {bottomItems?.length ? (
-        <div className="mt-auto flex flex-col gap-0.5 border-t border-[var(--ds-divider)] pt-4">
+        <div className={cn('mt-auto flex flex-col gap-0.5 pt-4', inverted ? 'border-t border-white/15' : 'border-t border-[var(--ds-divider)]')}>
           {bottomItems.map((item) => (
-            <NavItem key={item.id} item={item} active={isActive(item)} collapsed={collapsed} onSelect={onNavigate} />
+            <NavItem key={item.id} item={item} active={isActive(item)} collapsed={collapsed} inverted={inverted} onSelect={onNavigate} />
           ))}
         </div>
       ) : null}

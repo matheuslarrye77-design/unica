@@ -1,4 +1,3 @@
-import { HomeRail } from '@/components/shell/HomeRail';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { SocialFeed } from '@/components/social/SocialFeed';
 import { useInstitution } from '@/lib/institution';
@@ -10,7 +9,7 @@ export const Dashboard: FC = () => {
   if (ready && !muralAvailable) return <Navigate to="/announcements" replace />;
 
   return (
-    <PageFrame fitViewport rail={<HomeRail />}>
+    <PageFrame fitViewport>
       <SocialFeed />
     </PageFrame>
   );

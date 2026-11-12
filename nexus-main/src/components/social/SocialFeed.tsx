@@ -1,8 +1,6 @@
-import { Sun } from 'lucide-react';
-import { LilacWash } from './LilacWash';
+import { MuralTop } from './MuralTop';
 import { type FC, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { getTimeBasedGreeting } from '@/lib/utils';
 import { cancelRepost, commentFeedPost, createFeedPost, deleteFeedComment, deleteFeedPost, likeFeedComment, likeFeedPost, loadFeed, republishPost, saveFeedPost, shareFeedPost, updateFeedPost, uploadMedia, voteFeedPost, type Repost } from '@/lib/feed';
 import { actor, useDemoProfile } from '@/lib/session';
 import { isLeader, refreshMoods, useInstitution } from '@/lib/institution';
@@ -34,7 +32,6 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   const [note, setNote] = useState('');
   const feedTicket = useRef(0);
   const feedWarned = useRef(false);
-  const firstName = user.name.split(' ')[0];
   const newsId = mode === 'mural' ? params.get('noticia') : null;
   const news = newsId ? getJournalArticles().find((item) => item.id === newsId && item.status === 'published') : undefined;
   const journalShare = news
@@ -334,14 +331,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   return (
     <ExpandProvider>
     <div className="flex w-full flex-col gap-6">
-      {mode === 'recognition' ? null : (
-        <LilacWash
-          icon={<Sun className="h-5 w-5" strokeWidth={1.5} />}
-          title={`${getTimeBasedGreeting()}, ${firstName}!`}
-        >
-          Que hoje seja um dia incrível.
-        </LilacWash>
-      )}
+      {mode === 'recognition' ? null : <MuralTop />}
 
       {mode === 'recognition' ? (gestao ? <RecognitionComposer onCreated={() => window.dispatchEvent(new Event('unica-feed-refresh'))} /> : null) : <CreatePost onPublish={publish} journal={journalShare} onClearJournal={() => setParams({}, { replace: true })} />}
 
