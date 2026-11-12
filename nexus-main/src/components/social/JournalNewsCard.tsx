@@ -11,7 +11,7 @@ export const journalBorder: Record<JournalCategory, string> = {
 };
 
 export const JournalNewsCard: FC<{ title: string; category?: JournalCategory | string; excerpt: string; href?: string }> = ({ title, category, excerpt, href }) => {
-  const border = category in journalBorder ? journalBorder[category as JournalCategory] : 'border-gray-100';
+  const border = category && category in journalBorder ? journalBorder[category as JournalCategory] : 'border-gray-100';
   return (
     <div className={cn('relative overflow-hidden rounded-2xl border-2 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]', border)}>
       <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6B33F6]">Notícia do jornal</span>
