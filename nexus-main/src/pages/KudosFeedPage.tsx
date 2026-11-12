@@ -1,4 +1,5 @@
 import { MuralPublishDialog } from '@/components/social/MuralPublishDialog';
+import { ZoomImage } from '@/components/social/PhotoGallery';
 import { recognitionHeadline } from '@/lib/recognitionText';
 import { HomeRail } from '@/components/shell/HomeRail';
 import { PageFrame } from '@/components/shell/PageFrame';
@@ -230,7 +231,7 @@ export const KudosFeedPage: FC = () => {
                         {item.comment ? <p className="mt-1 text-[13px] text-[#8A7C98]">{item.comment}</p> : null}
                         {item.photos?.length ? (
                           <div className={`mt-3 grid gap-2 ${item.photos.length > 1 ? 'grid-cols-2' : ''}`}>
-                            {item.photos.map((url) => <img key={url} src={url} alt="" className="max-h-48 w-full rounded-xl object-cover" />)}
+                            {item.photos.map((url) => <ZoomImage key={url} src={url} className="max-h-48 w-full rounded-xl object-cover" />)}
                           </div>
                         ) : null}
                       </div>

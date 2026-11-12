@@ -1,4 +1,5 @@
 import { type FC } from 'react';
+import { ZoomImage } from './PhotoGallery';
 import { ReadMore } from './ReadMore';
 import { personAvatar, RecognitionArtCard } from './RecognitionArtCard';
 import { firstNameOf, recognitionLine } from '@/lib/recognitionText';
@@ -8,8 +9,9 @@ export const RecognitionPost: FC<{ post: SocialPost; expandId?: string }> = ({ p
   const name = post.recognizedName?.trim() || '';
   const from = (post.recognizedBy?.trim() || post.author).trim();
   const line = name ? recognitionLine(from, name) : '';
-  const caption = [post.caption, post.comment].filter(Boolean).join('\n').trim()
+  const rawCaption = [post.caption, post.comment].filter(Boolean).join('\n').trim()
     || (post.body && post.body !== post.bannerTitle && !post.body.includes('reconheceu o excelente trabalho') ? post.body.trim() : '');
+  const caption = rawCaption.replace(/legenda da publicação \(opcional\)/gi, '').trim();
   const decorative = new Set((post.blocks ?? []).flatMap((block) => (block.type === 'image' && block.display ? [block.url] : [])));
   const listed = post.images?.length ? post.images : post.image ? [post.image] : [];
   const photos = listed.filter((url) => !decorative.has(url));
@@ -27,7 +29,7 @@ export const RecognitionPost: FC<{ post: SocialPost; expandId?: string }> = ({ p
       ) : null}
       {photos.length ? (
         <div className={`mt-3 grid gap-2 ${photos.length > 1 ? 'grid-cols-2' : ''}`}>
-          {photos.map((url) => <img key={url} src={url} alt="" className="max-h-72 w-full rounded-2xl object-cover" />)}
+          {photos.map((url) => <ZoomImage key={url} src={url} className="max-h-72 w-full rounded-2xl object-cover" />)}
         </div>
       ) : null}
       {name ? (

@@ -30,9 +30,7 @@ const TrophyMark: FC = () => (
 export const RecognitionArtCard: FC<{ name: string; avatar?: string }> = ({ name }) => {
   if (!name) return null;
   return (
-    <div className="relative isolate flex min-h-[140px] w-full items-center overflow-hidden rounded-[20px] px-4 py-4 sm:min-h-[148px] sm:px-6">
-      <img src="/cards/fundo-claro.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
-      <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.42)_0%,rgba(255,255,255,0.12)_55%,transparent_80%)]" />
+    <div className="relative isolate flex min-h-[140px] w-full items-center overflow-hidden rounded-2xl border border-gray-100 bg-white px-4 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)] sm:min-h-[148px] sm:px-6">
       <div className="relative z-[1] flex w-full flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
         <div className="relative flex shrink-0 items-center justify-center">
           <TrophyMark />

@@ -1,7 +1,8 @@
-import { Heart, Star, Trash2, X } from 'lucide-react';
+import { Heart, Send, Star, Trash2, X } from 'lucide-react';
 import { useEffect, useState, useRef, type ClipboardEvent, type FC, type FormEvent, type KeyboardEvent } from 'react';
 import { actor } from '@/lib/session';
 import { forgetSticker, keepSticker, stickerIsSaved } from '@/lib/stickers';
+import { ZoomImage } from './PhotoGallery';
 import { ComposerExtras } from './ComposerExtras';
 import { ReadMore, useExpand } from './ReadMore';
 import type { CommentMedia, SocialComment } from './types';
@@ -73,7 +74,7 @@ export const Comments: FC<{
                   {comment.media.kind === 'video' ? (
                     <video src={comment.media.url} controls className="max-h-48 max-w-full rounded-xl bg-black" />
                   ) : (
-                    <img src={comment.media.url} alt={comment.media.kind === 'gif' ? 'GIF' : comment.media.kind === 'sticker' ? 'Figurinha' : 'Foto'} className={`${comment.media.kind === 'image' ? 'max-h-60 max-w-full' : 'h-28 w-28'} rounded-xl bg-[#F5F1FF] object-contain`} />
+                    <ZoomImage src={comment.media.url} alt={comment.media.kind === 'gif' ? 'GIF' : comment.media.kind === 'sticker' ? 'Figurinha' : 'Foto'} className={`${comment.media.kind === 'image' ? 'max-h-60 max-w-full' : 'h-28 w-28'} rounded-xl bg-[#F5F1FF] object-contain`} />
                   )}
                   {comment.media.kind === 'sticker' && comment.authorId !== actor().id && /^\/api\/stickers\/stk-[a-f0-9]{16}$/.test(comment.media.url) ? <SaveSticker url={comment.media.url} /> : null}
                 </div>
@@ -115,7 +116,9 @@ export const Comments: FC<{
             placeholder="Escreva um comentário..."
             className="min-h-10 min-w-0 flex-1 resize-none rounded-2xl border border-border bg-muted/40 px-4 py-2 text-sm outline-none focus-visible:border-primary"
           />
-          <button type="submit" disabled={(!draft.trim() && !pendingMedia) || Boolean(pendingMedia?.url.startsWith('blob:'))} className="h-10 text-sm font-semibold text-primary disabled:opacity-40">{pendingMedia?.url.startsWith('blob:') ? 'Enviando...' : 'Publicar'}</button>
+          <button type="submit" aria-label={pendingMedia?.url.startsWith('blob:') ? 'Enviando' : 'Publicar'} disabled={(!draft.trim() && !pendingMedia) || Boolean(pendingMedia?.url.startsWith('blob:'))} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500 disabled:opacity-40">
+            <Send className="h-4 w-4" />
+          </button>
         </div>
         <ComposerExtras onEmoji={insertEmoji} onSticker={(url) => onMedia?.({ kind: 'sticker', url })} onGif={(url) => onMedia?.({ kind: 'gif', url })} />
       </form>

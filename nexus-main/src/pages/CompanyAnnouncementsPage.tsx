@@ -1,10 +1,10 @@
 import { JournalEditor } from '@/components/journal/JournalEditor';
-import { JournalRail } from '@/components/journal/JournalRail';
-import { JournalCover, categoryTone } from '@/components/journal/JournalVisual';
+import { JournalCover } from '@/components/journal/JournalVisual';
+import { journalBorder } from '@/components/social/JournalNewsCard';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles, useJournalSaved } from '@/components/journal/useJournal';
 import { usePageSearch } from '@/lib/pageSearch';
-import { archiveJournalArticle, articleSummary, canManageJournal, deleteJournalArticle, journalPlainText, purgeJournalArticle, readingMinutes, restoreJournalArticle, toggleJournalSave, type JournalArticle, type JournalCategory } from '@/data/journal';
+import { archiveJournalArticle, articleSummary, canManageJournal, deleteJournalArticle, journalPlainText, purgeJournalArticle, readingMinutes, restoreJournalArticle, toggleJournalSave, type JournalArticle } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { PageHero } from '@/components/social/LilacWash';
@@ -19,10 +19,12 @@ function formatDate(iso: string) {
 const FeaturedCard: FC<{ article: JournalArticle; saved: boolean; onRemove?: () => void }> = ({ article, saved, onRemove }) => {
   const minutes = readingMinutes(article.content);
   return (
-    <Link to={`/announcements/${article.id}`} className="unica-surface group flex flex-col rounded-[var(--ds-radius-lg)] p-4">
-      <JournalCover article={article} />
-      <h3 className="mt-4 line-clamp-2 min-h-[46px] text-[17px] font-medium leading-[1.35] tracking-[-0.012em] text-[var(--ds-ink)] group-hover:text-[var(--ds-purple)]">{article.title}</h3>
-      <p className="mt-2 line-clamp-3 min-h-[60px] text-[13px] leading-[1.65] text-[var(--ds-slate)]">{articleSummary(article.content)}</p>
+    <Link to={`/announcements/${article.id}`} className={cn('group flex h-full flex-col rounded-2xl border-2 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]', journalBorder[article.category])}>
+      <div className="overflow-hidden rounded-xl [&_img]:max-h-28 [&_img]:w-full [&_img]:object-cover">
+        <JournalCover article={article} compact />
+      </div>
+      <h3 className="mt-3 line-clamp-2 text-lg font-bold leading-6 text-gray-800">{article.title}</h3>
+      <p className="mt-2 line-clamp-3 text-sm leading-6 text-gray-500">{articleSummary(article.content)}</p>
       <div className="mt-4 flex items-center gap-4 text-[12.5px] text-[var(--ds-muted)]">
         <span className="inline-flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{formatDate(article.date)}</span>
         <span className="inline-flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" />{minutes} min</span>
@@ -64,6 +66,7 @@ export const CompanyAnnouncementsPage: FC = () => {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<JournalArticle | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
+  const [savedOnly, setSavedOnly] = useState(false);
   const [seenTrash, setSeenTrash] = useState(0);
   const canManage = canManageJournal(currentUser);
 
@@ -103,7 +106,7 @@ export const CompanyAnnouncementsPage: FC = () => {
 
   return (
     <>
-    <PageFrame rail={<JournalRail articles={savedArticles} />}>
+    <PageFrame>
           <div className="mb-6">
             <PageHero
               icon={<Newspaper className="h-5 w-5" strokeWidth={1.75} />}
@@ -111,12 +114,13 @@ export const CompanyAnnouncementsPage: FC = () => {
               subtitle="Notícias e comunicados internos da Única"
               aside={canManage ? (
                 <div className="flex items-center gap-2">
-                  <button type="button" aria-pressed={trashOpen} aria-label="Lixeira" onClick={() => { setTrashOpen((current) => !current); setSeenTrash(removed.length); }} className={cn('relative grid h-9 w-9 place-items-center rounded-[12px] border border-[var(--ds-divider)] bg-white text-[var(--ds-slate)] hover:bg-[var(--ds-surface)]', trashOpen && 'bg-[var(--ds-lavender)] text-[var(--ds-purple)]')}>
+                  <button type="button" aria-pressed={trashOpen} aria-label="Lixeira" onClick={() => { setTrashOpen((current) => !current); setSeenTrash(removed.length); }} className={cn('relative grid h-11 w-11 place-items-center rounded-2xl border bg-white text-gray-500 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600', trashOpen ? 'border-blue-600 bg-blue-600 text-white hover:text-white' : 'border-gray-100')}>
                     <Trash2 className="h-4 w-4" />
-                    {removed.length > seenTrash ? <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#9D174D] px-1 text-[10px] font-semibold text-white">{removed.length}</span> : null}
+                    {removed.length > seenTrash ? <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#DB2777] px-1 text-[10px] font-semibold text-white">{removed.length}</span> : null}
                   </button>
-                  <button type="button" aria-label="Nova publicação" onClick={openCreate} className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90">
+                  <button type="button" onClick={openCreate} className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500">
                     <Plus className="h-4 w-4" />
+                    Nova publicação
                   </button>
                 </div>
               ) : null}
@@ -194,7 +198,7 @@ export const CompanyAnnouncementsPage: FC = () => {
                 key={id}
                 type="button"
                 onClick={() => selectCategory(id)}
-                className={cn('rounded-full px-3 py-1.5 text-[13px] font-medium', category === id ? (id === 'todos' ? 'bg-[var(--ds-lavender)] text-[var(--ds-purple)]' : categoryTone[id as JournalCategory].badge) : 'text-muted-foreground hover:bg-white hover:text-foreground')}
+                className={cn('rounded-2xl px-4 py-2.5 text-sm font-semibold', category === id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600')}
               >
                 {label}
               </button>
@@ -202,16 +206,19 @@ export const CompanyAnnouncementsPage: FC = () => {
           </div>
 
           <section>
-            <h2 className="mb-4 text-[18px] font-medium">{showingDefault ? 'Em destaque' : 'Publicações'}</h2>
-            {cards.length === 0 ? (
-              <p className="rounded-2xl border border-[#DDD4F5] bg-white px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma publicação encontrada.</p>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-bold text-gray-800">{savedOnly ? 'Salvas' : showingDefault ? 'Em destaque' : 'Publicações'}</h2>
+              <button type="button" aria-pressed={savedOnly} onClick={() => setSavedOnly((value) => !value)} className={`rounded-full px-3 py-1 text-[13px] ${savedOnly ? 'bg-blue-600 text-white' : 'text-[#5C5870] hover:bg-white'}`}>Salvos</button>
+            </div>
+            {(savedOnly ? savedArticles : cards).length === 0 ? (
+              <p className="rounded-2xl border border-gray-100 bg-white px-4 py-10 text-center text-sm text-gray-500 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">{savedOnly ? 'Nenhuma publicação salva.' : 'Nenhuma publicação encontrada.'}</p>
             ) : (
               <div className="grid items-stretch gap-3 md:grid-cols-3">
-                {cards.map((article) => <FeaturedCard key={article.id} article={article} saved={savedIds.includes(article.id)} onRemove={canManage ? () => { if (window.confirm('Mover esta publicação para a lixeira?')) archiveJournalArticle(article.id); } : undefined} />)}
+                {(savedOnly ? savedArticles : cards).map((article) => <FeaturedCard key={article.id} article={article} saved={savedIds.includes(article.id)} onRemove={canManage ? () => { if (window.confirm('Mover esta publicação para a lixeira?')) archiveJournalArticle(article.id); } : undefined} />)}
               </div>
             )}
           </section>
-          {recent.length > 0 ? (
+          {!savedOnly && recent.length > 0 ? (
             <section className="mt-8">
               <h2 className="mb-4 text-[18px] font-medium">Publicações recentes</h2>
               <div className="grid items-stretch gap-3 md:grid-cols-3">

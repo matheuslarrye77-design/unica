@@ -1,4 +1,28 @@
-import { useState, type FC } from 'react';
+import { useEffect, useState, type FC } from 'react';
+
+export const ZoomImage: FC<{ src: string; alt?: string; className?: string }> = ({ src, alt = '', className }) => {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+  return (
+    <>
+      <button type="button" className="block max-w-full text-left" aria-label={`Ampliar ${alt || 'imagem'}`} onClick={() => setOpen(true)}>
+        <img src={src} alt={alt} className={className} />
+      </button>
+      {open ? (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-black/80 p-6" onClick={() => setOpen(false)} role="dialog" aria-modal="true">
+          <img src={src} alt={alt} className="max-h-[90vh] max-w-[92vw] object-contain" />
+        </div>
+      ) : null}
+    </>
+  );
+};
 
 export const PhotoGallery: FC<{ images: string[] }> = ({ images }) => {
   const [open, setOpen] = useState<number | null>(null);

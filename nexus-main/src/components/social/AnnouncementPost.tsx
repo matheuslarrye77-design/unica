@@ -1,12 +1,17 @@
 import { type FC } from 'react';
 import { JournalNewsCard } from './JournalNewsCard';
+import { ZoomImage } from './PhotoGallery';
 import { ReadMore } from './ReadMore';
-import { articleSummary, categoryLabel, getJournalArticles, type JournalCategory } from '@/data/journal';
+import { articleSummary, getJournalArticles, type JournalCategory } from '@/data/journal';
 import type { SocialPost } from './types';
 
 function asCategory(value?: string | null): JournalCategory | undefined {
   if (value === 'processos' || value === 'urgente' || value === 'social' || value === 'treinamentos') return value;
   return undefined;
+}
+
+function cleanCaption(value: string) {
+  return value.replace(/legenda da publicação \(opcional\)/gi, '').trim();
 }
 
 function captionText(post: SocialPost, title: string, excerpt: string) {
@@ -27,7 +32,7 @@ export const AnnouncementPost: FC<{ post: SocialPost; expandId?: string }> = ({ 
   const title = post.bannerTitle || article?.title || 'Notícia do jornal';
   const category = asCategory(post.journalCategory) || article?.category;
   const excerpt = post.journalExcerpt || (article ? articleSummary(article.content) : '');
-  const caption = captionText(post, title, excerpt);
+  const caption = cleanCaption(captionText(post, title, excerpt));
   const decorative = new Set((post.blocks ?? []).flatMap((block) => (block.type === 'image' && block.display ? [block.url] : [])));
   const listed = post.images?.length ? post.images : post.image ? [post.image] : [];
   const extras = listed.filter((url) => !decorative.has(url) && url !== post.image);
@@ -36,18 +41,15 @@ export const AnnouncementPost: FC<{ post: SocialPost; expandId?: string }> = ({ 
     <div className="mt-3">
       {caption ? (
         <div className="mb-3">
-          <p className="text-[12px] font-semibold text-[#4600F3]">Legenda da publicação (opcional)</p>
-          <div className="mt-1">
-            <ReadMore id={expandId ?? `${post.id}-legenda`} text={caption} className="text-[15px] leading-6 text-[#3C3148]" />
-          </div>
+          <ReadMore id={expandId ?? `${post.id}-legenda`} text={caption} className="text-[15px] leading-6 text-[#3C3148]" />
         </div>
       ) : null}
       {extras.length ? (
         <div className={`mb-3 grid gap-2 ${extras.length > 1 ? 'grid-cols-2' : ''}`}>
-          {extras.map((url) => <img key={url} src={url} alt="" className="max-h-56 w-full rounded-xl object-cover" />)}
+          {extras.map((url) => <ZoomImage key={url} src={url} className="max-h-56 w-full rounded-xl object-cover" />)}
         </div>
       ) : null}
-      <JournalNewsCard title={title} category={category ? categoryLabel(category) : undefined} excerpt={excerpt} href={href} />
+      <JournalNewsCard title={title} category={category} excerpt={excerpt} href={href} />
     </div>
   );
 };

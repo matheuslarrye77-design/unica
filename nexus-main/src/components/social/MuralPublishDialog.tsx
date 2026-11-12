@@ -419,9 +419,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
             ) : null}
 
             {isRecognition && headline ? (
-              <div className="relative mb-3 flex items-center gap-3 overflow-hidden rounded-[22px] px-3 py-2.5">
-                <img src="/cards/fundo-claro.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
-                <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/40 via-white/16 to-transparent" />
+              <div className="relative mb-3 flex items-center gap-3 overflow-hidden rounded-2xl border border-gray-100 bg-white px-3 py-2.5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
                 <img src={authorAvatar} alt="" className="relative h-11 w-11 shrink-0 rounded-full bg-white object-cover ring-2 ring-white" />
                 <p className="relative min-w-0 flex-1 text-[16px] font-semibold leading-5 text-[#2C2438]">
                   {fromName.split(/\s+/)[0]} reconheceu <span className="text-[#3C3952]">{recognizedName}</span>
@@ -450,13 +448,12 @@ export const MuralPublishDialog: FC<Props> = (props) => {
               <>
                 <div className={`relative rounded-2xl border border-[#D8CEF6] bg-white px-4 pb-8 pt-3 focus-within:border-[#8A5CF8] focus-within:ring-2 focus-within:ring-[#EDE7FE] ${isRecognition ? 'flex items-start gap-2' : ''}`}>
                   {isRecognition ? <Pencil className="mt-0.5 h-4 w-4 shrink-0 text-[#4600F3]" /> : null}
-                  {journal ? <p className="mb-1 text-[12px] font-semibold text-[#4600F3]">Legenda da publicação (opcional)</p> : null}
                   <textarea
                     ref={field}
                     value={text}
                     maxLength={textMax}
                     onChange={(event) => setText(event.target.value.slice(0, textMax))}
-                    placeholder={isRecognition ? 'Adicione uma legenda (opcional)...' : (journal ? '' : 'Digite o conteúdo da sua publicação…')}
+                    placeholder={isRecognition ? 'Adicione uma legenda (opcional)...' : 'Digite o conteúdo da sua publicação…'}
                     className={`w-full resize-none bg-transparent text-[15px] leading-6 text-[#241B33] outline-none placeholder:text-[#B7A8C4] ${isRecognition || journal ? 'min-h-[52px]' : 'min-h-[190px]'}`}
                   />
                   {journal ? (

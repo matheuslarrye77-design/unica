@@ -1,3 +1,4 @@
+import { ZoomImage } from '@/components/social/PhotoGallery';
 import { articleCover, categoryLabel, parseJournalPieces, resolveJournalAsset, type JournalArticle, type JournalCategory } from '@/data/journal';
 import { cn } from '@/lib/utils';
 import { FileText, GraduationCap, TriangleAlert, Users, type LucideIcon } from 'lucide-react';
@@ -62,7 +63,7 @@ export const JournalRichText: FC<{ content: string; className?: string }> = ({ c
     <div className={className}>
       {pieces.map((piece) => {
         if (piece.kind === 'image') {
-          return <img key={piece.id} src={resolveJournalAsset(piece.ref)} alt="" className="my-3 w-full rounded-2xl object-cover" />;
+          return <ZoomImage key={piece.id} src={resolveJournalAsset(piece.ref)} className="my-3 w-full rounded-2xl object-cover" />;
         }
         if (!piece.text) return null;
         return <p key={piece.id} className="whitespace-pre-wrap">{piece.text}</p>;

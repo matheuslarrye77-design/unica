@@ -2,7 +2,7 @@ import { Emoji } from '@/components/Emoji';
 import { MOODS } from '@/components/shell/TeamMood';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Award, FileText, Lock, MoreHorizontal } from 'lucide-react';
-import { PhotoGallery } from './PhotoGallery';
+import { PhotoGallery, ZoomImage } from './PhotoGallery';
 import { ReadMore } from './ReadMore';
 import { useEffect, useRef, useState, type FC } from 'react';
 import { Link } from 'react-router-dom';
@@ -180,24 +180,24 @@ export const PostCard: FC<{
         <div className="mt-2 space-y-2">
           {blocks.map((block, index) => {
             if (block.type === 'text') return <ReadMore key={`${domId}-texto-${index}`} id={`${domId}-texto-${index}`} text={block.text} className="text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90" />;
-            if (block.display === 'sticker' || block.display === 'gif') return <img key={`${post.id}-imagem-${index}`} src={block.url} alt={block.display === 'gif' ? 'GIF' : 'Figurinha'} className="h-24 w-24 rounded-xl bg-[#F5F1FF] object-contain" />;
-            return <img key={`${post.id}-imagem-${index}`} src={block.url} alt="" className="max-h-[480px] w-full rounded-[12px] bg-[#F6F4FC] object-contain" />;
+            if (block.display === 'sticker' || block.display === 'gif') return <ZoomImage key={`${post.id}-imagem-${index}`} src={block.url} alt={block.display === 'gif' ? 'GIF' : 'Figurinha'} className="h-24 w-24 rounded-xl bg-[#F5F1FF] object-contain" />;
+            return <ZoomImage key={`${post.id}-imagem-${index}`} src={block.url} className="max-h-[480px] w-full rounded-[12px] bg-[#F6F4FC] object-contain" />;
           })}
         </div>
       ) : (
         <>
           {plain && post.body ? <div className="mt-2"><ReadMore id={`${domId}-texto`} text={post.body} className="text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90" /></div> : null}
-          {post.kind !== 'announcement' && post.kind !== 'recognition' && post.images && post.images.length > 0 ? <PhotoGallery images={post.images} /> : post.kind === 'image' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-contain bg-[#F6F4FC]" /> : null}
+          {post.kind !== 'announcement' && post.kind !== 'recognition' && post.images && post.images.length > 0 ? <PhotoGallery images={post.images} /> : post.kind === 'image' && post.image ? <ZoomImage src={post.image} className="mt-3 max-h-80 w-full rounded-[12px] object-contain bg-[#F6F4FC]" /> : null}
         </>
       )}
       {decorations.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {decorations.map((block, index) => (
-            block.type === 'image' ? <img key={`${post.id}-extra-${index}`} src={block.url} alt={block.display === 'gif' ? 'GIF' : 'Figurinha'} className="h-24 w-24 rounded-xl bg-[#F5F1FF] object-contain" /> : null
+            block.type === 'image' ? <ZoomImage key={`${post.id}-extra-${index}`} src={block.url} alt={block.display === 'gif' ? 'GIF' : 'Figurinha'} className="h-24 w-24 rounded-xl bg-[#F5F1FF] object-contain" /> : null
           ))}
         </div>
       ) : null}
-      {post.kind === 'leadership' && post.image ? <img src={post.image} alt="" className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
+      {post.kind === 'leadership' && post.image ? <ZoomImage src={post.image} className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
       {post.attachment?.type === 'video' && post.attachment.url ? <video src={post.attachment.url} controls preload="metadata" className="mt-3 max-h-[420px] w-full rounded-xl bg-black" /> : null}
       {post.attachment?.type === 'audio' && post.attachment.url ? (
         <div className="mt-3 rounded-xl border border-border px-3 py-2">

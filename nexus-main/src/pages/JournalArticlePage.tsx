@@ -1,6 +1,6 @@
 import { JournalEditor } from '@/components/journal/JournalEditor';
-import { JournalRail } from '@/components/journal/JournalRail';
 import { JournalBadge, JournalRichText } from '@/components/journal/JournalVisual';
+import { ZoomImage } from '@/components/social/PhotoGallery';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles, useJournalSaved } from '@/components/journal/useJournal';
 import { Button } from '@/components/ui/button';
@@ -92,7 +92,7 @@ export const JournalArticlePage: FC = () => {
 
   return (
     <>
-    <PageFrame rail={<JournalRail articles={savedIds.map((savedId) => articles.find((item) => item.id === savedId && item.status === 'published')).filter((item): item is NonNullable<typeof item> => Boolean(item))} />}>
+    <PageFrame>
         <article className="min-w-0 flex-1">
           <Link to="/announcements" className="mb-4 flex w-fit items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
@@ -139,13 +139,13 @@ export const JournalArticlePage: FC = () => {
               ) : null}
             </div>
           ) : null}
-          {articleCover(article) ? <img src={articleCover(article)} alt="" className="mt-6 aspect-[16/8] w-full rounded-2xl border object-cover" /> : null}
+          {articleCover(article) ? <ZoomImage src={articleCover(article) ?? ''} className="mt-6 aspect-[16/8] w-full rounded-2xl border object-cover" /> : null}
           <JournalRichText content={article.content} className="mt-6 space-y-4 text-base leading-7" />
 
           {article.media.length > 0 ? (
             <div className="mt-8 space-y-4">
               {article.media.filter((item) => item.kind === 'image').map((item) => (
-                <img key={item.id} src={resolveJournalAsset(item.url)} alt={item.name} className="w-full rounded-2xl border" />
+                <ZoomImage key={item.id} src={resolveJournalAsset(item.url)} alt={item.name} className="w-full rounded-2xl border" />
               ))}
               {article.media.filter((item) => item.kind === 'audio').map((item) => (
                 <JournalAudio key={item.id} url={resolveJournalAsset(item.url)} start={item.start} duration={item.duration} />
