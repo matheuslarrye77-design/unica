@@ -11,7 +11,7 @@ import { PodiumStage } from '@/components/recognition/PodiumStage';
 import { useInstitution } from '@/lib/institution';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { PageHero } from '@/components/social/LilacWash';
-import { ChevronDown, Heart, Megaphone, Sparkles, Star, Target, Trophy } from 'lucide-react';
+import { Heart, Megaphone, Sparkles, Star, Target, Trophy } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
@@ -73,7 +73,6 @@ export const KudosFeedPage: FC = () => {
   const [filter, setFilter] = useState<'Todos' | Area>('Todos');
   const [extra, setExtra] = useState<Recognition[]>(readExtra);
   useEffect(() => { localStorage.setItem(EXTRA_KEY, JSON.stringify(extra)); }, [extra]);
-  const [menu, setMenu] = useState(false);
   const [posted, setPosted] = useState<Record<string, boolean>>(() => {
     try { return JSON.parse(sessionStorage.getItem('unica-recognition-mural') ?? '{}') as Record<string, boolean>; } catch { return {}; }
   });
@@ -141,34 +140,39 @@ export const KudosFeedPage: FC = () => {
       <div className="grid gap-6 pb-16">
             {tab === 'metas' ? (
               <PageHero
+                align="start"
                 icon={<Target className="h-5 w-5" strokeWidth={1.75} />}
                 title="Central Inteligente de Metas"
                 subtitle="Interprete metas e resultados nos dois modos."
-              />
-            ) : (
-              <PageHero
-                icon={<img src="/reconhecimento/trofeu.png" alt="" className="h-7 w-7 object-contain" />}
-                title="Reconhecimento"
-                subtitle="Valorize quem faz a diferença!"
-                aside={gestao ? (
-                  <button type="button" onClick={() => setComposer(true)} className="inline-flex shrink-0 items-center gap-2 rounded-[10px] bg-[#7065C5] px-3.5 py-2 text-[13px] font-medium text-white hover:bg-[#5D54B5]">
-                    <Star className="h-4 w-4 fill-current" />
-                    Postar reconhecimento
+                aside={canManageGoals ? (
+                  <button type="button" aria-label="Voltar ao reconhecimento" onClick={() => showTab('mural')} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
+                    <Trophy className="h-4 w-4" />
                   </button>
                 ) : null}
               />
+            ) : (
+              <PageHero
+                align="start"
+                icon={<img src="/reconhecimento/trofeu.png" alt="" className="h-7 w-7 object-contain" />}
+                title="Reconhecimento"
+                subtitle="Valorize quem faz a diferença!"
+                aside={(
+                  <div className="flex items-center gap-2">
+                    {gestao ? (
+                      <button type="button" onClick={() => setComposer(true)} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500">
+                        <Star className="h-4 w-4 fill-current" />
+                        Postar reconhecimento
+                      </button>
+                    ) : null}
+                    {canManageGoals ? (
+                      <button type="button" aria-label="Central de metas" onClick={() => showTab('metas')} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
+                        <Target className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+              />
             )}
-
-            {canManageGoals ? (
-              <div className="flex gap-6 border-b border-[var(--ds-divider)]">
-                <button type="button" onClick={() => showTab('mural')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2.5 text-[13px] font-medium', tab === 'mural' ? 'border-[var(--ds-purple)] text-[var(--ds-purple)]' : 'border-transparent text-[var(--ds-muted)]')}>
-                  <Trophy className="h-3.5 w-3.5" strokeWidth={1.5} /> Mural de reconhecimento
-                </button>
-                <button type="button" onClick={() => showTab('metas')} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2.5 text-[13px] font-medium', tab === 'metas' ? 'border-[var(--ds-purple)] text-[var(--ds-purple)]' : 'border-transparent text-[var(--ds-muted)]')}>
-                  <Target className="h-3.5 w-3.5" /> Central de Metas
-                </button>
-              </div>
-            ) : null}
 
             {tab === 'metas' && goals ? <GoalsCenter /> : null}
 
@@ -177,23 +181,16 @@ export const KudosFeedPage: FC = () => {
             <PodiumStage podiums={goals?.podiums ?? []} periodKey={podiumKey} onPeriod={setPodiumMonth} />
 
             <section className="unica-surface rounded-[var(--ds-radius-lg)] px-6 py-6">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="flex items-center gap-2 text-[16px] font-medium text-[var(--ds-ink)]">
-                  <Star className="h-4 w-4 text-[var(--ds-purple)]" /> Últimos reconhecimentos
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="flex items-center gap-2 text-lg font-bold text-gray-800">
+                  <Star className="h-4 w-4 text-[#6B33F6]" /> Últimos reconhecimentos
                 </h2>
-                <div className="relative">
-                  <button type="button" onClick={() => setMenu((value) => !value)} className="inline-flex items-center gap-1 rounded-[10px] border border-[var(--ds-divider)] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[var(--ds-slate)]">
-                    {filter} <ChevronDown className="h-3.5 w-3.5" />
-                  </button>
-                  {menu ? (
-                    <div className="absolute right-0 z-10 mt-1 w-32 rounded-[12px] border border-[var(--ds-divider)] bg-white p-1 shadow-[var(--ds-shadow-hover)]">
-                      {(['Todos', 'Gestão', 'Suporte'] as const).map((option) => (
-                        <button key={option} type="button" onClick={() => { setFilter(option); setMenu(false); }} className={cn('block w-full rounded-[8px] px-3 py-1.5 text-left text-[13px]', filter === option ? 'bg-[var(--ds-lavender)] text-[var(--ds-purple)]' : 'text-[var(--ds-slate)] hover:bg-[var(--ds-surface)]')}>
-                          {option}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
+                <div className="flex flex-wrap gap-2">
+                  {(['Todos', 'Gestão', 'Suporte'] as const).map((option) => (
+                    <button key={option} type="button" onClick={() => setFilter(option)} className={cn('rounded-2xl px-4 py-2.5 text-base font-semibold', filter === option ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600')}>
+                      {option}
+                    </button>
+                  ))}
                 </div>
               </div>
               <ul className="mt-5 grid gap-3">
@@ -291,14 +288,10 @@ export const KudosFeedPage: FC = () => {
       ) : null}
       {tab === 'metas' && goals ? createPortal(
         <>
-          <button type="button" aria-pressed={assistant} aria-label="Assistente de metas" onClick={() => setAssistant((value) => !value)} className="fixed right-5 bottom-24 z-[60] grid h-12 w-12 place-items-center rounded-full border-2 border-[#4600F3] bg-white text-[#4600F3] shadow-lg">
+          <button type="button" aria-pressed={assistant} aria-label="Assistente de metas" onClick={() => setAssistant((value) => !value)} className="fixed right-5 bottom-[88px] z-[60] grid h-14 w-14 place-items-center rounded-full border-2 border-[#4600F3] bg-white text-[#4600F3] shadow-lg">
             <Sparkles className="h-5 w-5" />
           </button>
-          {assistant ? (
-            <div className="fixed right-5 bottom-40 z-[60] flex h-[min(70vh,640px)] w-[min(92vw,380px)] overflow-hidden rounded-3xl shadow-[0_16px_40px_rgba(15,23,42,0.16)]">
-              <GoalsAssistant />
-            </div>
-          ) : null}
+          {assistant ? <GoalsAssistant startWide /> : null}
         </>,
         document.body,
       ) : null}

@@ -254,7 +254,7 @@ export const PodiumStage: FC<{
             </p>
           )}
           <div className="inline-flex items-center gap-1.5">
-            {CATEGORIES.map((item) => (
+            {CATEGORIES.filter((item) => podiums.some((entry) => entry.periodKey === periodKey && entry.channel === item.id && entry.ranking?.length)).map((item) => (
               <button
                 key={item.id}
                 type="button"

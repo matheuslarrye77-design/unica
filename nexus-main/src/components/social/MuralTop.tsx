@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ChevronLeft, ChevronRight, Gift, Sparkles, Target } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Gift, Target } from 'lucide-react';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -49,15 +49,17 @@ function readOrder() {
 const Face: FC<{ person: Person; self?: boolean; mood?: string; gift?: string; onMood?: () => void }> = ({ person, self, mood, gift, onMood }) => {
   const portrait = (
     <span className="relative block h-14 w-14">
-      {self ? <Sparkles className="absolute -top-2 left-1/2 h-3.5 w-3.5 -translate-x-1/2 text-[#6B33F6]" /> : null}
       <img src={person.avatar} alt="" className="h-14 w-14 rounded-full bg-[#EDE7FE] object-cover ring-2 ring-white" />
       {mood ? (
-        <span className="absolute -bottom-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full bg-white shadow-sm">
+        <span className="absolute -bottom-1 -left-1 grid h-5 w-5 place-items-center rounded-full bg-white ring-2 ring-white">
           <Emoji emoji={mood} className="h-3.5 w-3.5" />
         </span>
       ) : null}
+      {self ? (
+        <span className="absolute -right-0.5 -bottom-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-[#6B33F6] text-[12px] font-bold leading-none text-white ring-2 ring-white">+</span>
+      ) : null}
       {gift ? (
-        <span className="group/gift absolute -top-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[#4600F3] ring-2 ring-[#4600F3]">
+        <span className="group/gift absolute -top-1 -right-1 z-10 grid h-5 w-5 place-items-center rounded-full bg-white text-[#4600F3] ring-2 ring-[#4600F3]">
           <Gift className="h-3 w-3" />
           <span className="pointer-events-none absolute top-6 left-1/2 z-20 hidden w-max -translate-x-1/2 rounded-lg bg-[#1F2937] px-2.5 py-1.5 text-left text-[11px] font-medium text-white group-hover/gift:block group-focus-within/gift:block">
             {gift}
@@ -68,7 +70,7 @@ const Face: FC<{ person: Person; self?: boolean; mood?: string; gift?: string; o
   );
   if (!self) return portrait;
   return (
-    <button type="button" aria-label="Alterar meu humor" onClick={onMood} className="rounded-full">
+    <button type="button" aria-label="Adicionar humor" onClick={onMood} className="block h-14 w-14 border-0 bg-transparent p-0 leading-none">
       {portrait}
     </button>
   );
@@ -91,6 +93,7 @@ export const MuralTop: FC = () => {
   const [tip, setTip] = useState<number | null>(null);
   const [moodOpen, setMoodOpen] = useState(false);
   const [order, setOrder] = useState<string[]>(readOrder);
+  const [avatarPage, setAvatarPage] = useState(0);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, index) => {
@@ -167,20 +170,25 @@ export const MuralTop: FC = () => {
 
   function giftOf(person: Person) {
     const hit = birthdays.find((item) => item.name.toLowerCase() === person.name.toLowerCase());
-    return hit ? `${hit.name} · ${hit.label}` : undefined;
+    if (hit) return `${hit.name} · ${hit.label}`;
+    if (person.id === people[0]?.id) return `${person.name} · 18 de novembro`;
+    return undefined;
   }
+
+  const pageSize = 8;
+  const pageCount = Math.max(1, Math.ceil(people.length / pageSize));
+  const visiblePeople = people.slice(avatarPage * pageSize, avatarPage * pageSize + pageSize);
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex items-center justify-center gap-3">
-        <NotificationDropdown compact />
-        <div className="flex min-w-0 flex-col items-center">
-          <p className="text-[12px] font-semibold capitalize tracking-wide text-[#6B33F6]">{monthLabel}</p>
-          <div className="mt-1 flex items-center gap-1">
-            <button type="button" aria-label="Semana anterior" onClick={() => setCursor((value) => new Date(value.getFullYear(), value.getMonth(), value.getDate() - 7))} className="grid h-7 w-7 place-items-center rounded-full text-[#8A7C98] hover:bg-white">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <div className="flex items-end gap-1.5">
+      <div className="flex flex-col items-center">
+        <p className="text-[12px] font-semibold capitalize tracking-wide text-[#6B33F6]">{monthLabel}</p>
+        <div className="mt-1 flex items-center gap-1">
+          <NotificationDropdown compact />
+          <button type="button" aria-label="Semana anterior" onClick={() => setCursor((value) => new Date(value.getFullYear(), value.getMonth(), value.getDate() - 7))} className="grid h-8 w-8 place-items-center rounded-full text-[#8A7C98] hover:bg-white">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="flex items-end gap-1.5">
               {days.map((date, index) => {
                 const today = sameDay(date, new Date());
                 const dayEvents = events.filter((event) => sameDay(event.date, date));
@@ -213,27 +221,34 @@ export const MuralTop: FC = () => {
                 );
               })}
             </div>
-            <button type="button" aria-label="Próxima semana" onClick={() => setCursor((value) => new Date(value.getFullYear(), value.getMonth(), value.getDate() + 7))} className="grid h-7 w-7 place-items-center rounded-full text-[#8A7C98] hover:bg-white">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+          <button type="button" aria-label="Próxima semana" onClick={() => setCursor((value) => new Date(value.getFullYear(), value.getMonth(), value.getDate() + 7))} className="grid h-8 w-8 place-items-center rounded-full text-[#8A7C98] hover:bg-white">
+            <ChevronRight className="h-4 w-4" />
+          </button>
+          <Link to="/projects?painel=missoes" aria-label="Missões ativas" className="relative grid h-8 w-8 place-items-center rounded-full text-[#6B33F6] hover:bg-white">
+            <Target className="h-4 w-4" />
+            {missions > 0 ? <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#DB2777] px-1 text-[10px] font-semibold text-white">{missions}</span> : null}
+          </Link>
         </div>
-        <Link to="/projects?painel=missoes" aria-label="Missões ativas" className="relative grid h-8 w-8 place-items-center rounded-full text-[#6B33F6] hover:bg-white">
-          <Target className="h-4 w-4" />
-          {missions > 0 ? <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#DB2777] px-1 text-[10px] font-semibold text-white">{missions}</span> : null}
-        </Link>
       </div>
 
       <div className="relative">
-        <div className="flex items-end gap-3 overflow-x-auto px-1 pt-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="shrink-0">
-            <Face person={{ id: user.id, name: user.name, avatar: user.avatar }} self mood={mine} gift={giftOf({ id: user.id, name: user.name, avatar: user.avatar })} onMood={() => setMoodOpen((value) => !value)} />
+        <div className="flex items-center justify-center gap-2 px-1 pt-3 pb-1">
+          <button type="button" aria-label="Perfis anteriores" disabled={avatarPage === 0} onClick={() => setAvatarPage((value) => Math.max(0, value - 1))} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#8A7C98] hover:bg-white disabled:opacity-30">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="shrink-0">
+              <Face person={{ id: user.id, name: user.name, avatar: user.avatar }} self mood={mine} gift={giftOf({ id: user.id, name: user.name, avatar: user.avatar })} onMood={() => setMoodOpen((value) => !value)} />
+            </div>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <SortableContext items={visiblePeople.map((person) => person.id)} strategy={horizontalListSortingStrategy}>
+                {visiblePeople.map((person) => <SortableFace key={person.id} person={person} mood={moodOf(person)} gift={giftOf(person)} />)}
+              </SortableContext>
+            </DndContext>
           </div>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-            <SortableContext items={people.map((person) => person.id)} strategy={horizontalListSortingStrategy}>
-              {people.map((person) => <SortableFace key={person.id} person={person} mood={moodOf(person)} gift={giftOf(person)} />)}
-            </SortableContext>
-          </DndContext>
+          <button type="button" aria-label="Próximos perfis" disabled={avatarPage >= pageCount - 1} onClick={() => setAvatarPage((value) => Math.min(pageCount - 1, value + 1))} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#8A7C98] hover:bg-white disabled:opacity-30">
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
         {moodOpen ? (
           <div className="absolute top-16 left-0 z-30 w-44 rounded-2xl border border-gray-100 bg-white p-1 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">

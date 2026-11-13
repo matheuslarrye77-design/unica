@@ -1336,19 +1336,22 @@ function scoreOverall(source, options, local, period) {
   const bank = rulesFromBank(options.managementGoals, period.periodKey);
   const records = recordsForPeriod(local, options, period);
   const noteTurn = !(local.rows ?? []).some((row) => row.userId) && !(local.rules ?? []).length && (notes.length || resolved.questions.length);
-  const selected = selectedOverall(source, { ...options, localRules: local.rules, localRows: local.rows, bank, records, noteTurn });
+  const picked = selectedOverall(source, { ...options, localRules: local.rules, localRows: local.rows, bank, records, noteTurn });
+  const cited = citedKnown(source);
+  const fromUi = new Set((Array.isArray(options.indicators) ? options.indicators : []).map((item) => (item === 'resolvidos' ? 'resolvidosCount' : item)));
+  const ready = picked.filter((id) => ruleForIndicator([...(local.rules ?? []), ...bank], id));
+  const selected = ready.length ? ready : picked;
   const packed = packOverallWeights(selected);
   const rules = rulesForSelected(source, local, bank, selected);
   const missing = [];
   if (!period.periodLabel) missing.push('o período com mês e ano');
   if (packed.error) missing.push(...packed.error);
   const roster = options.people ?? [];
-  for (const id of selected) {
-    const used = records.some((row) => fieldApplies(id, channelOfRecord(row, roster) || row.subsetor));
-    if (!used) continue;
-    if (!ruleForIndicator(rules, id)) {
-      const channels = (OVERALL_FIELDS.find((item) => item.id === id)?.channels ?? []).join(', ');
-      missing.push(`cadastrar a meta de ${displayName(id)}${channels ? ` para ${channels}` : ''}${period.periodLabel ? ` em ${period.periodLabel}` : ''}`);
+  if (!ready.length) {
+    for (const id of picked) {
+      if (!cited[id] && !fromUi.has(id)) continue;
+      if (ruleForIndicator(rules, id) || ruleForIndicator(bank, id)) continue;
+      missing.push(`cadastrar a meta de ${displayName(id)}${period.periodLabel ? ` em ${period.periodLabel}` : ''}`);
     }
   }
   if (wantsPeople(source) && !records.length) missing.push('os resultados individuais dos colaboradores citados');

@@ -3,12 +3,11 @@ import { JournalCover } from '@/components/journal/JournalVisual';
 import { journalBorder } from '@/components/social/JournalNewsCard';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles, useJournalSaved } from '@/components/journal/useJournal';
-import { usePageSearch } from '@/lib/pageSearch';
 import { archiveJournalArticle, articleSummary, canManageJournal, deleteJournalArticle, journalPlainText, purgeJournalArticle, readingMinutes, restoreJournalArticle, toggleJournalSave, type JournalArticle } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { PageHero } from '@/components/social/LilacWash';
-import { Bookmark, Calendar, ChevronRight, ClipboardList, Clock, Newspaper, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { Bookmark, Calendar, ChevronRight, ClipboardList, Clock, Filter, Newspaper, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState, type FC } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -62,7 +61,8 @@ export const CompanyAnnouncementsPage: FC = () => {
   const savedIds = useJournalSaved();
   const [params, setParams] = useSearchParams();
   const category = params.get('categoria') ?? 'todos';
-  const { query: search } = usePageSearch();
+  const [search, setSearch] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<JournalArticle | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -109,6 +109,7 @@ export const CompanyAnnouncementsPage: FC = () => {
     <PageFrame>
           <div className="mb-6">
             <PageHero
+              align="start"
               icon={<Newspaper className="h-5 w-5" strokeWidth={1.75} />}
               title="Jornal"
               subtitle="Notícias e comunicados internos da Única"
@@ -118,7 +119,7 @@ export const CompanyAnnouncementsPage: FC = () => {
                     <Trash2 className="h-4 w-4" />
                     {removed.length > seenTrash ? <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#DB2777] px-1 text-[10px] font-semibold text-white">{removed.length}</span> : null}
                   </button>
-                  <button type="button" onClick={openCreate} className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500">
+                  <button type="button" onClick={openCreate} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500">
                     <Plus className="h-4 w-4" />
                     Nova publicação
                   </button>
@@ -186,23 +187,29 @@ export const CompanyAnnouncementsPage: FC = () => {
             </section>
           ) : null}
 
-          <div className="mb-5 flex flex-wrap justify-center gap-2">
-            {([
-              ['todos', 'Todos'],
-              ['processos', 'Processos'],
-              ['urgente', 'Urgente'],
-              ['social', 'Social'],
-              ['treinamentos', 'Treinamentos'],
-            ] as const).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => selectCategory(id)}
-                className={cn('rounded-2xl px-4 py-2.5 text-base font-semibold', category === id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600')}
-              >
-                {label}
-              </button>
-            ))}
+          <div className="relative mb-5 flex items-center gap-2">
+            <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-2xl border border-gray-100 bg-white px-3 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+              <Search className="h-4 w-4 shrink-0 text-gray-400" />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar notícias" className="h-full w-full bg-transparent text-base text-gray-800 outline-none placeholder:text-gray-400" />
+            </label>
+            <button type="button" aria-expanded={filterOpen} aria-label="Filtrar por categoria" onClick={() => setFilterOpen((value) => !value)} className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-2xl', category !== 'todos' || filterOpen ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600')}>
+              <Filter className="h-4 w-4" />
+            </button>
+            {filterOpen ? (
+              <div className="absolute top-12 right-0 z-20 w-48 rounded-2xl border border-gray-100 bg-white p-1 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                {([
+                  ['todos', 'Todos'],
+                  ['processos', 'Processos'],
+                  ['urgente', 'Urgente'],
+                  ['social', 'Social'],
+                  ['treinamentos', 'Treinamentos'],
+                ] as const).map(([id, label]) => (
+                  <button key={id} type="button" onClick={() => { selectCategory(id); setFilterOpen(false); }} className={cn('block w-full rounded-xl px-3 py-2 text-left text-base font-semibold', category === id ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-blue-600')}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <section>

@@ -1,7 +1,6 @@
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { authHeaders, getDemoId } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import { useShell } from '@/components/Sidebar';
 import { ArrowLeftRight, BarChart3, Bot, Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, FileText, Maximize2, MessageCircle, Minimize2, Pencil, Phone, Send, Settings2, Smile, Sparkles, Star, Ticket, Timer, Trash2, Trophy, User, X } from 'lucide-react';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type FC, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -860,7 +859,6 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
   const [openGoal, setOpenGoal] = useState('');
   const [clearMode, setClearMode] = useState<'' | 'period' | 'all'>('');
   const [goalFilter, setGoalFilter] = useState<'Ligação' | 'desk'>('desk');
-  const { leftCollapsed } = useShell();
   const bankPeriod = bankPeriods.find((item) => item.key === selected);
   const periodIndex = buckets.findIndex((key) => key === selected);
   const periodLabel = bankPeriod?.label || (selected ? monthTitle(selected) : '');
@@ -939,15 +937,12 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
   ];
 
   const bank = (
-    <div className={cn('fixed inset-0 z-[80] overflow-y-auto bg-[url("/fundo-plataforma.png")] bg-cover bg-fixed bg-center [scrollbar-width:thin]', leftCollapsed ? 'lg:left-16' : 'lg:left-[260px]')}>
+    <div className="fixed inset-0 z-[80] overflow-y-auto bg-slate-100 [scrollbar-width:thin] lg:left-[104px]">
       <div className="mx-auto flex min-h-full w-full flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
-        <header className="flex flex-col gap-4 rounded-[22px] border border-[#E5DDF8] bg-white px-5 py-4 shadow-[0_8px_24px_rgba(70,0,243,0.05)] sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]"><BarChart3 className="h-6 w-6" /></span>
-            <div className="min-w-0">
-              <h3 className="text-[22px] font-semibold tracking-tight text-[#241B33]">Banco dos relatórios</h3>
-              <p className="mt-0.5 text-[13px] text-[#8A7C98]">Metas da gestão e resultados por colaborador, separados por mês.</p>
-            </div>
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h3 className="text-4xl font-bold tracking-tight text-gray-800">Banco dos relatórios</h3>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-gray-500">Metas da gestão e resultados por colaborador, separados por mês.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {buckets.length ? (
@@ -1095,9 +1090,8 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
         </section>
 
         <section className="pb-8">
-          <div className="mb-3 flex items-center gap-3">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]"><BarChart3 className="h-6 w-6" /></span>
-            <h4 className="text-[16px] font-semibold text-[#241B33]">Resultados individuais</h4>
+          <div className="mb-3">
+            <h4 className="text-lg font-bold text-gray-800">Resultados individuais</h4>
           </div>
           {peopleCards.length === 0 && pending.length === 0 ? <p className="rounded-[26px] bg-white px-6 py-6 text-[15px] text-[#8A7C98] shadow-[0_8px_24px_rgba(70,0,243,0.04)]">Nenhum resultado armazenado neste período.</p> : null}
           <div className="grid gap-5">
@@ -1183,12 +1177,12 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
   return typeof document === 'undefined' ? bank : createPortal(bank, document.body);
 }
 
-export const GoalsAssistant: FC = () => {
+export const GoalsAssistant: FC<{ startWide?: boolean }> = ({ startWide = false }) => {
   const board = useBoard();
   const { goals, messages, draft, setDraft, busy, talk, phase, pendingRules, setPendingRules, conference, pendingPodium, confirmPodium, saveTemplate, cancelProposal } = board;
   const thread = useRef<HTMLDivElement>(null);
   const [bankOpen, setBankOpen] = useState(false);
-  const [wide, setWide] = useState(false);
+  const [wide, setWide] = useState(startWide);
 
   useEffect(() => {
     thread.current?.scrollTo({ top: thread.current.scrollHeight });
@@ -1200,7 +1194,7 @@ export const GoalsAssistant: FC = () => {
   }
 
   return (
-    <aside className={cn('relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[22px] border border-[#E5DDF8] bg-white', wide && 'fixed top-14 bottom-3 left-3 right-3 z-[70] shadow-[0_24px_60px_rgba(70,0,243,0.22)] xl:left-[260px] xl:right-3')}>
+    <aside className={cn('z-[70] flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-gray-100 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.12)]', wide ? 'fixed top-3 right-3 bottom-3 left-3 lg:left-[104px]' : 'fixed right-5 bottom-[160px] h-[min(70vh,640px)] w-[min(92vw,380px)]')}>
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#F3EAF8] px-3 py-3 pr-10">
         <h3 className="flex min-w-0 items-center gap-2 text-[14px] font-semibold text-[#241B33]">
           <Sparkles className="h-4 w-4 shrink-0 text-[#4600F3]" /> <span className="truncate">Fale com o assistente de metas</span>

@@ -6,10 +6,11 @@ export const PageHero: FC<{
   title: ReactNode;
   subtitle?: ReactNode;
   aside?: ReactNode;
+  align?: 'start' | 'end';
   className?: string;
-}> = ({ title, subtitle, aside, className }) => (
+}> = ({ title, subtitle, aside, align = 'end', className }) => (
   <section className={cn('relative', className)}>
-    <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className={cn('flex flex-wrap justify-between gap-4', align === 'start' ? 'items-start' : 'items-end')}>
       <div className="min-w-0">
         <h1 className="text-4xl font-bold tracking-tight text-gray-800">{title}</h1>
         {subtitle ? <p className="mt-3 max-w-2xl text-base leading-7 text-gray-500">{subtitle}</p> : null}
