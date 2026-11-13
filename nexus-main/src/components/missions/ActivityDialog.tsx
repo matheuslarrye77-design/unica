@@ -61,38 +61,40 @@ export const ActivityDialog: FC<{
     });
   }
 
+  const field = '!h-11 w-full rounded-2xl border-gray-100 bg-white text-base';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent overlayClassName="bg-slate-900/25 backdrop-blur-md" className="rounded-2xl border border-gray-100 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>{mode === 'create' ? 'Nova atividade' : 'Editar atividade'}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-xl font-bold tracking-tight text-gray-800">{mode === 'create' ? 'Nova atividade' : 'Editar atividade'}</DialogTitle>
+          <DialogDescription className="text-base text-gray-500">
             {mode === 'create' ? 'A atividade entra na coluna escolhida.' : 'Atualize os dados desta atividade.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="atividade-titulo">Título</Label>
-            <Input id="atividade-titulo" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Nome da atividade" />
+            <Label htmlFor="atividade-titulo" className="text-sm font-medium text-gray-600">Título</Label>
+            <Input id="atividade-titulo" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Nome da atividade" className={field} />
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="atividade-descricao">Descrição</Label>
-            <Textarea id="atividade-descricao" value={description} onChange={(event) => setDescription(event.target.value)} rows={3} placeholder="Descreva o que precisa ser feito" />
+            <Label htmlFor="atividade-descricao" className="text-sm font-medium text-gray-600">Descrição</Label>
+            <Textarea id="atividade-descricao" value={description} onChange={(event) => setDescription(event.target.value)} rows={3} placeholder="Descreva o que precisa ser feito" className="rounded-2xl border-gray-100 bg-white text-base" />
           </div>
           <div className="grid gap-2">
-            <Label>Responsável</Label>
+            <Label className="text-sm font-medium text-gray-600">Responsável</Label>
             <Select value={assignee} onValueChange={setAssignee}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectTrigger className={`${field} w-full`}><SelectValue /></SelectTrigger>
               <SelectContent>
                 {ACTIVITY_ASSIGNEES.map((person) => <SelectItem key={person} value={person}>{person}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label>Prioridade</Label>
+            <Label className="text-sm font-medium text-gray-600">Prioridade</Label>
             <Select value={priority} onValueChange={(value) => setPriority(value as ActivityPriority)}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectTrigger className={`${field} w-full`}><SelectValue /></SelectTrigger>
               <SelectContent>
                 {priorities.map((item) => <SelectItem key={item} value={item}>{PRIORITY_LABEL[item]}</SelectItem>)}
               </SelectContent>
@@ -100,10 +102,10 @@ export const ActivityDialog: FC<{
           </div>
           {leadership ? (
             <div className="grid gap-2">
-              <Label>Quem vê a missão</Label>
+              <Label className="text-sm font-medium text-gray-600">Quem vê a missão</Label>
               <div className="flex flex-wrap gap-2">
                 {(Object.keys(CHANNEL_LABEL) as MissionChannel[]).map((item) => (
-                  <button key={item} type="button" aria-pressed={channel === item} onClick={() => setChannel(item)} className={`rounded-2xl px-4 py-2 text-sm font-semibold ${channel === item ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]'}`}>
+                  <button key={item} type="button" aria-pressed={channel === item} onClick={() => setChannel(item)} className={`h-11 rounded-2xl px-4 text-base font-semibold ${channel === item ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]'}`}>
                     {CHANNEL_LABEL[item]}
                   </button>
                 ))}
@@ -111,12 +113,12 @@ export const ActivityDialog: FC<{
             </div>
           ) : null}
           <div className="grid gap-2">
-            <Label htmlFor="atividade-prazo">Prazo</Label>
-            <Input id="atividade-prazo" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
+            <Label htmlFor="atividade-prazo" className="text-sm font-medium text-gray-600">Prazo</Label>
+            <Input id="atividade-prazo" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className={field} />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit">{mode === 'create' ? 'Criar atividade' : 'Salvar'}</Button>
+            <Button type="button" variant="outline" className="h-11 rounded-2xl px-4 text-base" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="submit" className="h-11 rounded-2xl px-4 text-base">{mode === 'create' ? 'Criar atividade' : 'Salvar'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

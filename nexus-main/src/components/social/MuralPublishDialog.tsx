@@ -383,7 +383,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
     <Dialog open={open} onOpenChange={(next) => { if (!next) close(); }}>
       <DialogContent
         showCloseButton={false}
-        overlayClassName="bg-slate-900/20"
+        overlayClassName="bg-slate-900/25 backdrop-blur-md"
         className={`gap-0 overflow-visible rounded-2xl border border-gray-100 bg-white p-0 shadow-[0_8px_24px_rgba(15,23,42,0.08)] ${isRecognition ? 'sm:max-w-[680px]' : 'sm:max-w-[640px]'}`}
       >
         <DialogDescription className="sr-only">{dialogText}</DialogDescription>

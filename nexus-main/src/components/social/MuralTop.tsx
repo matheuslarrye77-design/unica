@@ -181,9 +181,10 @@ export const MuralTop: FC = () => {
     return undefined;
   }
 
-  const pageSize = 8;
+  const pageSize = 11;
   const pageCount = Math.max(1, Math.ceil(people.length / pageSize));
-  const visiblePeople = people.slice(avatarPage * pageSize, avatarPage * pageSize + pageSize);
+  const page = Math.min(avatarPage, pageCount - 1);
+  const visiblePeople = people.slice(page * pageSize, page * pageSize + pageSize);
 
   return (
     <section className="flex flex-col gap-4">
@@ -237,16 +238,16 @@ export const MuralTop: FC = () => {
       <div className="relative">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <div className="flex w-full items-center gap-3 px-1 pt-4 pb-1">
-            <button type="button" aria-label="Perfis anteriores" disabled={avatarPage === 0} onClick={() => setAvatarPage((value) => Math.max(0, value - 1))} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#8A7C98] hover:bg-white disabled:opacity-30">
+            <button type="button" aria-label="Perfis anteriores" disabled={page === 0} onClick={() => setAvatarPage((value) => Math.max(0, value - 1))} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#8A7C98] hover:bg-white disabled:opacity-30">
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <div className="grid min-w-0 flex-1 items-center gap-3" style={{ gridTemplateColumns: `repeat(${visiblePeople.length + 1}, minmax(0, 1fr))` }}>
+            <div className="grid min-w-0 flex-1 items-center gap-3" style={{ gridTemplateColumns: 'repeat(12, minmax(0, 1fr))' }}>
               <Face person={{ id: user.id, name: user.name, avatar: user.avatar }} self mood={mine} gift={giftOf({ id: user.id, name: user.name, avatar: user.avatar })} onMood={() => setMoodOpen((value) => !value)} />
               <SortableContext items={visiblePeople.map((person) => person.id)} strategy={horizontalListSortingStrategy}>
                 {visiblePeople.map((person) => <SortableFace key={person.id} person={person} mood={moodOf(person)} gift={giftOf(person)} />)}
               </SortableContext>
             </div>
-            <button type="button" aria-label="Próximos perfis" disabled={avatarPage >= pageCount - 1} onClick={() => setAvatarPage((value) => Math.min(pageCount - 1, value + 1))} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#8A7C98] hover:bg-white disabled:opacity-30">
+            <button type="button" aria-label="Próximos perfis" disabled={page >= pageCount - 1} onClick={() => setAvatarPage((value) => Math.min(pageCount - 1, value + 1))} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#8A7C98] hover:bg-white disabled:opacity-30">
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>

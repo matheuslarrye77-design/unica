@@ -5,7 +5,6 @@ import { PageFrame } from '@/components/shell/PageFrame';
 import { teamRoster } from '@/data/team';
 import { authHeaders, getDemoId } from '@/lib/session';
 import { usePageSearch } from '@/lib/pageSearch';
-import { cn } from '@/lib/utils';
 import { GoalsAssistant, GoalsCenter, GoalsProvider, type GoalsPayload } from '@/components/recognition/GoalsCenter';
 import { PodiumStage } from '@/components/recognition/PodiumStage';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
@@ -154,15 +153,15 @@ export const KudosFeedPage: FC = () => {
                 subtitle="Valorize quem faz a diferença!"
                 aside={(
                   <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => setComposer(true)} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500">
-                      <Star className="h-4 w-4 fill-current" />
-                      Postar reconhecimento
-                    </button>
                     {canManageGoals ? (
                       <button type="button" aria-label="Central de metas" onClick={() => showTab('metas')} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
                         <Target className="h-4 w-4" />
                       </button>
                     ) : null}
+                    <button type="button" onClick={() => setComposer(true)} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500">
+                      <Star className="h-4 w-4 fill-current" />
+                      Postar reconhecimento
+                    </button>
                   </div>
                 )}
               />
@@ -182,7 +181,7 @@ export const KudosFeedPage: FC = () => {
               </div>
               <ul className="mt-5 grid gap-3">
                 {items.map((item) => (
-                  <li key={item.id} className="rounded-[16px] border border-[var(--ds-divider)] bg-white p-4">
+                  <li key={item.id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
                     <div className="flex items-start gap-4">
                       <div className="relative shrink-0">
                         <img src={face(item.to)} alt="" className="h-16 w-16 rounded-full bg-[var(--ds-lavender)] ring-4 ring-[var(--ds-lavender)]" />
@@ -191,8 +190,8 @@ export const KudosFeedPage: FC = () => {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-[15px] font-medium leading-5 text-[var(--ds-ink)]">{recognitionHeadline(item.from, item.to, Boolean(item.received))}</p>
-                            <p className="mt-0.5 text-[12.5px] text-[var(--ds-muted)]">
+                            <p className="text-base font-semibold leading-6 text-gray-800">{recognitionHeadline(item.from, item.to, Boolean(item.received))}</p>
+                            <p className="mt-0.5 text-sm text-gray-500">
                               {item.received ? `${item.to} recebeu de ${item.from}` : `${item.from} reconheceu ${item.to}`} · {item.when}
                             </p>
                           </div>
@@ -204,14 +203,14 @@ export const KudosFeedPage: FC = () => {
                               title={posted[item.id] ? 'Publicado no mural' : 'Postar no mural'}
                               disabled={posted[item.id]}
                               onClick={() => setMuralTarget(item)}
-                              className="grid h-8 w-8 place-items-center rounded-full text-[var(--ds-purple)] hover:bg-[var(--ds-lavender)] disabled:text-[var(--ds-lilac)]"
+                              className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600 disabled:text-gray-300"
                             >
                               <Megaphone className="h-4 w-4" />
                             </button>
                           </div>
                         </div>
-                        <span className={cn('mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium', item.area === 'Gestão' ? 'bg-[var(--ds-lavender)] text-[var(--ds-purple)]' : 'bg-[var(--ds-surface)] text-[var(--ds-slate)]')}>{item.area}</span>
-                        <p className="mt-2 text-[14.5px] leading-6 text-[var(--ds-ink)]">“{item.quote}”</p>
+                        <span className="mt-2 inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">{item.area}</span>
+                        <p className="mt-2 text-base leading-7 text-gray-800">“{item.quote}”</p>
                         {item.caption ? <p className="mt-2 text-[13.5px] text-[#5C5168]">{item.caption}</p> : null}
                         {item.comment ? <p className="mt-1 text-[13px] text-[#8A7C98]">{item.comment}</p> : null}
                         {item.photos?.length ? (

@@ -94,13 +94,13 @@ export const JournalArticlePage: FC = () => {
     <>
     <PageFrame>
         <article className="min-w-0 flex-1">
-          <Link to="/announcements" className="mb-4 flex w-fit items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <Link to="/announcements" className="mb-4 flex w-fit items-center gap-2 text-base text-gray-500 hover:text-blue-600">
             <ArrowLeft className="h-4 w-4" />
             Jornal
           </Link>
           <JournalBadge category={article.category} className="w-fit" />
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{article.title}</h1>
-          <p className="mt-3 text-sm text-muted-foreground">
+          <h1 className="mt-3 text-4xl font-bold tracking-tight text-gray-800">{article.title}</h1>
+          <p className="mt-3 text-base text-gray-500">
             {article.author} · {new Date(article.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })} · {readingMinutes(article.content)} min de leitura
             {article.status === 'draft' ? ' · Rascunho' : ''}
             {article.status === 'removed' ? ' · Na lixeira' : ''}
@@ -108,31 +108,31 @@ export const JournalArticlePage: FC = () => {
           {canManage ? (
             <div className="mt-4 flex flex-wrap gap-2">
               {article.status !== 'removed' ? (
-                <button type="button" aria-label="Editar" title="Editar" onClick={() => setEditing(true)} className="grid h-9 w-9 place-items-center rounded-full border border-[#DDD4F5] text-[#3600C2] hover:bg-[#EDE7FE]">
+                <button type="button" aria-label="Editar" title="Editar" onClick={() => setEditing(true)} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
                   <Pencil className="h-4 w-4" />
                 </button>
               ) : null}
               {article.status === 'published' ? (
-                <button type="button" aria-label={article.pinned ? 'Desafixar' : 'Fixar'} title={article.pinned ? 'Desafixar' : 'Fixar'} onClick={pin} className={cn('grid h-9 w-9 place-items-center rounded-full border', article.pinned ? 'border-primary bg-[#EDE7FE] text-primary' : 'border-[#DDD4F5] text-[#3600C2] hover:bg-[#EDE7FE]')}>
+                <button type="button" aria-label={article.pinned ? 'Desafixar' : 'Fixar'} title={article.pinned ? 'Desafixar' : 'Fixar'} onClick={pin} className={cn('grid h-11 w-11 place-items-center rounded-2xl shadow-[0_8px_24px_rgba(15,23,42,0.06)]', article.pinned ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 hover:text-blue-600')}>
                   <Pin className="h-4 w-4" fill={article.pinned ? 'currentColor' : 'none'} />
                 </button>
               ) : null}
               {article.status === 'published' ? (
-                <button type="button" aria-label="Publicar no mural" title="Publicar no mural" onClick={postOnMural} className="grid h-9 w-9 place-items-center rounded-full border border-[#DDD4F5] text-[#3600C2] hover:bg-[#EDE7FE]">
+                <button type="button" aria-label="Publicar no mural" title="Publicar no mural" onClick={postOnMural} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
                   <Megaphone className="h-4 w-4" />
                 </button>
               ) : null}
               {article.status === 'published' ? (
-                <button type="button" aria-label="Lixeira" title="Lixeira" onClick={() => { if (!window.confirm('Mover esta publicação para a lixeira?')) return; archiveJournalArticle(article.id); navigate('/announcements'); }} className="grid h-9 w-9 place-items-center rounded-full border border-[#DDD4F5] text-[#9D174D] hover:bg-[#FDE7EE]">
+                <button type="button" aria-label="Lixeira" title="Lixeira" onClick={() => { if (!window.confirm('Mover esta publicação para a lixeira?')) return; archiveJournalArticle(article.id); navigate('/announcements'); }} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-[#DB2777]">
                   <Trash2 className="h-4 w-4" />
                 </button>
               ) : null}
               {article.status === 'removed' ? (
                 <>
-                  <button type="button" aria-label="Restaurar" title="Restaurar" onClick={() => { if (!window.confirm('Restaurar esta publicação?')) return; restoreJournalArticle(article.id); }} className="grid h-9 w-9 place-items-center rounded-full border border-[#DDD4F5] text-[#3600C2] hover:bg-[#EDE7FE]">
+                  <button type="button" aria-label="Restaurar" title="Restaurar" onClick={() => { if (!window.confirm('Restaurar esta publicação?')) return; restoreJournalArticle(article.id); }} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
                     <RotateCcw className="h-4 w-4" />
                   </button>
-                  <button type="button" aria-label="Excluir de vez" title="Excluir de vez" onClick={() => { if (!window.confirm('Excluir esta publicação de vez?')) return; purgeJournalArticle(article.id); navigate('/announcements'); }} className="grid h-9 w-9 place-items-center rounded-full border border-[#DDD4F5] text-[#9D174D] hover:bg-[#FDE7EE]">
+                  <button type="button" aria-label="Excluir de vez" title="Excluir de vez" onClick={() => { if (!window.confirm('Excluir esta publicação de vez?')) return; purgeJournalArticle(article.id); navigate('/announcements'); }} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-[#DB2777]">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </>

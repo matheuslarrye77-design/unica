@@ -277,6 +277,80 @@ export function extraApi(): Connect.NextHandleFunction {
     fs.writeFileSync(eventsFile, JSON.stringify({ events }, null, 2));
   }
 
+  const journalFile = path.join(dir, 'journal.json');
+
+  function loadJournal() {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(journalFile, 'utf8')) as { initialized?: boolean; articles?: unknown; deletedIds?: unknown };
+      return {
+        initialized: Boolean(parsed.initialized),
+        articles: Array.isArray(parsed.articles) ? parsed.articles : [],
+        deletedIds: Array.isArray(parsed.deletedIds) ? parsed.deletedIds.filter((id): id is string => typeof id === 'string') : [],
+      };
+    } catch {
+      return { initialized: false, articles: [] as unknown[], deletedIds: [] as string[] };
+    }
+  }
+
+  function saveJournal(store: { initialized: boolean; articles: Record<string, unknown>[]; deletedIds: string[] }) {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(journalFile, JSON.stringify(store));
+  }
+
+  function clip(value: unknown, max: number) {
+    return String(value ?? '').slice(0, max);
+  }
+
+  function cleanJournalArticle(value: unknown) {
+    if (!value || typeof value !== 'object') return null;
+    const item = value as Record<string, unknown>;
+    const id = clip(item.id, 80).trim();
+    const category = clip(item.category, 40);
+    const status = clip(item.status, 20);
+    if (!id) return null;
+    if (!['processos', 'urgente', 'social', 'treinamentos'].includes(category)) return null;
+    if (!['published', 'draft', 'removed'].includes(status)) return null;
+    const media = Array.isArray(item.media) ? item.media.slice(0, 8).flatMap((entry) => {
+      if (!entry || typeof entry !== 'object') return [];
+      const row = entry as Record<string, unknown>;
+      const kind = clip(row.kind, 20);
+      const mediaId = clip(row.id, 80).trim();
+      const url = clip(row.url, 2_000_000);
+      if (!mediaId || !url || !['image', 'audio', 'video', 'document'].includes(kind)) return [];
+      return [{
+        id: mediaId,
+        name: clip(row.name, 180),
+        kind,
+        url,
+        ...(typeof row.start === 'number' ? { start: row.start } : {}),
+        ...(typeof row.duration === 'number' ? { duration: row.duration } : {}),
+      }];
+    }) : [];
+    const comments = Array.isArray(item.comments) ? item.comments.slice(0, 200).flatMap((entry) => {
+      if (!entry || typeof entry !== 'object') return [];
+      const row = entry as Record<string, unknown>;
+      const commentId = clip(row.id, 80).trim();
+      if (!commentId) return [];
+      return [{ id: commentId, author: clip(row.author, 120), text: clip(row.text, 4000), date: clip(row.date, 40) }];
+    }) : [];
+    return {
+      id,
+      title: clip(item.title, 150),
+      content: clip(item.content, 500_000),
+      category,
+      cover: clip(item.cover, 2_000_000),
+      date: clip(item.date, 40),
+      author: clip(item.author, 120),
+      status,
+      pinned: Boolean(item.pinned) && status === 'published',
+      ...(typeof item.pinnedAt === 'string' ? { pinnedAt: clip(item.pinnedAt, 40) } : {}),
+      media,
+      comments,
+      reactions: Math.max(0, Number(item.reactions) || 0),
+      reactedBy: Array.isArray(item.reactedBy) ? item.reactedBy.filter((name): name is string => typeof name === 'string').slice(0, 500) : [],
+    };
+  }
+
   function readEvent(body: Partial<AgendaEvent>, current?: AgendaEvent): AgendaEvent | null {
     const type = String(body.type ?? current?.type ?? '');
     if (!EVENT_TYPES.includes(type as AgendaEvent['type'])) return null;
@@ -474,7 +548,8 @@ export function extraApi(): Connect.NextHandleFunction {
     const gifRoute = url === '/api/gifs';
     const stickerRoute = url === '/api/stickers' || url.startsWith('/api/stickers/');
     const goalsRoute = url === '/api/goals' || url.startsWith('/api/goals/');
-    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && !feedRoute && !uploadRoute && !celebrationRoute && !gifRoute && !stickerRoute && !goalsRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
+    const journalRoute = url === '/api/journal';
+    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && !feedRoute && !uploadRoute && !celebrationRoute && !gifRoute && !stickerRoute && !goalsRoute && !journalRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
       return next();
     }
     try {
@@ -506,7 +581,7 @@ export function extraApi(): Connect.NextHandleFunction {
         return;
       }
 
-      const user = (feedRoute || uploadRoute || celebrationRoute || gifRoute || goalsRoute) ? muralUser(req) : accountFrom(req);
+      const user = (feedRoute || uploadRoute || celebrationRoute || gifRoute || goalsRoute || journalRoute) ? muralUser(req) : accountFrom(req);
       if (goalsRoute) {
         if (!user) return send(res, 401, { error: 'unauthorized' });
         await handleGoals(req, res, user, dir, loadAuth().colleagues, teamRoster, send, readBody);
@@ -971,6 +1046,30 @@ export function extraApi(): Connect.NextHandleFunction {
         auth.colleagues.unshift(colleague);
         saveAuth(auth);
         send(res, 201, { colleague });
+        return;
+      }
+
+      if (req.method === 'GET' && journalRoute) {
+        send(res, 200, loadJournal());
+        return;
+      }
+
+      if (req.method === 'PUT' && journalRoute) {
+        if (!isLeader(user)) return send(res, 403, { error: 'forbidden' });
+        const body = JSON.parse((await readBody(req)).toString('utf8')) as { articles?: unknown; deletedIds?: unknown };
+        const current = loadJournal();
+        const deletedIds = [...new Set([
+          ...current.deletedIds,
+          ...(Array.isArray(body.deletedIds) ? body.deletedIds.filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 80) : []),
+        ])].slice(0, 2000);
+        const blocked = new Set(deletedIds);
+        const articles = (Array.isArray(body.articles) ? body.articles : [])
+          .slice(0, 400)
+          .map((item) => cleanJournalArticle(item))
+          .filter((article): article is NonNullable<ReturnType<typeof cleanJournalArticle>> => article !== null && !blocked.has(article.id));
+        const next = { initialized: true, articles, deletedIds };
+        saveJournal(next);
+        send(res, 200, next);
         return;
       }
 

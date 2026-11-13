@@ -1,3 +1,5 @@
+import { LOGIN_REQUIRED } from '@/lib/loginGate';
+import { authHeaders, getDemoId } from '@/lib/session';
 import { generateId } from '@/lib/utils';
 
 
@@ -460,6 +462,23 @@ const seed: JournalArticle[] = [
   },
 ];
 
+const DELETED_KEY = 'unica-journal-deleted';
+const READY_KEY = 'unica-journal-ready';
+
+function readDeleted(): string[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DELETED_KEY) ?? '[]') as unknown;
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberDeleted(id: string) {
+  const next = [...new Set([...readDeleted(), id])];
+  localStorage.setItem(DELETED_KEY, JSON.stringify(next));
+}
+
 let articles = readStored();
 
 function parkDescriptionImages() {
@@ -487,15 +506,15 @@ const listeners = new Set<() => void>();
 
 function readStored(): JournalArticle[] {
   try {
+    const ready = localStorage.getItem(READY_KEY) === '1';
     if (localStorage.getItem('unica-journal-version') !== JOURNAL_VERSION) {
-      localStorage.removeItem(STORAGE_KEY);
       localStorage.setItem('unica-journal-version', JOURNAL_VERSION);
-      return seed;
     }
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return seed;
+    if (!raw) return ready ? [] : seed;
     const parsed = JSON.parse(raw) as JournalArticle[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return seed;
+    if (!Array.isArray(parsed)) return ready ? [] : seed;
+    if (parsed.length === 0) return [];
     let changed = false;
     const migrated = parsed.map((article) => {
       let next = article;
@@ -523,12 +542,14 @@ function commit(next: JournalArticle[]) {
   const previous = articles;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    localStorage.setItem(READY_KEY, '1');
   } catch {
     articles = previous;
     throw new Error('storage');
   }
   articles = next;
   listeners.forEach((listener) => listener());
+  pushJournal();
 }
 
 function notify() {
@@ -645,6 +666,7 @@ function dropSaved(id: string) {
 export function deleteJournalArticle(id: string) {
   const current = articles.find((article) => article.id === id);
   if (!current || current.status !== 'draft') return false;
+  rememberDeleted(id);
   commit(articles.filter((article) => article.id !== id));
   dropSaved(id);
   return true;
@@ -667,6 +689,7 @@ export function restoreJournalArticle(id: string) {
 export function purgeJournalArticle(id: string) {
   const current = articles.find((article) => article.id === id);
   if (!current || current.status !== 'removed') return false;
+  rememberDeleted(id);
   commit(articles.filter((article) => article.id !== id));
   dropSaved(id);
   return true;
@@ -731,3 +754,85 @@ export function addJournalComment(id: string, author: string, text: string) {
 export function deleteJournalComment(articleId: string, commentId: string) {
   commit(articles.map((article) => (article.id === articleId ? { ...article, comments: article.comments.filter((comment) => comment.id !== commentId) } : article)));
 }
+
+let remoteReady = false;
+let dirty = false;
+let pushing = false;
+
+function journalHeaders() {
+  return { ...authHeaders(), ...(LOGIN_REQUIRED ? {} : { 'x-unica-demo': getDemoId() }) };
+}
+
+function isArticle(value: unknown): value is JournalArticle {
+  if (!value || typeof value !== 'object') return false;
+  const item = value as JournalArticle;
+  return typeof item.id === 'string' && typeof item.title === 'string' && typeof item.status === 'string';
+}
+
+function pushJournal() {
+  if (typeof window === 'undefined') return;
+  if (!remoteReady || pushing) {
+    dirty = true;
+    return;
+  }
+  dirty = false;
+  pushing = true;
+  const snapshot = articles;
+  const deletedIds = readDeleted();
+  void fetch('/api/journal', {
+    method: 'PUT',
+    credentials: 'include',
+    headers: journalHeaders(),
+    body: JSON.stringify({ articles: snapshot, deletedIds }),
+  }).then((response) => {
+    pushing = false;
+    if (!response.ok) return;
+    if (dirty || articles !== snapshot) pushJournal();
+  }).catch(() => {
+    pushing = false;
+  });
+}
+
+function adoptJournal(list: JournalArticle[]) {
+  articles = list;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    localStorage.setItem(READY_KEY, '1');
+  } catch {
+    /* the screen keeps the list even if the browser cache is full */
+  }
+  listeners.forEach((listener) => listener());
+}
+
+async function hydrateJournal() {
+  if (typeof window === 'undefined') return;
+  try {
+    const response = await fetch('/api/journal', { credentials: 'include', headers: journalHeaders() });
+    if (!response.ok) return;
+    const data = await response.json() as { initialized?: boolean; articles?: unknown[]; deletedIds?: unknown[] };
+    const remoteDeleted = Array.isArray(data.deletedIds) ? data.deletedIds.filter((id): id is string => typeof id === 'string') : [];
+    const deleted = [...new Set([...readDeleted(), ...remoteDeleted])];
+    localStorage.setItem(DELETED_KEY, JSON.stringify(deleted));
+    const blocked = new Set(deleted);
+    const seedIds = new Set(seed.map((article) => article.id));
+    if (data.initialized && Array.isArray(data.articles)) {
+      const remote = data.articles.filter(isArticle).filter((article) => !blocked.has(article.id));
+      const remoteIds = new Set(remote.map((article) => article.id));
+      const localById = new Map(articles.map((article) => [article.id, article]));
+      const extras = articles.filter((article) => !remoteIds.has(article.id) && !blocked.has(article.id) && (dirty || !seedIds.has(article.id)));
+      const merged = dirty || extras.length
+        ? [...extras, ...remote.map((article) => (dirty && localById.has(article.id) ? localById.get(article.id)! : article))]
+        : remote;
+      adoptJournal(merged);
+      remoteReady = true;
+      if (dirty || extras.length || deleted.length !== remoteDeleted.length) pushJournal();
+      return;
+    }
+    remoteReady = true;
+    pushJournal();
+  } catch {
+    /* keep the copy already on this browser */
+  }
+}
+
+if (typeof window !== 'undefined') void hydrateJournal();

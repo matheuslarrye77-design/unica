@@ -7,7 +7,7 @@ import { archiveJournalArticle, articleSummary, canManageJournal, deleteJournalA
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { PageHero } from '@/components/social/LilacWash';
-import { Bookmark, Calendar, ChevronRight, ClipboardList, Clock, Filter, Newspaper, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { Bookmark, Calendar, ChevronRight, Clock, Filter, Newspaper, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState, type FC } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -129,30 +129,25 @@ export const CompanyAnnouncementsPage: FC = () => {
           </div>
 
           {canManage && trashOpen ? (
-            <section className="unica-surface mb-4 px-4 py-4">
-              <h2 className="flex items-center gap-2 text-[14px] font-medium">
-                <span className="unica-icon h-7 w-7">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </span>
-                Lixeira
-              </h2>
+            <section className="unica-surface mb-4 px-5 py-5">
+              <h2 className="text-lg font-bold text-gray-800">Lixeira</h2>
               {removed.length === 0 ? (
-                <p className="mt-3 text-sm text-muted-foreground">Nenhuma publicação removida.</p>
+                <p className="mt-3 text-base text-gray-500">Nenhuma publicação removida.</p>
               ) : (
-                <div className="mt-3 grid items-stretch gap-3 md:grid-cols-3">
+                <div className="mt-4 grid items-stretch gap-3 md:grid-cols-3">
                   {removed.map((article) => (
-                    <article key={article.id} className="flex flex-col rounded-[22px] border border-[#E5DDF8] bg-white p-3.5 shadow-[0_10px_28px_rgba(70,0,243,0.06)]">
+                    <article key={article.id} className="flex flex-col rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
                       <Link to={`/announcements/${article.id}`} className="flex flex-col">
                         <JournalCover article={article} />
-                        <h3 className="mt-3 line-clamp-2 text-[16px] font-semibold leading-snug text-[#1A1428] hover:text-[#3600C2]">{article.title}</h3>
-                        <p className="mt-2 line-clamp-3 text-[13px] leading-5 text-[#625C70]">{articleSummary(article.content)}</p>
-                        <p className="mt-2 text-[12px] text-[#948D9E]">{formatDate(article.date)}</p>
+                        <h3 className="mt-3 line-clamp-2 text-base font-bold leading-6 text-gray-800">{article.title}</h3>
+                        <p className="mt-2 line-clamp-3 text-sm leading-6 text-gray-500">{articleSummary(article.content)}</p>
+                        <p className="mt-2 text-sm text-gray-400">{formatDate(article.date)}</p>
                       </Link>
                       <div className="mt-3 flex items-center gap-2">
-                        <button type="button" aria-label="Restaurar" title="Restaurar" className="grid h-8 w-8 place-items-center rounded-full text-[#3600C2] hover:bg-[#EDE7FE]" onClick={() => { if (!window.confirm('Restaurar esta publicação?')) return; restoreJournalArticle(article.id); }}>
+                        <button type="button" aria-label="Restaurar" title="Restaurar" className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600" onClick={() => { if (!window.confirm('Restaurar esta publicação?')) return; restoreJournalArticle(article.id); }}>
                           <RotateCcw className="h-4 w-4" />
                         </button>
-                        <button type="button" aria-label="Excluir de vez" title="Excluir de vez" className="grid h-8 w-8 place-items-center rounded-full text-[#9D174D] hover:bg-[#FDE7EE]" onClick={() => { if (window.confirm('Excluir esta publicação de vez?')) purgeJournalArticle(article.id); }}>
+                        <button type="button" aria-label="Excluir de vez" title="Excluir de vez" className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-[#DB2777]" onClick={() => { if (window.confirm('Excluir esta publicação de vez?')) purgeJournalArticle(article.id); }}>
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
@@ -164,21 +159,16 @@ export const CompanyAnnouncementsPage: FC = () => {
           ) : null}
 
           {canManage && drafts.length > 0 && showingDefault ? (
-            <section className="unica-surface mb-4 px-4 py-4">
-              <h2 className="flex items-center gap-2 text-[14px] font-medium">
-                <span className="unica-icon h-7 w-7">
-                  <ClipboardList className="h-3.5 w-3.5" />
-                </span>
-                Rascunhos
-              </h2>
-              <div className="mt-3 flex flex-col gap-2">
+            <section className="unica-surface mb-4 px-5 py-5">
+              <h2 className="text-lg font-bold text-gray-800">Rascunhos</h2>
+              <div className="mt-4 flex flex-col gap-2">
                 {drafts.map((article) => (
                   <div key={article.id} className="flex items-center gap-2">
-                    <button type="button" onClick={() => openDraft(article)} className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl border border-[#DDD4F5] px-3 py-2.5 text-left text-[13.5px] hover:bg-[#F8F6FF]">
+                    <button type="button" onClick={() => openDraft(article)} className="flex h-11 min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-white px-4 text-left text-base text-gray-800 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
                       <span className="truncate">{article.title}</span>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
                     </button>
-                    <button type="button" aria-label={`Excluir rascunho ${article.title}`} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#DDD4F5] text-[#9D174D] hover:bg-[#FDE7EE]" onClick={() => { if (window.confirm('Excluir este rascunho?')) deleteJournalArticle(article.id); }}>
+                    <button type="button" aria-label={`Excluir rascunho ${article.title}`} className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-[#DB2777]" onClick={() => { if (window.confirm('Excluir este rascunho?')) deleteJournalArticle(article.id); }}>
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>

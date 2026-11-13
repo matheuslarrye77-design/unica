@@ -749,7 +749,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        overlayClassName="bg-slate-900/20"
+        overlayClassName="bg-slate-900/25 backdrop-blur-md"
         className="flex max-h-[calc(100dvh-1rem)] w-[min(840px,calc(100%-2rem))] max-w-none flex-col gap-0 overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:max-w-[840px]"
         onPointerDown={(event) => {
           const target = event.target as HTMLElement | null;

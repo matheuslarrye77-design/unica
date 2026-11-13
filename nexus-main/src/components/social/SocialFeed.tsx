@@ -308,19 +308,19 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
           }}
         />
         {shareId === cardKey ? (
-          <div className="mt-2 flex gap-2 rounded-xl border bg-card p-3 text-sm">
-            <button type="button" className="rounded-lg border px-3 py-1.5" onClick={() => void copy(post)}>Copiar link</button>
-            <button type="button" className="rounded-lg border px-3 py-1.5" onClick={() => void share(post)}>Compartilhar</button>
-            <button type="button" className="rounded-lg px-3 py-1.5 text-muted-foreground" onClick={() => setShareId(null)}>Cancelar</button>
+          <div className="mt-2 flex gap-2 rounded-2xl border border-gray-100 bg-white p-3 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+            <button type="button" className="inline-flex h-11 items-center rounded-2xl bg-white px-4 text-base font-semibold text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600" onClick={() => void copy(post)}>Copiar link</button>
+            <button type="button" className="inline-flex h-11 items-center rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500" onClick={() => void share(post)}>Compartilhar</button>
+            <button type="button" className="inline-flex h-11 items-center rounded-2xl px-4 text-base font-semibold text-gray-500 hover:text-gray-800" onClick={() => setShareId(null)}>Cancelar</button>
           </div>
         ) : null}
         {repostId === cardKey ? (
-          <form className="mt-2 rounded-xl border bg-card p-3" onSubmit={(event) => { event.preventDefault(); void sendRepost(post); }}>
-            <label className="text-sm font-medium" htmlFor={`nota-${cardKey}`}>Comentário da republicação</label>
-            <textarea id={`nota-${cardKey}`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Opcional" className="mt-2 w-full rounded-lg border bg-background px-3 py-2 text-sm" />
-            <div className="mt-2 flex gap-2">
-              <button type="submit" className="rounded-lg bg-primary px-3 py-1.5 text-sm text-primary-foreground">Republicar</button>
-              <button type="button" className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground" onClick={() => setRepostId(null)}>Cancelar</button>
+          <form className="mt-2 rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]" onSubmit={(event) => { event.preventDefault(); void sendRepost(post); }}>
+            <label className="text-sm font-medium text-gray-600" htmlFor={`nota-${cardKey}`}>Comentário da republicação</label>
+            <textarea id={`nota-${cardKey}`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Opcional" className="mt-2 w-full rounded-2xl border border-gray-100 bg-white px-3 py-2 text-base text-gray-800 outline-none" />
+            <div className="mt-3 flex gap-2">
+              <button type="submit" className="inline-flex h-11 items-center rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500">Republicar</button>
+              <button type="button" className="inline-flex h-11 items-center rounded-2xl bg-white px-4 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600" onClick={() => setRepostId(null)}>Cancelar</button>
             </div>
           </form>
         ) : null}
@@ -337,7 +337,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
 
       {mode === 'mural' ? (
         <div className="flex justify-end">
-          <button type="button" aria-pressed={savedOnly} onClick={() => setSavedOnly((value) => !value)} className={`rounded-full px-3 py-1 text-[13px] ${savedOnly ? 'bg-accent text-primary' : 'text-[#5C5870] hover:bg-accent'}`}>Salvos</button>
+          <button type="button" aria-pressed={savedOnly} onClick={() => setSavedOnly((value) => !value)} className={`inline-flex h-11 items-center rounded-2xl px-4 text-base font-semibold ${savedOnly ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600'}`}>Salvos</button>
         </div>
       ) : null}
 
