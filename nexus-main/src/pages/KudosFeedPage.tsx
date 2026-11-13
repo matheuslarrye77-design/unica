@@ -8,7 +8,6 @@ import { usePageSearch } from '@/lib/pageSearch';
 import { cn } from '@/lib/utils';
 import { GoalsAssistant, GoalsCenter, GoalsProvider, type GoalsPayload } from '@/components/recognition/GoalsCenter';
 import { PodiumStage } from '@/components/recognition/PodiumStage';
-import { useInstitution } from '@/lib/institution';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { PageHero } from '@/components/social/LilacWash';
 import { Heart, Megaphone, Sparkles, Star, Target, Trophy } from 'lucide-react';
@@ -65,12 +64,10 @@ function goalsHeaders() {
 }
 
 export const KudosFeedPage: FC = () => {
-  const { isLeader: gestao } = useInstitution();
   const { query } = usePageSearch();
   const [params, setParams] = useSearchParams();
   const [composer, setComposer] = useState(false);
   const [muralTarget, setMuralTarget] = useState<Recognition | null>(null);
-  const [filter, setFilter] = useState<'Todos' | Area>('Todos');
   const [extra, setExtra] = useState<Recognition[]>(readExtra);
   useEffect(() => { localStorage.setItem(EXTRA_KEY, JSON.stringify(extra)); }, [extra]);
   const [posted, setPosted] = useState<Record<string, boolean>>(() => {
@@ -123,7 +120,6 @@ export const KudosFeedPage: FC = () => {
   const podiumKey = podiumMonth || goals?.currentPodiumKey || months[months.length - 1] || '';
   const needle = query.trim().toLowerCase();
   const items = [...extra, ...RECENT].filter((item) => {
-    if (filter !== 'Todos' && item.area !== filter) return false;
     if (!needle) return true;
     return `${item.to} ${item.from} ${item.quote} ${item.area} ${item.caption ?? ''} ${item.comment ?? ''}`.toLowerCase().includes(needle);
   });
@@ -158,12 +154,10 @@ export const KudosFeedPage: FC = () => {
                 subtitle="Valorize quem faz a diferença!"
                 aside={(
                   <div className="flex items-center gap-2">
-                    {gestao ? (
-                      <button type="button" onClick={() => setComposer(true)} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500">
-                        <Star className="h-4 w-4 fill-current" />
-                        Postar reconhecimento
-                      </button>
-                    ) : null}
+                    <button type="button" onClick={() => setComposer(true)} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500">
+                      <Star className="h-4 w-4 fill-current" />
+                      Postar reconhecimento
+                    </button>
                     {canManageGoals ? (
                       <button type="button" aria-label="Central de metas" onClick={() => showTab('metas')} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
                         <Target className="h-4 w-4" />
@@ -185,13 +179,6 @@ export const KudosFeedPage: FC = () => {
                 <h2 className="flex items-center gap-2 text-lg font-bold text-gray-800">
                   <Star className="h-4 w-4 text-[#6B33F6]" /> Últimos reconhecimentos
                 </h2>
-                <div className="flex flex-wrap gap-2">
-                  {(['Todos', 'Gestão', 'Suporte'] as const).map((option) => (
-                    <button key={option} type="button" onClick={() => setFilter(option)} className={cn('rounded-2xl px-4 py-2.5 text-base font-semibold', filter === option ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600')}>
-                      {option}
-                    </button>
-                  ))}
-                </div>
               </div>
               <ul className="mt-5 grid gap-3">
                 {items.map((item) => (

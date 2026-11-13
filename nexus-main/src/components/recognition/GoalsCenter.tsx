@@ -1,7 +1,7 @@
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { authHeaders, getDemoId } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import { ArrowLeftRight, BarChart3, Bot, Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, FileText, Maximize2, MessageCircle, Minimize2, Pencil, Phone, Send, Settings2, Smile, Sparkles, Star, Ticket, Timer, Trash2, Trophy, User, X } from 'lucide-react';
+import { ArrowLeftRight, BarChart3, Bot, Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, FileText, MessageCircle, Pencil, Phone, Send, Settings2, Smile, Sparkles, Star, Ticket, Timer, Trash2, Trophy, User, X } from 'lucide-react';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type FC, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
@@ -937,7 +937,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
   ];
 
   const bank = (
-    <div className="fixed inset-0 z-[80] overflow-y-auto bg-slate-100 [scrollbar-width:thin] lg:left-[104px]">
+    <div className="fixed inset-0 z-[80] overflow-y-auto bg-white [scrollbar-width:thin] lg:left-[104px]">
       <div className="mx-auto flex min-h-full w-full flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
@@ -1177,12 +1177,12 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
   return typeof document === 'undefined' ? bank : createPortal(bank, document.body);
 }
 
-export const GoalsAssistant: FC<{ startWide?: boolean }> = ({ startWide = false }) => {
+export const GoalsAssistant: FC<{ startWide?: boolean }> = () => {
   const board = useBoard();
   const { goals, messages, draft, setDraft, busy, talk, phase, pendingRules, setPendingRules, conference, pendingPodium, confirmPodium, saveTemplate, cancelProposal } = board;
   const thread = useRef<HTMLDivElement>(null);
   const [bankOpen, setBankOpen] = useState(false);
-  const [wide, setWide] = useState(startWide);
+  const wide = true;
 
   useEffect(() => {
     thread.current?.scrollTo({ top: thread.current.scrollHeight });
@@ -1199,14 +1199,9 @@ export const GoalsAssistant: FC<{ startWide?: boolean }> = ({ startWide = false 
         <h3 className="flex min-w-0 items-center gap-2 text-[14px] font-semibold text-[#241B33]">
           <Sparkles className="h-4 w-4 shrink-0 text-[#4600F3]" /> <span className="truncate">Fale com o assistente de metas</span>
         </h3>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <button type="button" aria-label="Abrir banco de dados dos relatórios" title="Banco de dados" onClick={() => setBankOpen(true)} className="grid h-8 w-8 place-items-center rounded-lg text-[#4600F3] hover:bg-[#EDE7FE]">
-            <FileText className="h-4 w-4" />
-          </button>
-          <button type="button" aria-label={wide ? 'Reduzir painel' : 'Ampliar chat e banco de dados'} title={wide ? 'Reduzir' : 'Ampliar chat e banco'} onClick={() => setWide((value) => !value)} className="grid h-8 w-8 place-items-center rounded-lg text-[#4600F3] hover:bg-[#EDE7FE]">
-            {wide ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </button>
-        </div>
+        <button type="button" aria-label="Abrir banco de dados dos relatórios" title="Banco de dados" onClick={() => setBankOpen(true)} className="grid h-8 w-8 place-items-center rounded-lg text-[#4600F3] hover:bg-[#EDE7FE]">
+          <FileText className="h-4 w-4" />
+        </button>
       </div>
       {bankOpen ? <ReportBank goals={goals} onClose={() => setBankOpen(false)} /> : null}
       <div ref={thread} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">

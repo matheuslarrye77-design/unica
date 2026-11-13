@@ -11,7 +11,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { Plus, Star, User } from 'lucide-react';
+import { Plus, Star } from 'lucide-react';
 
 import { usePageSearch } from '@/lib/pageSearch';
 import { useInstitution } from '@/lib/institution';
@@ -164,42 +164,37 @@ export const ActivityBoard: FC = () => {
 
   return (
     <div className="space-y-8">
-      <section className="flex flex-col gap-3">
-        <h1 className="text-4xl font-bold tracking-tight text-gray-800">Atividades</h1>
-        <p className="max-w-2xl text-base leading-7 text-gray-500">
-          Organize as atividades por status, acompanhe o progresso e mova o trabalho pelo quadro.
-        </p>
-        <p className="text-sm text-gray-500">
-          {scoped.length} atividades · {scopedDone} concluídas · {scopedProgress} em andamento · {scopedOverdue} atrasadas
-        </p>
-      </section>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+      <section className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-4xl font-bold tracking-tight text-gray-800">Atividades</h1>
+          <p className="mt-3 max-w-2xl text-base leading-7 text-gray-500">
+            Organize as atividades por status, acompanhe o progresso e mova o trabalho pelo quadro.
+          </p>
+          <p className="mt-3 text-sm text-gray-500">
+            {scoped.length} atividades · {scopedDone} concluídas · {scopedProgress} em andamento · {scopedOverdue} atrasadas
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={() => showTab('mine')}
-            className={cn('inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-colors', tab === 'mine' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-600')}
+            aria-pressed={tab === 'leadership'}
+            aria-label="Missões da liderança"
+            title="Missões da liderança"
+            onClick={() => showTab(tab === 'leadership' ? 'mine' : 'leadership')}
+            className={cn('relative grid h-11 w-11 place-items-center rounded-2xl', tab === 'leadership' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600')}
           >
-            <User className="h-4 w-4" /> Minhas atividades
+            <Star className="h-4 w-4" />
+            <span className={cn('absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-semibold', tab === 'leadership' ? 'bg-white text-blue-600' : 'bg-[#DB2777] text-white')}>{leadershipCount}</span>
           </button>
           <button
             type="button"
-            onClick={() => showTab('leadership')}
-            className={cn('inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-colors', tab === 'leadership' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-600')}
+            onClick={() => openCreate('todo')}
+            className="inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 transition-colors hover:bg-blue-500"
           >
-            <Star className="h-4 w-4" /> Missões da liderança
-            <span className={cn('grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px]', tab === 'leadership' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700')}>{leadershipCount}</span>
+            <Plus className="h-4 w-4" /> Nova atividade
           </button>
         </div>
-        <button
-          type="button"
-          onClick={() => openCreate('todo')}
-          className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-colors hover:bg-blue-500"
-        >
-          <Plus className="h-4 w-4" /> Nova atividade
-        </button>
-      </div>
+      </section>
 
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
         <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-3">

@@ -12,7 +12,7 @@ import { teamRoster } from '@/data/team';
 import { createFeedPost, uploadMedia } from '@/lib/feed';
 import { recognitionLine } from '@/lib/recognitionText';
 import { actor } from '@/lib/session';
-import { ChevronDown, Eye, FileText, ImagePlay, ListChecks, Loader2, Megaphone, Mic, Paperclip, Pencil, Send, Smile, Sparkles, Sticker, X } from 'lucide-react';
+import { ChevronDown, Eye, FileText, ImagePlay, ListChecks, Loader2, Mic, Paperclip, Pencil, Send, Smile, Sparkles, Sticker, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ChangeEvent, type FC } from 'react';
 import { toast } from 'sonner';
 
@@ -373,26 +373,25 @@ export const MuralPublishDialog: FC<Props> = (props) => {
     }
   }
 
-  const tool = 'grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#F3EFFF] text-[#4600F3] transition-colors hover:bg-[#E8E0FD] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4600F3]/40';
-  const face = 'inline-flex h-11 shrink-0 items-center justify-center gap-0.5 rounded-full bg-[#F3EFFF] px-2.5 text-[#4600F3] transition-colors hover:bg-[#E8E0FD] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4600F3]/40';
+  const dialogTitle = props.source === 'recognition-new' ? 'Postar reconhecimento' : props.source === 'recognition-existing' ? 'Publicar reconhecimento' : 'Postar no mural';
+  const dialogText = props.source === 'journal' ? 'Escreva o conteúdo e publique no mural.' : 'Compartilhe um reconhecimento com sua equipe.';
+  const tool = 'grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-gray-100 bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-colors hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30';
+  const face = 'inline-flex h-11 shrink-0 items-center justify-center gap-1 rounded-2xl border border-gray-100 bg-white px-3 text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-colors hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30';
 
   return (
     <>
     <Dialog open={open} onOpenChange={(next) => { if (!next) close(); }}>
       <DialogContent
         showCloseButton={false}
-        overlayClassName="bg-[#2A0094]/35 backdrop-blur-md"
-        className={`gap-0 overflow-visible border-0 bg-white p-0 shadow-[0_24px_70px_rgba(70,0,243,0.22)] rounded-[28px] ${isRecognition ? 'sm:max-w-[680px]' : 'sm:max-w-[640px]'}`}
+        overlayClassName="bg-slate-900/20"
+        className={`gap-0 overflow-visible rounded-2xl border border-gray-100 bg-white p-0 shadow-[0_8px_24px_rgba(15,23,42,0.08)] ${isRecognition ? 'sm:max-w-[680px]' : 'sm:max-w-[640px]'}`}
       >
-        <DialogDescription className="sr-only">{isRecognition ? 'Compartilhe um reconhecimento com sua equipe.' : 'Escreva o conteúdo e publique no mural.'}</DialogDescription>
+        <DialogDescription className="sr-only">{dialogText}</DialogDescription>
         <div className="flex max-h-[min(760px,calc(100dvh-2rem))] flex-col">
-          <div className="flex items-start gap-3 px-5 pb-3 pt-5">
-            <span className={`grid h-11 w-11 shrink-0 place-items-center ${isRecognition ? 'rounded-full bg-[#4600F3] text-white' : 'rounded-2xl bg-[#EDE7FE] text-[#4600F3]'}`}>
-              <Megaphone className="h-5 w-5" />
-            </span>
+          <div className="flex items-start gap-3 px-5 pt-5 pb-3">
             <div className="min-w-0 flex-1">
-              <DialogTitle className="text-[22px] font-medium tracking-[-0.018em] text-[var(--ds-ink)]">Publicar no mural</DialogTitle>
-              {isRecognition ? <p className="mt-0.5 text-[13px] text-[#8A7C98]">Compartilhe um reconhecimento com sua equipe.</p> : null}
+              <DialogTitle className="text-xl font-bold tracking-tight text-gray-800">{dialogTitle}</DialogTitle>
+              <p className="mt-1 text-base text-gray-500">{dialogText}</p>
             </div>
             <button type="button" aria-label="Fechar" onClick={close} disabled={sending} className="grid h-9 w-9 place-items-center rounded-full text-[#6B6280] hover:bg-[#F3EFFF]">
               <X className="h-5 w-5" />
@@ -402,16 +401,16 @@ export const MuralPublishDialog: FC<Props> = (props) => {
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3">
             {props.source === 'recognition-new' ? (
               <div className="mb-3 grid gap-2 sm:grid-cols-2">
-                <label className="grid gap-1 text-[12.5px] text-[#5C5168]">
+                <label className="grid gap-1 text-sm font-semibold text-gray-800">
                   Pessoa reconhecida
-                  <select className="h-9 rounded-xl border border-[#D8CEF6] bg-white px-3 text-sm text-[#241B33]" value={personId} onChange={(event) => setPersonId(event.target.value)}>
+                  <select className="h-11 rounded-2xl border border-gray-100 bg-white px-3 text-base text-gray-800" value={personId} onChange={(event) => setPersonId(event.target.value)}>
                     <option value="">Selecione</option>
                     {others.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                   </select>
                 </label>
-                <label className="grid gap-1 text-[12.5px] text-[#5C5168]">
+                <label className="grid gap-1 text-sm font-semibold text-gray-800">
                   Etiqueta
-                  <select className="h-9 rounded-xl border border-[#D8CEF6] bg-white px-3 text-sm text-[#241B33]" value={tag} onChange={(event) => setTag(event.target.value)}>
+                  <select className="h-11 rounded-2xl border border-gray-100 bg-white px-3 text-base text-gray-800" value={tag} onChange={(event) => setTag(event.target.value)}>
                     {tags.map((item) => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
@@ -446,7 +445,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
               </ExpandProvider>
             ) : (
               <>
-                <div className={`relative rounded-2xl border border-[#D8CEF6] bg-white px-4 pb-8 pt-3 focus-within:border-[#8A5CF8] focus-within:ring-2 focus-within:ring-[#EDE7FE] ${isRecognition ? 'flex items-start gap-2' : ''}`}>
+                <div className={`relative rounded-2xl border border-gray-100 bg-white px-4 pt-3 pb-8 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600/10 ${isRecognition ? 'flex items-start gap-3' : ''}`}>
                   {isRecognition ? <Pencil className="mt-0.5 h-4 w-4 shrink-0 text-[#4600F3]" /> : null}
                   <textarea
                     ref={field}
@@ -454,7 +453,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
                     maxLength={textMax}
                     onChange={(event) => setText(event.target.value.slice(0, textMax))}
                     placeholder={isRecognition ? 'Adicione uma legenda (opcional)...' : 'Digite o conteúdo da sua publicação…'}
-                    className={`w-full resize-none bg-transparent text-[15px] leading-6 text-[#241B33] outline-none placeholder:text-[#B7A8C4] ${isRecognition || journal ? 'min-h-[52px]' : 'min-h-[190px]'}`}
+                    className={`w-full resize-none bg-transparent text-base leading-7 text-gray-800 outline-none placeholder:text-gray-400 ${isRecognition || journal ? 'min-h-[52px]' : 'min-h-[190px]'}`}
                   />
                   {journal ? (
                     <div className="mt-3">
@@ -564,13 +563,11 @@ export const MuralPublishDialog: FC<Props> = (props) => {
             )}
           </div>
 
-          <div className="relative flex flex-wrap items-center gap-2 border-t border-[#F3E8F8] px-4 py-3">
+          <div className="relative flex flex-wrap items-center gap-3 border-t border-gray-100 px-5 py-4">
             <input ref={fileRef} type="file" multiple className="hidden" onChange={onFiles} />
-            <button type="button" aria-label="Anexar arquivo" title="Anexar arquivo" onClick={() => fileRef.current?.click()} className={tool}><Paperclip className="h-[18px] w-[18px]" /></button>
-            <span className="h-6 w-px bg-[#D8CEF6]" />
-            <button type="button" aria-label={recording ? 'Parar gravação' : 'Gravar áudio'} aria-pressed={recording} title={recording ? 'Parar gravação' : 'Gravar áudio'} onClick={() => void toggleRecord()} className={`${tool} ${recording ? 'bg-[#4600F3] text-white' : ''}`}><Mic className="h-[18px] w-[18px]" /></button>
-            <span className="h-6 w-px bg-[#D8CEF6]" />
-            <button type="button" aria-label="Conteúdo interativo" aria-expanded={menu} title="Figurinhas, GIFs, enquetes e emojis" onClick={() => { setMenu((value) => !value); setPreview(false); }} className={`${face} ${menu || panel || pollOpen ? 'ring-2 ring-[#D8CEF6]' : ''}`}>
+            <button type="button" aria-label="Anexar arquivo" title="Anexar arquivo" onClick={() => fileRef.current?.click()} className={tool}><Paperclip className="h-4 w-4" /></button>
+            <button type="button" aria-label={recording ? 'Parar gravação' : 'Gravar áudio'} aria-pressed={recording} title={recording ? 'Parar gravação' : 'Gravar áudio'} onClick={() => void toggleRecord()} className={`${tool} ${recording ? 'bg-blue-600 text-white hover:text-white' : ''}`}><Mic className="h-4 w-4" /></button>
+            <button type="button" aria-label="Conteúdo interativo" aria-expanded={menu} title="Figurinhas, GIFs, enquetes e emojis" onClick={() => { setMenu((value) => !value); setPreview(false); }} className={`${face} ${menu || panel || pollOpen ? 'ring-2 ring-blue-600/20' : ''}`}>
               <Smile className="h-[18px] w-[18px]" />
               <ChevronDown className="h-3.5 w-3.5" />
             </button>
@@ -584,15 +581,15 @@ export const MuralPublishDialog: FC<Props> = (props) => {
             ) : null}
             <div className="ml-auto flex items-center gap-2">
               {isRecognition ? (
-                <button type="button" disabled={sending} onClick={close} className="inline-flex h-11 items-center rounded-full border border-[#D8CEF6] px-5 text-[14px] font-semibold text-[#3600C2] hover:bg-[#F8F6FF]">
+                <button type="button" disabled={sending} onClick={close} className="inline-flex h-11 items-center rounded-2xl border border-gray-100 bg-white px-4 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
                   Cancelar
                 </button>
               ) : (
-                <button type="button" aria-label="Pré-visualizar publicação" aria-pressed={preview} title="Pré-visualizar publicação" onClick={() => { setPreview((value) => !value); setMenu(false); }} className={`${tool} ${preview ? 'ring-2 ring-[#4600F3]/30' : ''}`}>
-                  <Eye className="h-[18px] w-[18px]" />
+                <button type="button" aria-label="Pré-visualizar publicação" aria-pressed={preview} title="Pré-visualizar publicação" onClick={() => { setPreview((value) => !value); setMenu(false); }} className={`${tool} ${preview ? 'ring-2 ring-blue-600/30' : ''}`}>
+                  <Eye className="h-4 w-4" />
                 </button>
               )}
-              <button type="button" disabled={!ready} onClick={() => void publish()} className="inline-flex h-11 items-center gap-2 rounded-full bg-[#4600F3] px-5 text-[14px] font-semibold text-white hover:bg-[#3600C2] disabled:cursor-not-allowed disabled:opacity-50">
+              <button type="button" disabled={!ready} onClick={() => void publish()} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Publicar
               </button>

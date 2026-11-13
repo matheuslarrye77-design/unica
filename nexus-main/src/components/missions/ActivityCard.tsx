@@ -23,7 +23,7 @@ import {
 import { cn } from '@/lib/utils';
 
 const priorityStyle: Record<Activity['priority'], { pill: string; icon: string }> = {
-  high: { pill: 'bg-[#EDE7FE] text-[#4600F3]', icon: 'text-[#4600F3]' },
+  high: { pill: 'bg-[#FDE7F3] text-[#DB2777]', icon: 'text-[#DB2777]' },
   medium: { pill: 'bg-[#FDE7F3] text-[#DB2777]', icon: 'text-[#DB2777]' },
   low: { pill: 'bg-[#F3E8FF] text-[#6B33F6]', icon: 'text-[#6B33F6]' },
 };
@@ -61,13 +61,14 @@ export const ActivityCardView: FC<{
 
   return (
     <article className={cn(
-      'group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] select-none transition-shadow duration-300 hover:shadow-[0_10px_28px_rgba(15,23,42,0.09)]',
+      'group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] select-none transition-shadow duration-300 hover:shadow-[0_10px_28px_rgba(15,23,42,0.09)]',
+      !collapsed && 'h-[312px]',
       leadership && 'border-l-4 border-l-[#6B33F6]',
       dragging && 'z-50 shadow-[0_16px_36px_rgba(15,23,42,0.12)]',
     )}>
-      <div className="p-5">
+      <div className="flex min-h-0 flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-3">
-          <h3 title={activity.title} className="text-lg font-bold leading-6 text-gray-800">{activity.title}</h3>
+          <h3 title={activity.title} className="line-clamp-2 h-12 text-lg font-bold leading-6 text-gray-800">{activity.title}</h3>
           <span className="flex shrink-0 items-center">
             {onToggle ? (
               <button
@@ -115,7 +116,7 @@ export const ActivityCardView: FC<{
 
         {collapsed ? null : (
           <>
-            {detail ? <p className="mt-3 line-clamp-3 text-sm leading-6 text-gray-500">{detail}</p> : null}
+            <p className="mt-3 line-clamp-2 h-12 text-sm leading-6 text-gray-500">{detail || ' '}</p>
 
             <div className="mt-5 flex flex-wrap gap-2">
               {leadership && missionChannel(activity) ? <span className="rounded-full bg-[#EDE7FE] px-3 py-1 text-xs font-semibold text-[#4600F3]">{CHANNEL_LABEL[missionChannel(activity)!]}</span> : null}
@@ -140,12 +141,10 @@ export const ActivityCardView: FC<{
               <div className={cn('h-full rounded-full transition-all duration-700', progressColor(progress))} style={{ width: `${progress}%` }} />
             </div>
 
-            {progress === 100 ? (
-              <div className="mt-4 flex items-center gap-2 text-sm font-medium text-[#4600F3]">
-                <CheckCircle className="h-4 w-4" />
-                Atividade concluída
-              </div>
-            ) : null}
+            <div className={cn('mt-4 flex h-5 items-center gap-2 text-sm font-medium text-[#4600F3]', progress === 100 ? 'visible' : 'invisible')}>
+              <CheckCircle className="h-4 w-4" />
+              Atividade concluída
+            </div>
           </>
         )}
       </div>

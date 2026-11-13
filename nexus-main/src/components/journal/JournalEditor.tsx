@@ -28,7 +28,7 @@ import {
 } from '@/data/journal';
 import { uploadMedia } from '@/lib/feed';
 import { cn, generateId } from '@/lib/utils';
-import { Calendar, ChevronDown, Eye, FileText, Image as ImageIcon, ImagePlus, Info, Maximize2, Megaphone, Minimize2, Paperclip, Send, Trash2, Type, X } from 'lucide-react';
+import { Calendar, ChevronDown, Eye, FileText, Image as ImageIcon, ImagePlus, Info, Maximize2, Minimize2, Paperclip, Send, Trash2, Type, X } from 'lucide-react';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ClipboardEvent, type DragEvent, type FC, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
@@ -749,8 +749,8 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        overlayClassName="bg-[#2A0094]/35 backdrop-blur-md"
-        className="flex max-h-[calc(100dvh-1rem)] w-[min(840px,calc(100%-2rem))] max-w-none flex-col gap-0 overflow-hidden rounded-[28px] border-[#DDD4F5] bg-white p-4 shadow-[0_24px_80px_rgba(70,0,243,0.16)] sm:max-w-[840px]"
+        overlayClassName="bg-slate-900/20"
+        className="flex max-h-[calc(100dvh-1rem)] w-[min(840px,calc(100%-2rem))] max-w-none flex-col gap-0 overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:max-w-[840px]"
         onPointerDown={(event) => {
           const target = event.target as HTMLElement | null;
           if (pinHint && !target?.closest('[data-pin-hint]')) setPinHint(false);
@@ -777,13 +777,10 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
           saveQuietDraft();
         }}
       >
-        <div className="mb-3 flex shrink-0 items-start gap-3 pr-8">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#EDE7FE] text-[#4600F3]">
-            <Megaphone className="h-5 w-5" />
-          </span>
+        <div className="mb-4 flex shrink-0 items-start gap-3 pr-8">
           <div>
-            <DialogTitle className="text-[18px] font-semibold tracking-tight text-[#241B33]">{article ? 'Editar publicação' : 'Nova publicação'}</DialogTitle>
-            <DialogDescription className="mt-0.5 text-[12.5px] text-[#8A7C98]">Título, conteúdo, categoria e materiais da notícia. A imagem de capa é opcional.</DialogDescription>
+            <DialogTitle className="text-xl font-bold tracking-tight text-gray-800">{article ? 'Editar publicação' : 'Nova publicação'}</DialogTitle>
+            <DialogDescription className="mt-1 text-base text-gray-500">Título, conteúdo, categoria e materiais da notícia. A imagem de capa é opcional.</DialogDescription>
           </div>
         </div>
 
@@ -802,15 +799,15 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
         ) : (
           <div className="grid min-h-0 flex-1 content-start gap-2.5 overflow-y-auto pr-1">
             <label className="grid gap-1">
-              <span className="flex items-center gap-2 text-[13px] font-semibold text-[#241B33]"><Type className="h-3.5 w-3.5 text-[#4600F3]" /> Título</span>
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-800"><Type className="h-4 w-4 text-gray-400" /> Título</span>
               <span className="relative">
-                <input value={title} maxLength={TITLE_LIMIT} onChange={(event) => setTitle(event.target.value.slice(0, TITLE_LIMIT))} placeholder="Digite o título da publicação..." className="h-10 w-full rounded-2xl border border-[#DDD4F5] bg-[#FBF9FD] px-4 pr-16 text-[14px] outline-none placeholder:text-[#B0A8BA] focus:border-[#C4B0FC]" />
+                <input value={title} maxLength={TITLE_LIMIT} onChange={(event) => setTitle(event.target.value.slice(0, TITLE_LIMIT))} placeholder="Digite o título da publicação..." className="h-11 w-full rounded-2xl border border-gray-100 bg-white px-4 pr-16 text-base text-gray-800 outline-none placeholder:text-gray-400 focus:border-blue-600" />
                 <span className="absolute top-1/2 right-4 -translate-y-1/2 text-[12px] text-[#B0A8BA]">{title.length}/{TITLE_LIMIT}</span>
               </span>
             </label>
             <div className="grid gap-1">
-              <span className="flex items-center justify-between gap-2 text-[13px] font-semibold text-[#241B33]">
-                <span className="flex items-center gap-2"><FileText className="h-3.5 w-3.5 text-[#4600F3]" /> Descrição</span>
+              <span className="flex items-center justify-between gap-2 text-sm font-semibold text-gray-800">
+                <span className="flex items-center gap-2"><FileText className="h-4 w-4 text-gray-400" /> Descrição</span>
                 <span className="flex items-center gap-0.5">
                   <button type="button" aria-label="Inserir imagem na descrição" onClick={() => inlineInput.current?.click()} className="grid h-7 w-7 place-items-center rounded-full text-[#4600F3] hover:bg-[#EDE7FE]"><ImagePlus className="h-3.5 w-3.5" /></button>
                   <button type="button" aria-pressed={writing} aria-label="Ampliar descrição" onClick={() => setWriting(true)} className="grid h-7 w-7 place-items-center rounded-full text-[#B0A8BA] hover:bg-[#EDE7FE] hover:text-[#3600C2]">
@@ -845,7 +842,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
               </label>
             </div>
             <div className="grid gap-1.5">
-              <span className="flex items-center gap-2 text-[13px] font-semibold text-[#241B33]"><ImageIcon className="h-3.5 w-3.5 text-[#4600F3]" /> Imagem de capa</span>
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-800"><ImageIcon className="h-4 w-4 text-gray-400" /> Imagem de capa</span>
               <button type="button" onClick={() => setLibrary((current) => !current)} onDragOver={(event) => event.preventDefault()} onDrop={onDrop} className="overflow-hidden rounded-2xl border border-dashed border-[#D9C6E8] bg-[#FBF9FD] text-left">
                 {coverUrl ? (
                   <span className="relative block">
@@ -907,11 +904,11 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
         )}
         {preview ? null : (
           <>
-            <div className="mt-2 flex shrink-0 items-center justify-between gap-3 border-t border-[#F0E8F4] pt-3">
+            <div className="mt-3 flex shrink-0 items-center justify-between gap-3 border-t border-gray-100 pt-4">
               <div className="flex items-center gap-2">
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="inline-flex h-10 items-center gap-2 rounded-full border border-[#DDD4F5] bg-white px-3 text-[13px] font-semibold text-[#5C5470]">
-                    <Paperclip className="h-4 w-4" /> Arquivos <ChevronDown className="h-3.5 w-3.5" />
+                  <DropdownMenuTrigger className="inline-flex h-11 items-center gap-2 rounded-2xl border border-gray-100 bg-white px-4 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+                    <Paperclip className="h-4 w-4" /> Arquivos <ChevronDown className="h-4 w-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="rounded-2xl">
                     <DropdownMenuItem onSelect={() => audioInput.current?.click()}>Enviar áudio</DropdownMenuItem>
@@ -920,13 +917,13 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
                     <DropdownMenuItem onSelect={() => documentInput.current?.click()}>Enviar documentos</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                {canAutosave ? <button type="button" onClick={() => publish('draft')} className="h-10 rounded-full px-3 text-[13px] font-semibold text-[#3600C2] hover:bg-[#EDE7FE]">Rascunho</button> : null}
+                {canAutosave ? <button type="button" onClick={() => publish('draft')} className="h-11 rounded-2xl px-4 text-base font-semibold text-gray-600 hover:bg-gray-50">Rascunho</button> : null}
               </div>
               <div className="flex items-center gap-2">
-                <button type="button" aria-label="Pré-visualizar" onClick={() => setPreview(true)} className="grid h-11 w-11 place-items-center rounded-full border border-[#DDD4F5] bg-white text-[#3600C2] hover:bg-[#EDE7FE]">
-                  <Eye className="h-5 w-5" />
+                <button type="button" aria-label="Pré-visualizar" onClick={() => setPreview(true)} className="grid h-11 w-11 place-items-center rounded-2xl border border-gray-100 bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
+                  <Eye className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={() => publish('published')} className="inline-flex h-11 items-center gap-2 rounded-full bg-[#3600C2] px-5 text-[14px] font-semibold text-white hover:bg-[#3600C2]">
+                <button type="button" onClick={() => publish('published')} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500">
                   <Send className="h-4 w-4" /> Publicar
                 </button>
               </div>

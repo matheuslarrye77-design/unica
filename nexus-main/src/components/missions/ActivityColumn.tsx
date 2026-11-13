@@ -63,18 +63,16 @@ export const ActivityColumn: FC<{
           isOver ? 'bg-blue-50 ring-2 ring-inset ring-blue-300' : 'bg-gray-50',
         )}
       >
-        {leadership.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => setLeadershipOpen((open) => !open)}
-            className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2 text-left text-sm font-semibold text-violet-700 shadow-sm"
-          >
-            {leadershipOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            <Star className="h-4 w-4" />
-            Missões da liderança
-            <span className="ml-auto text-xs font-bold text-gray-500">{leadership.length}</span>
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={() => setLeadershipOpen((open) => !open)}
+          className="flex h-11 items-center gap-2 rounded-2xl bg-white px-3 text-left text-sm font-semibold text-violet-700 shadow-sm"
+        >
+          {leadershipOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          <Star className="h-4 w-4" />
+          Missões da liderança
+          <span className="ml-auto text-xs font-bold text-gray-500">{leadership.length}</span>
+        </button>
 
         <SortableContext items={visible.map((activity) => activity.id)} strategy={verticalListSortingStrategy}>
           {visible.map((activity) => (
