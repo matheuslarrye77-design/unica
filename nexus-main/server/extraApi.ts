@@ -12,6 +12,7 @@ import { performLogin, performLogout, performSession } from './auth/flow.mjs';
 import { applyAuthResult } from './auth/http.mjs';
 import { createLocalStore, localUserFromRequest } from './auth/localStore.mjs';
 import { isLeader } from './auth/permissions.mjs';
+import { handleBirthdayCard } from './birthdayCard.mjs';
 import { handleCelebrations } from './celebrations/api.mjs';
 import { gifMediaUrl, searchGifs } from './giphy.mjs';
 import { handleStickerRequest, stickerMediaUrl } from './stickers.mjs';
@@ -561,7 +562,8 @@ export function extraApi(): Connect.NextHandleFunction {
     const stickerRoute = url === '/api/stickers' || url.startsWith('/api/stickers/');
     const goalsRoute = url === '/api/goals' || url.startsWith('/api/goals/');
     const journalRoute = url === '/api/journal';
-    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && !feedRoute && !uploadRoute && !celebrationRoute && !gifRoute && !stickerRoute && !goalsRoute && !journalRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
+    const birthdayRoute = url === '/api/birthday-card' || url.startsWith('/api/birthday-card/');
+    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && !feedRoute && !uploadRoute && !celebrationRoute && !gifRoute && !stickerRoute && !goalsRoute && !journalRoute && !birthdayRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
       return next();
     }
     try {
@@ -593,7 +595,7 @@ export function extraApi(): Connect.NextHandleFunction {
         return;
       }
 
-      const user = (feedRoute || uploadRoute || celebrationRoute || gifRoute || goalsRoute || journalRoute) ? muralUser(req) : accountFrom(req);
+      const user = (feedRoute || uploadRoute || celebrationRoute || gifRoute || goalsRoute || journalRoute || birthdayRoute) ? muralUser(req) : accountFrom(req);
       if (goalsRoute) {
         if (!user) return send(res, 401, { error: 'unauthorized' });
         await handleGoals(req, res, user, dir, loadAuth().colleagues, teamRoster, send, readBody);
@@ -608,6 +610,10 @@ export function extraApi(): Connect.NextHandleFunction {
       }
       if (celebrationRoute) {
         await handleCelebrations(req, res, url, user, dir, isLeader(user));
+        return;
+      }
+      if (birthdayRoute) {
+        await handleBirthdayCard(req, res, url, user, dir);
         return;
       }
 

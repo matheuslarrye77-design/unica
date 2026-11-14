@@ -8,6 +8,7 @@ const FILES = [
   ['celebrations', 'celebrations.json'],
   ['events', 'events.json'],
   ['journal', 'journal.json'],
+  ['birthday-cards', 'birthday-cards.json'],
 ];
 
 function blobToken() {

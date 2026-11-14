@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { directoryPeople, isLeader, useInstitution, wallpaperUrl, type CalendarTheme } from '@/lib/institution';
 import { Calendar, Cake, ChevronLeft, ChevronRight, MapPin, Plus, X } from 'lucide-react';
 import { PageHero } from '@/components/social/LilacWash';
-import { CelebrationsCenter } from '@/components/celebrations/CelebrationsCenter';
+import { BirthdayTicket } from '@/components/celebrations/BirthdayTicket';
 import { EventDialog } from '@/components/calendar/EventDialog';
 import { deleteEvent, notifyEvents, parseAgendaDate, useAgendaEvents, type AgendaEvent } from '@/lib/events';
 import { actor } from '@/lib/session';
@@ -360,11 +360,11 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
         <div id="calendario" className="min-w-0">
           <PageHero
             icon={<Cake className="h-5 w-5" strokeWidth={1.75} />}
-            title="Celebrações"
-            subtitle="Decore o bolo e as datas da equipe. O recado aparece ao tocar no enfeite."
+            title="Aniversários"
+            subtitle="Monte um bilhete com adesivos. Cada um esconde o próprio recado no verso."
           />
           {sectionTabs}
-          <CelebrationsCenter />
+          <BirthdayTicket />
         </div>
       );
     }
