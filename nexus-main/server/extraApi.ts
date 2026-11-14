@@ -278,6 +278,7 @@ export function extraApi(): Connect.NextHandleFunction {
   }
 
   const journalFile = path.join(dir, 'journal.json');
+  const retiredDrafts = ['j-rascunho'];
 
   function loadJournal() {
     try {
@@ -295,6 +296,17 @@ export function extraApi(): Connect.NextHandleFunction {
   function saveJournal(store: { initialized: boolean; articles: Record<string, unknown>[]; deletedIds: string[] }) {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(journalFile, JSON.stringify(store));
+  }
+
+  function presentJournal(store: { initialized: boolean; articles: unknown[]; deletedIds: string[] }) {
+    const deletedIds = [...new Set([...store.deletedIds, ...retiredDrafts])].slice(0, 2000);
+    const blocked = new Set(deletedIds);
+    const articles = store.articles.filter((article) => {
+      if (!article || typeof article !== 'object') return false;
+      const id = String((article as { id?: unknown }).id ?? '');
+      return Boolean(id) && !blocked.has(id);
+    });
+    return { initialized: store.initialized, articles, deletedIds };
   }
 
   function clip(value: unknown, max: number) {
@@ -1050,7 +1062,12 @@ export function extraApi(): Connect.NextHandleFunction {
       }
 
       if (req.method === 'GET' && journalRoute) {
-        send(res, 200, loadJournal());
+        const current = loadJournal();
+        const next = presentJournal(current);
+        if (current.initialized && (next.articles.length !== current.articles.length || next.deletedIds.length !== current.deletedIds.length)) {
+          saveJournal({ initialized: true, articles: next.articles as Record<string, unknown>[], deletedIds: next.deletedIds });
+        }
+        send(res, 200, next);
         return;
       }
 
@@ -1060,6 +1077,7 @@ export function extraApi(): Connect.NextHandleFunction {
         const current = loadJournal();
         const deletedIds = [...new Set([
           ...current.deletedIds,
+          ...retiredDrafts,
           ...(Array.isArray(body.deletedIds) ? body.deletedIds.filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 80) : []),
         ])].slice(0, 2000);
         const blocked = new Set(deletedIds);

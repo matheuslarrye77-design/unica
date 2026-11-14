@@ -28,8 +28,7 @@ import {
 import { currentUser } from '@/data/mockData';
 import { assertPermission, useInstitution } from '@/lib/institution';
 import { cn } from '@/lib/utils';
-import { CalendarDays, ChevronRight, Download, FileText, Filter, MoreHorizontal, Plus, Star } from 'lucide-react';
-import { usePageSearch } from '@/lib/pageSearch';
+import { Bookmark, CalendarDays, Download, FileText, Filter, MoreHorizontal, Plus, Search } from 'lucide-react';
 import { authHeaders } from '@/lib/session';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { toast } from 'sonner';
@@ -53,7 +52,9 @@ export const ResourcesPage: FC = () => {
   const [documents, setDocuments] = useState<CompanyDocument[]>([]);
   const [category, setCategory] = useState<CategoryFilter>('todos');
   const [system, setSystem] = useState<'todos' | DocumentSystem>('todos');
-  const { query } = usePageSearch();
+  const [search, setSearch] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [savedOnly, setSavedOnly] = useState(false);
   const [sort, setSort] = useState<SortMode>('az');
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [selected, setSelected] = useState<CompanyDocument | null>(null);
@@ -85,7 +86,7 @@ export const ResourcesPage: FC = () => {
   }, [selected]);
 
   const visible = useMemo(() => {
-    const text = query.trim().toLowerCase();
+    const text = search.trim().toLowerCase();
     const list = documents.filter((document) => {
       if (!document.published && !canManage && !canSend) return false;
       if (category !== 'todos' && document.category !== category) return false;
@@ -101,17 +102,9 @@ export const ResourcesPage: FC = () => {
       if (sort === 'accessed') return b.downloads - a.downloads;
       return b.updatedAt.localeCompare(a.updatedAt);
     });
-  }, [documents, category, system, query, sort, canManage, canSend]);
+  }, [documents, category, system, search, sort, canManage, canSend]);
 
   const featured = documents.filter((document) => document.featured && document.published && (category === 'todos' || document.category === category) && (system === 'todos' || document.system === system)).slice(0, 3);
-  const favoriteOrder = ['doc-pontividade', 'doc-boletim', 'doc-financeiro', 'doc-prominas'];
-  const favorites = documents
-    .filter((document) => (favoriteIds.includes(document.id) || document.favorites.includes(currentUser.id)) && (document.published || canManage || canSend))
-    .sort((a, b) => {
-      const left = favoriteOrder.indexOf(a.id);
-      const right = favoriteOrder.indexOf(b.id);
-      return (left === -1 ? 99 : left) - (right === -1 ? 99 : right);
-    });
 
   function upsert(document: CompanyDocument) {
     setDocuments((current) => {
@@ -129,7 +122,11 @@ export const ResourcesPage: FC = () => {
       : favoriteIds.filter((id) => id !== next.id);
     setFavoriteIds(ids);
     const response = await fetch('/api/document-favorites', { method: 'PUT', credentials: 'include', headers: authHeaders(), body: JSON.stringify({ ids }) });
-    if (!response.ok) toast.error('Não foi possível salvar o favorito.');
+    if (!response.ok) toast.error('Não foi possível salvar.');
+  }
+
+  function isSaved(document: CompanyDocument) {
+    return favoriteIds.includes(document.id) || document.favorites.includes(currentUser.id);
   }
 
   async function download(document: CompanyDocument) {
@@ -148,118 +145,111 @@ export const ResourcesPage: FC = () => {
     setEditorOpen(true);
   }
 
+  const filtering = category !== 'todos' || system !== 'todos' || sort !== 'az';
+  const listed = savedOnly ? visible.filter(isSaved) : visible;
+
   return (
     <>
-    <PageFrame rail={
-          <section className="rounded-[22px] border border-[#EDE7FE] bg-white p-4 shadow-[0_8px_22px_rgba(70,0,243,0.04)]">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="flex items-center gap-2 text-[14px] font-semibold text-[#2C2433]">
-                <Star className="h-4 w-4 fill-[#4600F3] text-[#4600F3]" /> Meus favoritos
-              </h2>
-              <button type="button" onClick={() => document.getElementById('todos-documentos')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="text-[12.5px] font-medium text-[#4600F3]">Ver todos</button>
-            </div>
-            {favorites.length === 0 ? <p className="px-1 py-3 text-[13px] text-[#8A7C98]">Nenhum favorito ainda.</p> : (
-              <ul className="mt-3 grid gap-2">
-                {favorites.map((document) => (
-                  <li key={document.id}>
-                    <button type="button" onClick={() => setSelected(document)} className="flex w-full items-center gap-2.5 rounded-xl px-1 py-1.5 text-left hover:bg-[#FBF7FC]">
-                      <SystemMark system={document.system} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-semibold text-[#2C2433]">{document.title}</span>
-                        <span className="block truncate text-[11.5px] text-[#8A7C98]">{categoryLabel(document.category)} · {systemLabel(document.system)}</span>
-                      </span>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-[#C4B6D4]" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-    }>
-          <section>
+    <PageFrame>
+          <div className="mb-6">
             <PageHero
+              align="start"
               icon={<FileText className="h-5 w-5" strokeWidth={1.75} />}
-              title="Central de Documentos"
+              title="Documentos"
               subtitle="Encontre procedimentos, requerimentos, orientações e documentos internos."
+              aside={canSend ? (
+                <button type="button" onClick={() => openEditor()} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500">
+                  <Plus className="h-4 w-4" />
+                  Enviar documento
+                </button>
+              ) : null}
             />
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button type="button" variant="outline" className="h-11 rounded-xl border-[#DDD4F5] bg-white px-4 text-[#5C5168] shadow-none">
-                    <Filter className="h-4 w-4" /> Filtrar
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => { setCategory('todos'); setSystem('todos'); setSort('az'); }}>Limpar filtros</DropdownMenuItem>
-                  {DOCUMENT_CATEGORIES.map((item) => (
-                    <DropdownMenuItem key={item.id} onClick={() => setCategory(item.id)}>{item.label}</DropdownMenuItem>
-                  ))}
-                  {ORIGIN_SYSTEMS.map((item) => (
-                    <DropdownMenuItem key={item.id} onClick={() => setSystem(item.id)}>{item.label}</DropdownMenuItem>
-                  ))}
-                  {sorts.map((item) => (
-                    <DropdownMenuItem key={item.id} onClick={() => setSort(item.id)}>{item.label}</DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </section>
+          </div>
 
-          {featured.length > 0 && !query ? (
-            <section className="mt-6">
-              <h2 className="mb-3 flex items-center gap-2 text-[16px] font-semibold text-[#2C2433]">
-                <Star className="h-4 w-4 fill-[#4600F3] text-[#4600F3]" /> Fixados
-              </h2>
-              <div className="grid gap-3 md:grid-cols-3">
-                {featured.map((document) => (
-                  <button key={document.id} type="button" onClick={() => setSelected(document)} className="flex items-start gap-3 rounded-2xl border border-[#EDE7FE] bg-white p-3.5 text-left shadow-[0_8px_22px_rgba(70,0,243,0.04)]">
-                    <SystemMark system={document.system} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[11.5px] text-[#8A7C98]">{categoryLabel(document.category)} · {systemLabel(document.system)}</span>
-                      <span className="mt-1 block text-[14.5px] font-semibold leading-snug text-[#2C2433]">{document.title}</span>
-                      <span className="mt-1 block text-[12.5px] leading-snug text-[#8A7C98]">{document.subtitle}</span>
-                      <span className="mt-3 flex items-center gap-1.5 text-[12px] text-[#8A7C98]"><CalendarDays className="h-3.5 w-3.5" />{formatDate(document.updatedAt)}</span>
-                    </span>
-                    <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-[#C4B6D4]" />
-                  </button>
+          <div className="relative mb-5 flex items-center gap-2">
+            <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-2xl border border-gray-100 bg-white px-3 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+              <Search className="h-4 w-4 shrink-0 text-gray-400" />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar documentos" className="h-full w-full bg-transparent text-base text-gray-800 outline-none placeholder:text-gray-400" />
+            </label>
+            <button type="button" aria-expanded={filterOpen} aria-label="Filtrar documentos" onClick={() => setFilterOpen((value) => !value)} className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-2xl', filtering || filterOpen ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600')}>
+              <Filter className="h-4 w-4" />
+            </button>
+            {filterOpen ? (
+              <div className="absolute top-12 right-0 z-20 max-h-80 w-56 overflow-y-auto rounded-2xl border border-gray-100 bg-white p-1 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                <button type="button" onClick={() => { setCategory('todos'); setSystem('todos'); setSort('az'); setFilterOpen(false); }} className="block w-full rounded-xl px-3 py-2 text-left text-base font-semibold text-gray-600 hover:text-blue-600">Limpar filtros</button>
+                {DOCUMENT_CATEGORIES.map((item) => (
+                  <button key={item.id} type="button" onClick={() => { setCategory(item.id); setFilterOpen(false); }} className={cn('block w-full rounded-xl px-3 py-2 text-left text-base font-semibold', category === item.id ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-blue-600')}>{item.label}</button>
                 ))}
+                {ORIGIN_SYSTEMS.map((item) => (
+                  <button key={item.id} type="button" onClick={() => { setSystem(item.id); setFilterOpen(false); }} className={cn('block w-full rounded-xl px-3 py-2 text-left text-base font-semibold', system === item.id ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-blue-600')}>{item.label}</button>
+                ))}
+                {sorts.map((item) => (
+                  <button key={item.id} type="button" onClick={() => { setSort(item.id); setFilterOpen(false); }} className={cn('block w-full rounded-xl px-3 py-2 text-left text-base font-semibold', sort === item.id ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-blue-600')}>{item.label}</button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          {featured.length > 0 && !search.trim() && !savedOnly ? (
+            <section className="mb-8">
+              <h2 className="mb-4 text-lg font-bold text-gray-800">Fixados</h2>
+              <div className="grid gap-3 md:grid-cols-3">
+                {featured.map((document) => {
+                  const saved = isSaved(document);
+                  return (
+                    <article key={document.id} className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+                      <button type="button" onClick={() => setSelected(document)} className="flex min-w-0 flex-1 items-start gap-3 text-left">
+                        <SystemMark system={document.system} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm text-gray-500">{categoryLabel(document.category)} · {systemLabel(document.system)}</span>
+                          <span className="mt-1 block text-base font-bold leading-6 text-gray-800">{document.title}</span>
+                          <span className="mt-1 block text-sm leading-6 text-gray-500">{document.subtitle}</span>
+                          <span className="mt-3 flex items-center gap-1.5 text-sm text-gray-400"><CalendarDays className="h-3.5 w-3.5" />{formatDate(document.updatedAt)}</span>
+                        </span>
+                      </button>
+                      <button type="button" aria-label={saved ? 'Remover dos salvos' : 'Salvar'} aria-pressed={saved} onClick={() => void favorite(document)} className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)]', saved ? 'text-blue-600' : 'text-gray-400 hover:text-blue-600')}>
+                        <Bookmark className="h-4 w-4" fill={saved ? 'currentColor' : 'none'} />
+                      </button>
+                    </article>
+                  );
+                })}
               </div>
             </section>
           ) : null}
 
-          <section id="todos-documentos" className="mt-8">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-[16px] font-semibold text-[#2C2433]">Todos os documentos</h2>
-              {canSend ? <Button className="h-9" onClick={() => openEditor()}><Plus className="h-4 w-4" />Enviar documento</Button> : null}
+          <section id="todos-documentos">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-bold text-gray-800">{savedOnly ? 'Salvos' : 'Todos os documentos'}</h2>
+              <button type="button" aria-pressed={savedOnly} onClick={() => setSavedOnly((value) => !value)} className={cn('inline-flex h-11 items-center rounded-2xl px-4 text-base font-semibold', savedOnly ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600')}>Salvos</button>
             </div>
-            {visible.length === 0 ? (
-              <p className="rounded-2xl border bg-card px-4 py-10 text-center text-sm text-muted-foreground">Nenhum documento encontrado.</p>
+            {listed.length === 0 ? (
+              <p className="rounded-2xl border border-gray-100 bg-white px-4 py-10 text-center text-base text-gray-500 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">{savedOnly ? 'Nenhum documento salvo.' : 'Nenhum documento encontrado.'}</p>
             ) : (
               <div className="flex flex-col gap-3">
-                {visible.map((document) => {
-                  const favored = document.favorites.includes(currentUser.id);
+                {listed.map((document) => {
+                  const saved = isSaved(document);
                   return (
-                    <article key={document.id} className="flex items-center gap-4 rounded-2xl border border-[#EDE7FE] bg-white px-4 py-3 shadow-[0_8px_22px_rgba(70,0,243,0.04)]">
+                    <article key={document.id} className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white px-4 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
                       <button type="button" onClick={() => setSelected(document)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                         <SystemMark system={document.system} />
                         <span className="min-w-0">
-                          <span className="block text-[15px] font-semibold text-[#2C2433]">{document.title}</span>
-                          <span className="mt-0.5 block text-[12px] text-[#8A7C98]">{categoryLabel(document.category)} · {systemLabel(document.system)}{document.published ? '' : ' · Rascunho'}</span>
-                          <span className="mt-0.5 block text-[13px] text-[#5C5168]">{document.subtitle}</span>
-                          <span className="mt-1.5 block text-[12px] text-[#8A7C98]">Atualizado em {formatDate(document.updatedAt)}</span>
+                          <span className="block text-base font-bold text-gray-800">{document.title}</span>
+                          <span className="mt-0.5 block text-sm text-gray-500">{categoryLabel(document.category)} · {systemLabel(document.system)}{document.published ? '' : ' · Rascunho'}</span>
+                          <span className="mt-0.5 block text-sm text-gray-500">{document.subtitle}</span>
+                          <span className="mt-1.5 block text-sm text-gray-400">Atualizado em {formatDate(document.updatedAt)}</span>
                         </span>
                       </button>
-                      <div className="flex items-start gap-1">
-                        <button type="button" aria-label={favored ? 'Remover dos favoritos' : 'Favoritar'} onClick={() => void favorite(document)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted/60 hover:text-foreground">
-                          <Star className={cn('h-4 w-4', favored && 'fill-primary text-primary')} />
+                      <div className="flex items-center gap-2">
+                        <button type="button" aria-label={saved ? 'Remover dos salvos' : 'Salvar'} aria-pressed={saved} onClick={() => void favorite(document)} className={cn('grid h-11 w-11 place-items-center rounded-2xl bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)]', saved ? 'text-blue-600' : 'text-gray-400 hover:text-blue-600')}>
+                          <Bookmark className="h-4 w-4" fill={saved ? 'currentColor' : 'none'} />
                         </button>
-                        <button type="button" aria-label="Baixar" onClick={() => void download(document)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted/60 hover:text-foreground">
+                        <button type="button" aria-label="Baixar" onClick={() => void download(document)} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
                           <Download className="h-4 w-4" />
                         </button>
                         {canSend ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <button type="button" aria-label="Mais ações" className="rounded-lg p-2 text-muted-foreground hover:bg-muted/60 hover:text-foreground"><MoreHorizontal className="h-4 w-4" /></button>
+                              <button type="button" aria-label="Mais ações" className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600"><MoreHorizontal className="h-4 w-4" /></button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => openEditor(document)}>Editar</DropdownMenuItem>
@@ -279,12 +269,12 @@ export const ResourcesPage: FC = () => {
     </PageFrame>
 
       <Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null); }}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent overlayClassName="bg-slate-900/25 backdrop-blur-md" className="max-h-[85vh] overflow-y-auto rounded-2xl border border-gray-100 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:max-w-2xl">
           {selected ? (
             <>
               <DialogHeader>
-                <DialogTitle>{selected.title}</DialogTitle>
-                <DialogDescription>{selected.subtitle}</DialogDescription>
+                <DialogTitle className="text-xl font-bold tracking-tight text-gray-800">{selected.title}</DialogTitle>
+                <DialogDescription className="text-base text-gray-500">{selected.subtitle}</DialogDescription>
               </DialogHeader>
               <p className="inline-flex items-center gap-2 text-sm text-muted-foreground"><FileText className="h-4 w-4" />{selected.fileName}</p>
               <p className="text-sm leading-6">{selected.description}</p>
@@ -300,9 +290,9 @@ export const ResourcesPage: FC = () => {
               {previewUrl && selected.file.type.startsWith('image/') ? <img src={previewUrl} alt="" className="rounded-xl" /> : null}
               {previewUrl && selected.file.type === 'application/pdf' ? <iframe title={selected.title} src={previewUrl} className="h-72 w-full rounded-xl border" /> : null}
               <DialogFooter>
-                {previewUrl ? <Button variant="outline" onClick={() => window.open(previewUrl, '_blank')}>Abrir</Button> : null}
-                <Button variant="outline" onClick={() => void download(selected)}>Baixar</Button>
-                <Button onClick={() => void favorite(selected)}>{selected.favorites.includes(currentUser.id) ? 'Favorito' : 'Favoritar'}</Button>
+                {previewUrl ? <Button variant="outline" className="h-11 rounded-2xl px-4 text-base" onClick={() => window.open(previewUrl, '_blank')}>Abrir</Button> : null}
+                <Button variant="outline" className="h-11 rounded-2xl px-4 text-base" onClick={() => void download(selected)}>Baixar</Button>
+                <Button className="h-11 rounded-2xl px-4 text-base" onClick={() => void favorite(selected)}>{isSaved(selected) ? 'Salvo' : 'Salvar'}</Button>
               </DialogFooter>
             </>
           ) : null}
@@ -396,35 +386,35 @@ const DocumentEditor: FC<{
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent overlayClassName="bg-slate-900/25 backdrop-blur-md" className="max-h-[85vh] overflow-y-auto rounded-2xl border border-gray-100 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{document ? 'Editar documento' : 'Enviar documento'}</DialogTitle>
-          <DialogDescription>Categoria, sistema e arquivo ficam disponíveis para a equipe.</DialogDescription>
+          <DialogTitle className="text-xl font-bold tracking-tight text-gray-800">{document ? 'Editar documento' : 'Enviar documento'}</DialogTitle>
+          <DialogDescription className="text-base text-gray-500">Categoria, sistema e arquivo ficam disponíveis para a equipe.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <div className="grid gap-2"><Label htmlFor="doc-titulo">Título</Label><Input id="doc-titulo" value={title} onChange={(event) => setTitle(event.target.value)} /></div>
-          <div className="grid gap-2"><Label htmlFor="doc-sub">Subtítulo</Label><Input id="doc-sub" value={subtitle} onChange={(event) => setSubtitle(event.target.value)} /></div>
-          <div className="grid gap-2"><Label htmlFor="doc-desc">Descrição</Label><Textarea id="doc-desc" value={description} onChange={(event) => setDescription(event.target.value)} /></div>
+          <div className="grid gap-2"><Label htmlFor="doc-titulo" className="text-sm font-medium text-gray-600">Título</Label><Input id="doc-titulo" value={title} onChange={(event) => setTitle(event.target.value)} className="!h-11 rounded-2xl border-gray-100 bg-white text-base" /></div>
+          <div className="grid gap-2"><Label htmlFor="doc-sub" className="text-sm font-medium text-gray-600">Subtítulo</Label><Input id="doc-sub" value={subtitle} onChange={(event) => setSubtitle(event.target.value)} className="!h-11 rounded-2xl border-gray-100 bg-white text-base" /></div>
+          <div className="grid gap-2"><Label htmlFor="doc-desc" className="text-sm font-medium text-gray-600">Descrição</Label><Textarea id="doc-desc" value={description} onChange={(event) => setDescription(event.target.value)} className="rounded-2xl border-gray-100 bg-white text-base" /></div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label>Categoria</Label>
               <Select value={category} onValueChange={(value) => setCategory(value as DocumentCategory)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="!h-11 w-full rounded-2xl border-gray-100 bg-white text-base"><SelectValue /></SelectTrigger>
                 <SelectContent>{DOCUMENT_CATEGORIES.map((item) => <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
               <Label>Sistema de origem</Label>
               <Select value={system === 'pincel' || system === 'prominas' ? system : undefined} onValueChange={(value) => setSystem(value as DocumentSystem)}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger className="!h-11 w-full rounded-2xl border-gray-100 bg-white text-base"><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>{ORIGIN_SYSTEMS.map((item) => <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>)}</SelectContent>
               </Select>
               {system === 'pincel' || system === 'prominas' ? <SystemMark system={system} size="md" /> : null}
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2"><Label htmlFor="doc-data">Data</Label><Input id="doc-data" type="date" value={date} onChange={(event) => setDate(event.target.value)} /></div>
-            <div className="grid gap-2"><Label htmlFor="doc-autor">Autor</Label><Input id="doc-autor" value={author} onChange={(event) => setAuthor(event.target.value)} /></div>
+            <div className="grid gap-2"><Label htmlFor="doc-data" className="text-sm font-medium text-gray-600">Data</Label><Input id="doc-data" type="date" value={date} onChange={(event) => setDate(event.target.value)} className="!h-11 rounded-2xl border-gray-100 bg-white text-base" /></div>
+            <div className="grid gap-2"><Label htmlFor="doc-autor" className="text-sm font-medium text-gray-600">Autor</Label><Input id="doc-autor" value={author} onChange={(event) => setAuthor(event.target.value)} className="!h-11 rounded-2xl border-gray-100 bg-white text-base" /></div>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="doc-arquivo">Arquivo</Label>
@@ -433,8 +423,8 @@ const DocumentEditor: FC<{
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featured} onChange={(event) => setFeatured(event.target.checked)} />Fixar na central</label>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => void submit(false)}>Salvar sem publicar</Button>
-          <Button onClick={() => void submit(true)}>Publicar</Button>
+          <Button variant="outline" className="h-11 rounded-2xl px-4 text-base" onClick={() => void submit(false)}>Salvar sem publicar</Button>
+          <Button className="h-11 rounded-2xl px-4 text-base" onClick={() => void submit(true)}>Publicar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -445,22 +445,9 @@ const seed: JournalArticle[] = [
     reactions: 3,
     reactedBy: [],
   },
-  {
-    id: 'j-rascunho',
-    title: 'Rascunho do roteiro de boas-vindas',
-    content: 'Rascunho do roteiro de boas-vindas. Ainda falta a ordem das visitas e o material de apoio.',
-    category: 'treinamentos',
-    cover: '/jornal/capas/treinamento.jpg',
-    date: '2026-10-14T09:00:00.000Z',
-    author: 'Helena Duarte',
-    status: 'draft',
-    pinned: false,
-    media: [],
-    comments: [],
-    reactions: 0,
-    reactedBy: [],
-  },
 ];
+
+const RETIRED_DRAFT_IDS = ['j-rascunho'];
 
 const DELETED_KEY = 'unica-journal-deleted';
 const READY_KEY = 'unica-journal-ready';
@@ -531,8 +518,15 @@ function readStored(): JournalArticle[] {
       if (next !== article) changed = true;
       return next;
     });
-    if (changed) localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
-    return migrated;
+    const blocked = new Set([...readDeleted(), ...RETIRED_DRAFT_IDS]);
+    const kept = migrated.filter((article) => !blocked.has(article.id));
+    if (changed || kept.length !== migrated.length) {
+      const deleted = [...new Set([...readDeleted(), ...RETIRED_DRAFT_IDS.filter((id) => migrated.some((article) => article.id === id))])];
+      localStorage.setItem(DELETED_KEY, JSON.stringify(deleted));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(kept));
+      localStorage.setItem(READY_KEY, '1');
+    }
+    return kept;
   } catch {
     return seed;
   }
@@ -811,7 +805,11 @@ async function hydrateJournal() {
     if (!response.ok) return;
     const data = await response.json() as { initialized?: boolean; articles?: unknown[]; deletedIds?: unknown[] };
     const remoteDeleted = Array.isArray(data.deletedIds) ? data.deletedIds.filter((id): id is string => typeof id === 'string') : [];
-    const deleted = [...new Set([...readDeleted(), ...remoteDeleted])];
+    const localIds = new Set(articles.map((article) => article.id));
+    const trackDeletions = localStorage.getItem(STORAGE_KEY) !== null || localStorage.getItem(READY_KEY) === '1';
+    const remoteDrafts = Array.isArray(data.articles) ? data.articles.filter(isArticle).filter((article) => article.status === 'draft').map((article) => article.id) : [];
+    const droppedDrafts = trackDeletions ? remoteDrafts.filter((id) => !localIds.has(id)) : [];
+    const deleted = [...new Set([...readDeleted(), ...remoteDeleted, ...RETIRED_DRAFT_IDS, ...droppedDrafts])];
     localStorage.setItem(DELETED_KEY, JSON.stringify(deleted));
     const blocked = new Set(deleted);
     const seedIds = new Set(seed.map((article) => article.id));
