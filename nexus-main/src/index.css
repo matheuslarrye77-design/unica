@@ -523,9 +523,18 @@ svg.lucide {
   .equipe-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
-.sticker-cell {
-  content-visibility: auto;
-  contain-intrinsic-size: 5.5rem 5.5rem;
+.sticker-shelf {
+  scrollbar-width: thin;
+  scrollbar-color: #c4b5e0 transparent;
+}
+
+.sticker-shelf::-webkit-scrollbar {
+  width: 10px;
+}
+
+.sticker-shelf::-webkit-scrollbar-thumb {
+  background: #c4b5e0;
+  border-radius: 999px;
 }
 
 .sticker-cut {

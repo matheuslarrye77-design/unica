@@ -358,7 +358,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
               </button>
             </span>
           }
-          subtitle={birthdaysFocus ? 'Escolha uma foto para abrir os bilhetes. Cada adesivo esconde um recado no verso.' : 'Acompanhe seus compromissos, eventos e aniversários da equipe.'}
+          subtitle={birthdaysFocus ? undefined : 'Acompanhe seus compromissos, eventos e aniversários da equipe.'}
           aside={
             <div className="flex shrink-0 gap-2">
               <Button className="h-11 rounded-2xl px-4" onClick={() => { setEditingEvent(null); setCreateType('reuniao'); setEditorOpen(true); }}>
