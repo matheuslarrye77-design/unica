@@ -142,7 +142,7 @@ const legacy = new Map<string, string>([
 
 export const BIRTHDAY_STICKERS: BirthdayStickerArt[] = files.map((file) => ({
   id: file,
-  src: `/aniversario/stickers/${file}`,
+  src: `/aniversario/stickers/${file}?v=2`,
 }));
 
 export function birthdayStickerArt(id: string) {

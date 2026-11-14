@@ -283,8 +283,8 @@ export const BirthdayTicket: FC = () => {
               {canAdd ? (
                 <div className="grid max-h-80 grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-3 overflow-y-auto pr-1" data-sticker-count={BIRTHDAY_STICKERS.length}>
                   {BIRTHDAY_STICKERS.map((item) => (
-                    <button key={item.id} type="button" onClick={() => void addSticker(item.id)} className="grid aspect-square place-items-center rounded-2xl bg-white p-2 shadow-[0_8px_24px_rgba(15,23,42,0.06)]" aria-label={`Adicionar ${item.id}`}>
-                      <img src={item.src} alt="" className="sticker-cut max-h-full max-w-full object-contain" />
+                    <button key={item.id} type="button" onClick={() => void addSticker(item.id)} className="sticker-cell grid aspect-square place-items-center rounded-2xl bg-white p-2 shadow-[0_8px_24px_rgba(15,23,42,0.06)]" aria-label={`Adicionar ${item.id}`}>
+                      <img src={item.src} alt="" loading="lazy" decoding="async" draggable={false} className="sticker-cut max-h-full max-w-full object-contain" />
                     </button>
                   ))}
                 </div>

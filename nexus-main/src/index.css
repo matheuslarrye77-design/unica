@@ -523,6 +523,11 @@ svg.lucide {
   .equipe-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
+.sticker-cell {
+  content-visibility: auto;
+  contain-intrinsic-size: 5.5rem 5.5rem;
+}
+
 .sticker-cut {
   filter:
     drop-shadow(1px 0 0 #fff)
@@ -532,10 +537,5 @@ svg.lucide {
     drop-shadow(1px 1px 0 #fff)
     drop-shadow(-1px -1px 0 #fff)
     drop-shadow(1px -1px 0 #fff)
-    drop-shadow(-1px 1px 0 #fff)
-    drop-shadow(2px 0 0 #fff)
-    drop-shadow(-2px 0 0 #fff)
-    drop-shadow(0 2px 0 #fff)
-    drop-shadow(0 -2px 0 #fff)
-    drop-shadow(0 0 1px rgba(40, 30, 50, 0.45));
+    drop-shadow(-1px 1px 0 #fff);
 }
