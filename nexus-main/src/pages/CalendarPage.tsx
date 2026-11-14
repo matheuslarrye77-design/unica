@@ -335,6 +335,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
     const openBirthdays = () => {
       const next = new URLSearchParams(params);
       next.set('tipo', 'aniversarios');
+      next.delete('pessoa');
       setParams(next);
     };
     const openCalendar = () => {
@@ -345,47 +346,31 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
       next.delete('edicao');
       setParams(next);
     };
-    const sectionTabs = (
-      <div className="mt-6 flex gap-6 border-b border-[var(--ds-divider)]">
-        <button type="button" onClick={openCalendar} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2.5 text-[13px] font-medium', !birthdaysFocus ? 'border-[var(--ds-purple)] text-[var(--ds-purple)]' : 'border-transparent text-[var(--ds-muted)]')}>
-          <Calendar className="h-3.5 w-3.5" strokeWidth={1.5} /> Calendário
-        </button>
-        <button type="button" onClick={openBirthdays} className={cn('inline-flex items-center gap-1.5 border-b-2 pb-2.5 text-[13px] font-medium', birthdaysFocus ? 'border-[var(--ds-purple)] text-[var(--ds-purple)]' : 'border-transparent text-[var(--ds-muted)]')}>
-          <Cake className="h-3.5 w-3.5" /> Aniversários
-        </button>
-      </div>
-    );
-    if (birthdaysFocus) {
-      return (
-        <div id="calendario" className="min-w-0">
-          <PageHero
-            icon={<Cake className="h-5 w-5" strokeWidth={1.75} />}
-            title="Aniversários"
-            subtitle="Monte um bilhete com adesivos. Cada um esconde o próprio recado no verso."
-          />
-          {sectionTabs}
-          <BirthdayTicket />
-        </div>
-      );
-    }
     return (
       <div id="calendario" className="min-w-0">
         <PageHero
-          icon={<Calendar className="h-5 w-5" strokeWidth={1.75} />}
-          title="Calendário"
-          subtitle="Acompanhe seus compromissos, eventos e aniversários da equipe."
+          align="start"
+          title={
+            <span className="inline-flex items-center gap-3">
+              <button type="button" onClick={openCalendar} className="text-left">Calendário</button>
+              <button type="button" aria-label="Aniversários" aria-pressed={birthdaysFocus} onClick={openBirthdays} className={cn('grid h-11 w-11 place-items-center rounded-2xl', birthdaysFocus ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]')}>
+                <Cake className="h-5 w-5" strokeWidth={1.75} />
+              </button>
+            </span>
+          }
+          subtitle={birthdaysFocus ? 'Escolha uma foto para abrir os bilhetes. Cada adesivo esconde um recado no verso.' : 'Acompanhe seus compromissos, eventos e aniversários da equipe.'}
           aside={
             <div className="flex shrink-0 gap-2">
-              <Button className="h-9 px-3.5" onClick={() => { setEditingEvent(null); setCreateType('reuniao'); setEditorOpen(true); }}>
+              <Button className="h-11 rounded-2xl px-4" onClick={() => { setEditingEvent(null); setCreateType('reuniao'); setEditorOpen(true); }}>
                 <Plus className="h-4 w-4" /> Adicionar evento
               </Button>
-              <Button variant="outline" className="h-10 rounded-full border-[#DDD4F5] bg-white px-4" onClick={() => { setEditingEvent(null); setCreateType('aniversario'); setEditorOpen(true); }}>
+              <Button variant="outline" className="h-11 rounded-2xl border-gray-100 bg-white px-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]" onClick={() => { setEditingEvent(null); setCreateType('aniversario'); setEditorOpen(true); }}>
                 <Cake className="h-4 w-4" /> Adicionar aniversário
               </Button>
             </div>
           }
         />
-        {sectionTabs}
+        {birthdaysFocus ? <BirthdayTicket /> : <>
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button type="button" aria-label="Mês anterior" onClick={() => boardView === 'week' ? shiftWeek(-1) : shiftMonth(-1)} className="grid h-8 w-8 place-items-center rounded-full text-[#5C5168] hover:bg-white"><ChevronLeft className="h-4 w-4" /></button>
@@ -492,6 +477,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
             {active.event.time ? <p className="mt-2 text-muted-foreground">{active.event.time}{active.event.place ? ` · ${active.event.place}` : ''}</p> : null}
           </div>
         ) : null}
+        </>}
         <EventDialog
           open={editorOpen}
           event={editingEvent}

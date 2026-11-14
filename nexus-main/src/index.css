@@ -522,3 +522,20 @@ svg.lucide {
 @container (min-width: 56rem) {
   .equipe-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
+.sticker-cut {
+  filter:
+    drop-shadow(1px 0 0 #fff)
+    drop-shadow(-1px 0 0 #fff)
+    drop-shadow(0 1px 0 #fff)
+    drop-shadow(0 -1px 0 #fff)
+    drop-shadow(1px 1px 0 #fff)
+    drop-shadow(-1px -1px 0 #fff)
+    drop-shadow(1px -1px 0 #fff)
+    drop-shadow(-1px 1px 0 #fff)
+    drop-shadow(2px 0 0 #fff)
+    drop-shadow(-2px 0 0 #fff)
+    drop-shadow(0 2px 0 #fff)
+    drop-shadow(0 -2px 0 #fff)
+    drop-shadow(0 0 1px rgba(40, 30, 50, 0.45));
+}
