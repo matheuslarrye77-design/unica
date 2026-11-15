@@ -9,6 +9,7 @@ export type BirthdaySticker = {
   y: number;
   width: number;
   rotation: number;
+  flip?: boolean;
   message: string;
   open: boolean;
   authorId: string;
@@ -32,6 +33,7 @@ export type TextStyle = {
   opacity: number;
   glyph: 'none' | 'heart' | 'star' | 'spark';
   rotation: number;
+  flip: boolean;
 };
 
 export type BirthdayText = {
@@ -53,6 +55,7 @@ export type BirthdayMark = {
   y: number;
   size: number;
   rotation: number;
+  flip?: boolean;
   authorId: string;
   authorName: string;
 };
@@ -86,11 +89,11 @@ export function loadBirthdayCard(personId: string) {
   return request<BirthdayCardPayload>(`/api/birthday-card?personId=${encodeURIComponent(personId)}`);
 }
 
-export function placeBirthdaySticker(draft: { personId: string; stickerId: string; x: number; y: number; width: number; rotation: number; message: string }) {
+export function placeBirthdaySticker(draft: { personId: string; stickerId: string; x: number; y: number; width: number; rotation: number; flip?: boolean; message: string }) {
   return request<{ sticker: BirthdaySticker; mine: { id: string; personId: string } }>('/api/birthday-card', { method: 'POST', body: JSON.stringify(draft) });
 }
 
-export function updateBirthdaySticker(id: string, patch: Partial<Pick<BirthdaySticker, 'x' | 'y' | 'width' | 'rotation' | 'message' | 'open'>>) {
+export function updateBirthdaySticker(id: string, patch: Partial<Pick<BirthdaySticker, 'x' | 'y' | 'width' | 'rotation' | 'flip' | 'message' | 'open'>>) {
   return request<{ sticker: BirthdaySticker }>(`/api/birthday-card/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 }
 
@@ -110,11 +113,11 @@ export function deleteBirthdayText(id: string) {
   return request<{ ok: boolean }>(`/api/birthday-card/text/${id}`, { method: 'DELETE' });
 }
 
-export function placeBirthdayMark(draft: { personId: string; kind: BirthdayMark['kind']; color: string; x: number; y: number; size: number; rotation?: number }) {
+export function placeBirthdayMark(draft: { personId: string; kind: BirthdayMark['kind']; color: string; x: number; y: number; size: number; rotation?: number; flip?: boolean }) {
   return request<{ mark: BirthdayMark }>('/api/birthday-card/mark', { method: 'POST', body: JSON.stringify(draft) });
 }
 
-export function updateBirthdayMark(id: string, patch: Partial<Pick<BirthdayMark, 'kind' | 'color' | 'x' | 'y' | 'size' | 'rotation'>>) {
+export function updateBirthdayMark(id: string, patch: Partial<Pick<BirthdayMark, 'kind' | 'color' | 'x' | 'y' | 'size' | 'rotation' | 'flip'>>) {
   return request<{ mark: BirthdayMark }>(`/api/birthday-card/mark/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 }
 

@@ -105,6 +105,9 @@ test('o adesivo só entra com recado e o texto fica no cartão', async () => {
     assert.equal(moved.body.mark.x, 84);
     assert.equal(moved.body.mark.color, '#123456');
     assert.equal(moved.body.mark.rotation, -20);
+    const mirrored = await call(dir, 'PATCH', `/api/birthday-card/mark/${drawn.body.mark.id}`, matheus, { flip: true });
+    assert.equal(mirrored.status, 200);
+    assert.equal(mirrored.body.mark.flip, true);
     assert.equal(moved.body.mark.size, 120);
     await call(dir, 'POST', '/api/birthday-card/color', matheus, { personId: 'ana-souza', color: '#224466' });
     const kept = await call(dir, 'GET', '/api/birthday-card?personId=ana-souza', matheus);
@@ -122,8 +125,15 @@ test('a foto vira adesivo por um clique só, fora do rótulo', () => {
   const ui = fs.readFileSync(new URL('../src/components/celebrations/BirthdayTicket.tsx', import.meta.url), 'utf8');
   assert.match(ui, /function openPhoto\(cut: boolean\)/);
   assert.match(ui, /\(cut \? cutRef : photoRef\)\.current\?\.click\(\)/);
-  const upload = ui.slice(ui.indexOf('aria-label="Enviar figurinha"'), ui.indexOf('aria-label="Enviar figurinha"') + 420);
-  assert.equal(upload.includes('<input'), false);
-  assert.equal(upload.includes('openPhoto(false)'), true);
+  assert.equal((ui.match(/type="file"/g) || []).length, 2);
+  assert.equal(ui.includes("left: '-100vw'"), false);
+  const send = ui.indexOf('aria-label="Enviar figurinha"');
+  const cut = ui.indexOf('aria-label="Criar figurinha sem fundo"');
+  assert.equal(ui.slice(send, send + 180).includes('openPhoto(false)'), true);
+  for (const start of [send, cut]) {
+    const near = ui.slice(start, start + 700);
+    assert.equal(near.includes('type="file"'), true);
+    assert.equal(near.includes('absolute inset-0'), true);
+  }
   assert.match(ui, /image\/\*/);
 });

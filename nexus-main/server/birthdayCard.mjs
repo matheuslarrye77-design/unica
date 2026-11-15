@@ -80,6 +80,7 @@ function publicSticker(item) {
     y: item.y,
     width: item.width,
     rotation: item.rotation,
+    flip: Boolean(item.flip),
     message: item.message,
     open: Boolean(item.open),
     authorId: item.authorId,
@@ -110,6 +111,7 @@ function readStyle(body, previous = {}) {
     outline: flag('outline') || effect === 'outline',
     opacity: clamp(body.opacity ?? previous.opacity, 0.15, 1, 1),
     rotation: clamp(body.rotation ?? previous.rotation, -180, 180, 0),
+    flip: flag('flip'),
   };
 }
 
@@ -124,6 +126,7 @@ function publicMark(item) {
     y: item.y,
     size: clamp(item.size, 28, 240, 56),
     rotation: clamp(item.rotation, -180, 180, 0),
+    flip: Boolean(item.flip),
     authorId: item.authorId,
     authorName: item.authorName,
   };
@@ -193,6 +196,7 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
       y: clamp(body.y, 12, 88, 46),
       width: clamp(body.width, 14, 46, 24),
       rotation: clamp(body.rotation, -180, 180, 0),
+      flip: Boolean(body.flip),
       message,
       open: false,
       authorId: user.id,
@@ -272,6 +276,7 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
       y: clamp(body.y, 12, 88, 24),
       size: clamp(body.size, 28, 240, 56),
       rotation: clamp(body.rotation, -180, 180, 0),
+      flip: Boolean(body.flip),
       authorId: user.id,
       authorName: user.name,
       createdAt: new Date().toISOString(),
@@ -311,6 +316,7 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
     if (body.y !== undefined) mark.y = clamp(body.y, 12, 88, mark.y);
     if (body.size !== undefined) mark.size = clamp(body.size, 28, 240, mark.size);
     if (body.rotation !== undefined) mark.rotation = clamp(body.rotation, -180, 180, mark.rotation);
+    if (body.flip !== undefined) mark.flip = Boolean(body.flip);
     write(file, store);
     send(res, 200, { mark: publicMark(mark) });
     return;
@@ -336,6 +342,7 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
     if (body.y !== undefined) sticker.y = clamp(body.y, 12, 88, sticker.y);
     if (body.width !== undefined) sticker.width = clamp(body.width, 14, 46, sticker.width);
     if (body.rotation !== undefined) sticker.rotation = clamp(body.rotation, -180, 180, sticker.rotation);
+    if (body.flip !== undefined) sticker.flip = Boolean(body.flip);
     if (body.message !== undefined) sticker.message = cleanMessage(body.message);
     if (body.open !== undefined) sticker.open = Boolean(body.open);
     write(file, store);

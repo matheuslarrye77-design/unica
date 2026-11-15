@@ -23,7 +23,7 @@ import { parseAgendaDate, useAgendaEvents } from '@/lib/events';
 import { useDemoProfile } from '@/lib/session';
 import { listStickers, saveSticker } from '@/lib/stickers';
 import { cn } from '@/lib/utils';
-import { AlignCenter, AlignLeft, AlignRight, Cake, ChevronDown, Eraser, ImagePlus, Info, Move, Paintbrush, Pencil, Pipette, Redo2, RotateCw, Sticker, Trash2, Type, Undo2 } from 'lucide-react';
+import { AlignCenter, AlignLeft, AlignRight, Cake, ChevronDown, Copy, Eraser, FlipHorizontal, ImagePlus, Info, Move, Paintbrush, Pencil, Pipette, Redo2, RotateCw, Sticker, Trash2, Type, Undo2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FC, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
@@ -97,7 +97,7 @@ const PRESETS = [
   '#2a5fbe', '#187ea6', '#1c7a60', '#3c8c30', '#c27812', '#c24e28', '#a83046', '#8c4632',
 ];
 const COLOR_COLUMNS = 8;
-const EMPTY_LOOK: TextStyle = { font: 'vibes', effect: 'plain', color: '#ffffff', size: 36, bold: false, italic: false, underline: false, strike: false, align: 'center', upper: false, tracking: 0, shadow: false, outline: false, opacity: 1, glyph: 'none', rotation: 0 };
+const EMPTY_LOOK: TextStyle = { font: 'vibes', effect: 'plain', color: '#ffffff', size: 36, bold: false, italic: false, underline: false, strike: false, align: 'center', upper: false, tracking: 0, shadow: false, outline: false, opacity: 1, glyph: 'none', rotation: 0, flip: false };
 const IMAGE_ACCEPT = 'image/*,.jpg,.jpeg,.jfif,.png,.webp,.gif,.bmp,.avif,.heic,.heif,.tif,.tiff,.ico';
 type Tool = 'color' | 'stickers' | 'text';
 type EyeDropperCtor = new () => { open: () => Promise<{ sRGBHex: string }> };
@@ -249,7 +249,12 @@ function lookFrom(item: BirthdayText): TextStyle {
     outline: Boolean(item.outline) || item.effect === 'outline',
     opacity: typeof item.opacity === 'number' ? item.opacity : 1,
     rotation: Number.isFinite(item.rotation) ? item.rotation : 0,
+    flip: Boolean(item.flip),
   };
+}
+
+function pose(rotation: number, flip?: boolean) {
+  return `translate(-50%, -50%) rotate(${rotation || 0}deg) scaleX(${flip ? -1 : 1})`;
 }
 
 function turn(value: number) {
@@ -257,23 +262,27 @@ function turn(value: number) {
 }
 
 const FRAME_CORNERS = [
-  ['left-0 top-0', 'nwse-resize', 'pelo canto superior esquerdo'],
-  ['right-0 top-0', 'nesw-resize', 'pelo canto superior direito'],
-  ['left-0 bottom-0', 'nesw-resize', 'pelo canto inferior esquerdo'],
-  ['right-0 bottom-0', 'nwse-resize', 'pelo canto inferior direito'],
+  ['0%', '0%', 'nwse-resize', 'pelo canto superior esquerdo'],
+  ['100%', '0%', 'nesw-resize', 'pelo canto superior direito'],
+  ['0%', '100%', 'nesw-resize', 'pelo canto inferior esquerdo'],
+  ['100%', '100%', 'nwse-resize', 'pelo canto inferior direito'],
 ] as const;
 
-function SelectionBox({ label, onMove, onResize, onRotate, onDelete }: { label: string; onMove: (event: ReactPointerEvent<HTMLButtonElement>) => void; onResize: (event: ReactPointerEvent<HTMLButtonElement>) => void; onRotate?: (event: ReactPointerEvent<HTMLButtonElement>) => void; onDelete?: () => void }) {
-  const knob = 'pointer-events-auto absolute z-20 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]';
+function SelectionBox({ label, onMove, onResize, onRotate, onFlip, onDuplicate, onDelete }: { label: string; onMove: (event: ReactPointerEvent<HTMLButtonElement>) => void; onResize: (event: ReactPointerEvent<HTMLButtonElement>) => void; onRotate?: (event: ReactPointerEvent<HTMLButtonElement>) => void; onFlip?: () => void; onDuplicate?: () => void; onDelete?: () => void }) {
+  const knob = 'grid h-7 w-7 shrink-0 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]';
   return (
     <span className="pointer-events-none absolute inset-0 z-10">
       <span className="absolute inset-0 rounded-sm border border-white shadow-[0_0_0_1px_#6B33F6]" />
-      {FRAME_CORNERS.map(([place, cursor, edge]) => (
-        <button key={edge} type="button" title="Ampliar" aria-label={`Ampliar ${label} ${edge}`} onPointerDown={onResize} className={cn('pointer-events-auto absolute z-20 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-[3px] border border-[#6B33F6] bg-white', place)} style={{ cursor }} />
+      {FRAME_CORNERS.map(([x, y, cursor, edge]) => (
+        <button key={edge} type="button" title="Ampliar" aria-label={`Ampliar ${label} ${edge}`} onPointerDown={onResize} className="pointer-events-auto absolute z-20 h-2.5 w-2.5 rounded-[3px] border border-[#6B33F6] bg-white" style={{ left: x, top: y, transform: 'translate(-50%, -50%)', cursor }} />
       ))}
-      <button type="button" title="Mover" aria-label={`Mover ${label}`} onPointerDown={onMove} className={cn(knob, '-left-9 -top-9')}><Move className="h-3.5 w-3.5" /></button>
-      {onRotate ? <button type="button" title="Girar" aria-label={`Girar ${label}`} onPointerDown={onRotate} className={cn(knob, 'left-1/2 -top-9 -translate-x-1/2')}><RotateCw className="h-3.5 w-3.5" /></button> : null}
-      {onDelete ? <button type="button" title="Excluir" aria-label={`Excluir ${label}`} onPointerDown={(event) => event.stopPropagation()} onClick={onDelete} className={cn(knob, '-right-9 -top-9 text-[#9D174D]')}><Trash2 className="h-3.5 w-3.5" /></button> : null}
+      <span className="pointer-events-auto absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-[calc(100%+8px)] gap-1">
+        <button type="button" title="Mover" aria-label={`Mover ${label}`} onPointerDown={onMove} className={knob}><Move className="h-3.5 w-3.5" /></button>
+        {onDuplicate ? <button type="button" title="Duplicar" aria-label={`Duplicar ${label}`} onPointerDown={(event) => event.stopPropagation()} onClick={onDuplicate} className={knob}><Copy className="h-3.5 w-3.5" /></button> : null}
+        {onFlip ? <button type="button" title="Espelhar" aria-label={`Espelhar ${label}`} onPointerDown={(event) => event.stopPropagation()} onClick={onFlip} className={knob}><FlipHorizontal className="h-3.5 w-3.5" /></button> : null}
+        {onRotate ? <button type="button" title="Girar" aria-label={`Girar ${label}`} onPointerDown={onRotate} className={knob}><RotateCw className="h-3.5 w-3.5" /></button> : null}
+        {onDelete ? <button type="button" title="Excluir" aria-label={`Excluir ${label}`} onPointerDown={(event) => event.stopPropagation()} onClick={onDelete} className={cn(knob, 'text-[#9D174D]')}><Trash2 className="h-3.5 w-3.5" /></button> : null}
+      </span>
     </span>
   );
 }
@@ -437,6 +446,7 @@ export const BirthdayTicket: FC = () => {
   const [draftPos, setDraftPos] = useState({ x: 50, y: 46 });
   const [draftWidth, setDraftWidth] = useState(24);
   const [draftRotation, setDraftRotation] = useState(0);
+  const [draftFlip, setDraftFlip] = useState(false);
   const [textLive, setTextLive] = useState(false);
   const [draftLive, setDraftLive] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -522,6 +532,7 @@ export const BirthdayTicket: FC = () => {
     setDraftMessage('');
     setDraftWidth(24);
     setDraftRotation(0);
+    setDraftFlip(false);
     setDraftLive(false);
     setTextLive(false);
     setEditingId(null);
@@ -563,7 +574,7 @@ export const BirthdayTicket: FC = () => {
       toast.error('Escreva o recado antes de escolher o adesivo.');
       return;
     }
-    const before = { art: draftArt, pos: draftPos, width: draftWidth, rotation: draftRotation };
+    const before = { art: draftArt, pos: draftPos, width: draftWidth, rotation: draftRotation, flip: draftFlip };
     const pos = spot(stickersRef.current);
     if (editingTextRef.current) {
       setLetter('');
@@ -572,6 +583,7 @@ export const BirthdayTicket: FC = () => {
     setDraftArt(id);
     setDraftPos(pos);
     setDraftRotation(0);
+    setDraftFlip(false);
     setEditingId(null);
     setEditingText(null);
     setSelectedMark(null);
@@ -584,11 +596,13 @@ export const BirthdayTicket: FC = () => {
         setDraftPos(before.pos);
         setDraftWidth(before.width);
         setDraftRotation(before.rotation);
+        setDraftFlip(before.flip);
       },
       redo: () => {
         setDraftArt(id);
         setDraftPos(pos);
         setDraftRotation(0);
+        setDraftFlip(false);
         setEditingText(null);
         setTextLive(false);
       },
@@ -695,7 +709,11 @@ export const BirthdayTicket: FC = () => {
       toast.error('Não foi possível abrir a escolha de imagem.');
       return;
     }
-    (cut ? cutRef : photoRef).current?.click();
+    try {
+      input.showPicker();
+    } catch {
+      (cut ? cutRef : photoRef).current?.click();
+    }
   }
 
   async function uploadFigurine(file: File | undefined, cut: boolean) {
@@ -738,6 +756,7 @@ export const BirthdayTicket: FC = () => {
     }
     setSaving(true);
     setSavedFlash(false);
+    let keep = editingId;
     try {
       if (editingId) {
         const result = await updateBirthdaySticker(editingId, { message });
@@ -745,10 +764,11 @@ export const BirthdayTicket: FC = () => {
         toast.success('Recado atualizado.');
       } else {
         if (!art) return;
-        const result = await placeBirthdaySticker({ personId: person.id, stickerId: art, width: draftWidth, rotation: draftRotation, message, x: draftPos.x, y: draftPos.y });
+        const result = await placeBirthdaySticker({ personId: person.id, stickerId: art, width: draftWidth, rotation: draftRotation, flip: draftFlip, message, x: draftPos.x, y: draftPos.y });
         const placed = result.sticker;
         setStickers((current) => [...current, placed]);
         setMine(result.mine);
+        keep = placed.id;
         const box = { id: placed.id };
         pushCommand({
           undo: async () => {
@@ -757,7 +777,7 @@ export const BirthdayTicket: FC = () => {
             setMine(removed.mine);
           },
           redo: async () => {
-            const again = await placeBirthdaySticker({ personId: person.id, stickerId: art, width: placed.width, rotation: placed.rotation, message, x: placed.x, y: placed.y });
+            const again = await placeBirthdaySticker({ personId: person.id, stickerId: art, width: placed.width, rotation: placed.rotation, flip: placed.flip, message, x: placed.x, y: placed.y });
             box.id = again.sticker.id;
             setStickers((current) => [...current, again.sticker]);
             setMine(again.mine);
@@ -766,11 +786,11 @@ export const BirthdayTicket: FC = () => {
         toast.success('Recado salvo no bilhete.');
       }
       setDraftArt(null);
-      setDraftMessage('');
       setDraftWidth(24);
       setDraftRotation(0);
+      setDraftFlip(false);
       setDraftLive(false);
-      setEditingId(null);
+      setEditingId(keep);
       setSavedFlash(true);
     } catch (error) {
       toast.error(error instanceof Error && error.message === 'limit' ? 'Você já usou o seu adesivo.' : 'Não foi possível salvar o recado.');
@@ -856,9 +876,102 @@ export const BirthdayTicket: FC = () => {
     try {
       const result = await placeBirthdayMark({ personId: person.id, kind, color, x, y, size: 56 });
       setMarks((current) => [...current, result.mark]);
+      setSelectedMark(result.mark.id);
+      setEditingId(null);
+      setEditingText(null);
+      setTextLive(false);
+      setDraftLive(false);
     } catch {
       toast.error('Não foi possível colocar o desenho.');
     }
+  }
+
+  async function copyMark(item: BirthdayMark) {
+    if (!person) return;
+    try {
+      const result = await placeBirthdayMark({ personId: person.id, kind: item.kind, color: item.color, x: Math.min(92, item.x + 6), y: Math.min(88, item.y + 6), size: item.size, rotation: item.rotation, flip: item.flip });
+      setMarks((current) => [...current, result.mark]);
+      setSelectedMark(result.mark.id);
+    } catch {
+      toast.error('Não foi possível duplicar o desenho.');
+    }
+  }
+
+  function flipMark(item: BirthdayMark) {
+    const flip = !item.flip;
+    setMarks((current) => current.map((entry) => entry.id === item.id ? { ...entry, flip } : entry));
+    void updateBirthdayMark(item.id, { flip }).catch(() => {
+      setMarks((current) => current.map((entry) => entry.id === item.id ? { ...entry, flip: item.flip } : entry));
+      toast.error('Não foi possível espelhar o desenho.');
+    });
+  }
+
+  async function copySticker(sticker: BirthdaySticker) {
+    if (!person) return;
+    try {
+      const result = await placeBirthdaySticker({ personId: person.id, stickerId: sticker.stickerId, width: sticker.width, rotation: sticker.rotation, flip: sticker.flip, message: sticker.message, x: Math.min(92, sticker.x + 8), y: Math.min(88, sticker.y + 8) });
+      setStickers((current) => [...current, result.sticker]);
+      setMine(result.mine);
+      setEditingId(result.sticker.id);
+      setDraftArt(null);
+      setDraftLive(false);
+      setDraftMessage(sticker.message);
+    } catch (error) {
+      toast.error(error instanceof Error && error.message === 'limit' ? 'Você já usou o seu adesivo.' : 'Não foi possível duplicar o adesivo.');
+    }
+  }
+
+  async function copyDraftSticker() {
+    if (!person || !draftArt) return;
+    const message = draftMessage.trim();
+    if (!message) {
+      toast.error('Escreva o recado antes de duplicar.');
+      return;
+    }
+    try {
+      const result = await placeBirthdaySticker({ personId: person.id, stickerId: draftArt, width: draftWidth, rotation: draftRotation, flip: draftFlip, message, x: Math.min(92, draftPos.x + 8), y: Math.min(88, draftPos.y + 8) });
+      setStickers((current) => [...current, result.sticker]);
+      setMine(result.mine);
+      setEditingId(result.sticker.id);
+      setDraftArt(null);
+      setDraftLive(false);
+    } catch (error) {
+      toast.error(error instanceof Error && error.message === 'limit' ? 'Você já usou o seu adesivo.' : 'Não foi possível duplicar o adesivo.');
+    }
+  }
+
+  function flipSticker(sticker: BirthdaySticker) {
+    const flip = !sticker.flip;
+    setStickers((current) => current.map((entry) => entry.id === sticker.id ? { ...entry, flip } : entry));
+    void updateBirthdaySticker(sticker.id, { flip }).catch(() => {
+      setStickers((current) => current.map((entry) => entry.id === sticker.id ? { ...entry, flip: sticker.flip } : entry));
+      toast.error('Não foi possível espelhar o adesivo.');
+    });
+  }
+
+  async function copyLetter(item?: BirthdayText) {
+    if (!person) return;
+    const body = (item && editingText === item.id ? letter.trim() || item.body : item?.body ?? letter).trim();
+    if (!body) return;
+    const style = item && editingText === item.id ? look : item ? lookFrom(item) : look;
+    const x = Math.min(92, (item?.x ?? letterPos.x) + 6);
+    const y = Math.min(88, (item?.y ?? letterPos.y) + 6);
+    try {
+      const result = await placeBirthdayText({ personId: person.id, body, x, y, ...style, glyph: 'none' });
+      setTexts((current) => [...current, result.text]);
+      if (item) editLetter(result.text);
+    } catch {
+      toast.error('Não foi possível duplicar o texto.');
+    }
+  }
+
+  function flipLetter(item?: BirthdayText) {
+    const currentFlip = item && editingText === item.id ? look.flip : item?.flip ?? look.flip;
+    const flip = !currentFlip;
+    setLook((current) => ({ ...current, flip }));
+    if (!item) return;
+    setTexts((current) => current.map((entry) => entry.id === item.id ? { ...entry, flip } : entry));
+    void updateBirthdayText(item.id, { flip }).catch(() => toast.error('Não foi possível espelhar o texto.'));
   }
 
   function paintInk(hex: string) {
@@ -1408,8 +1521,8 @@ export const BirthdayTicket: FC = () => {
             </svg>
             {reading ? <p className="pointer-events-none absolute bottom-4 left-4 text-sm font-medium text-white/90">Toque em um adesivo para ler o recado.</p> : null}
             {composing && !asGuest && draftPreview ? (
-              <div className={cn('absolute z-10', draftLive && 'cursor-grab touch-none')} style={{ left: `${draftPos.x}%`, top: `${draftPos.y}%`, width: `${draftWidth}%`, transform: `translate(-50%, -50%) rotate(${draftRotation}deg)` }} onPointerDown={(event) => { if (draftLive) beginDraftDrag(event); }}>
-                {draftLive ? <SelectionBox label="adesivo" onMove={beginDraftDrag} onResize={beginDraftResize} onRotate={beginDraftRotate} /> : (
+              <div className={cn('absolute z-10', draftLive && 'cursor-grab touch-none')} style={{ left: `${draftPos.x}%`, top: `${draftPos.y}%`, width: `${draftWidth}%`, transform: pose(draftRotation, draftFlip) }} onPointerDown={(event) => { if (draftLive) beginDraftDrag(event); }}>
+                {draftLive ? <SelectionBox label="adesivo" onMove={beginDraftDrag} onResize={beginDraftResize} onRotate={beginDraftRotate} onFlip={() => setDraftFlip((value) => !value)} onDuplicate={() => void copyDraftSticker()} /> : (
                   <button type="button" aria-label="Editar adesivo" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setDraftLive(true); setEditingId(null); setEditingText(null); setSelectedMark(null); setTextLive(false); }} className="absolute -right-1 -top-1 z-20 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button>
                 )}
                 <img src={draftPreview.src} alt="" draggable={false} className="sticker-cut aspect-square w-full object-contain" />
@@ -1419,9 +1532,9 @@ export const BirthdayTicket: FC = () => {
               const art = birthdayStickerArt(sticker.stickerId);
               const own = sticker.authorId === viewerId;
               return (
-                <div key={sticker.id} className="group absolute" style={{ left: `${sticker.x}%`, top: `${sticker.y}%`, width: `${sticker.width}%`, transform: `translate(-50%, -50%) rotate(${sticker.rotation}deg)`, zIndex: editingId === sticker.id ? 2 : 1, visibility: lift?.id === sticker.id ? 'hidden' : 'visible' }}>
+                <div key={sticker.id} className="group absolute" style={{ left: `${sticker.x}%`, top: `${sticker.y}%`, width: `${sticker.width}%`, transform: pose(sticker.rotation, sticker.flip), zIndex: editingId === sticker.id ? 2 : 1, visibility: lift?.id === sticker.id ? 'hidden' : 'visible' }}>
                   <div className="relative aspect-square" style={{ containerType: 'inline-size', perspective: '900px' }}>
-                    {editingId === sticker.id ? <SelectionBox label="adesivo" onMove={(event) => beginDrag(event, sticker)} onResize={(event) => beginResize(event, sticker)} onRotate={(event) => beginRotate(event, sticker)} onDelete={() => void removeSticker(sticker)} /> : null}
+                    {editingId === sticker.id ? <SelectionBox label="adesivo" onMove={(event) => beginDrag(event, sticker)} onResize={(event) => beginResize(event, sticker)} onRotate={(event) => beginRotate(event, sticker)} onFlip={() => flipSticker(sticker)} onDuplicate={() => void copySticker(sticker)} onDelete={() => void removeSticker(sticker)} /> : null}
                     {composing && !asGuest && own && editingId !== sticker.id && !draftArt ? (
                       <span className="pointer-events-none absolute -right-1 -top-1 z-20 flex gap-1 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100">
                         <button type="button" aria-label="Editar adesivo" onClick={() => unlock(sticker)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
@@ -1451,9 +1564,9 @@ export const BirthdayTicket: FC = () => {
               const live = open ? { ...item, ...look, body: letter.trim() || item.body } : item;
               const own = item.authorId === viewerId;
               return (
-                <div key={item.id} ref={open ? textScaleRef : undefined} className={cn('group absolute z-20 w-max max-w-[92%]', open ? 'cursor-grab touch-none' : (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${item.x}%`, top: `${item.y}%`, transform: `translate(-50%, -50%) rotate(${live.rotation || 0}deg)` }} onPointerDown={(event) => { if (open) beginTextDrag(event, item); else { event.stopPropagation(); setEditingId(null); setSelectedMark(null); setTextLive(false); setDraftLive(false); if (editingText && editingText !== item.id) { setEditingText(null); setLetter(''); setLook(EMPTY_LOOK); } } }}>
+                <div key={item.id} ref={open ? textScaleRef : undefined} className={cn('group absolute z-20 w-max max-w-[92%]', open ? 'cursor-grab touch-none' : (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${item.x}%`, top: `${item.y}%`, transform: pose(live.rotation, live.flip) }} onPointerDown={(event) => { if (open) beginTextDrag(event, item); else { event.stopPropagation(); setEditingId(null); setSelectedMark(null); setTextLive(false); setDraftLive(false); if (editingText && editingText !== item.id) { setEditingText(null); setLetter(''); setLook(EMPTY_LOOK); } } }}>
                   <div className="relative">
-                    {open ? <SelectionBox label="texto" onMove={(event) => beginTextDrag(event, item)} onResize={(event) => beginTextResize(event, item)} onDelete={() => void removeLetter(item)} /> : null}
+                    {open ? <SelectionBox label="texto" onMove={(event) => beginTextDrag(event, item)} onResize={(event) => beginTextResize(event, item)} onFlip={() => flipLetter(item)} onDuplicate={() => void copyLetter(item)} onDelete={() => void removeLetter(item)} /> : null}
                     {composing && !asGuest && own && !open ? (
                       <span className="pointer-events-none absolute -right-1 -top-1 z-20 flex gap-1 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100" onPointerDown={(event) => event.stopPropagation()}>
                         <button type="button" aria-label="Editar texto" onClick={() => editLetter(item)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button>
@@ -1466,9 +1579,9 @@ export const BirthdayTicket: FC = () => {
               );
             })}
             {composing && !asGuest && !editingText && letter.trim() ? (
-              <div ref={textLive ? textScaleRef : undefined} className={cn('group absolute z-20 w-max max-w-[92%]', textLive && 'cursor-grab touch-none', (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${letterPos.x}%`, top: `${letterPos.y}%`, transform: `translate(-50%, -50%) rotate(${look.rotation || 0}deg)` }} onPointerDown={(event) => { if (textLive) beginLetterDrag(event); else event.stopPropagation(); }}>
+              <div ref={textLive ? textScaleRef : undefined} className={cn('group absolute z-20 w-max max-w-[92%]', textLive && 'cursor-grab touch-none', (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${letterPos.x}%`, top: `${letterPos.y}%`, transform: pose(look.rotation, look.flip) }} onPointerDown={(event) => { if (textLive) beginLetterDrag(event); else event.stopPropagation(); }}>
                 <div className="relative">
-                  {textLive ? <SelectionBox label="texto" onMove={beginLetterDrag} onResize={beginLetterResize} /> : (
+                  {textLive ? <SelectionBox label="texto" onMove={beginLetterDrag} onResize={beginLetterResize} onFlip={() => flipLetter()} onDuplicate={() => void copyLetter()} /> : (
                     <button type="button" aria-label="Editar texto" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setTextLive(true); setEditingId(null); setSelectedMark(null); setDraftLive(false); }} className="pointer-events-none absolute -right-1 -top-1 z-20 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 opacity-0 shadow-[0_8px_24px_rgba(15,23,42,0.06)] group-hover:pointer-events-auto group-hover:opacity-100"><Pencil className="h-3.5 w-3.5" /></button>
                   )}
                   <p style={letterStyle(look)}>{letter}</p>
@@ -1479,9 +1592,9 @@ export const BirthdayTicket: FC = () => {
               const own = mark.authorId === viewerId;
               const open = selectedMark === mark.id;
               return (
-                <div key={mark.id} className={cn('group absolute z-20', open ? 'cursor-grab touch-none' : (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${mark.x}%`, top: `${mark.y}%`, width: mark.size, height: mark.size, transform: `translate(-50%, -50%) rotate(${mark.rotation || 0}deg)`, color: mark.color }} onPointerDown={(event) => { if (open) beginMarkDrag(event, mark); else { event.stopPropagation(); setEditingId(null); setTextLive(false); setDraftLive(false); if (editingTextRef.current) { setEditingText(null); setLetter(''); setLook(EMPTY_LOOK); } if (selectedMark !== mark.id) setSelectedMark(null); } }}>
+                <div key={mark.id} className={cn('group absolute z-20', open ? 'cursor-grab touch-none' : (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${mark.x}%`, top: `${mark.y}%`, width: mark.size, height: mark.size, transform: pose(mark.rotation, mark.flip), color: mark.color }} onPointerDown={(event) => { if (open) beginMarkDrag(event, mark); else { event.stopPropagation(); setEditingId(null); setTextLive(false); setDraftLive(false); if (editingTextRef.current) { setEditingText(null); setLetter(''); setLook(EMPTY_LOOK); } if (selectedMark !== mark.id) setSelectedMark(null); } }}>
                   <div className="relative h-full w-full">
-                    {open ? <SelectionBox label="desenho" onMove={(event) => beginMarkDrag(event, mark)} onResize={(event) => beginMarkResize(event, mark)} onRotate={(event) => beginMarkRotate(event, mark)} onDelete={() => void removeMark(mark)} /> : null}
+                    {open ? <SelectionBox label="desenho" onMove={(event) => beginMarkDrag(event, mark)} onResize={(event) => beginMarkResize(event, mark)} onRotate={(event) => beginMarkRotate(event, mark)} onFlip={() => flipMark(mark)} onDuplicate={() => void copyMark(mark)} onDelete={() => void removeMark(mark)} /> : null}
                     {composing && !asGuest && own && !open ? (
                       <span className="pointer-events-none absolute -right-1 -top-1 z-20 flex gap-1 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100" onPointerDown={(event) => event.stopPropagation()}>
                         <button type="button" aria-label="Editar desenho" onClick={() => unlockMark(mark)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button>
@@ -1496,10 +1609,6 @@ export const BirthdayTicket: FC = () => {
           </div>
           {composing && !asGuest ? (
             <div className="w-full shrink-0 lg:w-[340px]">
-              <div className="fixed h-0 w-0 overflow-hidden" style={{ left: '-100vw', top: 0 }} aria-hidden="true">
-                <input ref={photoRef} type="file" accept={IMAGE_ACCEPT} tabIndex={-1} className="h-8 w-8" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; void uploadFigurine(file, false); }} />
-                <input ref={cutRef} type="file" accept={IMAGE_ACCEPT} tabIndex={-1} className="h-8 w-8" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; void uploadFigurine(file, true); }} />
-              </div>
               <aside className="max-h-[70vh] w-full overflow-y-auto rounded-[28px] border border-gray-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
                 <div className="mb-4 grid grid-cols-3 rounded-2xl bg-[#F4F1FB] p-1" role="tablist" aria-label="Ferramentas do cartão">
                   {([
@@ -1546,14 +1655,20 @@ export const BirthdayTicket: FC = () => {
                       </label>
                       {canAdd ? (
                         <div className="mb-3 flex gap-2">
-                          <button type="button" aria-label="Enviar figurinha" disabled={Boolean(uploading)} onClick={() => openPhoto(false)} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#F4F1FB] text-xs font-medium text-gray-700 hover:bg-[#E7E0F8] disabled:opacity-50">
-                            <ImagePlus className="h-3.5 w-3.5" />
-                            Enviar imagem
-                          </button>
-                          <button type="button" aria-label="Criar figurinha sem fundo" disabled={Boolean(uploading)} onClick={() => openPhoto(true)} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#F4F1FB] text-xs font-medium text-gray-700 hover:bg-[#E7E0F8] disabled:opacity-50">
-                            <Eraser className="h-3.5 w-3.5" />
-                            Apagar fundo
-                          </button>
+                          <div className={cn('relative h-9 flex-1', uploading && 'pointer-events-none opacity-50')}>
+                            <button type="button" aria-label="Enviar figurinha" disabled={Boolean(uploading)} onClick={() => openPhoto(false)} className="flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-[#F4F1FB] text-xs font-medium text-gray-700 hover:bg-[#E7E0F8] disabled:opacity-50">
+                              <ImagePlus className="pointer-events-none h-3.5 w-3.5" />
+                              Enviar imagem
+                            </button>
+                            <input ref={photoRef} type="file" accept={IMAGE_ACCEPT} tabIndex={-1} aria-hidden="true" className="absolute inset-0 z-10 cursor-pointer opacity-0" onClick={(event) => { if (!draftMessage.trim()) { event.preventDefault(); toast.error('Escreva o recado antes de escolher o adesivo.'); } }} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; void uploadFigurine(file, false); }} />
+                          </div>
+                          <div className={cn('relative h-9 flex-1', uploading && 'pointer-events-none opacity-50')}>
+                            <button type="button" aria-label="Criar figurinha sem fundo" disabled={Boolean(uploading)} onClick={() => openPhoto(true)} className="flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-[#F4F1FB] text-xs font-medium text-gray-700 hover:bg-[#E7E0F8] disabled:opacity-50">
+                              <Eraser className="pointer-events-none h-3.5 w-3.5" />
+                              Apagar fundo
+                            </button>
+                            <input ref={cutRef} type="file" accept={IMAGE_ACCEPT} tabIndex={-1} aria-hidden="true" className="absolute inset-0 z-10 cursor-pointer opacity-0" onClick={(event) => { if (!draftMessage.trim()) { event.preventDefault(); toast.error('Escreva o recado antes de escolher o adesivo.'); } }} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; void uploadFigurine(file, true); }} />
+                          </div>
                         </div>
                       ) : null}
                       {uploading ? <p className="mb-2 text-xs text-gray-500">{uploading === 'cut' ? 'Tirando o fundo...' : 'Salvando...'}</p> : null}
