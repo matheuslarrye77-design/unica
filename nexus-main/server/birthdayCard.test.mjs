@@ -67,10 +67,24 @@ test('o adesivo só entra com recado e o texto fica no cartão', async () => {
     assert.equal(updated.status, 200);
     assert.equal(updated.body.text.effect, 'outline');
     assert.equal(updated.body.text.size, 40);
+    assert.equal(updated.body.text.outline, true);
+    const styled = await call(dir, 'POST', '/api/birthday-card/text', matheus, {
+      personId: 'ana-souza', body: 'Olá', font: 'playfair', bold: true, italic: true, opacity: 0.4, align: 'left', tracking: 4, color: '#ffffff',
+    });
+    assert.equal(styled.status, 201);
+    assert.equal(styled.body.text.font, 'playfair');
+    assert.equal(styled.body.text.bold, true);
+    assert.equal(styled.body.text.italic, true);
+    assert.equal(styled.body.text.opacity, 0.4);
+    assert.equal(styled.body.text.align, 'left');
+    assert.equal(styled.body.text.tracking, 4);
+    const badFont = await call(dir, 'POST', '/api/birthday-card/text', matheus, { personId: 'ana-souza', body: 'X', font: 'comic' });
+    assert.equal(badFont.status, 400);
     const blocked = await call(dir, 'DELETE', `/api/birthday-card/text/${placed.body.text.id}`, helena);
     assert.equal(blocked.status, 403);
     const removed = await call(dir, 'DELETE', `/api/birthday-card/text/${placed.body.text.id}`, matheus);
     assert.equal(removed.status, 200);
+    await call(dir, 'DELETE', `/api/birthday-card/text/${styled.body.text.id}`, matheus);
     const after = await call(dir, 'GET', '/api/birthday-card?personId=ana-souza', matheus);
     assert.equal(after.body.texts.length, 0);
   } finally {

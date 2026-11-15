@@ -15,19 +15,32 @@ export type BirthdaySticker = {
   authorName: string;
 };
 
+export type TextStyle = {
+  font: string;
+  effect: string;
+  color: string;
+  size: number;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  strike: boolean;
+  align: 'left' | 'center' | 'right';
+  upper: boolean;
+  tracking: number;
+  shadow: boolean;
+  outline: boolean;
+  opacity: number;
+};
+
 export type BirthdayText = {
   id: string;
   personId: string;
   body: string;
   x: number;
   y: number;
-  size: number;
-  font: string;
-  effect: string;
-  color: string;
   authorId: string;
   authorName: string;
-};
+} & TextStyle;
 
 export type BirthdayCardPayload = {
   stickers: BirthdaySticker[];
@@ -69,11 +82,11 @@ export function deleteBirthdaySticker(id: string) {
   return request<{ mine: { id: string; personId: string } | null }>(`/api/birthday-card/${id}`, { method: 'DELETE' });
 }
 
-export function placeBirthdayText(draft: { personId: string; body: string; x: number; y: number; size: number; font: string; effect: string; color: string }) {
+export function placeBirthdayText(draft: { personId: string; body: string; x: number; y: number } & TextStyle) {
   return request<{ text: BirthdayText }>('/api/birthday-card/text', { method: 'POST', body: JSON.stringify(draft) });
 }
 
-export function updateBirthdayText(id: string, patch: Partial<Pick<BirthdayText, 'body' | 'x' | 'y' | 'size' | 'font' | 'effect' | 'color'>>) {
+export function updateBirthdayText(id: string, patch: Partial<Pick<BirthdayText, 'body' | 'x' | 'y'> & TextStyle>) {
   return request<{ text: BirthdayText }>(`/api/birthday-card/text/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 }
 

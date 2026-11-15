@@ -11,6 +11,7 @@ import {
   updateBirthdayText,
   type BirthdaySticker,
   type BirthdayText,
+  type TextStyle,
 } from '@/lib/birthdayCard';
 import { celebrationPersonId } from '@/lib/celebrations';
 import { fitPhoto, removePhotoBackground } from '@/lib/cutout';
@@ -18,7 +19,7 @@ import { parseAgendaDate, useAgendaEvents } from '@/lib/events';
 import { useDemoProfile } from '@/lib/session';
 import { listStickers, saveSticker } from '@/lib/stickers';
 import { cn } from '@/lib/utils';
-import { Cake, ChevronLeft, ChevronRight, ImagePlus, Palette, Pencil, Plus, Scaling, Sticker, Trash2, Type } from 'lucide-react';
+import { AlignCenter, AlignLeft, AlignRight, Cake, ChevronDown, Eraser, ImagePlus, Paintbrush, Pencil, Pipette, Scaling, Sticker, Trash2, Type } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FC, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
@@ -36,31 +37,60 @@ function spot(stickers: BirthdaySticker[]) {
   return { x: free?.[0] ?? 50, y: free?.[1] ?? 42 };
 }
 
-const PAGE = 16;
+const PAGE = 8;
 const DEFAULT_CARD = '#8c4632';
+const SWATCH_KEY = 'unica-card-colors';
 type ShelfArt = { id: string; src: string; label: string };
 const PACK: ShelfArt[] = BIRTHDAY_STICKERS.map((item) => ({ id: item.id, src: item.src, label: `Adicionar ${item.id}` }));
 const FONTS = [
-  { id: 'manrope', label: 'Manrope', family: 'Manrope, sans-serif' },
-  { id: 'clash', label: 'Clash', family: '"Clash Display", sans-serif' },
+  { id: 'arial', label: 'Arial', family: 'Arial, Helvetica, sans-serif' },
   { id: 'general', label: 'General Sans', family: '"General Sans", sans-serif' },
-  { id: 'serif', label: 'Serifada', family: 'Georgia, serif' },
-  { id: 'script', label: 'Manuscrita', family: '"Segoe Script", "Brush Script MT", cursive' },
+  { id: 'clash', label: 'Clash Display', family: '"Clash Display", sans-serif' },
+  { id: 'dm', label: 'DM Sans', family: '"DM Sans", sans-serif' },
+  { id: 'poppins', label: 'Poppins', family: 'Poppins, sans-serif' },
+  { id: 'montserrat', label: 'Montserrat', family: 'Montserrat, sans-serif' },
+  { id: 'playfair', label: 'Playfair Display', family: '"Playfair Display", serif' },
+  { id: 'cormorant', label: 'Cormorant Garamond', family: '"Cormorant Garamond", serif' },
+  { id: 'lora', label: 'Lora', family: 'Lora, serif' },
+  { id: 'baskerville', label: 'Libre Baskerville', family: '"Libre Baskerville", serif' },
+  { id: 'sora', label: 'Sora', family: 'Sora, sans-serif' },
+  { id: 'manrope', label: 'Manrope', family: 'Manrope, sans-serif' },
+  { id: 'outfit', label: 'Outfit', family: 'Outfit, sans-serif' },
+  { id: 'grotesk', label: 'Space Grotesk', family: '"Space Grotesk", sans-serif' },
 ];
-const EFFECTS = [
-  { id: 'plain', label: 'Lisa' },
-  { id: 'shadow', label: 'Sombra' },
-  { id: 'outline', label: 'Contorno' },
-  { id: 'highlight', label: 'Marca-texto' },
-];
+const PRESETS = ['#f6f1ea', '#f3d6e4', '#e4d7f5', '#d7e6f8', '#d7efe4', '#f8e3c4', '#ffffff', '#e7e2da', '#b7aea4', '#5c564f', '#6b33f6', '#4600f3', '#db2777', '#e11d48', '#f59e0b', '#0f766e', '#8c4632', '#1f2937'];
+const EMPTY_LOOK: TextStyle = { font: 'arial', effect: 'plain', color: '#ffffff', size: 36, bold: false, italic: false, underline: false, strike: false, align: 'center', upper: false, tracking: 0, shadow: false, outline: false, opacity: 1 };
 type Tool = 'color' | 'stickers' | 'text';
+type EyeDropperCtor = new () => { open: () => Promise<{ sRGBHex: string }> };
 
-function letterStyle(item: { font: string; size: number; color: string; effect: string }): CSSProperties {
-  const family = FONTS.find((font) => font.id === item.font)?.family ?? FONTS[0].family;
-  const style: CSSProperties = { fontFamily: family, fontSize: item.size, color: item.color, fontWeight: 700, lineHeight: 1.15, textAlign: 'center' };
-  if (item.effect === 'shadow') style.textShadow = '0 3px 0 rgba(15,23,42,0.35)';
-  if (item.effect === 'outline') {
-    style.WebkitTextStroke = '1.5px rgba(255,255,255,0.92)';
+function readSwatches() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SWATCH_KEY) || '[]') as unknown;
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string' && /^#[0-9a-f]{6}$/i.test(item)).map((item) => item.toLowerCase()).slice(0, 12) : [];
+  } catch {
+    return [];
+  }
+}
+
+function letterStyle(item: TextStyle): CSSProperties {
+  const family = FONTS.find((font) => font.id === item.font)?.family ?? 'Arial, sans-serif';
+  const decoration = [item.underline ? 'underline' : '', item.strike ? 'line-through' : ''].filter(Boolean).join(' ');
+  const style: CSSProperties = {
+    fontFamily: family,
+    fontSize: item.size,
+    color: item.color,
+    fontWeight: item.bold ? 700 : 500,
+    fontStyle: item.italic ? 'italic' : 'normal',
+    textDecoration: decoration || 'none',
+    textAlign: item.align,
+    textTransform: item.upper ? 'uppercase' : 'none',
+    letterSpacing: `${item.tracking || 0}px`,
+    opacity: item.opacity ?? 1,
+    lineHeight: 1.15,
+  };
+  if (item.shadow || item.effect === 'shadow') style.textShadow = '0 2px 0 rgba(15,23,42,0.28)';
+  if (item.outline || item.effect === 'outline') {
+    style.WebkitTextStroke = '1px rgba(255,255,255,0.92)';
     style.paintOrder = 'stroke fill';
   }
   if (item.effect === 'highlight') {
@@ -69,6 +99,27 @@ function letterStyle(item: { font: string; size: number; color: string; effect: 
     style.padding = '4px 10px';
   }
   return style;
+}
+
+function lookFrom(item: BirthdayText): TextStyle {
+  const font = FONTS.some((entry) => entry.id === item.font) ? item.font : 'arial';
+  return {
+    ...EMPTY_LOOK,
+    font,
+    effect: item.effect || 'plain',
+    color: /^#[0-9a-f]{6}$/i.test(item.color) ? item.color.toLowerCase() : '#ffffff',
+    size: item.size || 36,
+    bold: Boolean(item.bold),
+    italic: Boolean(item.italic),
+    underline: Boolean(item.underline),
+    strike: Boolean(item.strike),
+    align: item.align === 'left' || item.align === 'right' ? item.align : 'center',
+    upper: Boolean(item.upper),
+    tracking: Number(item.tracking) || 0,
+    shadow: Boolean(item.shadow) || item.effect === 'shadow',
+    outline: Boolean(item.outline) || item.effect === 'outline',
+    opacity: typeof item.opacity === 'number' ? item.opacity : 1,
+  };
 }
 
 function cardHex(value: string | undefined) {
@@ -85,26 +136,29 @@ function StickerShelf({ items, selected, onPick }: { items: ShelfArt[]; selected
   const pages = Math.max(1, Math.ceil(items.length / PAGE));
   const current = Math.min(page, pages - 1);
   const visible = items.slice(current * PAGE, current * PAGE + PAGE);
+  const cells = Array.from({ length: PAGE }, (_, index) => visible[index] ?? null);
 
   return (
-    <div>
-      <div className="grid grid-cols-4 gap-2" data-sticker-count={items.length} data-sticker-shown={visible.length}>
-        {visible.map((item) => (
-          <button key={item.id} type="button" aria-pressed={selected === item.id} aria-label={item.label} onClick={() => onPick(item.id)} className={cn('grid h-16 place-items-center rounded-2xl bg-white/80 p-1.5', selected === item.id && 'ring-2 ring-blue-600')}>
+    <div className="flex items-center gap-1.5">
+      <button type="button" aria-label="Adesivos anteriores" disabled={current === 0} onClick={() => setPage(current - 1)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-lg text-gray-500 hover:bg-[#F4F1FB] disabled:opacity-30">‹</button>
+      <div className="grid flex-1 grid-cols-4 gap-2" data-sticker-count={items.length} data-sticker-shown={visible.length}>
+        {cells.map((item, index) => item ? (
+          <button key={item.id} type="button" aria-pressed={selected === item.id} aria-label={item.label} onClick={() => onPick(item.id)} className={cn('grid aspect-square place-items-center rounded-xl bg-[#F6F4FB] p-1.5', selected === item.id && 'ring-2 ring-[#6B33F6]')}>
             <img src={item.src} alt="" decoding="async" draggable={false} className="sticker-cut max-h-full max-w-full object-contain" />
           </button>
-        ))}
+        ) : <span key={`empty-${index}`} className="aspect-square rounded-xl bg-[#F6F4FB]" />)}
       </div>
-      <div className="mt-3 flex items-center justify-between">
-        <button type="button" aria-label="Adesivos anteriores" disabled={current === 0} onClick={() => setPage(current - 1)} className="grid h-9 w-9 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)] disabled:opacity-40">
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        <span className="text-xs text-gray-500">{current + 1} / {pages}</span>
-        <button type="button" aria-label="Próximos adesivos" disabled={current >= pages - 1} onClick={() => setPage(current + 1)} className="grid h-9 w-9 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)] disabled:opacity-40">
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
+      <button type="button" aria-label="Próximos adesivos" disabled={current >= pages - 1} onClick={() => setPage(current + 1)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-lg text-gray-500 hover:bg-[#F4F1FB] disabled:opacity-30">›</button>
     </div>
+  );
+}
+
+function Swatch({ color, pressed, label, onPick, onRemove }: { color: string; pressed?: boolean; label: string; onPick: () => void; onRemove?: () => void }) {
+  return (
+    <span className="group relative">
+      <button type="button" aria-label={label} aria-pressed={pressed} onClick={onPick} className={cn('h-7 w-7 rounded-full border border-black/10', pressed && 'ring-2 ring-[#6B33F6] ring-offset-2')} style={{ backgroundColor: color }} />
+      {onRemove ? <button type="button" aria-label={`Remover cor ${color}`} onClick={onRemove} className="absolute -top-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-white text-[10px] leading-none text-gray-500 shadow">×</button> : null}
+    </span>
   );
 }
 
@@ -139,13 +193,11 @@ export const BirthdayTicket: FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [cardColor, setCardColor] = useState(DEFAULT_CARD);
   const [library, setLibrary] = useState<ShelfArt[]>([]);
-  const [tool, setTool] = useState<Tool | null>(null);
-  const [pinned, setPinned] = useState(false);
+  const [tool, setTool] = useState<Tool>('stickers');
   const [letter, setLetter] = useState('');
-  const [letterFont, setLetterFont] = useState('clash');
-  const [letterEffect, setLetterEffect] = useState('shadow');
-  const [letterColor, setLetterColor] = useState('#ffffff');
-  const [letterSize, setLetterSize] = useState(32);
+  const [look, setLook] = useState<TextStyle>(EMPTY_LOOK);
+  const [fontOpen, setFontOpen] = useState(false);
+  const [swatches, setSwatches] = useState<string[]>(readSwatches);
   const [letterPos, setLetterPos] = useState({ x: 50, y: 50 });
   const [editingText, setEditingText] = useState<string | null>(null);
   const [uploading, setUploading] = useState<'plain' | 'cut' | null>(null);
@@ -257,7 +309,6 @@ export const BirthdayTicket: FC = () => {
       return;
     }
     setTool('stickers');
-    setPinned(true);
     (cut ? cutRef : photoRef).current?.click();
   }
 
@@ -335,11 +386,11 @@ export const BirthdayTicket: FC = () => {
     setSaving(true);
     try {
       if (editingText) {
-        const result = await updateBirthdayText(editingText, { body, font: letterFont, effect: letterEffect, color: letterColor, size: letterSize });
+        const result = await updateBirthdayText(editingText, { body, ...look });
         setTexts((current) => current.map((item) => item.id === result.text.id ? result.text : item));
         toast.success('Texto atualizado.');
       } else {
-        const result = await placeBirthdayText({ personId: person.id, body, x: letterPos.x, y: letterPos.y, size: letterSize, font: letterFont, effect: letterEffect, color: letterColor });
+        const result = await placeBirthdayText({ personId: person.id, body, x: letterPos.x, y: letterPos.y, ...look });
         setTexts((current) => [...current, result.text]);
         toast.success('Texto colocado no cartão.');
       }
@@ -355,12 +406,9 @@ export const BirthdayTicket: FC = () => {
   function editLetter(item: BirthdayText) {
     setEditingText(item.id);
     setLetter(item.body);
-    setLetterFont(FONTS.some((font) => font.id === item.font) ? item.font : 'clash');
-    setLetterEffect(EFFECTS.some((effect) => effect.id === item.effect) ? item.effect : 'shadow');
-    setLetterColor(cardHex(item.color));
-    setLetterSize(item.size);
+    setLook(lookFrom(item));
     setTool('text');
-    setPinned(true);
+    setFontOpen(false);
   }
 
   async function removeLetter(item: BirthdayText) {
@@ -592,14 +640,37 @@ export const BirthdayTicket: FC = () => {
     window.addEventListener('pointerup', up);
   }
 
-  function pinTool(next: Tool) {
-    if (tool === next && pinned) {
-      setPinned(false);
-      setTool(null);
+  function rememberColor(color: string) {
+    const hex = color.toLowerCase();
+    if (!/^#[0-9a-f]{6}$/.test(hex)) return;
+    setSwatches((current) => {
+      const next = [hex, ...current.filter((item) => item !== hex)].slice(0, 12);
+      localStorage.setItem(SWATCH_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function forgetColor(color: string) {
+    setSwatches((current) => {
+      const next = current.filter((item) => item !== color);
+      localStorage.setItem(SWATCH_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  async function grabColor(apply: (hex: string) => void) {
+    const Ctor = (window as Window & { EyeDropper?: EyeDropperCtor }).EyeDropper;
+    if (!Ctor) {
+      toast.error('O conta-gotas funciona no Chrome ou no Edge.');
       return;
     }
-    setTool(next);
-    setPinned(true);
+    try {
+      const result = await new Ctor().open();
+      const hex = result.sRGBHex.toLowerCase();
+      if (/^#[0-9a-f]{6}$/.test(hex)) apply(hex);
+    } catch {
+      // A pessoa fechou o conta-gotas.
+    }
   }
 
   const lifted = lift ? stickers.find((item) => item.id === lift.id) : null;
@@ -693,91 +764,93 @@ export const BirthdayTicket: FC = () => {
               );
             })}
             {texts.map((item) => {
-              const live = editingText === item.id ? { ...item, body: letter.trim() || item.body, font: letterFont, effect: letterEffect, color: letterColor, size: letterSize } : item;
+              const live = editingText === item.id ? { ...item, ...look, body: letter.trim() || item.body } : item;
               const own = item.authorId === viewerId;
               return (
-                <div key={item.id} className="group absolute z-20 max-w-[70%] cursor-grab" style={{ left: `${item.x}%`, top: `${item.y}%`, transform: 'translate(-50%, -50%)', ...letterStyle(live) }} onPointerDown={(event) => beginTextDrag(event, item)}>
+                <div key={item.id} className="group absolute z-20 w-[46%] cursor-grab" style={{ left: `${item.x}%`, top: `${item.y}%`, transform: 'translate(-50%, -50%)' }} onPointerDown={(event) => beginTextDrag(event, item)}>
                   {composing && !asGuest && own ? (
                     <span className="absolute -top-8 right-0 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100" onPointerDown={(event) => event.stopPropagation()}>
                       <button type="button" aria-label="Editar texto" onClick={() => editLetter(item)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button>
                       <button type="button" aria-label="Excluir texto" onClick={() => void removeLetter(item)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-[#9D174D] shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Trash2 className="h-3.5 w-3.5" /></button>
                     </span>
                   ) : null}
-                  {live.body}
+                  <p style={letterStyle(live)}>{live.body}</p>
                 </div>
               );
             })}
             {composing && !asGuest && !editingText && letter.trim() ? (
-              <div className="absolute z-20 max-w-[70%] cursor-grab" style={{ left: `${letterPos.x}%`, top: `${letterPos.y}%`, transform: 'translate(-50%, -50%)', ...letterStyle({ font: letterFont, size: letterSize, color: letterColor, effect: letterEffect }) }} onPointerDown={beginLetterDrag}>
-                {letter}
+              <div className="absolute z-20 w-[46%] cursor-grab" style={{ left: `${letterPos.x}%`, top: `${letterPos.y}%`, transform: 'translate(-50%, -50%)' }} onPointerDown={beginLetterDrag}>
+                <p style={letterStyle(look)}>{letter}</p>
               </div>
             ) : null}
           </div>
           {composing && !asGuest ? (
-            <div className="flex w-full shrink-0 flex-col gap-3 lg:w-auto lg:flex-row lg:items-start" onMouseLeave={() => { if (!pinned) setTool(null); }}>
+            <div className="w-full shrink-0 lg:w-[340px]">
               <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={(event) => { void uploadFigurine(event.target.files?.[0], false); event.target.value = ''; }} />
               <input ref={cutRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={(event) => { void uploadFigurine(event.target.files?.[0], true); event.target.value = ''; }} />
-              <nav aria-label="Ferramentas do cartão" className="flex h-fit flex-row justify-center gap-2 rounded-[28px] bg-[#6B33F6] p-2 text-white shadow-[0_12px_30px_rgba(70,0,243,0.28)] lg:w-[76px] lg:flex-col">
-                {([
-                  ['color', 'Cor do cartão', Palette],
-                  ['stickers', 'Adesivos', Sticker],
-                  ['text', 'Texto', Type],
-                ] as const).map(([id, label, Icon]) => (
-                  <button key={id} type="button" aria-label={label} aria-pressed={tool === id} onMouseEnter={() => setTool(id)} onClick={() => pinTool(id)} className={cn('grid h-11 w-11 place-items-center rounded-2xl', tool === id ? 'bg-white text-[#6B33F6] shadow-sm' : 'text-white hover:bg-white/15')}>
-                    <Icon className="h-[18px] w-[18px]" strokeWidth={1.5} />
-                  </button>
-                ))}
-              </nav>
-              {tool ? (
-                <aside className="max-h-[70vh] w-full overflow-y-auto rounded-[28px] border border-gray-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)] lg:w-[280px]" onMouseDown={() => setPinned(true)}>
-                  {tool === 'color' ? (
-                    <>
-                      <h3 className="mb-3 text-sm font-semibold text-gray-800">Cor do cartão</h3>
-                      <div className="relative grid h-16 w-16 place-items-center rounded-full shadow-[0_8px_24px_rgba(15,23,42,0.06)]" style={{ background: 'conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d55, #ff3b30)' }}>
-                        <span className="pointer-events-none h-7 w-7 rounded-full border-2 border-white" style={{ backgroundColor: cardColor }} />
+              <aside className="max-h-[70vh] w-full overflow-y-auto rounded-[28px] border border-gray-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+                <div className="mb-4 grid grid-cols-3 rounded-2xl bg-[#F4F1FB] p-1" role="tablist" aria-label="Ferramentas do cartão">
+                  {([
+                    ['color', 'Fundo', Paintbrush],
+                    ['stickers', 'Adesivos', Sticker],
+                    ['text', 'Texto', Type],
+                  ] as const).map(([id, label, Icon]) => (
+                    <button key={id} type="button" role="tab" aria-selected={tool === id} onClick={() => { setTool(id); setFontOpen(false); }} className={cn('flex h-9 items-center justify-center gap-1.5 rounded-xl text-xs font-medium', tool === id ? 'bg-[#6B33F6] text-white' : 'text-gray-500 hover:text-gray-800')}>
+                      <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {tool === 'color' ? (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                      {PRESETS.map((color) => <Swatch key={color} color={color} pressed={cardColor === color} label={`Cor ${color}`} onPick={() => void paintCard(color)} />)}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="relative grid h-14 w-14 shrink-0 place-items-center">
+                        <span className="pointer-events-none absolute inset-0 rounded-full" style={{ background: 'conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d55, #ff3b30)' }} />
+                        <span className="pointer-events-none h-5 w-5 rounded-full border-2 border-white" style={{ backgroundColor: cardColor }} />
                         <input type="color" value={cardColor} aria-label="Escolher cor do cartão" onInput={(event) => setCardColor(event.currentTarget.value)} onChange={(event) => void paintCard(event.currentTarget.value)} className="absolute inset-0 cursor-pointer opacity-0" />
                       </div>
-                    </>
-                  ) : null}
+                      <button type="button" title="Conta-gotas" aria-label="Conta-gotas" onClick={() => void grabColor((hex) => void paintCard(hex))} className="grid h-9 w-9 place-items-center rounded-full bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]">
+                        <Pipette className="h-4 w-4" />
+                      </button>
+                      <button type="button" onClick={() => rememberColor(cardColor)} className="h-9 rounded-full bg-[#F4F1FB] px-3 text-xs font-medium text-gray-700 hover:bg-[#E7E0F8]">Salvar cor</button>
+                      <span className="text-[11px] text-gray-400">{cardColor}</span>
+                    </div>
+                    {swatches.length ? (
+                      <div className="flex flex-wrap gap-2">
+                        {swatches.map((color) => <Swatch key={color} color={color} pressed={cardColor === color} label={`Cor salva ${color}`} onPick={() => void paintCard(color)} onRemove={() => forgetColor(color)} />)}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
                   {tool === 'stickers' ? (
                     <>
-                      <h3 className="mb-3 text-sm font-semibold text-gray-800">Adesivos</h3>
                       <label className="mb-3 block">
                         <span className="mb-2 block text-xs font-medium text-gray-500">Recado</span>
-                        <textarea value={draftMessage} maxLength={240} onChange={(event) => { setDraftMessage(event.target.value); setSavedFlash(false); }} className="min-h-20 w-full rounded-2xl border border-gray-100 bg-white px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Escreva o recado primeiro." />
+                        <textarea value={draftMessage} maxLength={240} onChange={(event) => { setDraftMessage(event.target.value); setSavedFlash(false); }} className="min-h-20 w-full rounded-2xl border border-gray-100 bg-[#F6F4FB] px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Escreva uma mensagem para o aniversariante..." />
                       </label>
                       {canAdd ? (
                         <div className="mb-3 flex gap-2">
-                          <button type="button" aria-label="Enviar figurinha" disabled={Boolean(uploading)} onClick={() => openPhoto(false)} className="grid h-11 w-11 place-items-center rounded-full border border-gray-100 bg-white text-blue-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] disabled:opacity-50">
-                            <Plus className="h-4 w-4" />
+                          <button type="button" aria-label="Enviar figurinha" disabled={Boolean(uploading)} onClick={() => openPhoto(false)} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#F4F1FB] text-xs font-medium text-gray-700 hover:bg-[#E7E0F8] disabled:opacity-50">
+                            <ImagePlus className="h-3.5 w-3.5" />
+                            Enviar imagem
                           </button>
-                          <button type="button" aria-label="Criar figurinha sem fundo" disabled={Boolean(uploading)} onClick={() => openPhoto(true)} className="grid h-11 w-11 place-items-center rounded-full border border-gray-200 disabled:opacity-50" style={{ backgroundImage: 'linear-gradient(45deg,#d1d5db 25%,transparent 25%),linear-gradient(-45deg,#d1d5db 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d1d5db 75%),linear-gradient(-45deg,transparent 75%,#d1d5db 75%)', backgroundSize: '10px 10px', backgroundPosition: '0 0, 0 5px, 5px -5px, -5px 0' }}>
-                            <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-gray-700 shadow">
-                              <ImagePlus className="h-3.5 w-3.5" />
-                            </span>
+                          <button type="button" aria-label="Criar figurinha sem fundo" disabled={Boolean(uploading)} onClick={() => openPhoto(true)} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#F4F1FB] text-xs font-medium text-gray-700 hover:bg-[#E7E0F8] disabled:opacity-50">
+                            <Eraser className="h-3.5 w-3.5" />
+                            Apagar fundo
                           </button>
-                          {uploading ? <span className="self-center text-xs text-gray-500">{uploading === 'cut' ? 'Tirando o fundo...' : 'Salvando...'}</span> : null}
                         </div>
                       ) : null}
-                      {canAdd && library.length ? (
-                        <>
-                          <p className="mb-2 text-xs font-medium text-gray-500">Minha galeria</p>
-                          <div className="mb-3 grid grid-cols-4 gap-2">
-                            {library.map((item) => (
-                              <button key={item.id} type="button" aria-label={item.label} aria-pressed={draftArt === item.id} onClick={() => chooseArt(item.id)} className={cn('grid h-16 place-items-center rounded-2xl bg-white p-1.5', draftArt === item.id && 'ring-2 ring-blue-600')}>
-                                <img src={item.src} alt="" className="sticker-cut max-h-full max-w-full object-contain" />
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      ) : null}
-                      {canAdd ? <StickerShelf items={PACK} selected={draftArt} onPick={chooseArt} /> : (
+                      {uploading ? <p className="mb-2 text-xs text-gray-500">{uploading === 'cut' ? 'Tirando o fundo...' : 'Salvando...'}</p> : null}
+                      {canAdd ? <StickerShelf items={[...library, ...PACK]} selected={draftArt} onPick={chooseArt} /> : (
                         <p className="text-sm text-gray-500">
                           {minePerson && mine?.personId !== person.id ? `Seu adesivo já está no bilhete de ${minePerson.name.split(' ')[0]}.` : 'Você já colocou o seu adesivo. Passe o mouse nele para editar ou excluir.'}
                         </p>
                       )}
                       {canAdd || editingId ? (
-                        <button type="button" disabled={saving || !draftMessage.trim() || (!editingId && !draftArt)} onClick={() => void finish()} className="mt-3 h-11 w-full rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 disabled:cursor-not-allowed disabled:opacity-45">
+                        <button type="button" disabled={saving || !draftMessage.trim() || (!editingId && !draftArt)} onClick={() => void finish()} className="mt-3 h-11 w-full rounded-2xl bg-[#6B33F6] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
                           {saving ? 'Salvando...' : editingId ? 'Atualizar recado' : 'Finalizar'}
                         </button>
                       ) : null}
@@ -785,34 +858,70 @@ export const BirthdayTicket: FC = () => {
                     </>
                   ) : null}
                   {tool === 'text' ? (
-                    <>
-                      <h3 className="mb-3 text-sm font-semibold text-gray-800">Texto</h3>
-                      <textarea value={letter} maxLength={80} onChange={(event) => setLetter(event.target.value)} className="min-h-16 w-full rounded-2xl border border-gray-100 px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Um texto solto no cartão." />
-                      <p className="mb-2 mt-3 text-xs font-medium text-gray-500">Fonte</p>
+                    <div className="space-y-3">
+                      <textarea value={letter} maxLength={80} onChange={(event) => setLetter(event.target.value)} className="min-h-16 w-full rounded-2xl border border-gray-100 bg-[#F6F4FB] px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Um texto solto no cartão." />
+                      <div className="relative">
+                        <button type="button" aria-label="Fonte" aria-expanded={fontOpen} onClick={() => setFontOpen((open) => !open)} className="flex h-10 w-full items-center justify-between rounded-xl bg-[#F4F1FB] px-3 text-sm text-gray-800">
+                          <span style={{ fontFamily: (FONTS.find((font) => font.id === look.font) ?? FONTS[0]).family }}>{(FONTS.find((font) => font.id === look.font) ?? FONTS[0]).label}</span>
+                          <ChevronDown className="h-4 w-4 text-gray-400" />
+                        </button>
+                        {fontOpen ? (
+                          <div className="mt-1 max-h-52 overflow-y-auto rounded-xl bg-[#F6F4FB] p-1">
+                            {FONTS.map((font) => (
+                              <button key={font.id} type="button" onClick={() => { setLook((current) => ({ ...current, font: font.id })); setFontOpen(false); }} className={cn('flex h-9 w-full items-center rounded-lg px-3 text-left text-sm', look.font === font.id ? 'bg-white text-[#6B33F6]' : 'text-gray-700 hover:bg-white')} style={{ fontFamily: font.family }}>{font.label}</button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {FONTS.map((font) => (
-                          <button key={font.id} type="button" aria-pressed={letterFont === font.id} onClick={() => setLetterFont(font.id)} className={cn('h-9 rounded-2xl border px-3 text-xs', letterFont === font.id ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-100 bg-white text-gray-700')} style={{ fontFamily: font.family }}>{font.label}</button>
+                        {([
+                          ['bold', 'Negrito', <span key="b" className="font-bold">A</span>],
+                          ['italic', 'Itálico', <span key="i" className="italic">A</span>],
+                          ['underline', 'Sublinhado', <span key="u" className="underline">A</span>],
+                          ['strike', 'Tachado', <span key="s" className="line-through">A</span>],
+                        ] as const).map(([key, title, mark]) => (
+                          <button key={key} type="button" title={title} aria-label={title} aria-pressed={look[key]} onClick={() => setLook((current) => ({ ...current, [key]: !current[key], effect: 'plain' }))} className={cn('grid h-8 w-8 place-items-center rounded-full text-[13px]', look[key] ? 'bg-[#6B33F6] text-white' : 'bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]')}>{mark}</button>
                         ))}
-                      </div>
-                      <p className="mb-2 mt-3 text-xs font-medium text-gray-500">Efeito</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {EFFECTS.map((effect) => (
-                          <button key={effect.id} type="button" aria-pressed={letterEffect === effect.id} onClick={() => setLetterEffect(effect.id)} className={cn('h-9 rounded-2xl border px-3 text-xs font-medium', letterEffect === effect.id ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-100 bg-white text-gray-700')}>{effect.label}</button>
+                        {([
+                          ['left', 'Alinhamento à esquerda', AlignLeft],
+                          ['center', 'Alinhamento centralizado', AlignCenter],
+                          ['right', 'Alinhamento à direita', AlignRight],
+                        ] as const).map(([id, title, Icon]) => (
+                          <button key={id} type="button" title={title} aria-label={title} aria-pressed={look.align === id} onClick={() => setLook((current) => ({ ...current, align: id }))} className={cn('grid h-8 w-8 place-items-center rounded-full', look.align === id ? 'bg-[#6B33F6] text-white' : 'bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]')}>
+                            <Icon className="h-3.5 w-3.5" />
+                          </button>
                         ))}
+                        <button type="button" title="Maiúsculas" aria-label="Maiúsculas" aria-pressed={look.upper} onClick={() => setLook((current) => ({ ...current, upper: !current.upper }))} className={cn('grid h-8 w-8 place-items-center rounded-full text-[11px] font-semibold', look.upper ? 'bg-[#6B33F6] text-white' : 'bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]')}>AA</button>
+                        <button type="button" title="Sombra no texto" aria-label="Sombra no texto" aria-pressed={look.shadow} onClick={() => setLook((current) => ({ ...current, shadow: !current.shadow, effect: 'plain' }))} className={cn('grid h-8 w-8 place-items-center rounded-full text-[13px]', look.shadow ? 'bg-[#6B33F6] text-white' : 'bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]')} style={{ textShadow: '1px 1px 0 currentColor' }}>A</button>
+                        <button type="button" title="Contorno do texto" aria-label="Contorno do texto" aria-pressed={look.outline} onClick={() => setLook((current) => ({ ...current, outline: !current.outline, effect: 'plain' }))} className={cn('grid h-8 w-8 place-items-center rounded-full text-[13px]', look.outline ? 'bg-[#6B33F6] text-white' : 'bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]')} style={{ WebkitTextStroke: '1px currentColor', color: look.outline ? 'transparent' : 'transparent', WebkitTextFillColor: look.outline ? '#fff' : '#374151' }}>A</button>
                       </div>
-                      <div className="mt-3 flex items-center gap-3">
-                        <div className="relative grid h-9 w-9 place-items-center rounded-full border border-gray-100" style={{ backgroundColor: letterColor }}>
-                          <input type="color" value={letterColor} aria-label="Cor do texto" onChange={(event) => setLetterColor(event.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
-                        </div>
-                        <input type="range" min={18} max={64} value={letterSize} aria-label="Tamanho do texto" onChange={(event) => setLetterSize(Number(event.target.value))} className="w-full" />
+                      <label className="block text-[11px] text-gray-500">Tamanho
+                        <input type="range" min={18} max={72} value={look.size} aria-label="Tamanho do texto" onChange={(event) => setLook((current) => ({ ...current, size: Number(event.target.value) }))} className="mt-1 w-full accent-[#6B33F6]" />
+                      </label>
+                      <label className="block text-[11px] text-gray-500">Espaçamento entre letras
+                        <input type="range" min={-2} max={24} value={look.tracking} aria-label="Espaçamento entre letras" onChange={(event) => setLook((current) => ({ ...current, tracking: Number(event.target.value) }))} className="mt-1 w-full accent-[#6B33F6]" />
+                      </label>
+                      <label className="block text-[11px] text-gray-500">Opacidade
+                        <input type="range" min={15} max={100} value={Math.round(look.opacity * 100)} aria-label="Opacidade" onChange={(event) => setLook((current) => ({ ...current, opacity: Number(event.target.value) / 100 }))} className="mt-1 w-full accent-[#6B33F6]" />
+                      </label>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="relative grid h-8 w-8 place-items-center">
+                          <span className="pointer-events-none absolute inset-0 rounded-full" style={{ background: 'conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d55, #ff3b30)' }} />
+                          <span className="pointer-events-none h-3 w-3 rounded-full border border-white" style={{ backgroundColor: look.color }} />
+                          <input type="color" value={look.color} aria-label="Cor do texto" onChange={(event) => setLook((current) => ({ ...current, color: event.target.value }))} className="absolute inset-0 cursor-pointer opacity-0" />
+                        </span>
+                        <button type="button" title="Conta-gotas" aria-label="Conta-gotas do texto" onClick={() => void grabColor((hex) => setLook((current) => ({ ...current, color: hex })))} className="grid h-8 w-8 place-items-center rounded-full bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]">
+                          <Pipette className="h-3.5 w-3.5" />
+                        </button>
+                        {swatches.map((color) => <Swatch key={color} color={color} pressed={look.color === color} label={`Usar cor ${color}`} onPick={() => setLook((current) => ({ ...current, color }))} />)}
+                        <span className="text-[11px] text-gray-400">{look.color}</span>
                       </div>
-                      <button type="button" disabled={saving || !letter.trim()} onClick={() => void placeLetter()} className="mt-3 h-11 w-full rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 disabled:cursor-not-allowed disabled:opacity-45">
+                      <button type="button" disabled={saving || !letter.trim()} onClick={() => void placeLetter()} className="h-11 w-full rounded-2xl bg-[#6B33F6] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
                         {saving ? 'Salvando...' : editingText ? 'Atualizar texto' : 'Colocar no cartão'}
                       </button>
-                    </>
+                    </div>
                   ) : null}
                 </aside>
-              ) : null}
             </div>
           ) : null}
         </div>

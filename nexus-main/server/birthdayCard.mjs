@@ -8,8 +8,9 @@ const PERSON_ID = /^[a-z0-9-]{1,80}$/;
 const DEFAULT_COLOR = '#8c4632';
 const HEX_COLOR = /^#[0-9a-f]{6}$/;
 
-const TEXT_FONTS = new Set(['manrope', 'clash', 'general', 'serif', 'script']);
+const TEXT_FONTS = new Set(['arial', 'general', 'clash', 'dm', 'poppins', 'montserrat', 'playfair', 'cormorant', 'lora', 'baskerville', 'sora', 'manrope', 'outfit', 'grotesk']);
 const TEXT_EFFECTS = new Set(['plain', 'shadow', 'outline', 'highlight']);
+const TEXT_ALIGNS = new Set(['left', 'center', 'right']);
 
 function empty() {
   return { stickers: [], colors: {}, texts: [] };
@@ -79,6 +80,30 @@ function publicSticker(item) {
   };
 }
 
+function readStyle(body, previous = {}) {
+  const font = TEXT_FONTS.has(String(body.font ?? previous.font ?? '')) ? String(body.font ?? previous.font) : 'arial';
+  const effect = TEXT_EFFECTS.has(String(body.effect ?? previous.effect ?? '')) ? String(body.effect ?? previous.effect) : 'plain';
+  const colorRaw = String(body.color ?? previous.color ?? '#ffffff').toLowerCase();
+  const align = TEXT_ALIGNS.has(body.align) ? body.align : (TEXT_ALIGNS.has(previous.align) ? previous.align : 'center');
+  const flag = (key) => (body[key] !== undefined ? Boolean(body[key]) : Boolean(previous[key]));
+  return {
+    font,
+    effect,
+    color: HEX_COLOR.test(colorRaw) ? colorRaw : '#ffffff',
+    size: clamp(body.size ?? previous.size, 18, 72, 36),
+    bold: flag('bold'),
+    italic: flag('italic'),
+    underline: flag('underline'),
+    strike: flag('strike'),
+    align,
+    upper: flag('upper'),
+    tracking: clamp(body.tracking ?? previous.tracking, -2, 24, 0),
+    shadow: flag('shadow') || effect === 'shadow',
+    outline: flag('outline') || effect === 'outline',
+    opacity: clamp(body.opacity ?? previous.opacity, 0.15, 1, 1),
+  };
+}
+
 function publicText(item) {
   return {
     id: item.id,
@@ -86,12 +111,9 @@ function publicText(item) {
     body: item.body,
     x: item.x,
     y: item.y,
-    size: item.size,
-    font: item.font,
-    effect: item.effect,
-    color: item.color,
     authorId: item.authorId,
     authorName: item.authorName,
+    ...readStyle({}, item),
   };
 }
 
@@ -161,22 +183,14 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
     const body = JSON.parse((await readBody(req)) || '{}');
     const personId = String(body.personId ?? '');
     const textBody = cleanMessage(body.body).slice(0, 80);
-    const font = String(body.font ?? '');
-    const effect = String(body.effect ?? '');
-    const color = String(body.color ?? '').toLowerCase();
-    if (!PERSON_ID.test(personId) || !textBody || !TEXT_FONTS.has(font) || !TEXT_EFFECTS.has(effect) || !HEX_COLOR.test(color)) {
-      return send(res, 400, { error: 'fields' });
-    }
+    if (!PERSON_ID.test(personId) || !textBody || (body.font !== undefined && !TEXT_FONTS.has(String(body.font)))) return send(res, 400, { error: 'fields' });
     const text = {
       id: randomBytes(8).toString('hex'),
       personId,
       body: textBody,
       x: clamp(body.x, 8, 92, 50),
       y: clamp(body.y, 12, 88, 46),
-      size: clamp(body.size, 18, 64, 32),
-      font,
-      effect,
-      color,
+      ...readStyle(body),
       authorId: user.id,
       authorName: user.name,
       createdAt: new Date().toISOString(),
@@ -208,12 +222,10 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
       if (!next) return send(res, 400, { error: 'fields' });
       text.body = next;
     }
+    if (body.font !== undefined && !TEXT_FONTS.has(String(body.font))) return send(res, 400, { error: 'fields' });
     if (body.x !== undefined) text.x = clamp(body.x, 8, 92, text.x);
     if (body.y !== undefined) text.y = clamp(body.y, 12, 88, text.y);
-    if (body.size !== undefined) text.size = clamp(body.size, 18, 64, text.size);
-    if (body.font !== undefined && TEXT_FONTS.has(String(body.font))) text.font = String(body.font);
-    if (body.effect !== undefined && TEXT_EFFECTS.has(String(body.effect))) text.effect = String(body.effect);
-    if (body.color !== undefined && HEX_COLOR.test(String(body.color).toLowerCase())) text.color = String(body.color).toLowerCase();
+    Object.assign(text, readStyle(body, text));
     write(file, store);
     send(res, 200, { text: publicText(text) });
     return;
