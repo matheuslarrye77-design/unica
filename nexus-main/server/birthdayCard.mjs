@@ -5,8 +5,8 @@ import path from 'node:path';
 export const UNLIMITED_USER_ID = '1';
 const STICKER_FILE = /^(?:png|svg)-(?:0|[1-9]\d?)(?:b|_1)?\.(?:png|svg)$|^2400_3104(?:---(?:[1-9]|1\d|2[0-6]))?\.svg$|^figurinha-(?:aplauso|festa|joinha|parabens|risada|surpresa|vergonha|desespero)$|^stk-[a-f0-9]{16}$/;
 const PERSON_ID = /^[a-z0-9-]{1,80}$/;
-const DEFAULT_COLOR = '#e7d5c8';
-const CARD_COLORS = new Set(['#e7d5c8', '#f3c6d4', '#d9c8f2', '#c9e6d8', '#f6d3b4', '#c9d7f2', '#f6f1ea', '#e8b4c4']);
+const DEFAULT_COLOR = '#8c4632';
+const CARD_COLORS = new Set(['#8c4632', '#a33b55', '#5e3d86', '#1f6450', '#a65628', '#2c4a84', '#7a2f48', '#245e66']);
 
 function empty() {
   return { stickers: [], colors: {} };
@@ -135,6 +135,16 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
   }
 
   const match = /^\/api\/birthday-card\/([^/]+)$/.exec(url);
+  if (match && req.method === 'DELETE') {
+    const index = store.stickers.findIndex((item) => item.id === match[1]);
+    if (index < 0) return send(res, 404, { error: 'missing' });
+    if (store.stickers[index].authorId !== user.id) return send(res, 403, { error: 'forbidden' });
+    store.stickers.splice(index, 1);
+    write(file, store);
+    send(res, 200, { mine: mine(store, user.id) });
+    return;
+  }
+
   if (match && req.method === 'PATCH') {
     const sticker = store.stickers.find((item) => item.id === match[1]);
     if (!sticker) return send(res, 404, { error: 'missing' });

@@ -49,3 +49,7 @@ export function placeBirthdaySticker(draft: { personId: string; stickerId: strin
 export function updateBirthdaySticker(id: string, patch: Partial<Pick<BirthdaySticker, 'x' | 'y' | 'width' | 'rotation' | 'message' | 'open'>>) {
   return request<{ sticker: BirthdaySticker }>(`/api/birthday-card/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 }
+
+export function deleteBirthdaySticker(id: string) {
+  return request<{ mine: { id: string; personId: string } | null }>(`/api/birthday-card/${id}`, { method: 'DELETE' });
+}

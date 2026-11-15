@@ -2,6 +2,7 @@ import { BIRTHDAY_STICKERS, birthdayStickerArt } from '@/data/birthdayStickers';
 import { MURAL_FIGURINES } from '@/data/muralStickers';
 import { calendarEvents } from '@/data/mockData';
 import {
+  deleteBirthdaySticker,
   loadBirthdayCard,
   placeBirthdaySticker,
   saveBirthdayColor,
@@ -14,7 +15,7 @@ import { parseAgendaDate, useAgendaEvents } from '@/lib/events';
 import { useDemoProfile } from '@/lib/session';
 import { listStickers, saveSticker } from '@/lib/stickers';
 import { cn } from '@/lib/utils';
-import { Cake, ChevronLeft, ChevronRight, ImagePlus, Pencil, Plus } from 'lucide-react';
+import { Cake, ChevronLeft, ChevronRight, ImagePlus, Pencil, Plus, Scaling, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FC, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
@@ -33,7 +34,7 @@ function spot(stickers: BirthdaySticker[]) {
 }
 
 const PAGE = 16;
-const CARD_COLORS = ['#e7d5c8', '#f3c6d4', '#d9c8f2', '#c9e6d8', '#f6d3b4', '#c9d7f2', '#f6f1ea', '#e8b4c4'];
+const CARD_COLORS = ['#8c4632', '#a33b55', '#5e3d86', '#1f6450', '#a65628', '#2c4a84', '#7a2f48', '#245e66'];
 
 type ShelfArt = { id: string; src: string; label: string };
 
@@ -96,6 +97,7 @@ export const BirthdayTicket: FC = () => {
   const [draftMessage, setDraftMessage] = useState('');
   const [draftArt, setDraftArt] = useState<string | null>(null);
   const [draftPos, setDraftPos] = useState({ x: 50, y: 46 });
+  const [draftWidth, setDraftWidth] = useState(24);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [cardColor, setCardColor] = useState(CARD_COLORS[0]);
   const [uploading, setUploading] = useState<'plain' | 'cut' | null>(null);
@@ -106,7 +108,9 @@ export const BirthdayTicket: FC = () => {
   const photoRef = useRef<HTMLInputElement>(null);
   const cutRef = useRef<HTMLInputElement>(null);
   const stickersRef = useRef(stickers);
+  const draftWidthRef = useRef(draftWidth);
   stickersRef.current = stickers;
+  draftWidthRef.current = draftWidth;
 
   const people = useMemo(() => {
     const map = new Map<string, PersonCard>();
@@ -151,6 +155,7 @@ export const BirthdayTicket: FC = () => {
     setAsGuest(false);
     setDraftArt(null);
     setDraftMessage('');
+    setDraftWidth(24);
     setEditingId(null);
     setSavedFlash(false);
     void loadBirthdayCard(person.id).then((payload) => {
@@ -242,13 +247,14 @@ export const BirthdayTicket: FC = () => {
         toast.success('Recado atualizado.');
       } else {
         if (!art) return;
-        const result = await placeBirthdaySticker({ personId: person.id, stickerId: art, width: 24, rotation: 0, message, x: draftPos.x, y: draftPos.y });
+        const result = await placeBirthdaySticker({ personId: person.id, stickerId: art, width: draftWidth, rotation: 0, message, x: draftPos.x, y: draftPos.y });
         setStickers((current) => [...current, result.sticker]);
         setMine(result.mine);
         toast.success('Recado salvo no bilhete.');
       }
       setDraftArt(null);
       setDraftMessage('');
+      setDraftWidth(24);
       setEditingId(null);
       setSavedFlash(true);
     } catch (error) {
@@ -300,6 +306,43 @@ export const BirthdayTicket: FC = () => {
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
+  }
+
+  function beginDraftResize(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    event.preventDefault();
+    const board = boardRef.current?.getBoundingClientRect();
+    if (!board) return;
+    const start = event.clientX;
+    const origin = draftWidthRef.current;
+    let width = origin;
+    const move = (pointer: PointerEvent) => {
+      width = Math.min(46, Math.max(14, origin + ((pointer.clientX - start) / board.width) * 100));
+      setDraftWidth(width);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+
+  async function removeSticker(sticker: BirthdaySticker) {
+    if (sticker.authorId !== viewerId) return;
+    try {
+      const result = await deleteBirthdaySticker(sticker.id);
+      setStickers((current) => current.filter((item) => item.id !== sticker.id));
+      setMine(result.mine);
+      if (editingId === sticker.id) {
+        setEditingId(null);
+        setDraftMessage('');
+      }
+      setLift((current) => current?.id === sticker.id ? null : current);
+      toast.success('Adesivo excluído.');
+    } catch {
+      toast.error('Não foi possível excluir o adesivo.');
+    }
   }
 
   function unlock(sticker: BirthdaySticker) {
@@ -426,13 +469,15 @@ export const BirthdayTicket: FC = () => {
         <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start">
           <div ref={boardRef} onClick={(event) => { if (lift && event.target === event.currentTarget) closeLift(); }} className={cn('relative aspect-[967/577] w-full flex-1 overflow-hidden rounded-[28px]', lift && 'z-50')} style={{ backgroundColor: cardColor }}>
             <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
-              <rect x="3.2%" y="5.5%" width="93.6%" height="89%" rx="18" fill="none" stroke="rgba(90,58,42,0.55)" strokeWidth="2" strokeDasharray="2 7" strokeLinecap="round" />
-              <rect x="4.6%" y="8%" width="90.8%" height="84%" rx="16" fill="none" stroke="rgba(255,255,255,0.72)" strokeWidth="1.5" strokeDasharray="2 7" strokeLinecap="round" />
+              <rect x="3.6%" y="6%" width="92.8%" height="88%" rx="18" fill="none" stroke="rgba(255,248,240,0.9)" strokeWidth="1.75" strokeDasharray="2 7" strokeLinecap="round" />
             </svg>
-            {reading ? <p className="pointer-events-none absolute bottom-4 left-4 text-sm font-medium text-[#5C4638]">Toque em um adesivo para ler o recado.</p> : null}
+            {reading ? <p className="pointer-events-none absolute bottom-4 left-4 text-sm font-medium text-white/90">Toque em um adesivo para ler o recado.</p> : null}
             {composing && !asGuest && draftPreview ? (
-              <div className="absolute z-10 cursor-grab touch-none" style={{ left: `${draftPos.x}%`, top: `${draftPos.y}%`, width: '24%', transform: 'translate(-50%, -50%)' }} onPointerDown={beginDraftDrag}>
+              <div className="absolute z-10 cursor-grab touch-none" style={{ left: `${draftPos.x}%`, top: `${draftPos.y}%`, width: `${draftWidth}%`, transform: 'translate(-50%, -50%)' }} onPointerDown={beginDraftDrag}>
                 <img src={draftPreview.src} alt="" draggable={false} className="sticker-cut aspect-square w-full object-contain" />
+                <button type="button" aria-label="Redimensionar adesivo" onPointerDown={beginDraftResize} className="absolute -bottom-1.5 -right-1.5 z-10 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+                  <Scaling className="h-3.5 w-3.5" />
+                </button>
               </div>
             ) : null}
             {stickers.map((sticker) => {
@@ -444,13 +489,22 @@ export const BirthdayTicket: FC = () => {
                     {editingId === sticker.id ? (
                       <>
                         <button type="button" aria-label="Girar adesivo" onPointerDown={(event) => beginRotate(event, sticker)} className="absolute -top-3 left-1/2 z-10 h-6 w-6 -translate-x-1/2 rounded-full border border-gray-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)]" />
-                        <button type="button" aria-label="Redimensionar adesivo" onPointerDown={(event) => beginResize(event, sticker)} className="absolute -bottom-2 -right-2 z-10 h-6 w-6 rounded-full border border-gray-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)]" />
+                        <button type="button" aria-label="Redimensionar adesivo" onPointerDown={(event) => beginResize(event, sticker)} className="absolute -bottom-1.5 -right-1.5 z-10 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+                          <Scaling className="h-3.5 w-3.5" />
+                        </button>
                       </>
                     ) : null}
-                    {composing && !asGuest && own && !draftArt && editingId !== sticker.id ? (
-                      <button type="button" aria-label="Editar adesivo" onClick={() => unlock(sticker)} className="absolute -right-1 -top-1 z-20 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 opacity-0 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-opacity group-hover:opacity-100">
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
+                    {composing && !asGuest && own ? (
+                      <span className={cn('absolute -right-1 -top-1 z-20 flex gap-1 transition-opacity', editingId === sticker.id ? 'opacity-100' : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100')}>
+                        {!draftArt && editingId !== sticker.id ? (
+                          <button type="button" aria-label="Editar adesivo" onClick={() => unlock(sticker)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        ) : null}
+                        <button type="button" aria-label="Excluir adesivo" onClick={() => void removeSticker(sticker)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-[#9D174D] shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
                     ) : null}
                     <div
                       role="button"
@@ -496,7 +550,7 @@ export const BirthdayTicket: FC = () => {
               </label>
               {canAdd ? <StickerShelf items={shelf} selected={draftArt} onPick={chooseArt} /> : (
                 <p className="text-sm text-gray-500">
-                  {minePerson && mine?.personId !== person.id ? `Seu adesivo já está no bilhete de ${minePerson.name.split(' ')[0]}.` : 'Você já colocou o seu adesivo. Toque nele para reescrever o recado.'}
+                  {minePerson && mine?.personId !== person.id ? `Seu adesivo já está no bilhete de ${minePerson.name.split(' ')[0]}.` : 'Você já colocou o seu adesivo. Passe o mouse nele para editar ou excluir.'}
                 </p>
               )}
               {canAdd || editingId ? (
