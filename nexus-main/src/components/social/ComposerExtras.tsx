@@ -1,5 +1,6 @@
 import { ArrowUp, ImagePlay, Plus, Smile, Sticker, X } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
+import { MURAL_FIGURINES } from '@/data/muralStickers';
 import { forgetSticker, listStickers, prioritizeSticker, saveSticker, subscribeStickerLibrary, useSticker, type SavedSticker } from '@/lib/stickers';
 import { GifPicker } from './GifPicker';
 import { EMOJI_GROUPS } from './mediaCatalog';
@@ -75,6 +76,14 @@ export const ComposerExtras: FC<{
         <>
           <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(event) => { void uploadSticker(event.target.files?.[0]); event.target.value = ''; }} />
           {uploadError ? <p className="mb-2 px-1 text-center text-[12px] text-[#9D174D]">{uploadError}</p> : null}
+          <p className="mb-1 px-1 text-[12px] font-medium text-[#3600C2]">Figurinhas</p>
+          <div className="mb-2 grid grid-cols-[repeat(auto-fill,3.5rem)] justify-start gap-1.5">
+            {MURAL_FIGURINES.map((item) => (
+              <button key={item.id} type="button" aria-label={item.label} className="h-14 w-14 overflow-hidden rounded-xl bg-[#FBF7FD] p-1" onClick={() => { onSticker?.(item.src); setPanel(null); onPicked?.(); }}>
+                <img src={item.src} alt="" className="h-full w-full object-contain" />
+              </button>
+            ))}
+          </div>
           <div className="mb-2 flex justify-end px-1">
             <button type="button" className="text-[12px] font-semibold text-[#4600F3]" aria-pressed={editing} onClick={() => setEditing((current) => !current)}>{editing ? 'Concluir' : 'Editar'}</button>
           </div>

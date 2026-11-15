@@ -1,4 +1,5 @@
 import { BIRTHDAY_STICKERS, birthdayStickerArt } from '@/data/birthdayStickers';
+import { MURAL_FIGURINES } from '@/data/muralStickers';
 import { calendarEvents } from '@/data/mockData';
 import {
   loadBirthdayCard,
@@ -9,9 +10,10 @@ import {
 import { celebrationPersonId } from '@/lib/celebrations';
 import { parseAgendaDate, useAgendaEvents } from '@/lib/events';
 import { useDemoProfile } from '@/lib/session';
+import { listStickers } from '@/lib/stickers';
 import { cn } from '@/lib/utils';
-import { Cake } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type FC, type PointerEvent as ReactPointerEvent, type UIEvent } from 'react';
+import { Cake, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type FC, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -28,43 +30,37 @@ function spot(stickers: BirthdaySticker[]) {
   return { x: free?.[0] ?? 50, y: free?.[1] ?? 42 };
 }
 
-const SHELF_COLUMNS = 4;
-const SHELF_ROW = 72;
-const SHELF_ROWS = 7;
+const PAGE = 16;
+
+type ShelfArt = { id: string; src: string; label: string };
 
 function stamp(day: number, month: number) {
   return `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}`;
 }
 
-function StickerShelf({ onPick }: { onPick: (id: string) => void }) {
-  const [startRow, setStartRow] = useState(0);
-  const rows = Math.ceil(BIRTHDAY_STICKERS.length / SHELF_COLUMNS);
-  const start = startRow * SHELF_COLUMNS;
-  const visible = BIRTHDAY_STICKERS.slice(start, start + SHELF_ROWS * SHELF_COLUMNS);
-
-  function onScroll(event: UIEvent<HTMLDivElement>) {
-    const next = Math.max(0, Math.floor(event.currentTarget.scrollTop / SHELF_ROW) - 1);
-    setStartRow((current) => current === next ? current : next);
-  }
+function StickerShelf({ items, selected, onPick }: { items: ShelfArt[]; selected: string | null; onPick: (id: string) => void }) {
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(items.length / PAGE));
+  const current = Math.min(page, pages - 1);
+  const visible = items.slice(current * PAGE, current * PAGE + PAGE);
 
   return (
-    <div
-      role="region"
-      tabIndex={0}
-      aria-label="Rolar adesivos"
-      onScroll={onScroll}
-      className="sticker-shelf h-[360px] overflow-y-scroll pr-1"
-      data-sticker-count={BIRTHDAY_STICKERS.length}
-      data-sticker-shown={visible.length}
-    >
-      <div className="relative" style={{ height: rows * SHELF_ROW }}>
-        <div className="absolute inset-x-0 grid grid-cols-4 gap-2" style={{ top: startRow * SHELF_ROW }}>
-          {visible.map((item) => (
-            <button key={item.id} type="button" onClick={() => onPick(item.id)} aria-label={`Adicionar ${item.id}`} className="grid h-16 place-items-center rounded-2xl bg-[#FBF7F2] p-1.5">
-              <img src={item.src} alt="" decoding="async" draggable={false} className="sticker-cut max-h-full max-w-full object-contain" />
-            </button>
-          ))}
-        </div>
+    <div>
+      <div className="grid grid-cols-4 gap-2" data-sticker-count={items.length} data-sticker-shown={visible.length}>
+        {visible.map((item) => (
+          <button key={item.id} type="button" aria-pressed={selected === item.id} aria-label={item.label} onClick={() => onPick(item.id)} className={cn('grid h-16 place-items-center rounded-2xl bg-white/80 p-1.5', selected === item.id && 'ring-2 ring-blue-600')}>
+            <img src={item.src} alt="" decoding="async" draggable={false} className="sticker-cut max-h-full max-w-full object-contain" />
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-between">
+        <button type="button" aria-label="Adesivos anteriores" disabled={current === 0} onClick={() => setPage(current - 1)} className="grid h-9 w-9 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)] disabled:opacity-40">
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <span className="text-xs text-gray-500">{current + 1} / {pages}</span>
+        <button type="button" aria-label="Próximos adesivos" disabled={current >= pages - 1} onClick={() => setPage(current + 1)} className="grid h-9 w-9 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)] disabled:opacity-40">
+          <ChevronRight className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
@@ -95,9 +91,15 @@ export const BirthdayTicket: FC = () => {
   const [mine, setMine] = useState<{ id: string; personId: string } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [lift, setLift] = useState<Lift | null>(null);
+  const [library, setLibrary] = useState<ShelfArt[]>([]);
+  const [draftMessage, setDraftMessage] = useState('');
+  const [draftArt, setDraftArt] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const [asGuest, setAsGuest] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
   const stickersRef = useRef(stickers);
-  const messageTimer = useRef(0);
   stickersRef.current = stickers;
 
   const people = useMemo(() => {
@@ -117,16 +119,34 @@ export const BirthdayTicket: FC = () => {
     return [...map.values()].sort((a, b) => a.month - b.month || a.day - b.day || a.name.localeCompare(b.name, 'pt-BR'));
   }, [saved]);
 
+  const shelf = useMemo<ShelfArt[]>(() => [
+    ...MURAL_FIGURINES.map((item) => ({ id: item.id, src: item.src, label: item.label })),
+    ...library,
+    ...BIRTHDAY_STICKERS.map((item) => ({ id: item.id, src: item.src, label: `Adicionar ${item.id}` })),
+  ], [library]);
+
   const person = people.find((item) => item.id === params.get('pessoa')) ?? null;
-  const selected = stickers.find((item) => item.id === selectedId && item.authorId === viewerId) ?? null;
   const composing = Boolean(person && viewerId && viewerId !== person.id);
   const canAdd = unlimited || !mine;
   const minePerson = people.find((item) => item.id === mine?.personId);
 
   useEffect(() => {
+    let alive = true;
+    void listStickers().then((items) => {
+      if (alive) setLibrary(items.map((item) => ({ id: item.id, src: item.url, label: 'Minha figurinha' })));
+    }).catch(() => { if (alive) setLibrary([]); });
+    return () => { alive = false; };
+  }, [demo]);
+
+  useEffect(() => {
     if (!person) return;
     let alive = true;
     setLift(null);
+    setAsGuest(false);
+    setDraftArt(null);
+    setDraftMessage('');
+    setEditingId(null);
+    setSavedFlash(false);
     void loadBirthdayCard(person.id).then((payload) => {
       if (!alive) return;
       setStickers(payload.stickers);
@@ -152,25 +172,49 @@ export const BirthdayTicket: FC = () => {
     setParams(next, { replace: true });
   }, [params, people, setParams]);
 
-  async function addSticker(stickerId: string) {
-    if (!person || !composing || !canAdd) return;
-    const place = spot(stickersRef.current);
-    try {
-      const result = await placeBirthdaySticker({ personId: person.id, stickerId, width: 24, rotation: 0, message: '', ...place });
-      setStickers((current) => [...current, result.sticker]);
-      setMine(result.mine);
-      setSelectedId(result.sticker.id);
-    } catch (error) {
-      toast.error(error instanceof Error && error.message === 'limit' ? 'Você já usou o seu adesivo.' : 'Não foi possível colocar o adesivo.');
-    }
+  function chooseArt(id: string) {
+    setDraftArt(id);
+    setEditingId(null);
+    setSavedFlash(false);
   }
 
-  function saveMessage(id: string, message: string) {
-    setStickers((current) => current.map((item) => item.id === id ? { ...item, message } : item));
-    window.clearTimeout(messageTimer.current);
-    messageTimer.current = window.setTimeout(() => {
-      void updateBirthdaySticker(id, { message }).catch(() => toast.error('Não foi possível salvar o recado.'));
-    }, 350);
+  async function finish() {
+    if (!person || saving) return;
+    const message = draftMessage.trim();
+    const art = draftArt;
+    if (!message) {
+      toast.error('Escreva o recado antes de finalizar.');
+      return;
+    }
+    if (!editingId && (!art || !canAdd)) {
+      toast.error('Escolha um adesivo.');
+      return;
+    }
+    setSaving(true);
+    setSavedFlash(false);
+    try {
+      if (editingId) {
+        const result = await updateBirthdaySticker(editingId, { message });
+        setStickers((current) => current.map((item) => item.id === result.sticker.id ? result.sticker : item));
+        toast.success('Recado atualizado.');
+      } else {
+        const place = spot(stickersRef.current);
+        if (!art) return;
+        const result = await placeBirthdaySticker({ personId: person.id, stickerId: art, width: 24, rotation: 0, message, ...place });
+        setStickers((current) => [...current, result.sticker]);
+        setMine(result.mine);
+        setSelectedId(result.sticker.id);
+        toast.success('Recado salvo no bilhete.');
+      }
+      setDraftArt(null);
+      setDraftMessage('');
+      setEditingId(null);
+      setSavedFlash(true);
+    } catch (error) {
+      toast.error(error instanceof Error && error.message === 'limit' ? 'Você já usou o seu adesivo.' : 'Não foi possível salvar o recado.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function closeLift() {
@@ -220,7 +264,13 @@ export const BirthdayTicket: FC = () => {
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
-      if (!moved) return;
+      if (!moved) {
+        setEditingId(sticker.id);
+        setDraftMessage(sticker.message);
+        setDraftArt(sticker.stickerId);
+        setSavedFlash(false);
+        return;
+      }
       void updateBirthdaySticker(sticker.id, next).catch(() => {
         setStickers((items) => items.map((item) => item.id === sticker.id ? { ...item, ...origin } : item));
         toast.error('Não foi possível mover o adesivo.');
@@ -279,17 +329,26 @@ export const BirthdayTicket: FC = () => {
 
   const lifted = lift ? stickers.find((item) => item.id === lift.id) : null;
   const liftedArt = lifted ? birthdayStickerArt(lifted.stickerId) : null;
+  const reading = !composing || asGuest;
+  const draftPreview = draftArt ? birthdayStickerArt(draftArt) : null;
 
   return (
     <section className="mt-6 rounded-[28px] border border-gray-100 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-      <div className="flex items-center gap-3">
-        <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#F4EEFF] text-[#6B33F6]">
-          <Cake className="h-5 w-5" strokeWidth={1.75} />
-        </span>
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-gray-800">Aniversários</h2>
-          <p className="text-sm text-gray-500">Celebre as pessoas especiais do nosso time!</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#F4EEFF] text-[#6B33F6]">
+            <Cake className="h-5 w-5" strokeWidth={1.75} />
+          </span>
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-gray-800">Aniversários</h2>
+            <p className="text-sm text-gray-500">Celebre as pessoas especiais do nosso time!</p>
+          </div>
         </div>
+        {composing ? (
+          <button type="button" aria-pressed={asGuest} onClick={() => setAsGuest((value) => !value)} className="h-11 shrink-0 rounded-2xl border border-gray-100 bg-white px-4 text-sm font-semibold text-gray-800 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+            {asGuest ? 'Voltar a montar' : 'Ver como aniversariante'}
+          </button>
+        ) : null}
       </div>
       <div className="mt-5 flex gap-5 overflow-x-auto">
         {people.map((item) => {
@@ -304,20 +363,22 @@ export const BirthdayTicket: FC = () => {
         })}
       </div>
       {person ? (
-        <div className="mt-2 flex flex-col gap-4 lg:flex-row">
-          <div ref={boardRef} onClick={(event) => { if (lift && event.target === event.currentTarget) closeLift(); }} className={cn('relative min-h-[420px] flex-1 overflow-hidden rounded-[28px] bg-[#FBF7F2]', lift && 'z-50')}>
-            <div className="pointer-events-none absolute -left-10 top-8 h-40 w-56 rounded-full bg-[#F8D5E4]" />
-            <div className="pointer-events-none absolute -right-8 top-0 h-52 w-64 rounded-full bg-[#E4D4F7]" />
-            <div className="pointer-events-none absolute bottom-0 left-8 h-36 w-56 rounded-full bg-[#D7F0E4]" />
-            <div className="pointer-events-none absolute -bottom-8 right-20 h-32 w-52 rounded-full bg-[#F8E3C8]" />
-            {!composing ? <p className="pointer-events-none absolute bottom-4 left-4 text-sm text-gray-500">Toque em um adesivo para ler o recado.</p> : null}
+        <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start">
+          <div ref={boardRef} onClick={(event) => { if (lift && event.target === event.currentTarget) closeLift(); }} className={cn('relative aspect-[967/577] w-full flex-1 overflow-hidden rounded-[28px] bg-[#c4b4aa]', lift && 'z-50')}>
+            <img src="/aniversario/cartao.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
+            {reading ? <p className="pointer-events-none absolute bottom-4 left-4 text-sm font-medium text-gray-700">Toque em um adesivo para ler o recado.</p> : null}
+            {composing && !asGuest && draftPreview ? (
+              <div className="pointer-events-none absolute left-1/2 top-1/2 w-[22%] -translate-x-1/2 -translate-y-1/2">
+                <img src={draftPreview.src} alt="" className="sticker-cut aspect-square w-full object-contain" />
+              </div>
+            ) : null}
             {stickers.map((sticker) => {
               const art = birthdayStickerArt(sticker.stickerId);
               const own = sticker.authorId === viewerId;
               return (
                 <div key={sticker.id} className="absolute" style={{ left: `${sticker.x}%`, top: `${sticker.y}%`, width: `${sticker.width}%`, transform: `translate(-50%, -50%) rotate(${sticker.rotation}deg)`, zIndex: selectedId === sticker.id ? 2 : 1, visibility: lift?.id === sticker.id ? 'hidden' : 'visible' }}>
                   <div className="relative aspect-square" style={{ containerType: 'inline-size', perspective: '900px' }}>
-                    {composing && own && selectedId === sticker.id ? (
+                    {!reading && own && selectedId === sticker.id ? (
                       <>
                         <button type="button" aria-label="Girar adesivo" onPointerDown={(event) => beginRotate(event, sticker)} className="absolute -top-3 left-1/2 z-10 h-6 w-6 -translate-x-1/2 rounded-full border border-gray-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)]" />
                         <button type="button" aria-label="Redimensionar adesivo" onPointerDown={(event) => beginResize(event, sticker)} className="absolute -bottom-2 -right-2 z-10 h-6 w-6 rounded-full border border-gray-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)]" />
@@ -326,10 +387,10 @@ export const BirthdayTicket: FC = () => {
                     <div
                       role="button"
                       tabIndex={0}
-                      aria-label={composing ? (own ? `Mover adesivo de ${sticker.authorName}` : `Adesivo de ${sticker.authorName}`) : `Abrir recado de ${sticker.authorName}`}
-                      onPointerDown={(event) => beginDrag(event, sticker)}
-                      onClick={(event) => { if (!composing && art) { event.stopPropagation(); openSticker(sticker, event.currentTarget.parentElement?.parentElement ?? event.currentTarget); } }}
-                      className={cn('absolute inset-0', composing && own ? 'cursor-grab touch-none' : 'cursor-pointer', composing && selectedId === sticker.id && own && 'rounded-2xl ring-2 ring-blue-600')}
+                      aria-label={reading ? `Abrir recado de ${sticker.authorName}` : (own ? `Mover adesivo de ${sticker.authorName}` : `Adesivo de ${sticker.authorName}`)}
+                      onPointerDown={(event) => { if (!reading) beginDrag(event, sticker); }}
+                      onClick={(event) => { if (reading && art) { event.stopPropagation(); openSticker(sticker, event.currentTarget.parentElement?.parentElement ?? event.currentTarget); } }}
+                      className={cn('absolute inset-0', !reading && own ? 'cursor-grab touch-none' : 'cursor-pointer', !reading && composing && selectedId === sticker.id && own && 'rounded-2xl ring-2 ring-blue-600')}
                     >
                       {art ? <StickerFaces src={art.src} message={sticker.message} author={sticker.authorName} turned={false} /> : null}
                     </div>
@@ -338,20 +399,24 @@ export const BirthdayTicket: FC = () => {
               );
             })}
           </div>
-          {composing ? (
+          {composing && !asGuest ? (
             <aside className="w-full shrink-0 rounded-[28px] border border-gray-100 p-4 lg:w-[248px]">
               <h3 className="mb-3 text-sm font-semibold text-gray-800">Adesivos</h3>
-              {selected ? (
-                <label className="mb-3 block">
-                  <span className="mb-2 block text-xs font-medium text-gray-500">Recado deste adesivo</span>
-                  <textarea value={selected.message} maxLength={240} onChange={(event) => saveMessage(selected.id, event.target.value)} onBlur={(event) => { window.clearTimeout(messageTimer.current); void updateBirthdaySticker(selected.id, { message: event.target.value }).catch(() => toast.error('Não foi possível salvar o recado.')); }} className="min-h-20 w-full rounded-2xl border border-gray-100 bg-white px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Escreva o recado do verso." />
-                </label>
-              ) : null}
-              {canAdd ? <StickerShelf onPick={(id) => void addSticker(id)} /> : (
+              <label className="mb-3 block">
+                <span className="mb-2 block text-xs font-medium text-gray-500">Recado</span>
+                <textarea value={draftMessage} maxLength={240} onChange={(event) => { setDraftMessage(event.target.value); setSavedFlash(false); }} className="min-h-20 w-full rounded-2xl border border-gray-100 bg-white px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Escreva o recado primeiro." />
+              </label>
+              {canAdd ? <StickerShelf items={shelf} selected={draftArt} onPick={chooseArt} /> : (
                 <p className="text-sm text-gray-500">
-                  {minePerson && mine?.personId !== person.id ? `Seu adesivo já está no bilhete de ${minePerson.name.split(' ')[0]}.` : 'Você já colocou o seu adesivo. Dá para mover, girar e reescrever o recado, sem adicionar outro.'}
+                  {minePerson && mine?.personId !== person.id ? `Seu adesivo já está no bilhete de ${minePerson.name.split(' ')[0]}.` : 'Você já colocou o seu adesivo. Toque nele para reescrever o recado.'}
                 </p>
               )}
+              {canAdd || editingId ? (
+                <button type="button" disabled={saving || !draftMessage.trim() || (!editingId && !draftArt)} onClick={() => void finish()} className="mt-3 h-11 w-full rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 disabled:cursor-not-allowed disabled:opacity-45">
+                  {saving ? 'Salvando...' : editingId ? 'Atualizar recado' : 'Finalizar'}
+                </button>
+              ) : null}
+              {savedFlash ? <p className="mt-2 text-center text-xs font-medium text-[#3600C2]">Recado salvo no bilhete.</p> : null}
             </aside>
           ) : null}
         </div>

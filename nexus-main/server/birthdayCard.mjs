@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export const UNLIMITED_USER_ID = '1';
-const STICKER_FILE = /^(?:png|svg)-(?:0|[1-9]\d?)(?:b|_1)?\.(?:png|svg)$|^2400_3104(?:---(?:[1-9]|1\d|2[0-6]))?\.svg$/;
+const STICKER_FILE = /^(?:png|svg)-(?:0|[1-9]\d?)(?:b|_1)?\.(?:png|svg)$|^2400_3104(?:---(?:[1-9]|1\d|2[0-6]))?\.svg$|^figurinha-(?:aplauso|festa|joinha|parabens|risada|surpresa|vergonha|desespero)$|^stk-[a-f0-9]{16}$/;
 const PERSON_ID = /^[a-z0-9-]{1,80}$/;
 
 function empty() {

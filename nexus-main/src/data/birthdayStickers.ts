@@ -1,3 +1,5 @@
+import { MURAL_FIGURINES } from '@/data/muralStickers';
+
 export type BirthdayStickerArt = {
   id: string;
   src: string;
@@ -147,5 +149,10 @@ export const BIRTHDAY_STICKERS: BirthdayStickerArt[] = files.map((file) => ({
 
 export function birthdayStickerArt(id: string) {
   const file = legacy.get(id) ?? id;
-  return BIRTHDAY_STICKERS.find((item) => item.id === file) ?? null;
+  const pack = BIRTHDAY_STICKERS.find((item) => item.id === file);
+  if (pack) return pack;
+  const figurine = MURAL_FIGURINES.find((item) => item.id === id);
+  if (figurine) return { id: figurine.id, src: figurine.src };
+  if (/^stk-[a-f0-9]{16}$/.test(id)) return { id, src: `/api/stickers/${id}` };
+  return null;
 }
