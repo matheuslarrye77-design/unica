@@ -12,9 +12,10 @@ const TEXT_FONTS = new Set(['arial', 'general', 'clash', 'dm', 'poppins', 'monts
 const TEXT_EFFECTS = new Set(['plain', 'shadow', 'outline', 'highlight']);
 const TEXT_ALIGNS = new Set(['left', 'center', 'right']);
 const TEXT_GLYPHS = new Set(['none', 'heart', 'star', 'spark']);
+const MARK_KINDS = new Set(['heart', 'star', 'spark']);
 
 function empty() {
-  return { stickers: [], colors: {}, texts: [] };
+  return { stickers: [], colors: {}, texts: [], marks: [] };
 }
 
 function read(file) {
@@ -24,6 +25,7 @@ function read(file) {
       stickers: Array.isArray(parsed.stickers) ? parsed.stickers : [],
       colors: parsed.colors && typeof parsed.colors === 'object' ? parsed.colors : {},
       texts: Array.isArray(parsed.texts) ? parsed.texts : [],
+      marks: Array.isArray(parsed.marks) ? parsed.marks : [],
     };
   } catch {
     return empty();
@@ -110,6 +112,21 @@ function readStyle(body, previous = {}) {
   };
 }
 
+function publicMark(item) {
+  const color = String(item.color ?? '').toLowerCase();
+  return {
+    id: item.id,
+    personId: item.personId,
+    kind: MARK_KINDS.has(item.kind) ? item.kind : 'heart',
+    color: HEX_COLOR.test(color) ? color : '#ffffff',
+    x: item.x,
+    y: item.y,
+    size: clamp(item.size, 28, 96, 56),
+    authorId: item.authorId,
+    authorName: item.authorName,
+  };
+}
+
 function publicText(item) {
   return {
     id: item.id,
@@ -139,6 +156,7 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
     send(res, 200, {
       stickers: store.stickers.filter((item) => item.personId === personId).map(publicSticker),
       texts: store.texts.filter((item) => item.personId === personId).map(publicText),
+      marks: (store.marks ?? []).filter((item) => item.personId === personId).map(publicMark),
       color: HEX_COLOR.test(String(store.colors?.[personId] ?? '')) ? String(store.colors[personId]) : DEFAULT_COLOR,
       viewer: { id: user.id, unlimited },
       mine: mine(store, user.id),
@@ -234,6 +252,63 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
     Object.assign(text, readStyle(body, text));
     write(file, store);
     send(res, 200, { text: publicText(text) });
+    return;
+  }
+
+  if (req.method === 'POST' && url === '/api/birthday-card/mark') {
+    const body = JSON.parse((await readBody(req)) || '{}');
+    const personId = String(body.personId ?? '');
+    const kind = String(body.kind ?? '');
+    if (!PERSON_ID.test(personId) || !MARK_KINDS.has(kind)) return send(res, 400, { error: 'fields' });
+    const color = String(body.color ?? '#ffffff').toLowerCase();
+    const mark = {
+      id: randomBytes(8).toString('hex'),
+      personId,
+      kind,
+      color: HEX_COLOR.test(color) ? color : '#ffffff',
+      x: clamp(body.x, 8, 92, 18),
+      y: clamp(body.y, 12, 88, 24),
+      size: clamp(body.size, 28, 96, 56),
+      authorId: user.id,
+      authorName: user.name,
+      createdAt: new Date().toISOString(),
+    };
+    store.marks = [...(store.marks ?? []), mark];
+    write(file, store);
+    send(res, 201, { mark: publicMark(mark) });
+    return;
+  }
+
+  const markMatch = /^\/api\/birthday-card\/mark\/([^/]+)$/.exec(url);
+  if (markMatch && req.method === 'DELETE') {
+    const marks = store.marks ?? [];
+    const index = marks.findIndex((item) => item.id === markMatch[1]);
+    if (index < 0) return send(res, 404, { error: 'missing' });
+    if (marks[index].authorId !== user.id) return send(res, 403, { error: 'forbidden' });
+    marks.splice(index, 1);
+    store.marks = marks;
+    write(file, store);
+    send(res, 200, { ok: true });
+    return;
+  }
+
+  if (markMatch && req.method === 'PATCH') {
+    const mark = (store.marks ?? []).find((item) => item.id === markMatch[1]);
+    if (!mark) return send(res, 404, { error: 'missing' });
+    if (mark.authorId !== user.id) return send(res, 403, { error: 'forbidden' });
+    const body = JSON.parse((await readBody(req)) || '{}');
+    if (body.kind !== undefined && !MARK_KINDS.has(String(body.kind))) return send(res, 400, { error: 'fields' });
+    if (body.kind !== undefined) mark.kind = String(body.kind);
+    if (body.color !== undefined) {
+      const color = String(body.color).toLowerCase();
+      if (!HEX_COLOR.test(color)) return send(res, 400, { error: 'fields' });
+      mark.color = color;
+    }
+    if (body.x !== undefined) mark.x = clamp(body.x, 8, 92, mark.x);
+    if (body.y !== undefined) mark.y = clamp(body.y, 12, 88, mark.y);
+    if (body.size !== undefined) mark.size = clamp(body.size, 28, 96, mark.size);
+    write(file, store);
+    send(res, 200, { mark: publicMark(mark) });
     return;
   }
 

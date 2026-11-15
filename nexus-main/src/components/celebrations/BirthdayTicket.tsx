@@ -1,14 +1,18 @@
 import { BIRTHDAY_STICKERS, birthdayStickerArt } from '@/data/birthdayStickers';
 import { calendarEvents } from '@/data/mockData';
 import {
+  deleteBirthdayMark,
   deleteBirthdaySticker,
   deleteBirthdayText,
   loadBirthdayCard,
+  placeBirthdayMark,
   placeBirthdaySticker,
   placeBirthdayText,
   saveBirthdayColor,
+  updateBirthdayMark,
   updateBirthdaySticker,
   updateBirthdayText,
+  type BirthdayMark,
   type BirthdaySticker,
   type BirthdayText,
   type TextStyle,
@@ -20,7 +24,7 @@ import { useDemoProfile } from '@/lib/session';
 import { listStickers, saveSticker } from '@/lib/stickers';
 import { cn } from '@/lib/utils';
 import { AlignCenter, AlignLeft, AlignRight, Cake, ChevronDown, Eraser, ImagePlus, Paintbrush, Pencil, Pipette, Scaling, Sticker, Trash2, Type, Undo2 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FC, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FC, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -92,7 +96,6 @@ const PRESETS = [
   '#5aa6e8', '#3ec8de', '#3ecca0', '#86d15a', '#f0c447', '#f09238', '#e86660', '#e05696',
   '#2a5fbe', '#187ea6', '#1c7a60', '#3c8c30', '#c27812', '#c24e28', '#a83046', '#8c4632',
 ];
-const TEXT_TONES = ['#3ec8de', '#3ecca0', '#f0c447', '#f09238', '#e05696'];
 const COLOR_COLUMNS = 8;
 const EMPTY_LOOK: TextStyle = { font: 'vibes', effect: 'plain', color: '#ffffff', size: 36, bold: false, italic: false, underline: false, strike: false, align: 'center', upper: false, tracking: 0, shadow: false, outline: false, opacity: 1, glyph: 'none' };
 type Tool = 'color' | 'stickers' | 'text';
@@ -144,6 +147,29 @@ function hsvToHex(hue: number, saturation: number, value: number) {
   return `#${byte(r)}${byte(g)}${byte(b)}`;
 }
 
+function paperIsDark(hex: string) {
+  const bits = Number.parseInt(hex.slice(1), 16);
+  const channel = (value: number) => {
+    const scaled = value / 255;
+    return scaled <= 0.03928 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4;
+  };
+  const red = channel((bits >> 16) & 255);
+  const green = channel((bits >> 8) & 255);
+  const blue = channel(bits & 255);
+  return red * 0.2126 + green * 0.7152 + blue * 0.0722 < 0.42;
+}
+
+function inkTones(card: string) {
+  const base = hexToHsv(cardHex(card));
+  const dark = paperIsDark(cardHex(card));
+  return [-34, -16, 0, 18, 36].map((shift, index) => {
+    const hue = (base.h + shift + 360) % 360;
+    const saturation = Math.min(0.82, Math.max(0.38, base.s * 0.72 + 0.22));
+    const value = dark ? 0.97 - index * 0.07 : 0.24 + index * 0.05;
+    return hsvToHex(hue, saturation, value);
+  });
+}
+
 function letterStyle(item: TextStyle): CSSProperties {
   const family = FAMILIES[item.font] ?? FAMILIES.vibes;
   const decoration = [item.underline ? 'underline' : '', item.strike ? 'line-through' : ''].filter(Boolean).join(' ');
@@ -174,34 +200,26 @@ function letterStyle(item: TextStyle): CSSProperties {
   return style;
 }
 
-function LetterArt({ item }: { item: TextStyle & { body: string } }) {
+function Doodle({ kind, className }: { kind: BirthdayMark['kind']; className?: string }) {
+  const pen = { fill: 'none', stroke: 'currentColor', strokeWidth: 2.35, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
   return (
-    <div className={cn('flex items-center gap-2', item.align === 'center' && 'justify-center', item.align === 'right' && 'flex-row-reverse')}>
-      {item.glyph !== 'none' ? <span className="shrink-0" style={{ color: item.color }}><Doodle kind={item.glyph} /></span> : null}
-      <p style={letterStyle(item)}>{item.body}</p>
-    </div>
-  );
-}
-
-function Doodle({ kind, className }: { kind: TextStyle['glyph']; className?: string }) {
-  if (kind === 'none') return null;
-  const pen = { fill: 'none', stroke: 'currentColor', strokeWidth: 2.1, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-  return (
-    <svg viewBox="0 0 64 64" className={className ?? 'h-10 w-10'} aria-hidden>
-      {kind === 'heart' ? <path {...pen} d="M32 53c-1.4-1.1-9-7-15-13.2C11.4 34 8.2 27.6 9.2 21.2 10.4 13.2 17.6 10 23.8 12.6c3.6 1.5 6 4.6 7.4 7.6 2-4 5-7.2 9.2-8 6.8-1.2 13 3 14 10 .8 6.6-3 12.8-9.4 18.8C37.6 46.6 33.4 51.8 32 53z" /> : null}
-      {kind === 'star' ? <path {...pen} d="M32 9.5 37.4 23l14.4 1.3-11 9 3.5 13.8L32 40.2 19.7 47.1l3.5-13.8-11-9L26.6 23 32 9.5z" /> : null}
+    <svg viewBox="0 0 80 80" className={className ?? 'h-14 w-14'} aria-hidden>
+      {kind === 'heart' ? <path {...pen} d="M43.4 65.6c-1.6-2.4-6.2-6.2-10.4-10-2.8-2.6-6.2-5.8-8.6-8.8-4.2-5.2-8.4-10.6-8.8-16.4-.4-6.2 3.2-11.6 9.2-12.8 3.4-.6 6.6.8 8.8 3.4 1.6 1.8 2.6 4.2 2.8 6.2.4-2.6 2.2-6.4 5.4-9 4.6-3.6 11.2-4.2 15.6-.4 4.6 4 5.8 10.2 3.6 15.6-1.8 4.4-5.4 8.4-8.8 12.2-2.6 2.8-5.4 5.8-6.8 8.4-1 1.8-1.6 4.2-2 5.6" /> : null}
+      {kind === 'star' ? <path {...pen} d="M44.8 12.6c1.2 5.4 3.6 11.2 5.2 15.4 4.8-1.6 11.4-3.4 16.6-.8-4.2 4.8-9.6 9.6-12.8 13.6 2.4 5.2 6.2 11.2 6.4 16.4-6.4-2.6-12.8-7.2-17.2-10.8-5.2 4.6-11.8 9.8-17.6 11.6.6-5.8 3.2-12.4 4.6-17.2-5.2-2.8-11.6-7.4-14.8-12.4 6.2-.6 13.2-.2 18.2 1.4.8-5.8 4.2-12.6 11.6-17.2" /> : null}
       {kind === 'spark' ? (
         <g {...pen}>
-          <path d="M32 7v10" />
-          <path d="M32 47v10" />
-          <path d="M7 32h10" />
-          <path d="M47 32h10" />
-          <path d="M13 13l8 8" />
-          <path d="M43 43l8 8" />
-          <path d="M51 13l-8 8" />
-          <path d="M21 43l-8 8" />
-          <path d="M20 9l3 9" />
-          <path d="M44 20l9-3" />
+          <path d="M39.4 16.8c.4 3.6-.6 6.8.6 10.4" />
+          <path d="M41.2 51.6c.2 3.8-.8 7.2.5 10.6" />
+          <path d="M15.6 37.4c4.2.4 7.6-1.1 11.4.5" />
+          <path d="M52.8 42.6c3.8-.3 7.4 1.1 11.2-.5" />
+          <path d="M20.4 21.6c2.8 2.6 5.6 5.8 7.8 8.6" />
+          <path d="M51.2 51.8c2.8 2.4 5.4 4.8 8.8 6.6" />
+          <path d="M61.4 19.8c-3.2 2.2-5.8 5.2-7.4 8.6" />
+          <path d="M27.6 54.2c-2.6 2.4-4.8 5.2-7.8 6.8" />
+          <path d="M26.2 15.4c1.2 3.2 2 6.2 1.4 9.6" />
+          <path d="M58.6 33.2c3.2-.6 6.2-2 9.4-1" />
+          <path d="M17.4 51.2c3.2-1.4 6.2-2.8 9.4-2.1" />
+          <path d="M48.8 16.2c2 1.2 3.2 3.2 3.8 5.8" />
         </g>
       ) : null}
     </svg>
@@ -305,10 +323,22 @@ function ColorGraph({ color, onLive, onCommit }: { color: string; onLive: (hex: 
 
 function Swatch({ color, pressed, label, onPick, onRemove }: { color: string; pressed?: boolean; label: string; onPick: () => void; onRemove?: () => void }) {
   return (
-    <span className="group relative">
-      <button type="button" aria-label={label} aria-pressed={pressed} onClick={onPick} className={cn('h-7 w-7 rounded-full border border-black/10', pressed && 'ring-2 ring-[#6B33F6] ring-offset-2')} style={{ backgroundColor: color }} />
+    <span className="group relative shrink-0">
+      <button type="button" aria-label={label} aria-pressed={pressed} onClick={onPick} className={cn('block h-7 w-7 rounded-full border border-black/10', pressed && 'ring-2 ring-[#6B33F6] ring-offset-2')} style={{ backgroundColor: color }} />
       {onRemove ? <button type="button" aria-label={`Remover cor ${color}`} onClick={onRemove} className="absolute -top-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-white text-[10px] leading-none text-gray-500 shadow">×</button> : null}
     </span>
+  );
+}
+
+function spreadRows(nodes: ReactNode[], columns = COLOR_COLUMNS) {
+  const rows: ReactNode[][] = [];
+  for (let index = 0; index < nodes.length; index += columns) rows.push(nodes.slice(index, index + columns));
+  return (
+    <div className="w-full space-y-2">
+      {rows.map((row, index) => (
+        <div key={index} className={cn('flex w-full items-center', row.length > 1 ? 'justify-between' : 'justify-end')}>{row}</div>
+      ))}
+    </div>
   );
 }
 
@@ -332,6 +362,8 @@ export const BirthdayTicket: FC = () => {
   const [params, setParams] = useSearchParams();
   const [stickers, setStickers] = useState<BirthdaySticker[]>([]);
   const [texts, setTexts] = useState<BirthdayText[]>([]);
+  const [marks, setMarks] = useState<BirthdayMark[]>([]);
+  const [selectedMark, setSelectedMark] = useState<string | null>(null);
   const [viewerId, setViewerId] = useState('');
   const [unlimited, setUnlimited] = useState(false);
   const [mine, setMine] = useState<{ id: string; personId: string } | null>(null);
@@ -411,12 +443,14 @@ export const BirthdayTicket: FC = () => {
     setDraftWidth(24);
     setEditingId(null);
     setEditingText(null);
+    setSelectedMark(null);
     setLetter('');
     setSavedFlash(false);
     void loadBirthdayCard(person.id).then((payload) => {
       if (!alive) return;
       setStickers(payload.stickers);
       setTexts(payload.texts ?? []);
+      setMarks(payload.marks ?? []);
       setCardColor(cardHex(payload.color));
       setViewerId(payload.viewer.id);
       setUnlimited(payload.viewer.unlimited);
@@ -579,11 +613,11 @@ export const BirthdayTicket: FC = () => {
     setSaving(true);
     try {
       if (editingText) {
-        const result = await updateBirthdayText(editingText, { body, ...look });
+        const result = await updateBirthdayText(editingText, { body, ...look, glyph: 'none' });
         setTexts((current) => current.map((item) => item.id === result.text.id ? result.text : item));
         toast.success('Texto atualizado.');
       } else {
-        const result = await placeBirthdayText({ personId: person.id, body, x: letterPos.x, y: letterPos.y, ...look });
+        const result = await placeBirthdayText({ personId: person.id, body, x: letterPos.x, y: letterPos.y, ...look, glyph: 'none' });
         setTexts((current) => [...current, result.text]);
         toast.success('Texto colocado no cartão.');
       }
@@ -617,6 +651,77 @@ export const BirthdayTicket: FC = () => {
     } catch {
       toast.error('Não foi possível excluir o texto.');
     }
+  }
+
+  async function dropMark(kind: BirthdayMark['kind']) {
+    if (!person || saving) return;
+    const tones = inkTones(cardColor);
+    const color = tones[Math.min(2, tones.length - 1)] ?? '#ffffff';
+    const same = marks.filter((item) => item.kind === kind).length;
+    const x = kind === 'star' ? 84 - same * 4 : 16 + same * 4;
+    const y = kind === 'spark' ? 76 - same * 3 : 24 + same * 3;
+    try {
+      const result = await placeBirthdayMark({ personId: person.id, kind, color, x, y, size: 56 });
+      setMarks((current) => [...current, result.mark]);
+      setSelectedMark(result.mark.id);
+    } catch {
+      toast.error('Não foi possível colocar o desenho.');
+    }
+  }
+
+  function paintInk(hex: string) {
+    if (selectedMark) {
+      const previous = marks.find((item) => item.id === selectedMark)?.color;
+      setMarks((current) => current.map((item) => item.id === selectedMark ? { ...item, color: hex } : item));
+      void updateBirthdayMark(selectedMark, { color: hex }).catch(() => {
+        if (previous) setMarks((current) => current.map((item) => item.id === selectedMark ? { ...item, color: previous } : item));
+        toast.error('Não foi possível colorir o desenho.');
+      });
+      return;
+    }
+    setLook((current) => ({ ...current, color: hex }));
+  }
+
+  async function removeMark(item: BirthdayMark) {
+    if (item.authorId !== viewerId) return;
+    try {
+      await deleteBirthdayMark(item.id);
+      setMarks((current) => current.filter((entry) => entry.id !== item.id));
+      if (selectedMark === item.id) setSelectedMark(null);
+    } catch {
+      toast.error('Não foi possível excluir o desenho.');
+    }
+  }
+
+  function beginMarkDrag(event: ReactPointerEvent<HTMLDivElement>, item: BirthdayMark) {
+    if (!composing || asGuest || item.authorId !== viewerId) return;
+    const board = boardRef.current?.getBoundingClientRect();
+    if (!board) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const origin = { x: item.x, y: item.y };
+    let next = origin;
+    let moved = false;
+    const move = (pointer: PointerEvent) => {
+      if (Math.hypot(pointer.clientX - event.clientX, pointer.clientY - event.clientY) > 4) moved = true;
+      next = {
+        x: Math.min(92, Math.max(8, ((pointer.clientX - board.left) / board.width) * 100)),
+        y: Math.min(88, Math.max(12, ((pointer.clientY - board.top) / board.height) * 100)),
+      };
+      setMarks((current) => current.map((entry) => entry.id === item.id ? { ...entry, ...next } : entry));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      setSelectedMark(item.id);
+      if (!moved) return;
+      void updateBirthdayMark(item.id, next).catch(() => {
+        setMarks((current) => current.map((entry) => entry.id === item.id ? { ...entry, ...origin } : entry));
+        toast.error('Não foi possível mover o desenho.');
+      });
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
   }
 
   function beginLetterDrag(event: ReactPointerEvent<HTMLDivElement>) {
@@ -967,15 +1072,30 @@ export const BirthdayTicket: FC = () => {
                       <button type="button" aria-label="Excluir texto" onClick={() => void removeLetter(item)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-[#9D174D] shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Trash2 className="h-3.5 w-3.5" /></button>
                     </span>
                   ) : null}
-                  <LetterArt item={live} />
+                  <p style={letterStyle(live)}>{live.body}</p>
                 </div>
               );
             })}
             {composing && !asGuest && !editingText && letter.trim() ? (
               <div className="absolute z-20 w-[46%] cursor-grab" style={{ left: `${letterPos.x}%`, top: `${letterPos.y}%`, transform: 'translate(-50%, -50%)' }} onPointerDown={beginLetterDrag}>
-                <LetterArt item={{ ...look, body: letter }} />
+                <p style={letterStyle(look)}>{letter}</p>
               </div>
             ) : null}
+            {marks.map((mark) => {
+              const own = mark.authorId === viewerId;
+              return (
+                <div key={mark.id} className="group absolute z-20" style={{ left: `${mark.x}%`, top: `${mark.y}%`, transform: 'translate(-50%, -50%)', color: mark.color }} onPointerDown={(event) => beginMarkDrag(event, mark)}>
+                  {composing && !asGuest && own ? (
+                    <span className="absolute -top-7 right-0 opacity-0 transition-opacity group-hover:opacity-100" onPointerDown={(event) => event.stopPropagation()}>
+                      <button type="button" aria-label="Excluir desenho" onClick={() => void removeMark(mark)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-[#9D174D] shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </span>
+                  ) : null}
+                  <span className={cn('block cursor-grab', selectedMark === mark.id && 'rounded-full ring-2 ring-[#6B33F6] ring-offset-2')}>
+                    <Doodle kind={mark.kind} className="h-16 w-16" />
+                  </span>
+                </div>
+              );
+            })}
           </div>
           {composing && !asGuest ? (
             <div className="w-full shrink-0 lg:w-[340px]">
@@ -999,20 +1119,15 @@ export const BirthdayTicket: FC = () => {
                     <div onPointerDownCapture={pushPast}>
                       <ColorGraph color={cardColor} onLive={setCardColor} onCommit={(hex) => void paintCard(hex, false)} />
                     </div>
-                    <div className="grid grid-cols-8 gap-2">
-                      {(() => {
-                        const palette = [...swatches, ...PRESETS.filter((color) => !swatches.includes(color))];
-                        const room = COLOR_COLUMNS * 3;
-                        const overflow = palette.length > room;
-                        const shown = colorsOpen || !overflow ? palette : palette.slice(0, room - 1);
-                        return (
-                          <>
-                            {shown.map((color) => <Swatch key={color} color={color} pressed={cardColor === color} label={`Cor ${color}`} onPick={() => void paintCard(color)} onRemove={swatches.includes(color) ? () => forgetColor(color) : undefined} />)}
-                            {overflow ? <button type="button" aria-label={colorsOpen ? 'Recolher cores' : 'Ver mais cores'} aria-expanded={colorsOpen} onClick={() => setColorsOpen((open) => !open)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-200 bg-white text-sm leading-none text-gray-500">…</button> : null}
-                          </>
-                        );
-                      })()}
-                    </div>
+                    {(() => {
+                      const palette = [...swatches, ...PRESETS.filter((color) => !swatches.includes(color))];
+                      const room = COLOR_COLUMNS * 3;
+                      const overflow = palette.length > room;
+                      const shown = colorsOpen || !overflow ? palette : palette.slice(0, room - 1);
+                      const nodes = shown.map((color) => <Swatch key={color} color={color} pressed={cardColor === color} label={`Cor ${color}`} onPick={() => void paintCard(color)} onRemove={swatches.includes(color) ? () => forgetColor(color) : undefined} />);
+                      if (overflow) nodes.push(<button key="mais" type="button" aria-label={colorsOpen ? 'Recolher cores' : 'Ver mais cores'} aria-expanded={colorsOpen} onClick={() => setColorsOpen((open) => !open)} className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-gray-200 bg-white text-sm leading-none text-gray-500">…</button>);
+                      return spreadRows(nodes);
+                    })()}
                     <div className="flex items-center gap-2">
                       <button type="button" title="Conta-gotas" aria-label="Conta-gotas" onClick={() => void grabColor((hex) => void paintCard(hex))} className="grid h-8 w-8 place-items-center rounded-full text-gray-500 hover:bg-[#F4F1FB] hover:text-gray-800">
                         <Pipette className="h-4 w-4" strokeWidth={1.5} />
@@ -1056,7 +1171,7 @@ export const BirthdayTicket: FC = () => {
                   ) : null}
                   {tool === 'text' ? (
                     <div className="space-y-3">
-                      <textarea value={letter} maxLength={80} onChange={(event) => { pushPast(); setLetter(event.target.value); }} className="min-h-16 w-full rounded-2xl bg-[#F6F4FB] px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Um texto solto no cartão." />
+                      <textarea value={letter} maxLength={80} onFocus={() => setSelectedMark(null)} onChange={(event) => { pushPast(); setLetter(event.target.value); }} className="min-h-16 w-full rounded-2xl bg-[#F6F4FB] px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Um texto solto no cartão." />
                       <div className="relative">
                         <button type="button" aria-label="Fonte" aria-expanded={fontOpen} onClick={() => setFontOpen((open) => !open)} className="flex h-10 w-full items-center justify-between rounded-xl bg-[#F6F4FB] px-3 text-sm text-gray-800">
                           <span style={{ fontFamily: FAMILIES[(FONTS.find((font) => font.id === look.font) ?? FONTS[0]).id] }}>{(FONTS.find((font) => font.id === look.font) ?? FONTS[0]).label}</span>
@@ -1092,14 +1207,15 @@ export const BirthdayTicket: FC = () => {
                             <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
                           </button>
                         ))}
-                        <span className="mx-1.5 h-4 w-px bg-gray-200" aria-hidden />
+                      </div>
+                      <div className="flex w-full items-center justify-between">
                         {([
                           ['heart', 'Coração'],
                           ['star', 'Estrela'],
                           ['spark', 'Raios'],
                         ] as const).map(([id, title]) => (
-                          <button key={id} type="button" title={title} aria-label={title} aria-pressed={look.glyph === id} onClick={() => { pushPast(); setLook((current) => ({ ...current, glyph: current.glyph === id ? 'none' : id })); }} className={cn('grid h-8 w-8 place-items-center rounded-full', look.glyph === id ? 'bg-[#6B33F6] text-white' : 'text-gray-500 hover:bg-[#F4F1FB]')}>
-                            <Doodle kind={id} className="h-4 w-4" />
+                          <button key={id} type="button" title={title} aria-label={title} aria-pressed={marks.some((item) => item.id === selectedMark && item.kind === id)} disabled={saving} onClick={() => void dropMark(id)} className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-full text-gray-800', marks.some((item) => item.id === selectedMark && item.kind === id) ? 'bg-[#6B33F6] text-white' : 'hover:bg-[#F4F1FB]')}>
+                            <Doodle kind={id} className="h-8 w-8" />
                           </button>
                         ))}
                       </div>
@@ -1117,14 +1233,19 @@ export const BirthdayTicket: FC = () => {
                           <input type="range" min={15} max={100} value={Math.round(look.opacity * 100)} aria-label="Opacidade" onPointerDown={pushPast} onChange={(event) => setLook((current) => ({ ...current, opacity: Number(event.target.value) / 100 }))} className="mt-1 w-full accent-[#6B33F6]" />
                         </label>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="relative grid h-7 w-7 shrink-0 place-items-center" onPointerDownCapture={pushPast}>
-                          <span className="pointer-events-none absolute inset-0 rounded-full" style={{ background: 'conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d55, #ff3b30)' }} />
-                          <span className="pointer-events-none h-2.5 w-2.5 rounded-full border border-white" style={{ backgroundColor: look.color }} />
-                          <input type="color" value={look.color} aria-label="Cor do texto" onChange={(event) => setLook((current) => ({ ...current, color: event.target.value }))} className="absolute inset-0 cursor-pointer opacity-0" />
-                        </span>
-                        {TEXT_TONES.map((color) => <Swatch key={color} color={color} pressed={look.color === color} label={`Cor do texto ${color}`} onPick={() => { pushPast(); setLook((current) => ({ ...current, color })); }} />)}
-                      </div>
+                      {(() => {
+                        const ink = marks.find((item) => item.id === selectedMark)?.color ?? look.color;
+                        return (
+                          <div className="flex w-full items-center justify-between">
+                            <span className="relative grid h-7 w-7 shrink-0 place-items-center" onPointerDownCapture={pushPast}>
+                              <span className="pointer-events-none absolute inset-0 rounded-full" style={{ background: 'conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d55, #ff3b30)' }} />
+                              <span className="pointer-events-none h-2.5 w-2.5 rounded-full border border-white" style={{ backgroundColor: ink }} />
+                              <input type="color" value={ink} aria-label={selectedMark ? 'Cor do desenho' : 'Cor do texto'} onChange={(event) => paintInk(event.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
+                            </span>
+                            {inkTones(cardColor).map((color) => <Swatch key={color} color={color} pressed={ink === color} label={selectedMark ? `Cor do desenho ${color}` : `Cor do texto ${color}`} onPick={() => { pushPast(); paintInk(color); }} />)}
+                          </div>
+                        );
+                      })()}
                       <button type="button" disabled={saving || !letter.trim()} onClick={() => void placeLetter()} className="h-11 w-full rounded-2xl bg-[#6B33F6] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
                         {saving ? 'Salvando...' : editingText ? 'Atualizar texto' : 'Colocar no cartão'}
                       </button>

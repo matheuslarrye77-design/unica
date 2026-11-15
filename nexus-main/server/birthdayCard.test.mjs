@@ -92,6 +92,20 @@ test('o adesivo só entra com recado e o texto fica no cartão', async () => {
     await call(dir, 'DELETE', `/api/birthday-card/text/${lined.body.text.id}`, matheus);
     const after = await call(dir, 'GET', '/api/birthday-card?personId=ana-souza', matheus);
     assert.equal(after.body.texts.length, 0);
+    const drawn = await call(dir, 'POST', '/api/birthday-card/mark', matheus, { personId: 'ana-souza', kind: 'heart', color: '#d8e7ff', x: 16, y: 24, size: 56 });
+    assert.equal(drawn.status, 201);
+    assert.equal(drawn.body.mark.kind, 'heart');
+    const moved = await call(dir, 'PATCH', `/api/birthday-card/mark/${drawn.body.mark.id}`, matheus, { x: 84, color: '#123456' });
+    assert.equal(moved.status, 200);
+    assert.equal(moved.body.mark.x, 84);
+    assert.equal(moved.body.mark.color, '#123456');
+    await call(dir, 'POST', '/api/birthday-card/color', matheus, { personId: 'ana-souza', color: '#224466' });
+    const kept = await call(dir, 'GET', '/api/birthday-card?personId=ana-souza', matheus);
+    assert.equal(kept.body.marks.length, 1);
+    const denied = await call(dir, 'DELETE', `/api/birthday-card/mark/${drawn.body.mark.id}`, helena);
+    assert.equal(denied.status, 403);
+    const erased = await call(dir, 'DELETE', `/api/birthday-card/mark/${drawn.body.mark.id}`, matheus);
+    assert.equal(erased.status, 200);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
