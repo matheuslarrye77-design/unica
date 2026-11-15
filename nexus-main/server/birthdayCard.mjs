@@ -97,7 +97,7 @@ function readStyle(body, previous = {}) {
     font,
     effect,
     color: HEX_COLOR.test(colorRaw) ? colorRaw : '#ffffff',
-    size: clamp(body.size ?? previous.size, 18, 72, 36),
+    size: clamp(body.size ?? previous.size, 18, 120, 36),
     bold: flag('bold'),
     italic: flag('italic'),
     underline: flag('underline'),
@@ -109,6 +109,7 @@ function readStyle(body, previous = {}) {
     shadow: flag('shadow') || effect === 'shadow',
     outline: flag('outline') || effect === 'outline',
     opacity: clamp(body.opacity ?? previous.opacity, 0.15, 1, 1),
+    rotation: clamp(body.rotation ?? previous.rotation, -180, 180, 0),
   };
 }
 
@@ -121,7 +122,8 @@ function publicMark(item) {
     color: HEX_COLOR.test(color) ? color : '#ffffff',
     x: item.x,
     y: item.y,
-    size: clamp(item.size, 28, 96, 56),
+    size: clamp(item.size, 28, 240, 56),
+    rotation: clamp(item.rotation, -180, 180, 0),
     authorId: item.authorId,
     authorName: item.authorName,
   };
@@ -268,7 +270,8 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
       color: HEX_COLOR.test(color) ? color : '#ffffff',
       x: clamp(body.x, 8, 92, 18),
       y: clamp(body.y, 12, 88, 24),
-      size: clamp(body.size, 28, 96, 56),
+      size: clamp(body.size, 28, 240, 56),
+      rotation: clamp(body.rotation, -180, 180, 0),
       authorId: user.id,
       authorName: user.name,
       createdAt: new Date().toISOString(),
@@ -306,7 +309,8 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
     }
     if (body.x !== undefined) mark.x = clamp(body.x, 8, 92, mark.x);
     if (body.y !== undefined) mark.y = clamp(body.y, 12, 88, mark.y);
-    if (body.size !== undefined) mark.size = clamp(body.size, 28, 96, mark.size);
+    if (body.size !== undefined) mark.size = clamp(body.size, 28, 240, mark.size);
+    if (body.rotation !== undefined) mark.rotation = clamp(body.rotation, -180, 180, mark.rotation);
     write(file, store);
     send(res, 200, { mark: publicMark(mark) });
     return;

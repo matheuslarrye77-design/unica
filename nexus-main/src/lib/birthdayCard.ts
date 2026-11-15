@@ -31,6 +31,7 @@ export type TextStyle = {
   outline: boolean;
   opacity: number;
   glyph: 'none' | 'heart' | 'star' | 'spark';
+  rotation: number;
 };
 
 export type BirthdayText = {
@@ -51,6 +52,7 @@ export type BirthdayMark = {
   x: number;
   y: number;
   size: number;
+  rotation: number;
   authorId: string;
   authorName: string;
 };
@@ -108,11 +110,11 @@ export function deleteBirthdayText(id: string) {
   return request<{ ok: boolean }>(`/api/birthday-card/text/${id}`, { method: 'DELETE' });
 }
 
-export function placeBirthdayMark(draft: { personId: string; kind: BirthdayMark['kind']; color: string; x: number; y: number; size: number }) {
+export function placeBirthdayMark(draft: { personId: string; kind: BirthdayMark['kind']; color: string; x: number; y: number; size: number; rotation?: number }) {
   return request<{ mark: BirthdayMark }>('/api/birthday-card/mark', { method: 'POST', body: JSON.stringify(draft) });
 }
 
-export function updateBirthdayMark(id: string, patch: Partial<Pick<BirthdayMark, 'kind' | 'color' | 'x' | 'y' | 'size'>>) {
+export function updateBirthdayMark(id: string, patch: Partial<Pick<BirthdayMark, 'kind' | 'color' | 'x' | 'y' | 'size' | 'rotation'>>) {
   return request<{ mark: BirthdayMark }>(`/api/birthday-card/mark/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 }
 

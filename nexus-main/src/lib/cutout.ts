@@ -2,38 +2,80 @@ function distance(r: number, g: number, b: number, bg: number[]) {
   return Math.hypot(r - bg[0], g - bg[1], b - bg[2]);
 }
 
-export async function fitPhoto(file: File) {
-  const bitmap = await createImageBitmap(file);
-  const max = 960;
-  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
-  const width = Math.max(1, Math.round(bitmap.width * scale));
-  const height = Math.max(1, Math.round(bitmap.height * scale));
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext('2d');
-  if (!context) throw new Error('canvas');
-  context.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((result) => result ? resolve(result) : reject(new Error('png')), 'image/jpeg', 0.9);
+function blobOf(canvas: HTMLCanvasElement, type: string, quality?: number) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((result) => (result ? resolve(result) : reject(new Error('png'))), type, quality);
   });
-  return new File([blob], 'figurinha.jpg', { type: 'image/jpeg' });
 }
 
-export async function removePhotoBackground(file: File) {
-  const bitmap = await createImageBitmap(file);
-  const max = 640;
-  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
-  const width = Math.max(1, Math.round(bitmap.width * scale));
-  const height = Math.max(1, Math.round(bitmap.height * scale));
+function loadElement(file: File) {
+  const url = URL.createObjectURL(file);
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('decode'));
+    };
+    image.src = url;
+  });
+}
+
+async function openImage(file: File, max: number) {
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    if (Math.max(bitmap.width, bitmap.height) <= max * 1.5) return bitmap;
+    const wide = bitmap.width >= bitmap.height;
+    bitmap.close();
+    return await createImageBitmap(file, {
+      ...(wide ? { resizeWidth: max } : { resizeHeight: max }),
+      resizeQuality: 'high',
+      imageOrientation: 'from-image',
+    });
+  } catch {
+    try {
+      return await createImageBitmap(file, { resizeWidth: max, resizeQuality: 'high' });
+    } catch {
+      return loadElement(file);
+    }
+  }
+}
+
+async function drawFile(file: File, max: number) {
+  const source = await openImage(file, max);
+  const scale = Math.min(1, max / Math.max(source.width, source.height));
+  const width = Math.max(1, Math.round(source.width * scale));
+  const height = Math.max(1, Math.round(source.height * scale));
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const context = canvas.getContext('2d', { willReadFrequently: true });
   if (!context) throw new Error('canvas');
-  context.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
+  context.drawImage(source, 0, 0, width, height);
+  if ('close' in source) source.close();
+  return { canvas, context, width, height };
+}
+
+async function jpegFile(canvas: HTMLCanvasElement) {
+  let quality = 0.9;
+  let blob = await blobOf(canvas, 'image/jpeg', quality);
+  while (blob.size > 1_600_000 && quality > 0.45) {
+    quality -= 0.15;
+    blob = await blobOf(canvas, 'image/jpeg', quality);
+  }
+  return new File([blob], 'figurinha.jpg', { type: 'image/jpeg' });
+}
+
+export async function fitPhoto(file: File) {
+  const { canvas } = await drawFile(file, 960);
+  return jpegFile(canvas);
+}
+
+export async function removePhotoBackground(file: File) {
+  const { canvas, context, width, height } = await drawFile(file, 640);
   const image = context.getImageData(0, 0, width, height);
   const data = image.data;
   const samples: number[][] = [];
@@ -112,8 +154,6 @@ export async function removePhotoBackground(file: File) {
   crop.width = Math.max(1, maxX - minX + 1 + pad * 2);
   crop.height = Math.max(1, maxY - minY + 1 + pad * 2);
   crop.getContext('2d')?.drawImage(canvas, minX - pad, minY - pad, crop.width, crop.height, 0, 0, crop.width, crop.height);
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    crop.toBlob((result) => result ? resolve(result) : reject(new Error('png')), 'image/png');
-  });
+  const blob = await blobOf(crop, 'image/png');
   return new File([blob], 'figurinha.png', { type: 'image/png' });
 }

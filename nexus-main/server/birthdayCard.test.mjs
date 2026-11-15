@@ -67,6 +67,11 @@ test('o adesivo só entra com recado e o texto fica no cartão', async () => {
     assert.equal(updated.status, 200);
     assert.equal(updated.body.text.effect, 'outline');
     assert.equal(updated.body.text.size, 40);
+    assert.equal(updated.body.text.rotation, 0);
+    const turned = await call(dir, 'PATCH', `/api/birthday-card/text/${placed.body.text.id}`, matheus, { rotation: 35, size: 80 });
+    assert.equal(turned.status, 200);
+    assert.equal(turned.body.text.rotation, 35);
+    assert.equal(turned.body.text.size, 80);
     assert.equal(updated.body.text.outline, true);
     const styled = await call(dir, 'POST', '/api/birthday-card/text', matheus, {
       personId: 'ana-souza', body: 'Olá', font: 'playfair', bold: true, italic: true, opacity: 0.4, align: 'left', tracking: 4, color: '#ffffff',
@@ -95,10 +100,12 @@ test('o adesivo só entra com recado e o texto fica no cartão', async () => {
     const drawn = await call(dir, 'POST', '/api/birthday-card/mark', matheus, { personId: 'ana-souza', kind: 'heart', color: '#d8e7ff', x: 16, y: 24, size: 56 });
     assert.equal(drawn.status, 201);
     assert.equal(drawn.body.mark.kind, 'heart');
-    const moved = await call(dir, 'PATCH', `/api/birthday-card/mark/${drawn.body.mark.id}`, matheus, { x: 84, color: '#123456' });
+    const moved = await call(dir, 'PATCH', `/api/birthday-card/mark/${drawn.body.mark.id}`, matheus, { x: 84, color: '#123456', rotation: -20, size: 120 });
     assert.equal(moved.status, 200);
     assert.equal(moved.body.mark.x, 84);
     assert.equal(moved.body.mark.color, '#123456');
+    assert.equal(moved.body.mark.rotation, -20);
+    assert.equal(moved.body.mark.size, 120);
     await call(dir, 'POST', '/api/birthday-card/color', matheus, { personId: 'ana-souza', color: '#224466' });
     const kept = await call(dir, 'GET', '/api/birthday-card?personId=ana-souza', matheus);
     assert.equal(kept.body.marks.length, 1);
@@ -118,4 +125,5 @@ test('a foto vira adesivo por um clique só, fora do rótulo', () => {
   const upload = ui.slice(ui.indexOf('aria-label="Enviar figurinha"'), ui.indexOf('aria-label="Enviar figurinha"') + 420);
   assert.equal(upload.includes('<input'), false);
   assert.equal(upload.includes('openPhoto(false)'), true);
+  assert.match(ui, /image\/\*/);
 });
