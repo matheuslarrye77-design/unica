@@ -350,22 +350,15 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
       <div id="calendario" className="min-w-0">
         <PageHero
           align="start"
-          title={
-            <span className="inline-flex items-center gap-3">
-              <button type="button" onClick={openCalendar} className="text-left">Calendário</button>
+          title={<button type="button" onClick={openCalendar} className="text-left">Calendário</button>}
+          subtitle={birthdaysFocus ? undefined : 'Acompanhe seus compromissos, eventos e aniversários da equipe.'}
+          aside={
+            <div className="flex shrink-0 items-center gap-2">
               <button type="button" aria-label="Aniversários" aria-pressed={birthdaysFocus} onClick={openBirthdays} className={cn('grid h-11 w-11 place-items-center rounded-2xl', birthdaysFocus ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]')}>
                 <Cake className="h-5 w-5" strokeWidth={1.75} />
               </button>
-            </span>
-          }
-          subtitle={birthdaysFocus ? undefined : 'Acompanhe seus compromissos, eventos e aniversários da equipe.'}
-          aside={
-            <div className="flex shrink-0 gap-2">
               <Button className="h-11 rounded-2xl px-4" onClick={() => { setEditingEvent(null); setCreateType('reuniao'); setEditorOpen(true); }}>
                 <Plus className="h-4 w-4" /> Adicionar evento
-              </Button>
-              <Button variant="outline" className="h-11 rounded-2xl border-gray-100 bg-white px-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]" onClick={() => { setEditingEvent(null); setCreateType('aniversario'); setEditorOpen(true); }}>
-                <Cake className="h-4 w-4" /> Adicionar aniversário
               </Button>
             </div>
           }

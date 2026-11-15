@@ -1,5 +1,4 @@
 import { BIRTHDAY_STICKERS, birthdayStickerArt } from '@/data/birthdayStickers';
-import { MURAL_FIGURINES } from '@/data/muralStickers';
 import { calendarEvents } from '@/data/mockData';
 import {
   deleteBirthdaySticker,
@@ -10,10 +9,10 @@ import {
   type BirthdaySticker,
 } from '@/lib/birthdayCard';
 import { celebrationPersonId } from '@/lib/celebrations';
-import { removePhotoBackground } from '@/lib/cutout';
+import { fitPhoto, removePhotoBackground } from '@/lib/cutout';
 import { parseAgendaDate, useAgendaEvents } from '@/lib/events';
 import { useDemoProfile } from '@/lib/session';
-import { listStickers, saveSticker } from '@/lib/stickers';
+import { saveSticker } from '@/lib/stickers';
 import { cn } from '@/lib/utils';
 import { Cake, ChevronLeft, ChevronRight, ImagePlus, Pencil, Plus, Scaling, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FC, type PointerEvent as ReactPointerEvent } from 'react';
@@ -34,9 +33,14 @@ function spot(stickers: BirthdaySticker[]) {
 }
 
 const PAGE = 16;
-const CARD_COLORS = ['#8c4632', '#a33b55', '#5e3d86', '#1f6450', '#a65628', '#2c4a84', '#7a2f48', '#245e66'];
-
+const DEFAULT_CARD = '#8c4632';
 type ShelfArt = { id: string; src: string; label: string };
+const PACK: ShelfArt[] = BIRTHDAY_STICKERS.map((item) => ({ id: item.id, src: item.src, label: `Adicionar ${item.id}` }));
+
+function cardHex(value: string | undefined) {
+  const color = String(value ?? '').toLowerCase();
+  return /^#[0-9a-f]{6}$/.test(color) ? color : DEFAULT_CARD;
+}
 
 function stamp(day: number, month: number) {
   return `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}`;
@@ -93,20 +97,17 @@ export const BirthdayTicket: FC = () => {
   const [unlimited, setUnlimited] = useState(false);
   const [mine, setMine] = useState<{ id: string; personId: string } | null>(null);
   const [lift, setLift] = useState<Lift | null>(null);
-  const [library, setLibrary] = useState<ShelfArt[]>([]);
   const [draftMessage, setDraftMessage] = useState('');
   const [draftArt, setDraftArt] = useState<string | null>(null);
   const [draftPos, setDraftPos] = useState({ x: 50, y: 46 });
   const [draftWidth, setDraftWidth] = useState(24);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [cardColor, setCardColor] = useState(CARD_COLORS[0]);
+  const [cardColor, setCardColor] = useState(DEFAULT_CARD);
   const [uploading, setUploading] = useState<'plain' | 'cut' | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [asGuest, setAsGuest] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
-  const photoRef = useRef<HTMLInputElement>(null);
-  const cutRef = useRef<HTMLInputElement>(null);
   const stickersRef = useRef(stickers);
   const draftWidthRef = useRef(draftWidth);
   stickersRef.current = stickers;
@@ -129,24 +130,10 @@ export const BirthdayTicket: FC = () => {
     return [...map.values()].sort((a, b) => a.month - b.month || a.day - b.day || a.name.localeCompare(b.name, 'pt-BR'));
   }, [saved]);
 
-  const shelf = useMemo<ShelfArt[]>(() => [
-    ...MURAL_FIGURINES.map((item) => ({ id: item.id, src: item.src, label: item.label })),
-    ...library,
-    ...BIRTHDAY_STICKERS.map((item) => ({ id: item.id, src: item.src, label: `Adicionar ${item.id}` })),
-  ], [library]);
-
   const person = people.find((item) => item.id === params.get('pessoa')) ?? null;
   const composing = Boolean(person && viewerId && viewerId !== person.id);
   const canAdd = unlimited || !mine;
   const minePerson = people.find((item) => item.id === mine?.personId);
-
-  useEffect(() => {
-    let alive = true;
-    void listStickers().then((items) => {
-      if (alive) setLibrary(items.map((item) => ({ id: item.id, src: item.url, label: 'Minha figurinha' })));
-    }).catch(() => { if (alive) setLibrary([]); });
-    return () => { alive = false; };
-  }, [demo]);
 
   useEffect(() => {
     if (!person) return;
@@ -161,7 +148,7 @@ export const BirthdayTicket: FC = () => {
     void loadBirthdayCard(person.id).then((payload) => {
       if (!alive) return;
       setStickers(payload.stickers);
-      setCardColor(CARD_COLORS.includes(payload.color) ? payload.color : CARD_COLORS[0]);
+      setCardColor(cardHex(payload.color));
       setViewerId(payload.viewer.id);
       setUnlimited(payload.viewer.unlimited);
       setMine(payload.mine);
@@ -204,23 +191,24 @@ export const BirthdayTicket: FC = () => {
 
   async function uploadFigurine(file: File | undefined, cut: boolean) {
     if (!file || uploading) return;
-    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
-      toast.error('Escolha uma imagem JPG, PNG, WEBP ou GIF.');
+    const image = file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name);
+    if (!image) {
+      toast.error('Escolha uma foto JPG, PNG, WEBP ou GIF.');
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('A imagem precisa ter até 2 MB.');
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('A foto precisa ter até 15 MB.');
       return;
     }
     setUploading(cut ? 'cut' : 'plain');
     try {
-      const prepared = cut ? await removePhotoBackground(file) : file;
+      const prepared = cut ? await removePhotoBackground(file) : await fitPhoto(file);
       const saved = await saveSticker(prepared);
-      setLibrary((current) => [{ id: saved.id, src: saved.url, label: 'Minha figurinha' }, ...current.filter((item) => item.id !== saved.id)]);
       chooseArt(saved.id);
       toast.success(cut ? 'Figurinha sem fundo pronta. Escreva o recado e finalize.' : 'Figurinha pronta. Escreva o recado e finalize.');
-    } catch {
-      toast.error(cut ? 'Não foi possível tirar o fundo da foto.' : 'Não foi possível salvar a figurinha.');
+    } catch (error) {
+      const unreadable = error instanceof Error && (error.message === 'canvas' || error.message === 'png');
+      toast.error(cut ? 'Não foi possível tirar o fundo da foto.' : unreadable ? 'Não foi possível abrir essa foto. Use JPG ou PNG.' : 'Não foi possível salvar a figurinha.');
     } finally {
       setUploading(null);
     }
@@ -453,7 +441,7 @@ export const BirthdayTicket: FC = () => {
           </button>
         ) : null}
       </div>
-      <div className="mt-5 flex gap-5 overflow-x-auto">
+      <div className="mt-5 flex flex-wrap justify-center gap-5">
         {people.map((item) => {
           const active = person?.id === item.id;
           return (
@@ -524,23 +512,22 @@ export const BirthdayTicket: FC = () => {
           {composing && !asGuest ? (
             <aside className="w-full shrink-0 rounded-[28px] border border-gray-100 p-4 lg:w-[248px]">
               <h3 className="mb-3 text-sm font-semibold text-gray-800">Adesivos</h3>
-              <div className="mb-3 flex gap-1.5" aria-label="Cor do cartão">
-                {CARD_COLORS.map((color) => (
-                  <button key={color} type="button" aria-label={`Cor ${color}`} aria-pressed={cardColor === color} onClick={() => void paintCard(color)} className={cn('h-6 w-6 rounded-full border border-black/10', cardColor === color && 'ring-2 ring-blue-600 ring-offset-2')} style={{ backgroundColor: color }} />
-                ))}
-              </div>
+              <label className="relative mb-3 grid h-11 w-11 cursor-pointer place-items-center rounded-full shadow-[0_8px_24px_rgba(15,23,42,0.06)]" style={{ background: 'conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d55, #ff3b30)' }}>
+                <span className="pointer-events-none h-5 w-5 rounded-full border-2 border-white" style={{ backgroundColor: cardColor }} />
+                <input type="color" value={cardColor} aria-label="Escolher cor do cartão" onInput={(event) => setCardColor(event.currentTarget.value)} onChange={(event) => void paintCard(event.currentTarget.value)} className="absolute inset-0 cursor-pointer opacity-0" />
+              </label>
               {canAdd ? (
                 <div className="mb-3 flex gap-2">
-                  <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(event) => { void uploadFigurine(event.target.files?.[0], false); event.target.value = ''; }} />
-                  <input ref={cutRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(event) => { void uploadFigurine(event.target.files?.[0], true); event.target.value = ''; }} />
-                  <button type="button" aria-label="Enviar figurinha" disabled={Boolean(uploading)} onClick={() => photoRef.current?.click()} className="grid h-11 w-11 place-items-center rounded-full border border-gray-100 bg-white text-blue-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] disabled:opacity-50">
-                    <Plus className="h-4 w-4" />
-                  </button>
-                  <button type="button" aria-label="Criar figurinha sem fundo" disabled={Boolean(uploading)} onClick={() => cutRef.current?.click()} className="grid h-11 w-11 place-items-center rounded-full border border-gray-200 disabled:opacity-50" style={{ backgroundImage: 'linear-gradient(45deg,#d1d5db 25%,transparent 25%),linear-gradient(-45deg,#d1d5db 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d1d5db 75%),linear-gradient(-45deg,transparent 75%,#d1d5db 75%)', backgroundSize: '10px 10px', backgroundPosition: '0 0, 0 5px, 5px -5px, -5px 0' }}>
-                    <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-gray-700 shadow">
+                  <label aria-label="Enviar figurinha" className={cn('relative grid h-11 w-11 cursor-pointer place-items-center rounded-full border border-gray-100 bg-white text-blue-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]', uploading && 'pointer-events-none opacity-50')}>
+                    <Plus className="pointer-events-none h-4 w-4" />
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={Boolean(uploading)} onChange={(event) => { void uploadFigurine(event.target.files?.[0], false); event.target.value = ''; }} className="absolute inset-0 cursor-pointer opacity-0" />
+                  </label>
+                  <label aria-label="Criar figurinha sem fundo" className={cn('relative grid h-11 w-11 cursor-pointer place-items-center rounded-full border border-gray-200', uploading && 'pointer-events-none opacity-50')} style={{ backgroundImage: 'linear-gradient(45deg,#d1d5db 25%,transparent 25%),linear-gradient(-45deg,#d1d5db 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d1d5db 75%),linear-gradient(-45deg,transparent 75%,#d1d5db 75%)', backgroundSize: '10px 10px', backgroundPosition: '0 0, 0 5px, 5px -5px, -5px 0' }}>
+                    <span className="pointer-events-none grid h-6 w-6 place-items-center rounded-full bg-white text-gray-700 shadow">
                       <ImagePlus className="h-3.5 w-3.5" />
                     </span>
-                  </button>
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={Boolean(uploading)} onChange={(event) => { void uploadFigurine(event.target.files?.[0], true); event.target.value = ''; }} className="absolute inset-0 cursor-pointer opacity-0" />
+                  </label>
                   {uploading ? <span className="self-center text-xs text-gray-500">{uploading === 'cut' ? 'Tirando o fundo...' : 'Salvando...'}</span> : null}
                 </div>
               ) : null}
@@ -548,7 +535,7 @@ export const BirthdayTicket: FC = () => {
                 <span className="mb-2 block text-xs font-medium text-gray-500">Recado</span>
                 <textarea value={draftMessage} maxLength={240} onChange={(event) => { setDraftMessage(event.target.value); setSavedFlash(false); }} className="min-h-20 w-full rounded-2xl border border-gray-100 bg-white px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Escreva o recado primeiro." />
               </label>
-              {canAdd ? <StickerShelf items={shelf} selected={draftArt} onPick={chooseArt} /> : (
+              {canAdd ? <StickerShelf items={PACK} selected={draftArt} onPick={chooseArt} /> : (
                 <p className="text-sm text-gray-500">
                   {minePerson && mine?.personId !== person.id ? `Seu adesivo já está no bilhete de ${minePerson.name.split(' ')[0]}.` : 'Você já colocou o seu adesivo. Passe o mouse nele para editar ou excluir.'}
                 </p>

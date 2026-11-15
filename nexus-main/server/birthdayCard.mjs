@@ -6,7 +6,7 @@ export const UNLIMITED_USER_ID = '1';
 const STICKER_FILE = /^(?:png|svg)-(?:0|[1-9]\d?)(?:b|_1)?\.(?:png|svg)$|^2400_3104(?:---(?:[1-9]|1\d|2[0-6]))?\.svg$|^figurinha-(?:aplauso|festa|joinha|parabens|risada|surpresa|vergonha|desespero)$|^stk-[a-f0-9]{16}$/;
 const PERSON_ID = /^[a-z0-9-]{1,80}$/;
 const DEFAULT_COLOR = '#8c4632';
-const CARD_COLORS = new Set(['#8c4632', '#a33b55', '#5e3d86', '#1f6450', '#a65628', '#2c4a84', '#7a2f48', '#245e66']);
+const HEX_COLOR = /^#[0-9a-f]{6}$/;
 
 function empty() {
   return { stickers: [], colors: {} };
@@ -90,7 +90,7 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
     if (!PERSON_ID.test(personId)) return send(res, 400, { error: 'person' });
     send(res, 200, {
       stickers: store.stickers.filter((item) => item.personId === personId).map(publicSticker),
-      color: CARD_COLORS.has(store.colors?.[personId]) ? store.colors[personId] : DEFAULT_COLOR,
+      color: HEX_COLOR.test(String(store.colors?.[personId] ?? '')) ? String(store.colors[personId]) : DEFAULT_COLOR,
       viewer: { id: user.id, unlimited },
       mine: mine(store, user.id),
     });
@@ -101,7 +101,7 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
     const body = JSON.parse((await readBody(req)) || '{}');
     const personId = String(body.personId ?? '');
     const color = String(body.color ?? '').toLowerCase();
-    if (!PERSON_ID.test(personId) || !CARD_COLORS.has(color)) return send(res, 400, { error: 'fields' });
+    if (!PERSON_ID.test(personId) || !HEX_COLOR.test(color)) return send(res, 400, { error: 'fields' });
     store.colors[personId] = color;
     write(file, store);
     send(res, 200, { color });

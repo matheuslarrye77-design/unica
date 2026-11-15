@@ -2,6 +2,25 @@ function distance(r: number, g: number, b: number, bg: number[]) {
   return Math.hypot(r - bg[0], g - bg[1], b - bg[2]);
 }
 
+export async function fitPhoto(file: File) {
+  const bitmap = await createImageBitmap(file);
+  const max = 960;
+  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('canvas');
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((result) => result ? resolve(result) : reject(new Error('png')), 'image/jpeg', 0.9);
+  });
+  return new File([blob], 'figurinha.jpg', { type: 'image/jpeg' });
+}
+
 export async function removePhotoBackground(file: File) {
   const bitmap = await createImageBitmap(file);
   const max = 640;
