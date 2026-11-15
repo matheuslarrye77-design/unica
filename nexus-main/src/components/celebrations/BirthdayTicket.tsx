@@ -257,6 +257,10 @@ function pose(rotation: number, flip?: boolean) {
   return `translate(-50%, -50%) rotate(${rotation || 0}deg) scaleX(${flip ? -1 : 1})`;
 }
 
+function artTurn(rotation: number, flip?: boolean) {
+  return `rotate(${rotation || 0}deg) scaleX(${flip ? -1 : 1})`;
+}
+
 function turn(value: number) {
   return Math.round(((value + 180) % 360 + 360) % 360 - 180);
 }
@@ -421,19 +425,19 @@ function portrait(authorId: string, authorName: string, roster: { id: string; na
     || '';
 }
 
-function StickerFaces({ src, message, author, avatar, turned }: { src: string; message: string; author: string; avatar: string; turned: boolean }) {
+function StickerFaces({ src, message, to, author, avatar, turned }: { src: string; message: string; to: string; author: string; avatar: string; turned: boolean }) {
   return (
     <div className="absolute inset-0" style={{ transformStyle: 'preserve-3d', transform: turned ? 'rotateY(180deg)' : 'rotateY(0deg)', transition: 'transform 700ms cubic-bezier(0.22, 0.8, 0.24, 1)' }}>
       <span className="absolute inset-0 grid place-items-center" style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}>
         <img src={src} alt="" draggable={false} className="sticker-cut max-h-full max-w-full object-contain" />
       </span>
-      <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl border border-white/80 bg-[#FFF8F2] px-6 py-5 text-center shadow-[0_8px_24px_rgba(15,23,42,0.06)]" style={{ transform: 'rotateY(180deg)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}>
-        <span className="grid w-full grid-cols-[1fr_auto_1fr] items-center">
-          <span className="flex justify-end pr-2">{avatar ? <img src={avatar} alt="" className="h-9 w-9 rounded-full object-cover" /> : null}</span>
-          <span className="text-sm font-semibold text-gray-800">{author}</span>
-          <span />
+      <span className="absolute inset-0 flex flex-col rounded-2xl border border-white/80 bg-[#FFF8F2] px-6 py-5 text-left shadow-[0_8px_24px_rgba(15,23,42,0.06)]" style={{ transform: 'rotateY(180deg)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}>
+        <span className="text-sm font-semibold text-gray-800">{to}</span>
+        <span className="mt-3 flex-1 whitespace-pre-wrap pl-4 text-[clamp(15px,4cqw,20px)] font-medium leading-snug text-gray-800">{message || 'Este adesivo ainda não tem recado.'}</span>
+        <span className="mt-4 flex items-center justify-end gap-2 text-sm text-gray-700">
+          {avatar ? <img src={avatar} alt="" className="h-8 w-8 rounded-full object-cover" /> : null}
+          <span>Atenciosamente, {author}</span>
         </span>
-        <span className="whitespace-pre-wrap text-[clamp(16px,4.2cqw,22px)] font-medium leading-snug text-gray-800">{message || 'Este adesivo ainda não tem recado.'}</span>
       </span>
     </div>
   );
@@ -486,6 +490,8 @@ export const BirthdayTicket: FC = () => {
   editingTextRef.current = editingText;
   const applying = useRef(false);
   const photoRef = useRef<HTMLInputElement>(null);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+  const copyNote = useRef('');
   const textScaleRef = useRef<HTMLDivElement>(null);
   const cutRef = useRef<HTMLInputElement>(null);
   const stickersRef = useRef(stickers);
@@ -541,6 +547,7 @@ export const BirthdayTicket: FC = () => {
     setCardReady(false);
     setDraftArt(null);
     setDraftMessage('');
+    copyNote.current = '';
     setDraftWidth(24);
     setDraftRotation(0);
     setDraftFlip(false);
@@ -762,6 +769,10 @@ export const BirthdayTicket: FC = () => {
       toast.error('Escreva o recado antes de finalizar.');
       return;
     }
+    if (!editingId && copyNote.current && message === copyNote.current) {
+      toast.error('Escreva um recado novo para a cópia.');
+      return;
+    }
     if (!editingId && (!art || !canAdd)) {
       toast.error('Escolha um adesivo.');
       return;
@@ -805,6 +816,7 @@ export const BirthdayTicket: FC = () => {
       else {
         setDraftMessage('');
         setEditingId(null);
+        copyNote.current = '';
       }
       setSavedFlash(true);
     } catch (error) {
@@ -921,38 +933,32 @@ export const BirthdayTicket: FC = () => {
     });
   }
 
-  async function copySticker(sticker: BirthdaySticker) {
-    if (!person) return;
-    try {
-      const result = await placeBirthdaySticker({ personId: person.id, stickerId: sticker.stickerId, width: sticker.width, rotation: sticker.rotation, flip: sticker.flip, message: sticker.message, x: Math.min(92, sticker.x + 8), y: Math.min(88, sticker.y + 8) });
-      setStickers((current) => [...current, result.sticker]);
-      setMine(result.mine);
-      setEditingId(result.sticker.id);
-      setDraftArt(null);
-      setDraftLive(false);
-      setDraftMessage(sticker.message);
-    } catch (error) {
-      toast.error(error instanceof Error && error.message === 'limit' ? 'Você já usou o seu adesivo.' : 'Não foi possível duplicar o adesivo.');
-    }
+  function prepareCopy(message: string) {
+    copyNote.current = message.trim();
+    setDraftMessage('');
+    setEditingId(null);
+    setTool('stickers');
+    setSavedFlash(false);
+    toast('Escreva um recado novo para a cópia.');
+    window.setTimeout(() => noteRef.current?.focus(), 0);
   }
 
-  async function copyDraftSticker() {
-    if (!person || !draftArt) return;
-    const message = draftMessage.trim();
-    if (!message) {
-      toast.error('Escreva o recado antes de duplicar.');
-      return;
-    }
-    try {
-      const result = await placeBirthdaySticker({ personId: person.id, stickerId: draftArt, width: draftWidth, rotation: draftRotation, flip: draftFlip, message, x: Math.min(92, draftPos.x + 8), y: Math.min(88, draftPos.y + 8) });
-      setStickers((current) => [...current, result.sticker]);
-      setMine(result.mine);
-      setEditingId(result.sticker.id);
-      setDraftArt(null);
-      setDraftLive(false);
-    } catch (error) {
-      toast.error(error instanceof Error && error.message === 'limit' ? 'Você já usou o seu adesivo.' : 'Não foi possível duplicar o adesivo.');
-    }
+  function copySticker(sticker: BirthdaySticker) {
+    setDraftArt(sticker.stickerId);
+    setDraftWidth(sticker.width);
+    setDraftRotation(sticker.rotation);
+    setDraftFlip(Boolean(sticker.flip));
+    setDraftPos({ x: Math.min(92, sticker.x + 8), y: Math.min(88, sticker.y + 8) });
+    setDraftLive(true);
+    setEditingText(null);
+    setSelectedMark(null);
+    setTextLive(false);
+    prepareCopy(sticker.message);
+  }
+
+  function copyDraftSticker() {
+    if (!draftArt) return;
+    prepareCopy(draftMessage);
   }
 
   function flipSticker(sticker: BirthdaySticker) {
@@ -1567,18 +1573,18 @@ export const BirthdayTicket: FC = () => {
             </svg>
             {reading ? <p className="pointer-events-none absolute bottom-4 left-4 text-sm font-medium text-white/90">Toque em um adesivo para ler o recado.</p> : null}
             {composing && !asGuest && draftPreview ? (
-              <div className={cn('absolute z-30', draftLive && 'cursor-grab touch-none')} style={{ left: `${draftPos.x}%`, top: `${draftPos.y}%`, width: `${draftWidth}%`, transform: pose(draftRotation) }} onPointerDown={(event) => { if (draftLive) beginDraftDrag(event); }}>
+              <div className={cn('absolute z-30', draftLive && 'cursor-grab touch-none')} style={{ left: `${draftPos.x}%`, top: `${draftPos.y}%`, width: `${draftWidth}%`, transform: 'translate(-50%, -50%)' }} onPointerDown={(event) => { if (draftLive) beginDraftDrag(event); }}>
                 {draftLive ? <SelectionBox label="adesivo" onMove={beginDraftDrag} onResize={beginDraftResize} onRotate={beginDraftRotate} onFlip={() => setDraftFlip((value) => !value)} onDuplicate={() => void copyDraftSticker()} /> : (
                   <button type="button" aria-label="Editar adesivo" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setDraftLive(true); setEditingId(null); setEditingText(null); setSelectedMark(null); setTextLive(false); }} className="absolute -right-1 -top-1 z-20 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button>
                 )}
-                <img src={draftPreview.src} alt="" draggable={false} className="sticker-cut aspect-square w-full object-contain" style={{ transform: draftFlip ? 'scaleX(-1)' : undefined }} />
+                <img src={draftPreview.src} alt="" draggable={false} className="sticker-cut aspect-square w-full object-contain" style={{ transform: artTurn(draftRotation, draftFlip) }} />
               </div>
             ) : null}
             {stickers.map((sticker) => {
               const art = birthdayStickerArt(sticker.stickerId);
               const own = sticker.authorId === viewerId;
               return (
-                <div key={sticker.id} className="group absolute" style={{ left: `${sticker.x}%`, top: `${sticker.y}%`, width: `${sticker.width}%`, transform: pose(sticker.rotation), zIndex: editingId === sticker.id ? 30 : 1, visibility: lift?.id === sticker.id ? 'hidden' : 'visible' }}>
+                <div key={sticker.id} className="group absolute" style={{ left: `${sticker.x}%`, top: `${sticker.y}%`, width: `${sticker.width}%`, transform: 'translate(-50%, -50%)', zIndex: editingId === sticker.id ? 30 : 1, visibility: lift?.id === sticker.id ? 'hidden' : 'visible' }}>
                   <div className="relative aspect-square" style={{ containerType: 'inline-size', perspective: '900px' }}>
                     {editingId === sticker.id ? <SelectionBox label="adesivo" onMove={(event) => beginDrag(event, sticker)} onResize={(event) => beginResize(event, sticker)} onRotate={(event) => beginRotate(event, sticker)} onFlip={() => flipSticker(sticker)} onDuplicate={() => void copySticker(sticker)} onDelete={() => void removeSticker(sticker)} /> : null}
                     {composing && !asGuest && own && editingId !== sticker.id && !draftArt ? (
@@ -1599,7 +1605,7 @@ export const BirthdayTicket: FC = () => {
                       onClick={(event) => { if (reading && art) { event.stopPropagation(); openSticker(sticker, event.currentTarget.parentElement?.parentElement ?? event.currentTarget); } }}
                       className={cn('absolute inset-0', editingId === sticker.id ? 'cursor-grab touch-none' : reading ? 'cursor-pointer' : '')}
                     >
-                      {art ? <img src={art.src} alt="" draggable={false} className="pointer-events-none sticker-cut h-full w-full object-contain" style={{ transform: sticker.flip ? 'scaleX(-1)' : undefined }} /> : null}
+                      {art ? <img src={art.src} alt="" draggable={false} className="pointer-events-none sticker-cut h-full w-full object-contain" style={{ transform: artTurn(sticker.rotation, sticker.flip) }} /> : null}
                     </div>
                   </div>
                 </div>
@@ -1638,7 +1644,7 @@ export const BirthdayTicket: FC = () => {
               const own = mark.authorId === viewerId;
               const open = selectedMark === mark.id;
               return (
-                <div key={mark.id} className={cn('group absolute z-20', open ? 'cursor-grab touch-none' : (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${mark.x}%`, top: `${mark.y}%`, width: mark.size, height: mark.size, transform: pose(mark.rotation), color: mark.color }} onPointerDown={(event) => { if (asGuest) return; if (open) beginMarkDrag(event, mark); else { event.stopPropagation(); setEditingId(null); setTextLive(false); setDraftLive(false); if (editingTextRef.current) { setEditingText(null); setLetter(''); setLook(EMPTY_LOOK); } if (selectedMark !== mark.id) setSelectedMark(null); } }}>
+                <div key={mark.id} className={cn('group absolute z-20', open ? 'cursor-grab touch-none' : (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${mark.x}%`, top: `${mark.y}%`, width: mark.size, height: mark.size, transform: 'translate(-50%, -50%)', color: mark.color }} onPointerDown={(event) => { if (asGuest) return; if (open) beginMarkDrag(event, mark); else { event.stopPropagation(); setEditingId(null); setTextLive(false); setDraftLive(false); if (editingTextRef.current) { setEditingText(null); setLetter(''); setLook(EMPTY_LOOK); } if (selectedMark !== mark.id) setSelectedMark(null); } }}>
                   <div className="relative h-full w-full">
                     {open && !asGuest ? <SelectionBox label="desenho" onMove={(event) => beginMarkDrag(event, mark)} onResize={(event) => beginMarkResize(event, mark)} onRotate={(event) => beginMarkRotate(event, mark)} onFlip={() => flipMark(mark)} onDuplicate={() => void copyMark(mark)} onDelete={() => void removeMark(mark)} /> : null}
                     {composing && !asGuest && own && !open ? (
@@ -1647,7 +1653,7 @@ export const BirthdayTicket: FC = () => {
                         <button type="button" aria-label="Excluir desenho" onClick={() => void removeMark(mark)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-[#9D174D] shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Trash2 className="h-3.5 w-3.5" /></button>
                       </span>
                     ) : null}
-                    <span className="block h-full w-full" style={{ transform: mark.flip ? 'scaleX(-1)' : undefined }}><Doodle kind={mark.kind} className="h-full w-full" /></span>
+                    <span className="block h-full w-full" style={{ transform: artTurn(mark.rotation, mark.flip) }}><Doodle kind={mark.kind} className="h-full w-full" /></span>
                   </div>
                 </div>
               );
@@ -1697,7 +1703,7 @@ export const BirthdayTicket: FC = () => {
                     <>
                       <label className="mb-3 block">
                         <span className="mb-2 block text-xs font-medium text-gray-500">Recado</span>
-                        <textarea value={draftMessage} maxLength={240} onChange={(event) => { setDraftMessage(event.target.value); setSavedFlash(false); }} className="min-h-20 w-full rounded-2xl border border-gray-100 bg-[#F6F4FB] px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Escreva uma mensagem para o aniversariante..." />
+                        <textarea ref={noteRef} value={draftMessage} maxLength={240} onChange={(event) => { setDraftMessage(event.target.value); setSavedFlash(false); }} className="min-h-20 w-full rounded-2xl border border-gray-100 bg-[#F6F4FB] px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Escreva uma mensagem para o aniversariante..." />
                       </label>
                       {canAdd ? (
                         <div className="mb-3 flex gap-2">
@@ -1838,7 +1844,7 @@ export const BirthdayTicket: FC = () => {
           >
             <div className="relative h-full w-full" style={{ containerType: 'inline-size', perspective: '1200px' }}>
               <button type="button" aria-label={`Recado de ${lifted.authorName}`} className="absolute inset-0" onClick={closeLift}>
-                <StickerFaces src={liftedArt.src} message={lifted.message} author={lifted.authorName} avatar={portrait(lifted.authorId, lifted.authorName, people)} turned={Boolean(lift.zoom && !lift.closing)} />
+                <StickerFaces src={liftedArt.src} message={lifted.message} to={person?.name ?? ''} author={lifted.authorName} avatar={portrait(lifted.authorId, lifted.authorName, people)} turned={Boolean(lift.zoom && !lift.closing)} />
               </button>
             </div>
           </div>
