@@ -23,7 +23,7 @@ import { parseAgendaDate, useAgendaEvents } from '@/lib/events';
 import { useDemoProfile } from '@/lib/session';
 import { listStickers, saveSticker } from '@/lib/stickers';
 import { cn } from '@/lib/utils';
-import { AlignCenter, AlignLeft, AlignRight, Cake, ChevronDown, Eraser, ImagePlus, Paintbrush, Pencil, Pipette, Redo2, Scaling, Sticker, Trash2, Type, Undo2 } from 'lucide-react';
+import { AlignCenter, AlignLeft, AlignRight, Cake, ChevronDown, Eraser, ImagePlus, Info, Move, Paintbrush, Pencil, Pipette, Redo2, RotateCw, Scaling, Sticker, Trash2, Type, Undo2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FC, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
@@ -187,6 +187,9 @@ function letterStyle(item: TextStyle): CSSProperties {
     opacity: item.opacity ?? 1,
     lineHeight: 1.15,
     whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
+    width: 'max-content',
+    maxWidth: '100%',
   };
   if (item.shadow || item.effect === 'shadow') style.textShadow = '0 2px 0 rgba(15,23,42,0.28)';
   if (item.outline || item.effect === 'outline') {
@@ -253,26 +256,24 @@ function turn(value: number) {
   return Math.round(((value + 180) % 360 + 360) % 360 - 180);
 }
 
-function TransformHandles({ label, onResize, onRotate }: { label: string; onResize: (event: ReactPointerEvent<HTMLButtonElement>) => void; onRotate: (event: ReactPointerEvent<HTMLButtonElement>) => void }) {
+function FigureHandles({ label, onMove, onResize, onRotate }: { label: string; onMove: (event: ReactPointerEvent<HTMLButtonElement>) => void; onResize: (event: ReactPointerEvent<HTMLButtonElement>) => void; onRotate: (event: ReactPointerEvent<HTMLButtonElement>) => void }) {
+  const button = 'grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]';
   return (
-    <>
-      <button type="button" aria-label={`Girar ${label}`} onPointerDown={onRotate} className="absolute -top-3 left-1/2 z-10 h-6 w-6 -translate-x-1/2 rounded-full border border-gray-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)]" />
-      <button type="button" aria-label={`Redimensionar ${label}`} onPointerDown={onResize} className="absolute -bottom-1.5 -right-1.5 z-10 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-        <Scaling className="h-3.5 w-3.5" />
-      </button>
-    </>
+    <span className="absolute -top-9 left-1/2 z-10 flex -translate-x-1/2 gap-1" onPointerDown={(event) => event.stopPropagation()}>
+      <button type="button" title="Mover" aria-label={`Mover ${label}`} onPointerDown={onMove} className={button}><Move className="h-3.5 w-3.5" /></button>
+      <button type="button" title="Espalhar" aria-label={`Espalhar ${label}`} onPointerDown={onResize} className={button}><Scaling className="h-3.5 w-3.5" /></button>
+      <button type="button" title="Girar" aria-label={`Girar ${label}`} onPointerDown={onRotate} className={button}><RotateCw className="h-3.5 w-3.5" /></button>
+    </span>
   );
 }
 
-function HistoryButtons({ canUndo, canRedo, onUndo, onRedo }: { canUndo: boolean; canRedo: boolean; onUndo: () => void; onRedo: () => void }) {
+function ActionBar({ canUndo, canRedo, onUndo, onRedo, children }: { canUndo: boolean; canRedo: boolean; onUndo: () => void; onRedo: () => void; children: ReactNode }) {
+  const arrow = 'grid h-11 w-11 place-items-center rounded-full text-gray-500 hover:bg-[#F4F1FB] hover:text-gray-800 disabled:opacity-30';
   return (
-    <div className="flex shrink-0 items-center gap-1">
-      <button type="button" title="Voltar" aria-label="Voltar" disabled={!canUndo} onClick={onUndo} className="grid h-11 w-11 place-items-center rounded-full text-gray-500 hover:bg-[#F4F1FB] hover:text-gray-800 disabled:opacity-30">
-        <Undo2 className="h-4 w-4" strokeWidth={1.5} />
-      </button>
-      <button type="button" title="Adiantar" aria-label="Adiantar" disabled={!canRedo} onClick={onRedo} className="grid h-11 w-11 place-items-center rounded-full text-gray-500 hover:bg-[#F4F1FB] hover:text-gray-800 disabled:opacity-30">
-        <Redo2 className="h-4 w-4" strokeWidth={1.5} />
-      </button>
+    <div className="grid w-full grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
+      <button type="button" title="Voltar" aria-label="Voltar" disabled={!canUndo} onClick={onUndo} className={arrow}><Undo2 className="h-4 w-4" strokeWidth={1.5} /></button>
+      <div className="min-w-0">{children}</div>
+      <button type="button" title="Adiantar" aria-label="Adiantar" disabled={!canRedo} onClick={onRedo} className={arrow}><Redo2 className="h-4 w-4" strokeWidth={1.5} /></button>
     </div>
   );
 }
@@ -394,6 +395,7 @@ export const BirthdayTicket: FC = () => {
   const [marks, setMarks] = useState<BirthdayMark[]>([]);
   const [selectedMark, setSelectedMark] = useState<string | null>(null);
   const [viewerId, setViewerId] = useState('');
+  const [cardReady, setCardReady] = useState(false);
   const [unlimited, setUnlimited] = useState(false);
   const [mine, setMine] = useState<{ id: string; personId: string } | null>(null);
   const [lift, setLift] = useState<Lift | null>(null);
@@ -401,6 +403,9 @@ export const BirthdayTicket: FC = () => {
   const [draftArt, setDraftArt] = useState<string | null>(null);
   const [draftPos, setDraftPos] = useState({ x: 50, y: 46 });
   const [draftWidth, setDraftWidth] = useState(24);
+  const [draftRotation, setDraftRotation] = useState(0);
+  const [textLive, setTextLive] = useState(false);
+  const [draftLive, setDraftLive] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [cardColor, setCardColor] = useState(DEFAULT_CARD);
   const [library, setLibrary] = useState<ShelfArt[]>([]);
@@ -419,10 +424,15 @@ export const BirthdayTicket: FC = () => {
   const [savedFlash, setSavedFlash] = useState(false);
   const [asGuest, setAsGuest] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
-  const past = useRef<{ cardColor: string; letter: string; look: TextStyle }[]>([]);
-  const future = useRef<{ cardColor: string; letter: string; look: TextStyle }[]>([]);
+  const past = useRef<{ undo: () => void | Promise<void>; redo: () => void | Promise<void> }[]>([]);
+  const future = useRef<{ undo: () => void | Promise<void>; redo: () => void | Promise<void> }[]>([]);
+  const lookRef = useRef(look);
+  const editingTextRef = useRef(editingText);
+  lookRef.current = look;
+  editingTextRef.current = editingText;
   const applying = useRef(false);
   const photoRef = useRef<HTMLInputElement>(null);
+  const textScaleRef = useRef<HTMLDivElement>(null);
   const cutRef = useRef<HTMLInputElement>(null);
   const stickersRef = useRef(stickers);
   const draftWidthRef = useRef(draftWidth);
@@ -456,9 +466,14 @@ export const BirthdayTicket: FC = () => {
 
   const person = people.find((item) => item.id === params.get('pessoa')) ?? null;
 
+  const historyPerson = useRef(person?.id);
   useEffect(() => {
+    if (historyPerson.current === person?.id) return;
+    historyPerson.current = person?.id;
     past.current = [];
+    future.current = [];
     setCanUndo(false);
+    setCanRedo(false);
   }, [person?.id]);
   const composing = Boolean(person && viewerId && viewerId !== person.id);
   const canAdd = unlimited || !mine;
@@ -469,13 +484,18 @@ export const BirthdayTicket: FC = () => {
     let alive = true;
     setLift(null);
     setAsGuest(false);
+    setCardReady(false);
     setDraftArt(null);
     setDraftMessage('');
     setDraftWidth(24);
+    setDraftRotation(0);
+    setDraftLive(false);
+    setTextLive(false);
     setEditingId(null);
     setEditingText(null);
     setSelectedMark(null);
     setLetter('');
+    setLook(EMPTY_LOOK);
     setSavedFlash(false);
     void loadBirthdayCard(person.id).then((payload) => {
       if (!alive) return;
@@ -486,6 +506,7 @@ export const BirthdayTicket: FC = () => {
       setViewerId(payload.viewer.id);
       setUnlimited(payload.viewer.unlimited);
       setMine(payload.mine);
+      setCardReady(true);
     }).catch(() => toast.error('Não foi possível abrir o bilhete.'));
     return () => { alive = false; };
   }, [person?.id, demo]);
@@ -509,22 +530,63 @@ export const BirthdayTicket: FC = () => {
       toast.error('Escreva o recado antes de escolher o adesivo.');
       return;
     }
+    const before = { art: draftArt, pos: draftPos, width: draftWidth, rotation: draftRotation };
+    const pos = spot(stickersRef.current);
+    if (editingTextRef.current) {
+      setLetter('');
+      setLook(EMPTY_LOOK);
+    }
     setDraftArt(id);
-    setDraftPos(spot(stickersRef.current));
+    setDraftPos(pos);
+    setDraftRotation(0);
     setEditingId(null);
+    setEditingText(null);
+    setSelectedMark(null);
+    setTextLive(false);
+    setDraftLive(true);
     setSavedFlash(false);
+    pushCommand({
+      undo: () => {
+        setDraftArt(before.art);
+        setDraftPos(before.pos);
+        setDraftWidth(before.width);
+        setDraftRotation(before.rotation);
+      },
+      redo: () => {
+        setDraftArt(id);
+        setDraftPos(pos);
+        setDraftRotation(0);
+        setEditingText(null);
+        setTextLive(false);
+      },
+    });
   }
 
   function snapshot() {
     return { cardColor, letter, look: { ...look } };
   }
 
-  function pushPast() {
+  function pushCommand(command: { undo: () => void | Promise<void>; redo: () => void | Promise<void> }) {
     if (applying.current) return;
-    past.current = [...past.current.slice(-29), snapshot()];
+    past.current = [...past.current.slice(-39), command];
     future.current = [];
     setCanUndo(true);
     setCanRedo(false);
+  }
+
+  function pushPast() {
+    if (applying.current) return;
+    const before = snapshot();
+    const held: { after: { cardColor: string; letter: string; look: TextStyle } | null } = { after: null };
+    pushCommand({
+      undo: async () => {
+        held.after = snapshot();
+        await restore(before);
+      },
+      redo: async () => {
+        if (held.after) await restore(held.after);
+      },
+    });
   }
 
   async function restore(next: { cardColor: string; letter: string; look: TextStyle }) {
@@ -544,21 +606,37 @@ export const BirthdayTicket: FC = () => {
   }
 
   async function undo() {
-    const previous = past.current.pop();
+    const command = past.current.pop();
+    if (!command) {
+      setCanUndo(false);
+      return;
+    }
+    future.current.push(command);
     setCanUndo(past.current.length > 0);
-    if (!previous) return;
-    future.current.push(snapshot());
     setCanRedo(true);
-    await restore(previous);
+    applying.current = true;
+    try {
+      await command.undo();
+    } finally {
+      applying.current = false;
+    }
   }
 
   async function redo() {
-    const next = future.current.pop();
+    const command = future.current.pop();
+    if (!command) {
+      setCanRedo(false);
+      return;
+    }
+    past.current.push(command);
     setCanRedo(future.current.length > 0);
-    if (!next) return;
-    past.current.push(snapshot());
     setCanUndo(true);
-    await restore(next);
+    applying.current = true;
+    try {
+      await command.redo();
+    } finally {
+      applying.current = false;
+    }
   }
 
   async function paintCard(color: string, record = true) {
@@ -579,16 +657,12 @@ export const BirthdayTicket: FC = () => {
       toast.error('Escreva o recado antes de escolher o adesivo.');
       return;
     }
-    const picker = (window as Window & { showOpenFilePicker?: (options: { multiple?: boolean; types?: { description: string; accept: Record<string, string[]> }[] }) => Promise<{ getFile: () => Promise<File> }[]> }).showOpenFilePicker;
-    if (picker) {
-      void picker({ multiple: false, types: [{ description: 'Imagem', accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.jfif', '.webp', '.gif', '.bmp', '.avif', '.heic', '.heif', '.tif', '.tiff', '.ico'] } }] })
-        .then(async (handles) => uploadFigurine(await handles[0]?.getFile(), cut))
-        .catch((error: unknown) => {
-          if (error instanceof DOMException && error.name === 'AbortError') return;
-          (cut ? cutRef : photoRef).current?.click();
-        });
+    const input = (cut ? cutRef : photoRef).current;
+    if (!input) {
+      toast.error('Não foi possível abrir a escolha de imagem.');
       return;
     }
+    input.value = '';
     (cut ? cutRef : photoRef).current?.click();
   }
 
@@ -639,14 +713,31 @@ export const BirthdayTicket: FC = () => {
         toast.success('Recado atualizado.');
       } else {
         if (!art) return;
-        const result = await placeBirthdaySticker({ personId: person.id, stickerId: art, width: draftWidth, rotation: 0, message, x: draftPos.x, y: draftPos.y });
-        setStickers((current) => [...current, result.sticker]);
+        const result = await placeBirthdaySticker({ personId: person.id, stickerId: art, width: draftWidth, rotation: draftRotation, message, x: draftPos.x, y: draftPos.y });
+        const placed = result.sticker;
+        setStickers((current) => [...current, placed]);
         setMine(result.mine);
+        const box = { id: placed.id };
+        pushCommand({
+          undo: async () => {
+            const removed = await deleteBirthdaySticker(box.id);
+            setStickers((current) => current.filter((item) => item.id !== box.id));
+            setMine(removed.mine);
+          },
+          redo: async () => {
+            const again = await placeBirthdaySticker({ personId: person.id, stickerId: art, width: placed.width, rotation: placed.rotation, message, x: placed.x, y: placed.y });
+            box.id = again.sticker.id;
+            setStickers((current) => [...current, again.sticker]);
+            setMine(again.mine);
+          },
+        });
         toast.success('Recado salvo no bilhete.');
       }
       setDraftArt(null);
       setDraftMessage('');
       setDraftWidth(24);
+      setDraftRotation(0);
+      setDraftLive(false);
       setEditingId(null);
       setSavedFlash(true);
     } catch (error) {
@@ -676,6 +767,7 @@ export const BirthdayTicket: FC = () => {
       }
       setLetter('');
       setEditingText(null);
+      setTextLive(false);
     } catch {
       toast.error('Não foi possível colocar o texto.');
     } finally {
@@ -683,8 +775,22 @@ export const BirthdayTicket: FC = () => {
     }
   }
 
+  function releaseSelection() {
+    setEditingId(null);
+    setSelectedMark(null);
+    setTextLive(false);
+    setDraftLive(false);
+    if (editingTextRef.current) {
+      setEditingText(null);
+      setLetter('');
+      setLook(EMPTY_LOOK);
+    }
+  }
+
   function editLetter(item: BirthdayText) {
     setEditingText(item.id);
+    setTextLive(false);
+    setDraftLive(false);
     setSelectedMark(null);
     setEditingId(null);
     setLetter(item.body);
@@ -748,14 +854,20 @@ export const BirthdayTicket: FC = () => {
   }
 
   function unlockMark(item: BirthdayMark) {
+    if (editingTextRef.current) {
+      setLetter('');
+      setLook(EMPTY_LOOK);
+    }
     setSelectedMark(item.id);
     setEditingText(null);
     setEditingId(null);
+    setTextLive(false);
+    setDraftLive(false);
     setTool('text');
     setFontOpen(false);
   }
 
-  function beginMarkDrag(event: ReactPointerEvent<HTMLDivElement>, item: BirthdayMark) {
+  function beginMarkDrag(event: ReactPointerEvent<HTMLElement>, item: BirthdayMark) {
     if (!composing || asGuest || item.authorId !== viewerId || selectedMark !== item.id) return;
     const board = boardRef.current?.getBoundingClientRect();
     if (!board) return;
@@ -785,7 +897,7 @@ export const BirthdayTicket: FC = () => {
     window.addEventListener('pointerup', up);
   }
 
-  function beginLetterDrag(event: ReactPointerEvent<HTMLDivElement>) {
+  function beginLetterDrag(event: ReactPointerEvent<HTMLElement>) {
     const board = boardRef.current?.getBoundingClientRect();
     if (!board) return;
     event.preventDefault();
@@ -804,7 +916,7 @@ export const BirthdayTicket: FC = () => {
     window.addEventListener('pointerup', up);
   }
 
-  function beginTextDrag(event: ReactPointerEvent<HTMLDivElement>, item: BirthdayText) {
+  function beginTextDrag(event: ReactPointerEvent<HTMLElement>, item: BirthdayText) {
     if (!composing || asGuest || item.authorId !== viewerId || editingText !== item.id) return;
     const board = boardRef.current?.getBoundingClientRect();
     if (!board) return;
@@ -995,20 +1107,26 @@ export const BirthdayTicket: FC = () => {
     start();
   }
 
-  function beginDraftDrag(event: ReactPointerEvent<HTMLDivElement>) {
+  function beginDraftDrag(event: ReactPointerEvent<HTMLElement>) {
     const board = boardRef.current?.getBoundingClientRect();
     if (!board) return;
     event.preventDefault();
     event.stopPropagation();
+    const origin = { ...draftPos };
+    let next = origin;
     const move = (pointer: PointerEvent) => {
-      setDraftPos({
+      next = {
         x: Math.min(92, Math.max(8, ((pointer.clientX - board.left) / board.width) * 100)),
         y: Math.min(88, Math.max(12, ((pointer.clientY - board.top) / board.height) * 100)),
-      });
+      };
+      setDraftPos(next);
     };
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
+      if (next.x === origin.x && next.y === origin.y) return;
+      const after = next;
+      pushCommand({ undo: () => setDraftPos(origin), redo: () => setDraftPos(after) });
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
@@ -1029,6 +1147,33 @@ export const BirthdayTicket: FC = () => {
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
+      if (width === origin) return;
+      const after = width;
+      pushCommand({ undo: () => setDraftWidth(origin), redo: () => setDraftWidth(after) });
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+
+  function beginDraftRotate(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    event.preventDefault();
+    const board = boardRef.current?.getBoundingClientRect();
+    if (!board) return;
+    const origin = draftRotation;
+    let next = origin;
+    const move = (pointer: PointerEvent) => {
+      const cx = board.left + (draftPos.x / 100) * board.width;
+      const cy = board.top + (draftPos.y / 100) * board.height;
+      next = turn(Math.atan2(pointer.clientY - cy, pointer.clientX - cx) * (180 / Math.PI) + 90);
+      setDraftRotation(next);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      if (next === origin) return;
+      const after = next;
+      pushCommand({ undo: () => setDraftRotation(origin), redo: () => setDraftRotation(after) });
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
@@ -1045,6 +1190,20 @@ export const BirthdayTicket: FC = () => {
         setDraftMessage('');
       }
       setLift((current) => current?.id === sticker.id ? null : current);
+      const box = { id: sticker.id };
+      pushCommand({
+        undo: async () => {
+          const again = await placeBirthdaySticker({ personId: sticker.personId, stickerId: sticker.stickerId, width: sticker.width, rotation: sticker.rotation, message: sticker.message, x: sticker.x, y: sticker.y });
+          box.id = again.sticker.id;
+          setStickers((current) => [...current, again.sticker]);
+          setMine(again.mine);
+        },
+        redo: async () => {
+          const removed = await deleteBirthdaySticker(box.id);
+          setStickers((current) => current.filter((item) => item.id !== box.id));
+          setMine(removed.mine);
+        },
+      });
       toast.success('Adesivo excluído.');
     } catch {
       toast.error('Não foi possível excluir o adesivo.');
@@ -1052,15 +1211,21 @@ export const BirthdayTicket: FC = () => {
   }
 
   function unlock(sticker: BirthdaySticker) {
+    if (editingTextRef.current) {
+      setLetter('');
+      setLook(EMPTY_LOOK);
+    }
     setEditingId(sticker.id);
     setEditingText(null);
     setSelectedMark(null);
+    setTextLive(false);
+    setDraftLive(false);
     setDraftArt(null);
     setDraftMessage(sticker.message);
     setSavedFlash(false);
   }
 
-  function beginDrag(event: ReactPointerEvent<HTMLDivElement>, sticker: BirthdaySticker) {
+  function beginDrag(event: ReactPointerEvent<HTMLElement>, sticker: BirthdaySticker) {
     if (!composing || editingId !== sticker.id || sticker.authorId !== viewerId) return;
     const board = boardRef.current?.getBoundingClientRect();
     if (!board) return;
@@ -1082,7 +1247,19 @@ export const BirthdayTicket: FC = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       if (!moved) return;
-      void updateBirthdaySticker(sticker.id, next).catch(() => {
+      const after = next;
+      void updateBirthdaySticker(sticker.id, after).then(() => {
+        pushCommand({
+          undo: async () => {
+            setStickers((items) => items.map((item) => item.id === sticker.id ? { ...item, ...origin } : item));
+            await updateBirthdaySticker(sticker.id, origin);
+          },
+          redo: async () => {
+            setStickers((items) => items.map((item) => item.id === sticker.id ? { ...item, ...after } : item));
+            await updateBirthdaySticker(sticker.id, after);
+          },
+        });
+      }).catch(() => {
         setStickers((items) => items.map((item) => item.id === sticker.id ? { ...item, ...origin } : item));
         toast.error('Não foi possível mover o adesivo.');
       });
@@ -1106,7 +1283,19 @@ export const BirthdayTicket: FC = () => {
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
-      void updateBirthdaySticker(sticker.id, { width }).catch(() => {
+      const after = width;
+      void updateBirthdaySticker(sticker.id, { width: after }).then(() => {
+        pushCommand({
+          undo: async () => {
+            setStickers((items) => items.map((item) => item.id === sticker.id ? { ...item, width: origin } : item));
+            await updateBirthdaySticker(sticker.id, { width: origin });
+          },
+          redo: async () => {
+            setStickers((items) => items.map((item) => item.id === sticker.id ? { ...item, width: after } : item));
+            await updateBirthdaySticker(sticker.id, { width: after });
+          },
+        });
+      }).catch(() => {
         setStickers((items) => items.map((item) => item.id === sticker.id ? { ...item, width: origin } : item));
       });
     };
@@ -1124,13 +1313,25 @@ export const BirthdayTicket: FC = () => {
     const move = (pointer: PointerEvent) => {
       const cx = board.left + (sticker.x / 100) * board.width;
       const cy = board.top + (sticker.y / 100) * board.height;
-      rotation = Math.round(Math.atan2(pointer.clientY - cy, pointer.clientX - cx) * (180 / Math.PI) + 90);
+      rotation = turn(Math.atan2(pointer.clientY - cy, pointer.clientX - cx) * (180 / Math.PI) + 90);
       setStickers((current) => current.map((item) => item.id === sticker.id ? { ...item, rotation } : item));
     };
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
-      void updateBirthdaySticker(sticker.id, { rotation }).catch(() => {
+      const after = rotation;
+      void updateBirthdaySticker(sticker.id, { rotation: after }).then(() => {
+        pushCommand({
+          undo: async () => {
+            setStickers((items) => items.map((item) => item.id === sticker.id ? { ...item, rotation: origin } : item));
+            await updateBirthdaySticker(sticker.id, { rotation: origin });
+          },
+          redo: async () => {
+            setStickers((items) => items.map((item) => item.id === sticker.id ? { ...item, rotation: after } : item));
+            await updateBirthdaySticker(sticker.id, { rotation: after });
+          },
+        });
+      }).catch(() => {
         setStickers((items) => items.map((item) => item.id === sticker.id ? { ...item, rotation: origin } : item));
       });
     };
@@ -1171,9 +1372,66 @@ export const BirthdayTicket: FC = () => {
     }
   }
 
+  useEffect(() => {
+    const node = textScaleRef.current;
+    if (!node) return;
+    const points = new Map<number, { x: number; y: number }>();
+    let pinch: { distance: number; size: number } | null = null;
+    const resize = (size: number) => {
+      const next = Math.min(120, Math.max(18, size));
+      setLook((current) => current.size === next ? current : { ...current, size: next });
+      const editing = editingTextRef.current;
+      if (editing) setTexts((current) => current.map((item) => item.id === editing ? { ...item, size: next } : item));
+    };
+    const down = (event: PointerEvent) => {
+      points.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (points.size === 2) {
+        const [first, second] = [...points.values()];
+        pinch = { distance: Math.hypot(first.x - second.x, first.y - second.y) || 1, size: lookRef.current.size };
+      }
+    };
+    const move = (event: PointerEvent) => {
+      if (!points.has(event.pointerId) || !pinch) return;
+      points.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (points.size < 2) return;
+      const [first, second] = [...points.values()];
+      const distance = Math.hypot(first.x - second.x, first.y - second.y) || 1;
+      resize(Math.round(pinch.size * (distance / pinch.distance)));
+    };
+    const up = (event: PointerEvent) => {
+      points.delete(event.pointerId);
+      if (points.size < 2 && pinch) {
+        const editing = editingTextRef.current;
+        const size = lookRef.current.size;
+        pinch = null;
+        if (editing) void updateBirthdayText(editing, { size }).catch(() => undefined);
+      }
+    };
+    const wheel = (event: WheelEvent) => {
+      if (!event.ctrlKey) return;
+      event.preventDefault();
+      const size = Math.round(lookRef.current.size * (event.deltaY < 0 ? 1.08 : 0.92));
+      resize(size);
+      const editing = editingTextRef.current;
+      if (editing) void updateBirthdayText(editing, { size: Math.min(120, Math.max(18, size)) }).catch(() => undefined);
+    };
+    node.addEventListener('pointerdown', down);
+    node.addEventListener('pointermove', move);
+    node.addEventListener('pointerup', up);
+    node.addEventListener('pointercancel', up);
+    node.addEventListener('wheel', wheel, { passive: false });
+    return () => {
+      node.removeEventListener('pointerdown', down);
+      node.removeEventListener('pointermove', move);
+      node.removeEventListener('pointerup', up);
+      node.removeEventListener('pointercancel', up);
+      node.removeEventListener('wheel', wheel);
+    };
+  }, [textLive, editingText, letter]);
+
   const lifted = lift ? stickers.find((item) => item.id === lift.id) : null;
   const liftedArt = lifted ? birthdayStickerArt(lifted.stickerId) : null;
-  const reading = !composing || asGuest;
+  const reading = cardReady && (!composing || asGuest);
   const draftPreview = draftArt ? birthdayStickerArt(draftArt) : null;
 
   return (
@@ -1184,7 +1442,17 @@ export const BirthdayTicket: FC = () => {
             <Cake className="h-5 w-5" strokeWidth={1.75} />
           </span>
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-gray-800">Aniversários</h2>
+            <h2 className="flex items-center gap-2 text-xl font-bold tracking-tight text-gray-800">
+              Aniversários
+              <span className="group/info relative">
+                <button type="button" aria-label="Sobre o cartão" title="Este cartão é compartilhado. Cada pessoa coloca a sua parte até a arte ficar pronta no dia do aniversário." className="grid h-6 w-6 place-items-center rounded-full text-gray-400 hover:bg-[#F4F1FB] hover:text-[#6B33F6]">
+                  <Info className="h-3.5 w-3.5" />
+                </button>
+                <span className="pointer-events-none absolute left-0 top-full z-30 mt-2 hidden w-64 rounded-xl bg-gray-900 px-3 py-2 text-left text-xs font-normal leading-snug text-white group-hover/info:block">
+                  Este cartão é compartilhado. Cada pessoa coloca a sua parte até a arte ficar pronta no dia do aniversário.
+                </span>
+              </span>
+            </h2>
             <p className="text-sm text-gray-500">Celebre as pessoas especiais do nosso time!</p>
           </div>
         </div>
@@ -1208,17 +1476,17 @@ export const BirthdayTicket: FC = () => {
       </div>
       {person ? (
         <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start">
-          <div ref={boardRef} onClick={(event) => { if (lift && event.target === event.currentTarget) closeLift(); }} className={cn('relative aspect-[967/577] w-full flex-1 overflow-hidden rounded-[28px]', lift && 'z-50')} style={{ backgroundColor: cardColor }}>
+          <div ref={boardRef} onPointerDown={(event) => { if (event.target === event.currentTarget) releaseSelection(); }} onClick={(event) => { if (lift && event.target === event.currentTarget) closeLift(); }} className={cn('relative aspect-[967/577] w-full flex-1 overflow-hidden rounded-[28px]', lift && 'z-50')} style={{ backgroundColor: cardColor }}>
             <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
               <rect x="3.6%" y="6%" width="92.8%" height="88%" rx="18" fill="none" stroke="rgba(255,248,240,0.9)" strokeWidth="1.75" strokeDasharray="2 7" strokeLinecap="round" />
             </svg>
             {reading ? <p className="pointer-events-none absolute bottom-4 left-4 text-sm font-medium text-white/90">Toque em um adesivo para ler o recado.</p> : null}
             {composing && !asGuest && draftPreview ? (
-              <div className="absolute z-10 cursor-grab touch-none" style={{ left: `${draftPos.x}%`, top: `${draftPos.y}%`, width: `${draftWidth}%`, transform: 'translate(-50%, -50%)' }} onPointerDown={beginDraftDrag}>
+              <div className={cn('absolute z-10', draftLive && 'cursor-grab touch-none')} style={{ left: `${draftPos.x}%`, top: `${draftPos.y}%`, width: `${draftWidth}%`, transform: `translate(-50%, -50%) rotate(${draftRotation}deg)` }} onPointerDown={(event) => { if (draftLive) beginDraftDrag(event); }}>
+                {draftLive ? <FigureHandles label="adesivo" onMove={beginDraftDrag} onResize={beginDraftResize} onRotate={beginDraftRotate} /> : (
+                  <button type="button" aria-label="Editar adesivo" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setDraftLive(true); setEditingId(null); setEditingText(null); setSelectedMark(null); setTextLive(false); }} className="absolute -right-1 -top-1 z-20 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button>
+                )}
                 <img src={draftPreview.src} alt="" draggable={false} className="sticker-cut aspect-square w-full object-contain" />
-                <button type="button" aria-label="Redimensionar adesivo" onPointerDown={beginDraftResize} className="absolute -bottom-1.5 -right-1.5 z-10 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-                  <Scaling className="h-3.5 w-3.5" />
-                </button>
               </div>
             ) : null}
             {stickers.map((sticker) => {
@@ -1227,14 +1495,7 @@ export const BirthdayTicket: FC = () => {
               return (
                 <div key={sticker.id} className="group absolute" style={{ left: `${sticker.x}%`, top: `${sticker.y}%`, width: `${sticker.width}%`, transform: `translate(-50%, -50%) rotate(${sticker.rotation}deg)`, zIndex: editingId === sticker.id ? 2 : 1, visibility: lift?.id === sticker.id ? 'hidden' : 'visible' }}>
                   <div className="relative aspect-square" style={{ containerType: 'inline-size', perspective: '900px' }}>
-                    {editingId === sticker.id ? (
-                      <>
-                        <button type="button" aria-label="Girar adesivo" onPointerDown={(event) => beginRotate(event, sticker)} className="absolute -top-3 left-1/2 z-10 h-6 w-6 -translate-x-1/2 rounded-full border border-gray-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)]" />
-                        <button type="button" aria-label="Redimensionar adesivo" onPointerDown={(event) => beginResize(event, sticker)} className="absolute -bottom-1.5 -right-1.5 z-10 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-                          <Scaling className="h-3.5 w-3.5" />
-                        </button>
-                      </>
-                    ) : null}
+                    {editingId === sticker.id ? <FigureHandles label="adesivo" onMove={(event) => beginDrag(event, sticker)} onResize={(event) => beginResize(event, sticker)} onRotate={(event) => beginRotate(event, sticker)} /> : null}
                     {composing && !asGuest && own ? (
                       <span className={cn('absolute -right-1 -top-1 z-20 flex gap-1 transition-opacity', editingId === sticker.id ? 'opacity-100' : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100')}>
                         {!draftArt && editingId !== sticker.id ? (
@@ -1251,7 +1512,7 @@ export const BirthdayTicket: FC = () => {
                       role="button"
                       tabIndex={0}
                       aria-label={reading ? `Abrir recado de ${sticker.authorName}` : `Adesivo de ${sticker.authorName}`}
-                      onPointerDown={(event) => { if (editingId === sticker.id) beginDrag(event, sticker); }}
+                      onPointerDown={(event) => { if (editingId === sticker.id) beginDrag(event, sticker); else { event.stopPropagation(); setEditingId(null); setEditingText(null); setTextLive(false); setDraftLive(false); setSelectedMark(null); if (editingTextRef.current) { setLetter(''); setLook(EMPTY_LOOK); } } }}
                       onClick={(event) => { if (reading && art) { event.stopPropagation(); openSticker(sticker, event.currentTarget.parentElement?.parentElement ?? event.currentTarget); } }}
                       className={cn('absolute inset-0', editingId === sticker.id ? 'cursor-grab touch-none' : reading ? 'cursor-pointer' : '')}
                     >
@@ -1266,9 +1527,9 @@ export const BirthdayTicket: FC = () => {
               const live = open ? { ...item, ...look, body: letter.trim() || item.body } : item;
               const own = item.authorId === viewerId;
               return (
-                <div key={item.id} className={cn('group absolute z-20 max-w-[70%]', open ? 'cursor-grab touch-none' : (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${item.x}%`, top: `${item.y}%`, transform: `translate(-50%, -50%) rotate(${live.rotation || 0}deg)` }} onPointerDown={(event) => { if (open) beginTextDrag(event, item); else event.stopPropagation(); }}>
+                <div key={item.id} ref={open ? textScaleRef : undefined} className={cn('group absolute z-20 w-max max-w-[92%]', open ? 'cursor-grab touch-none' : (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${item.x}%`, top: `${item.y}%`, transform: `translate(-50%, -50%) rotate(${live.rotation || 0}deg)` }} onPointerDown={(event) => { if (open) beginTextDrag(event, item); else { event.stopPropagation(); setEditingId(null); setSelectedMark(null); setTextLive(false); setDraftLive(false); if (editingText && editingText !== item.id) { setEditingText(null); setLetter(''); setLook(EMPTY_LOOK); } } }}>
                   <div className="relative">
-                    {open ? <TransformHandles label="texto" onResize={(event) => beginTextResize(event, item)} onRotate={(event) => beginTextRotate(event, item)} /> : null}
+                    {open ? <FigureHandles label="texto" onMove={(event) => beginTextDrag(event, item)} onResize={(event) => beginTextResize(event, item)} onRotate={(event) => beginTextRotate(event, item)} /> : null}
                     {composing && !asGuest && own ? (
                       <span className="pointer-events-auto absolute -top-8 right-0 z-20 flex gap-1 opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-100" onPointerDown={(event) => event.stopPropagation()}>
                         {!open ? <button type="button" aria-label="Editar texto" onClick={() => editLetter(item)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button> : null}
@@ -1280,10 +1541,10 @@ export const BirthdayTicket: FC = () => {
                 </div>
               );
             })}
-            {composing && !asGuest && !editingText && letter.trim() ? (
-              <div className={cn('absolute z-20 max-w-[70%] cursor-grab touch-none', (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${letterPos.x}%`, top: `${letterPos.y}%`, transform: `translate(-50%, -50%) rotate(${look.rotation || 0}deg)` }} onPointerDown={beginLetterDrag}>
+            {composing && !asGuest && textLive && !editingText && letter.trim() ? (
+              <div ref={textScaleRef} className={cn('absolute z-20 w-max max-w-[92%] cursor-grab touch-none', (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${letterPos.x}%`, top: `${letterPos.y}%`, transform: `translate(-50%, -50%) rotate(${look.rotation || 0}deg)` }} onPointerDown={beginLetterDrag}>
                 <div className="relative">
-                  <TransformHandles label="texto" onResize={beginLetterResize} onRotate={beginLetterRotate} />
+                  <FigureHandles label="texto" onMove={beginLetterDrag} onResize={beginLetterResize} onRotate={beginLetterRotate} />
                   <p style={letterStyle(look)}>{letter}</p>
                 </div>
               </div>
@@ -1292,9 +1553,9 @@ export const BirthdayTicket: FC = () => {
               const own = mark.authorId === viewerId;
               const open = selectedMark === mark.id;
               return (
-                <div key={mark.id} className={cn('group absolute z-20', open ? 'cursor-grab touch-none' : (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${mark.x}%`, top: `${mark.y}%`, width: mark.size, height: mark.size, transform: `translate(-50%, -50%) rotate(${mark.rotation || 0}deg)`, color: mark.color }} onPointerDown={(event) => { if (open) beginMarkDrag(event, mark); else event.stopPropagation(); }}>
+                <div key={mark.id} className={cn('group absolute z-20', open ? 'cursor-grab touch-none' : (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${mark.x}%`, top: `${mark.y}%`, width: mark.size, height: mark.size, transform: `translate(-50%, -50%) rotate(${mark.rotation || 0}deg)`, color: mark.color }} onPointerDown={(event) => { if (open) beginMarkDrag(event, mark); else { event.stopPropagation(); setEditingId(null); setTextLive(false); setDraftLive(false); if (editingTextRef.current) { setEditingText(null); setLetter(''); setLook(EMPTY_LOOK); } if (selectedMark !== mark.id) setSelectedMark(null); } }}>
                   <div className="relative h-full w-full">
-                    {open ? <TransformHandles label="desenho" onResize={(event) => beginMarkResize(event, mark)} onRotate={(event) => beginMarkRotate(event, mark)} /> : null}
+                    {open ? <FigureHandles label="desenho" onMove={(event) => beginMarkDrag(event, mark)} onResize={(event) => beginMarkResize(event, mark)} onRotate={(event) => beginMarkRotate(event, mark)} /> : null}
                     {composing && !asGuest && own ? (
                       <span className="pointer-events-auto absolute -top-8 right-0 z-20 flex gap-1 opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-100" onPointerDown={(event) => event.stopPropagation()}>
                         {!open ? <button type="button" aria-label="Editar desenho" onClick={() => unlockMark(mark)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button> : null}
@@ -1308,9 +1569,9 @@ export const BirthdayTicket: FC = () => {
             })}
           </div>
           {composing && !asGuest ? (
-            <div className="w-full shrink-0 lg:w-[340px]">
-              <input ref={photoRef} type="file" accept={IMAGE_ACCEPT} tabIndex={-1} className="pointer-events-none fixed left-0 top-0 h-8 w-8 opacity-[0.02]" onChange={(event) => { void uploadFigurine(event.target.files?.[0], false); event.target.value = ''; }} />
-              <input ref={cutRef} type="file" accept={IMAGE_ACCEPT} tabIndex={-1} className="pointer-events-none fixed left-0 top-0 h-8 w-8 opacity-[0.02]" onChange={(event) => { void uploadFigurine(event.target.files?.[0], true); event.target.value = ''; }} />
+            <div className="relative w-full shrink-0 lg:w-[340px]">
+              <input ref={photoRef} type="file" accept={IMAGE_ACCEPT} tabIndex={-1} className="absolute left-0 top-0 z-0 h-8 w-8 opacity-[0.02]" onChange={(event) => { void uploadFigurine(event.target.files?.[0], false); event.target.value = ''; }} />
+              <input ref={cutRef} type="file" accept={IMAGE_ACCEPT} tabIndex={-1} className="absolute left-8 top-0 z-0 h-8 w-8 opacity-[0.02]" onChange={(event) => { void uploadFigurine(event.target.files?.[0], true); event.target.value = ''; }} />
               <aside className="max-h-[70vh] w-full overflow-y-auto rounded-[28px] border border-gray-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
                 <div className="mb-4 grid grid-cols-3 rounded-2xl bg-[#F4F1FB] p-1" role="tablist" aria-label="Ferramentas do cartão">
                   {([
@@ -1338,14 +1599,15 @@ export const BirthdayTicket: FC = () => {
                       if (overflow) nodes.push(<button key="mais" type="button" aria-label={colorsOpen ? 'Recolher cores' : 'Ver mais cores'} aria-expanded={colorsOpen} onClick={() => setColorsOpen((open) => !open)} className="grid aspect-square w-full min-w-0 flex-1 place-items-center rounded-full border border-gray-200 bg-white text-sm leading-none text-gray-500">…</button>);
                       return spreadRows(nodes);
                     })()}
-                    <div className="flex items-center gap-2">
-                      <button type="button" title="Conta-gotas" aria-label="Conta-gotas" onClick={() => void grabColor((hex) => void paintCard(hex))} className="grid h-8 w-8 place-items-center rounded-full text-gray-500 hover:bg-[#F4F1FB] hover:text-gray-800">
-                        <Pipette className="h-4 w-4" strokeWidth={1.5} />
-                      </button>
-                      <button type="button" onClick={() => rememberColor(cardColor)} className="h-8 rounded-full px-3 text-xs text-gray-500 hover:bg-[#F4F1FB] hover:text-gray-800">Salvar</button>
-                      <span className="ml-auto"><HistoryButtons canUndo={canUndo} canRedo={canRedo} onUndo={() => void undo()} onRedo={() => void redo()} /></span>
-                      <span className="text-[11px] text-gray-400">{cardColor}</span>
-                    </div>
+                    <ActionBar canUndo={canUndo} canRedo={canRedo} onUndo={() => void undo()} onRedo={() => void redo()}>
+                      <div className="flex items-center gap-2">
+                        <button type="button" title="Conta-gotas" aria-label="Conta-gotas" onClick={() => void grabColor((hex) => void paintCard(hex))} className="grid h-8 w-8 place-items-center rounded-full text-gray-500 hover:bg-[#F4F1FB] hover:text-gray-800">
+                          <Pipette className="h-4 w-4" strokeWidth={1.5} />
+                        </button>
+                        <button type="button" onClick={() => rememberColor(cardColor)} className="h-8 rounded-full px-3 text-xs text-gray-500 hover:bg-[#F4F1FB] hover:text-gray-800">Salvar</button>
+                        <span className="ml-auto text-[11px] text-gray-400">{cardColor}</span>
+                      </div>
+                    </ActionBar>
                   </div>
                 ) : null}
                   {tool === 'stickers' ? (
@@ -1372,20 +1634,21 @@ export const BirthdayTicket: FC = () => {
                           {minePerson && mine?.personId !== person.id ? `Seu adesivo já está no bilhete de ${minePerson.name.split(' ')[0]}.` : 'Você já colocou o seu adesivo. Passe o mouse nele para editar ou excluir.'}
                         </p>
                       )}
-                      <div className="mt-3 flex items-center gap-2">
-                        <HistoryButtons canUndo={canUndo} canRedo={canRedo} onUndo={() => void undo()} onRedo={() => void redo()} />
+                      <div className="mt-3">
+                      <ActionBar canUndo={canUndo} canRedo={canRedo} onUndo={() => void undo()} onRedo={() => void redo()}>
                         {canAdd || editingId ? (
-                          <button type="button" disabled={saving || !draftMessage.trim() || (!editingId && !draftArt)} onClick={() => void finish()} className="h-11 min-w-0 flex-1 rounded-2xl bg-[#6B33F6] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
+                          <button type="button" disabled={saving || !draftMessage.trim() || (!editingId && !draftArt)} onClick={() => void finish()} className="h-11 w-full rounded-2xl bg-[#6B33F6] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
                             {saving ? 'Salvando...' : editingId ? 'Atualizar recado' : 'Finalizar'}
                           </button>
-                        ) : null}
+                        ) : <span />}
+                      </ActionBar>
                       </div>
                       {savedFlash ? <p className="mt-2 text-center text-xs font-medium text-[#3600C2]">Recado salvo no bilhete.</p> : null}
                     </>
                   ) : null}
                   {tool === 'text' ? (
                     <div className="space-y-3">
-                      <textarea value={letter} maxLength={80} onFocus={() => setSelectedMark(null)} onChange={(event) => { pushPast(); setLetter(event.target.value); }} className="min-h-16 w-full rounded-2xl bg-[#F6F4FB] px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Um texto solto no cartão." />
+                      <textarea value={letter} maxLength={80} onFocus={() => { setTextLive(true); setSelectedMark(null); setEditingId(null); setDraftLive(false); }} onChange={(event) => { pushPast(); setLetter(event.target.value); setTextLive(true); setDraftLive(false); }} className="min-h-16 w-full rounded-2xl bg-[#F6F4FB] px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Um texto solto no cartão." />
                       <div className="relative">
                         <button type="button" aria-label="Fonte" aria-expanded={fontOpen} onClick={() => setFontOpen((open) => !open)} className="flex h-10 w-full items-center justify-between rounded-xl bg-[#F6F4FB] px-3 text-sm text-gray-800">
                           <span style={{ fontFamily: FAMILIES[(FONTS.find((font) => font.id === look.font) ?? FONTS[0]).id] }}>{(FONTS.find((font) => font.id === look.font) ?? FONTS[0]).label}</span>
@@ -1458,12 +1721,11 @@ export const BirthdayTicket: FC = () => {
                           </div>
                         );
                       })()}
-                      <div className="flex items-center gap-2">
-                        <HistoryButtons canUndo={canUndo} canRedo={canRedo} onUndo={() => void undo()} onRedo={() => void redo()} />
-                        <button type="button" disabled={saving || !letter.trim()} onClick={() => void placeLetter()} className="h-11 min-w-0 flex-1 rounded-2xl bg-[#6B33F6] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
+                      <ActionBar canUndo={canUndo} canRedo={canRedo} onUndo={() => void undo()} onRedo={() => void redo()}>
+                        <button type="button" disabled={saving || !letter.trim()} onClick={() => void placeLetter()} className="h-11 w-full rounded-2xl bg-[#6B33F6] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
                           {saving ? 'Salvando...' : editingText ? 'Atualizar texto' : 'Finalizar'}
                         </button>
-                      </div>
+                      </ActionBar>
                     </div>
                   ) : null}
                 </aside>
