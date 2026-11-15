@@ -908,6 +908,15 @@ export const BirthdayTicket: FC = () => {
     }
   }
 
+  function flipMark(item: BirthdayMark) {
+    const flip = !item.flip;
+    setMarks((current) => current.map((entry) => entry.id === item.id ? { ...entry, flip } : entry));
+    void updateBirthdayMark(item.id, { flip }).catch(() => {
+      setMarks((current) => current.map((entry) => entry.id === item.id ? { ...entry, flip: item.flip } : entry));
+      toast.error('Não foi possível espelhar o desenho.');
+    });
+  }
+
   async function copySticker(sticker: BirthdaySticker) {
     if (!person) return;
     try {
@@ -1548,24 +1557,24 @@ export const BirthdayTicket: FC = () => {
       </div>
       {person ? (
         <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start">
-          <div ref={boardRef} onPointerDown={(event) => { if (event.target === event.currentTarget) releaseSelection(); }} onClick={(event) => { if (lift && event.target === event.currentTarget) closeLift(); }} className={cn('relative aspect-[967/577] w-full flex-1 overflow-hidden rounded-[28px]', lift && 'z-50')} style={{ backgroundColor: cardColor }}>
+          <div ref={boardRef} onPointerDown={(event) => { if (event.target === event.currentTarget) releaseSelection(); }} onClick={(event) => { if (lift && event.target === event.currentTarget) closeLift(); }} className={cn('relative aspect-[967/577] w-full flex-1 overflow-visible rounded-[28px]', lift && 'z-50')} style={{ backgroundColor: cardColor }}>
             <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
               <rect x="3.6%" y="6%" width="92.8%" height="88%" rx="18" fill="none" stroke="rgba(255,248,240,0.9)" strokeWidth="1.75" strokeDasharray="2 7" strokeLinecap="round" />
             </svg>
             {reading ? <p className="pointer-events-none absolute bottom-4 left-4 text-sm font-medium text-white/90">Toque em um adesivo para ler o recado.</p> : null}
             {composing && !asGuest && draftPreview ? (
-              <div className={cn('absolute z-10', draftLive && 'cursor-grab touch-none')} style={{ left: `${draftPos.x}%`, top: `${draftPos.y}%`, width: `${draftWidth}%`, transform: pose(draftRotation, draftFlip) }} onPointerDown={(event) => { if (draftLive) beginDraftDrag(event); }}>
+              <div className={cn('absolute z-30', draftLive && 'cursor-grab touch-none')} style={{ left: `${draftPos.x}%`, top: `${draftPos.y}%`, width: `${draftWidth}%`, transform: pose(draftRotation) }} onPointerDown={(event) => { if (draftLive) beginDraftDrag(event); }}>
                 {draftLive ? <SelectionBox label="adesivo" onMove={beginDraftDrag} onResize={beginDraftResize} onRotate={beginDraftRotate} onFlip={() => setDraftFlip((value) => !value)} onDuplicate={() => void copyDraftSticker()} /> : (
                   <button type="button" aria-label="Editar adesivo" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setDraftLive(true); setEditingId(null); setEditingText(null); setSelectedMark(null); setTextLive(false); }} className="absolute -right-1 -top-1 z-20 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button>
                 )}
-                <img src={draftPreview.src} alt="" draggable={false} className="sticker-cut aspect-square w-full object-contain" />
+                <img src={draftPreview.src} alt="" draggable={false} className="sticker-cut aspect-square w-full object-contain" style={{ transform: draftFlip ? 'scaleX(-1)' : undefined }} />
               </div>
             ) : null}
             {stickers.map((sticker) => {
               const art = birthdayStickerArt(sticker.stickerId);
               const own = sticker.authorId === viewerId;
               return (
-                <div key={sticker.id} className="group absolute" style={{ left: `${sticker.x}%`, top: `${sticker.y}%`, width: `${sticker.width}%`, transform: pose(sticker.rotation, sticker.flip), zIndex: editingId === sticker.id ? 2 : 1, visibility: lift?.id === sticker.id ? 'hidden' : 'visible' }}>
+                <div key={sticker.id} className="group absolute" style={{ left: `${sticker.x}%`, top: `${sticker.y}%`, width: `${sticker.width}%`, transform: pose(sticker.rotation), zIndex: editingId === sticker.id ? 30 : 1, visibility: lift?.id === sticker.id ? 'hidden' : 'visible' }}>
                   <div className="relative aspect-square" style={{ containerType: 'inline-size', perspective: '900px' }}>
                     {editingId === sticker.id ? <SelectionBox label="adesivo" onMove={(event) => beginDrag(event, sticker)} onResize={(event) => beginResize(event, sticker)} onRotate={(event) => beginRotate(event, sticker)} onFlip={() => flipSticker(sticker)} onDuplicate={() => void copySticker(sticker)} onDelete={() => void removeSticker(sticker)} /> : null}
                     {composing && !asGuest && own && editingId !== sticker.id && !draftArt ? (
@@ -1586,7 +1595,7 @@ export const BirthdayTicket: FC = () => {
                       onClick={(event) => { if (reading && art) { event.stopPropagation(); openSticker(sticker, event.currentTarget.parentElement?.parentElement ?? event.currentTarget); } }}
                       className={cn('absolute inset-0', editingId === sticker.id ? 'cursor-grab touch-none' : reading ? 'cursor-pointer' : '')}
                     >
-                      {art ? <img src={art.src} alt="" draggable={false} className="pointer-events-none sticker-cut h-full w-full object-contain" /> : null}
+                      {art ? <img src={art.src} alt="" draggable={false} className="pointer-events-none sticker-cut h-full w-full object-contain" style={{ transform: sticker.flip ? 'scaleX(-1)' : undefined }} /> : null}
                     </div>
                   </div>
                 </div>
@@ -1627,14 +1636,14 @@ export const BirthdayTicket: FC = () => {
               return (
                 <div key={mark.id} className={cn('group absolute z-20', open ? 'cursor-grab touch-none' : (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${mark.x}%`, top: `${mark.y}%`, width: mark.size, height: mark.size, transform: pose(mark.rotation), color: mark.color }} onPointerDown={(event) => { if (asGuest) return; if (open) beginMarkDrag(event, mark); else { event.stopPropagation(); setEditingId(null); setTextLive(false); setDraftLive(false); if (editingTextRef.current) { setEditingText(null); setLetter(''); setLook(EMPTY_LOOK); } if (selectedMark !== mark.id) setSelectedMark(null); } }}>
                   <div className="relative h-full w-full">
-                    {open && !asGuest ? <SelectionBox label="desenho" onMove={(event) => beginMarkDrag(event, mark)} onResize={(event) => beginMarkResize(event, mark)} onRotate={(event) => beginMarkRotate(event, mark)} onDuplicate={() => void copyMark(mark)} onDelete={() => void removeMark(mark)} /> : null}
+                    {open && !asGuest ? <SelectionBox label="desenho" onMove={(event) => beginMarkDrag(event, mark)} onResize={(event) => beginMarkResize(event, mark)} onRotate={(event) => beginMarkRotate(event, mark)} onFlip={() => flipMark(mark)} onDuplicate={() => void copyMark(mark)} onDelete={() => void removeMark(mark)} /> : null}
                     {composing && !asGuest && own && !open ? (
                       <span className="pointer-events-none absolute -right-1 -top-1 z-20 flex gap-1 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100" onPointerDown={(event) => event.stopPropagation()}>
                         <button type="button" aria-label="Editar desenho" onClick={() => unlockMark(mark)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button>
                         <button type="button" aria-label="Excluir desenho" onClick={() => void removeMark(mark)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-[#9D174D] shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Trash2 className="h-3.5 w-3.5" /></button>
                       </span>
                     ) : null}
-                    <Doodle kind={mark.kind} className="h-full w-full" />
+                    <span className="block h-full w-full" style={{ transform: mark.flip ? 'scaleX(-1)' : undefined }}><Doodle kind={mark.kind} className="h-full w-full" /></span>
                   </div>
                 </div>
               );
