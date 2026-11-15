@@ -57,17 +57,26 @@ export async function listStickers() {
   return library.stickers;
 }
 
+function fileBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = String(reader.result ?? '');
+      const marker = value.indexOf(',');
+      resolve(marker >= 0 ? value.slice(marker + 1) : value);
+    };
+    reader.onerror = () => reject(new Error('file'));
+    reader.readAsDataURL(file);
+  });
+}
+
 export async function saveSticker(file: File) {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let binary = '';
-  for (let index = 0; index < bytes.length; index += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
-  }
+  const data = await fileBase64(file);
   const response = await fetch('/api/stickers', {
     method: 'POST',
     credentials: 'include',
     headers: { ...authHeaders(), ...demoHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: btoa(binary) }),
+    body: JSON.stringify({ data }),
   });
   const body = await readJson(response);
   if (!response.ok || !body.sticker) throw new Error(body.error || 'unavailable');

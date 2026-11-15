@@ -60,11 +60,18 @@ async function drawFile(file: File, max: number) {
 }
 
 async function jpegFile(canvas: HTMLCanvasElement) {
-  let quality = 0.9;
+  let quality = 0.82;
   let blob = await blobOf(canvas, 'image/jpeg', quality);
-  while (blob.size > 1_600_000 && quality > 0.45) {
-    quality -= 0.15;
+  while (blob.size > 900_000 && quality > 0.4) {
+    quality -= 0.12;
     blob = await blobOf(canvas, 'image/jpeg', quality);
+  }
+  if (blob.size > 900_000) {
+    const smaller = document.createElement('canvas');
+    smaller.width = Math.max(1, Math.round(canvas.width * 0.6));
+    smaller.height = Math.max(1, Math.round(canvas.height * 0.6));
+    smaller.getContext('2d')?.drawImage(canvas, 0, 0, smaller.width, smaller.height);
+    blob = await blobOf(smaller, 'image/jpeg', 0.7);
   }
   return new File([blob], 'figurinha.jpg', { type: 'image/jpeg' });
 }
@@ -154,6 +161,13 @@ export async function removePhotoBackground(file: File) {
   crop.width = Math.max(1, maxX - minX + 1 + pad * 2);
   crop.height = Math.max(1, maxY - minY + 1 + pad * 2);
   crop.getContext('2d')?.drawImage(canvas, minX - pad, minY - pad, crop.width, crop.height, 0, 0, crop.width, crop.height);
-  const blob = await blobOf(crop, 'image/png');
+  let blob = await blobOf(crop, 'image/png');
+  if (blob.size > 1_500_000) {
+    const smaller = document.createElement('canvas');
+    smaller.width = Math.max(1, Math.round(crop.width * 0.6));
+    smaller.height = Math.max(1, Math.round(crop.height * 0.6));
+    smaller.getContext('2d')?.drawImage(crop, 0, 0, smaller.width, smaller.height);
+    blob = await blobOf(smaller, 'image/png');
+  }
   return new File([blob], 'figurinha.png', { type: 'image/png' });
 }
