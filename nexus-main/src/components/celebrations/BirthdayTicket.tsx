@@ -19,7 +19,7 @@ import { parseAgendaDate, useAgendaEvents } from '@/lib/events';
 import { useDemoProfile } from '@/lib/session';
 import { listStickers, saveSticker } from '@/lib/stickers';
 import { cn } from '@/lib/utils';
-import { AlignCenter, AlignLeft, AlignRight, Cake, ChevronDown, Eraser, Heart, ImagePlus, Paintbrush, Pencil, Pipette, Scaling, Sparkles, Star, Sticker, Trash2, Type, Undo2 } from 'lucide-react';
+import { AlignCenter, AlignLeft, AlignRight, Cake, ChevronDown, Eraser, ImagePlus, Paintbrush, Pencil, Pipette, Scaling, Sticker, Trash2, Type, Undo2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FC, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
@@ -87,8 +87,13 @@ const FONTS = [
   { id: 'comfortaa', label: 'Comfortaa' },
   { id: 'playfair', label: 'Playfair Display' },
 ];
-const PRESETS = ['#f6f1ea', '#f3d6e4', '#e4d7f5', '#d7e6f8', '#d7efe4', '#f8e3c4', '#ffffff', '#5c564f', '#6b33f6', '#4600f3', '#db2777', '#e11d48', '#f59e0b', '#0f766e', '#8c4632', '#1f2937'];
-const QUICK = ['#ffffff', '#f6f1ea', '#6b33f6', '#db2777', '#f59e0b', '#1f2937'];
+const PRESETS = [
+  '#e4f2fc', '#d7f4f8', '#d8f6ea', '#e8f7d6', '#fbf6d4', '#fde7cc', '#f8d6d2', '#f6d4e6',
+  '#5aa6e8', '#3ec8de', '#3ecca0', '#86d15a', '#f0c447', '#f09238', '#e86660', '#e05696',
+  '#2a5fbe', '#187ea6', '#1c7a60', '#3c8c30', '#c27812', '#c24e28', '#a83046', '#8c4632',
+];
+const TEXT_TONES = ['#3ec8de', '#3ecca0', '#f0c447', '#f09238', '#e05696'];
+const COLOR_COLUMNS = 8;
 const EMPTY_LOOK: TextStyle = { font: 'vibes', effect: 'plain', color: '#ffffff', size: 36, bold: false, italic: false, underline: false, strike: false, align: 'center', upper: false, tracking: 0, shadow: false, outline: false, opacity: 1, glyph: 'none' };
 type Tool = 'color' | 'stickers' | 'text';
 type EyeDropperCtor = new () => { open: () => Promise<{ sRGBHex: string }> };
@@ -169,11 +174,38 @@ function letterStyle(item: TextStyle): CSSProperties {
   return style;
 }
 
-function GlyphMark({ kind }: { kind: TextStyle['glyph'] }) {
-  if (kind === 'heart') return <Heart className="h-3.5 w-3.5" strokeWidth={1.5} />;
-  if (kind === 'star') return <Star className="h-3.5 w-3.5" strokeWidth={1.5} />;
-  if (kind === 'spark') return <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />;
-  return null;
+function LetterArt({ item }: { item: TextStyle & { body: string } }) {
+  return (
+    <div className={cn('flex items-center gap-2', item.align === 'center' && 'justify-center', item.align === 'right' && 'flex-row-reverse')}>
+      {item.glyph !== 'none' ? <span className="shrink-0" style={{ color: item.color }}><Doodle kind={item.glyph} /></span> : null}
+      <p style={letterStyle(item)}>{item.body}</p>
+    </div>
+  );
+}
+
+function Doodle({ kind, className }: { kind: TextStyle['glyph']; className?: string }) {
+  if (kind === 'none') return null;
+  const pen = { fill: 'none', stroke: 'currentColor', strokeWidth: 2.1, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  return (
+    <svg viewBox="0 0 64 64" className={className ?? 'h-10 w-10'} aria-hidden>
+      {kind === 'heart' ? <path {...pen} d="M32 53c-1.4-1.1-9-7-15-13.2C11.4 34 8.2 27.6 9.2 21.2 10.4 13.2 17.6 10 23.8 12.6c3.6 1.5 6 4.6 7.4 7.6 2-4 5-7.2 9.2-8 6.8-1.2 13 3 14 10 .8 6.6-3 12.8-9.4 18.8C37.6 46.6 33.4 51.8 32 53z" /> : null}
+      {kind === 'star' ? <path {...pen} d="M32 9.5 37.4 23l14.4 1.3-11 9 3.5 13.8L32 40.2 19.7 47.1l3.5-13.8-11-9L26.6 23 32 9.5z" /> : null}
+      {kind === 'spark' ? (
+        <g {...pen}>
+          <path d="M32 7v10" />
+          <path d="M32 47v10" />
+          <path d="M7 32h10" />
+          <path d="M47 32h10" />
+          <path d="M13 13l8 8" />
+          <path d="M43 43l8 8" />
+          <path d="M51 13l-8 8" />
+          <path d="M21 43l-8 8" />
+          <path d="M20 9l3 9" />
+          <path d="M44 20l9-3" />
+        </g>
+      ) : null}
+    </svg>
+  );
 }
 
 function lookFrom(item: BirthdayText): TextStyle {
@@ -315,6 +347,7 @@ export const BirthdayTicket: FC = () => {
   const [letter, setLetter] = useState('');
   const [look, setLook] = useState<TextStyle>(EMPTY_LOOK);
   const [fontOpen, setFontOpen] = useState(false);
+  const [colorsOpen, setColorsOpen] = useState(false);
   const [swatches, setSwatches] = useState<string[]>(readSwatches);
   const [canUndo, setCanUndo] = useState(false);
   const [letterPos, setLetterPos] = useState({ x: 50, y: 50 });
@@ -459,7 +492,16 @@ export const BirthdayTicket: FC = () => {
       toast.error('Escreva o recado antes de escolher o adesivo.');
       return;
     }
-    setTool('stickers');
+    const picker = (window as Window & { showOpenFilePicker?: (options: { multiple?: boolean; types?: { description: string; accept: Record<string, string[]> }[] }) => Promise<{ getFile: () => Promise<File> }[]> }).showOpenFilePicker;
+    if (picker) {
+      void picker({ multiple: false, types: [{ description: 'Imagem', accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'] } }] })
+        .then(async (handles) => uploadFigurine(await handles[0]?.getFile(), cut))
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === 'AbortError') return;
+          (cut ? cutRef : photoRef).current?.click();
+        });
+      return;
+    }
     (cut ? cutRef : photoRef).current?.click();
   }
 
@@ -925,22 +967,20 @@ export const BirthdayTicket: FC = () => {
                       <button type="button" aria-label="Excluir texto" onClick={() => void removeLetter(item)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-[#9D174D] shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Trash2 className="h-3.5 w-3.5" /></button>
                     </span>
                   ) : null}
-                  {live.glyph && live.glyph !== 'none' ? <span className={cn('mb-1 flex', live.align === 'left' ? 'justify-start' : live.align === 'right' ? 'justify-end' : 'justify-center')} style={{ color: live.color }}><GlyphMark kind={live.glyph} /></span> : null}
-                  <p style={letterStyle(live)}>{live.body}</p>
+                  <LetterArt item={live} />
                 </div>
               );
             })}
             {composing && !asGuest && !editingText && letter.trim() ? (
               <div className="absolute z-20 w-[46%] cursor-grab" style={{ left: `${letterPos.x}%`, top: `${letterPos.y}%`, transform: 'translate(-50%, -50%)' }} onPointerDown={beginLetterDrag}>
-                {look.glyph !== 'none' ? <span className={cn('mb-1 flex', look.align === 'left' ? 'justify-start' : look.align === 'right' ? 'justify-end' : 'justify-center')} style={{ color: look.color }}><GlyphMark kind={look.glyph} /></span> : null}
-                <p style={letterStyle(look)}>{letter}</p>
+                <LetterArt item={{ ...look, body: letter }} />
               </div>
             ) : null}
           </div>
           {composing && !asGuest ? (
             <div className="w-full shrink-0 lg:w-[340px]">
-              <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={(event) => { void uploadFigurine(event.target.files?.[0], false); event.target.value = ''; }} />
-              <input ref={cutRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={(event) => { void uploadFigurine(event.target.files?.[0], true); event.target.value = ''; }} />
+              <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,.heic,.heif" tabIndex={-1} className="pointer-events-none fixed left-0 top-0 h-8 w-8 opacity-[0.02]" onChange={(event) => { void uploadFigurine(event.target.files?.[0], false); event.target.value = ''; }} />
+              <input ref={cutRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,.heic,.heif" tabIndex={-1} className="pointer-events-none fixed left-0 top-0 h-8 w-8 opacity-[0.02]" onChange={(event) => { void uploadFigurine(event.target.files?.[0], true); event.target.value = ''; }} />
               <aside className="max-h-[70vh] w-full overflow-y-auto rounded-[28px] border border-gray-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
                 <div className="mb-4 grid grid-cols-3 rounded-2xl bg-[#F4F1FB] p-1" role="tablist" aria-label="Ferramentas do cartão">
                   {([
@@ -959,12 +999,19 @@ export const BirthdayTicket: FC = () => {
                     <div onPointerDownCapture={pushPast}>
                       <ColorGraph color={cardColor} onLive={setCardColor} onCommit={(hex) => void paintCard(hex, false)} />
                     </div>
-                    <div className="flex items-center justify-between">
-                      {QUICK.map((color) => <Swatch key={color} color={color} pressed={cardColor === color} label={`Cor rápida ${color}`} onPick={() => void paintCard(color)} />)}
-                    </div>
                     <div className="grid grid-cols-8 gap-2">
-                      {PRESETS.map((color) => <Swatch key={color} color={color} pressed={cardColor === color} label={`Cor ${color}`} onPick={() => void paintCard(color)} />)}
-                      {swatches.map((color) => <Swatch key={`salva-${color}`} color={color} pressed={cardColor === color} label={`Cor salva ${color}`} onPick={() => void paintCard(color)} onRemove={() => forgetColor(color)} />)}
+                      {(() => {
+                        const palette = [...swatches, ...PRESETS.filter((color) => !swatches.includes(color))];
+                        const room = COLOR_COLUMNS * 3;
+                        const overflow = palette.length > room;
+                        const shown = colorsOpen || !overflow ? palette : palette.slice(0, room - 1);
+                        return (
+                          <>
+                            {shown.map((color) => <Swatch key={color} color={color} pressed={cardColor === color} label={`Cor ${color}`} onPick={() => void paintCard(color)} onRemove={swatches.includes(color) ? () => forgetColor(color) : undefined} />)}
+                            {overflow ? <button type="button" aria-label={colorsOpen ? 'Recolher cores' : 'Ver mais cores'} aria-expanded={colorsOpen} onClick={() => setColorsOpen((open) => !open)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-200 bg-white text-sm leading-none text-gray-500">…</button> : null}
+                          </>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center gap-2">
                       <button type="button" title="Conta-gotas" aria-label="Conta-gotas" onClick={() => void grabColor((hex) => void paintCard(hex))} className="grid h-8 w-8 place-items-center rounded-full text-gray-500 hover:bg-[#F4F1FB] hover:text-gray-800">
@@ -1028,7 +1075,6 @@ export const BirthdayTicket: FC = () => {
                           ['bold', 'Negrito', <span key="b" className="font-bold">A</span>],
                           ['italic', 'Itálico', <span key="i" className="italic">A</span>],
                           ['underline', 'Sublinhado', <span key="u" className="underline">A</span>],
-                          ['strike', 'Tachado', <span key="s" className="line-through">A</span>],
                         ] as const).map(([key, title, mark]) => (
                           <button key={key} type="button" title={title} aria-label={title} aria-pressed={look[key]} onClick={() => { pushPast(); setLook((current) => ({ ...current, [key]: !current[key], effect: 'plain' })); }} className={cn('grid h-8 w-8 place-items-center rounded-full text-[13px]', look[key] ? 'bg-[#6B33F6] text-white' : 'text-gray-500 hover:bg-[#F4F1FB]')}>{mark}</button>
                         ))}
@@ -1048,19 +1094,28 @@ export const BirthdayTicket: FC = () => {
                         ))}
                         <span className="mx-1.5 h-4 w-px bg-gray-200" aria-hidden />
                         {([
-                          ['heart', 'Coração', Heart],
-                          ['star', 'Estrela', Star],
-                          ['spark', 'Brilho', Sparkles],
-                        ] as const).map(([id, title, Icon]) => (
+                          ['heart', 'Coração'],
+                          ['star', 'Estrela'],
+                          ['spark', 'Raios'],
+                        ] as const).map(([id, title]) => (
                           <button key={id} type="button" title={title} aria-label={title} aria-pressed={look.glyph === id} onClick={() => { pushPast(); setLook((current) => ({ ...current, glyph: current.glyph === id ? 'none' : id })); }} className={cn('grid h-8 w-8 place-items-center rounded-full', look.glyph === id ? 'bg-[#6B33F6] text-white' : 'text-gray-500 hover:bg-[#F4F1FB]')}>
-                            <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
+                            <Doodle kind={id} className="h-4 w-4" />
                           </button>
                         ))}
                       </div>
                       <div className="space-y-2">
-                        <input type="range" min={18} max={72} value={look.size} aria-label="Tamanho do texto" onPointerDown={pushPast} onChange={(event) => setLook((current) => ({ ...current, size: Number(event.target.value) }))} className="w-full accent-[#6B33F6]" />
-                        <input type="range" min={-2} max={24} value={look.tracking} aria-label="Espaçamento entre letras" onPointerDown={pushPast} onChange={(event) => setLook((current) => ({ ...current, tracking: Number(event.target.value) }))} className="w-full accent-[#6B33F6]" />
-                        <input type="range" min={15} max={100} value={Math.round(look.opacity * 100)} aria-label="Opacidade" onPointerDown={pushPast} onChange={(event) => setLook((current) => ({ ...current, opacity: Number(event.target.value) / 100 }))} className="w-full accent-[#6B33F6]" />
+                        <label className="block text-[11px] font-medium text-gray-500">
+                          Tamanho
+                          <input type="range" min={18} max={72} value={look.size} aria-label="Tamanho do texto" onPointerDown={pushPast} onChange={(event) => setLook((current) => ({ ...current, size: Number(event.target.value) }))} className="mt-1 w-full accent-[#6B33F6]" />
+                        </label>
+                        <label className="block text-[11px] font-medium text-gray-500">
+                          Espaçamento entre letras
+                          <input type="range" min={-2} max={24} value={look.tracking} aria-label="Espaçamento entre letras" onPointerDown={pushPast} onChange={(event) => setLook((current) => ({ ...current, tracking: Number(event.target.value) }))} className="mt-1 w-full accent-[#6B33F6]" />
+                        </label>
+                        <label className="block text-[11px] font-medium text-gray-500">
+                          Opacidade
+                          <input type="range" min={15} max={100} value={Math.round(look.opacity * 100)} aria-label="Opacidade" onPointerDown={pushPast} onChange={(event) => setLook((current) => ({ ...current, opacity: Number(event.target.value) / 100 }))} className="mt-1 w-full accent-[#6B33F6]" />
+                        </label>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="relative grid h-7 w-7 shrink-0 place-items-center" onPointerDownCapture={pushPast}>
@@ -1068,11 +1123,7 @@ export const BirthdayTicket: FC = () => {
                           <span className="pointer-events-none h-2.5 w-2.5 rounded-full border border-white" style={{ backgroundColor: look.color }} />
                           <input type="color" value={look.color} aria-label="Cor do texto" onChange={(event) => setLook((current) => ({ ...current, color: event.target.value }))} className="absolute inset-0 cursor-pointer opacity-0" />
                         </span>
-                        {QUICK.map((color) => <Swatch key={color} color={color} pressed={look.color === color} label={`Cor do texto ${color}`} onPick={() => { pushPast(); setLook((current) => ({ ...current, color })); }} />)}
-                        {swatches.map((color) => <Swatch key={`texto-${color}`} color={color} pressed={look.color === color} label={`Usar cor ${color}`} onPick={() => { pushPast(); setLook((current) => ({ ...current, color })); }} onRemove={() => forgetColor(color)} />)}
-                        <button type="button" title="Conta-gotas" aria-label="Conta-gotas do texto" onClick={() => void grabColor((hex) => { pushPast(); setLook((current) => ({ ...current, color: hex })); })} className="grid h-7 w-7 place-items-center rounded-full text-gray-500 hover:bg-[#F4F1FB]">
-                          <Pipette className="h-3.5 w-3.5" strokeWidth={1.5} />
-                        </button>
+                        {TEXT_TONES.map((color) => <Swatch key={color} color={color} pressed={look.color === color} label={`Cor do texto ${color}`} onPick={() => { pushPast(); setLook((current) => ({ ...current, color })); }} />)}
                       </div>
                       <button type="button" disabled={saving || !letter.trim()} onClick={() => void placeLetter()} className="h-11 w-full rounded-2xl bg-[#6B33F6] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
                         {saving ? 'Salvando...' : editingText ? 'Atualizar texto' : 'Colocar no cartão'}
