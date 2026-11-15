@@ -15,8 +15,23 @@ export type BirthdaySticker = {
   authorName: string;
 };
 
+export type BirthdayText = {
+  id: string;
+  personId: string;
+  body: string;
+  x: number;
+  y: number;
+  size: number;
+  font: string;
+  effect: string;
+  color: string;
+  authorId: string;
+  authorName: string;
+};
+
 export type BirthdayCardPayload = {
   stickers: BirthdaySticker[];
+  texts: BirthdayText[];
   color: string;
   viewer: { id: string; unlimited: boolean };
   mine: { id: string; personId: string } | null;
@@ -52,4 +67,16 @@ export function updateBirthdaySticker(id: string, patch: Partial<Pick<BirthdaySt
 
 export function deleteBirthdaySticker(id: string) {
   return request<{ mine: { id: string; personId: string } | null }>(`/api/birthday-card/${id}`, { method: 'DELETE' });
+}
+
+export function placeBirthdayText(draft: { personId: string; body: string; x: number; y: number; size: number; font: string; effect: string; color: string }) {
+  return request<{ text: BirthdayText }>('/api/birthday-card/text', { method: 'POST', body: JSON.stringify(draft) });
+}
+
+export function updateBirthdayText(id: string, patch: Partial<Pick<BirthdayText, 'body' | 'x' | 'y' | 'size' | 'font' | 'effect' | 'color'>>) {
+  return request<{ text: BirthdayText }>(`/api/birthday-card/text/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+}
+
+export function deleteBirthdayText(id: string) {
+  return request<{ ok: boolean }>(`/api/birthday-card/text/${id}`, { method: 'DELETE' });
 }

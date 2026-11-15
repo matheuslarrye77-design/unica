@@ -2,20 +2,24 @@ import { BIRTHDAY_STICKERS, birthdayStickerArt } from '@/data/birthdayStickers';
 import { calendarEvents } from '@/data/mockData';
 import {
   deleteBirthdaySticker,
+  deleteBirthdayText,
   loadBirthdayCard,
   placeBirthdaySticker,
+  placeBirthdayText,
   saveBirthdayColor,
   updateBirthdaySticker,
+  updateBirthdayText,
   type BirthdaySticker,
+  type BirthdayText,
 } from '@/lib/birthdayCard';
 import { celebrationPersonId } from '@/lib/celebrations';
 import { fitPhoto, removePhotoBackground } from '@/lib/cutout';
 import { parseAgendaDate, useAgendaEvents } from '@/lib/events';
 import { useDemoProfile } from '@/lib/session';
-import { saveSticker } from '@/lib/stickers';
+import { listStickers, saveSticker } from '@/lib/stickers';
 import { cn } from '@/lib/utils';
-import { Cake, ChevronLeft, ChevronRight, ImagePlus, Pencil, Plus, Scaling, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type FC, type PointerEvent as ReactPointerEvent } from 'react';
+import { Cake, ChevronLeft, ChevronRight, ImagePlus, Palette, Pencil, Plus, Scaling, Sticker, Trash2, Type } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FC, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -36,6 +40,36 @@ const PAGE = 16;
 const DEFAULT_CARD = '#8c4632';
 type ShelfArt = { id: string; src: string; label: string };
 const PACK: ShelfArt[] = BIRTHDAY_STICKERS.map((item) => ({ id: item.id, src: item.src, label: `Adicionar ${item.id}` }));
+const FONTS = [
+  { id: 'manrope', label: 'Manrope', family: 'Manrope, sans-serif' },
+  { id: 'clash', label: 'Clash', family: '"Clash Display", sans-serif' },
+  { id: 'general', label: 'General Sans', family: '"General Sans", sans-serif' },
+  { id: 'serif', label: 'Serifada', family: 'Georgia, serif' },
+  { id: 'script', label: 'Manuscrita', family: '"Segoe Script", "Brush Script MT", cursive' },
+];
+const EFFECTS = [
+  { id: 'plain', label: 'Lisa' },
+  { id: 'shadow', label: 'Sombra' },
+  { id: 'outline', label: 'Contorno' },
+  { id: 'highlight', label: 'Marca-texto' },
+];
+type Tool = 'color' | 'stickers' | 'text';
+
+function letterStyle(item: { font: string; size: number; color: string; effect: string }): CSSProperties {
+  const family = FONTS.find((font) => font.id === item.font)?.family ?? FONTS[0].family;
+  const style: CSSProperties = { fontFamily: family, fontSize: item.size, color: item.color, fontWeight: 700, lineHeight: 1.15, textAlign: 'center' };
+  if (item.effect === 'shadow') style.textShadow = '0 3px 0 rgba(15,23,42,0.35)';
+  if (item.effect === 'outline') {
+    style.WebkitTextStroke = '1.5px rgba(255,255,255,0.92)';
+    style.paintOrder = 'stroke fill';
+  }
+  if (item.effect === 'highlight') {
+    style.background = 'rgba(255,255,255,0.92)';
+    style.borderRadius = 12;
+    style.padding = '4px 10px';
+  }
+  return style;
+}
 
 function cardHex(value: string | undefined) {
   const color = String(value ?? '').toLowerCase();
@@ -93,6 +127,7 @@ export const BirthdayTicket: FC = () => {
   const saved = useAgendaEvents();
   const [params, setParams] = useSearchParams();
   const [stickers, setStickers] = useState<BirthdaySticker[]>([]);
+  const [texts, setTexts] = useState<BirthdayText[]>([]);
   const [viewerId, setViewerId] = useState('');
   const [unlimited, setUnlimited] = useState(false);
   const [mine, setMine] = useState<{ id: string; personId: string } | null>(null);
@@ -103,11 +138,23 @@ export const BirthdayTicket: FC = () => {
   const [draftWidth, setDraftWidth] = useState(24);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [cardColor, setCardColor] = useState(DEFAULT_CARD);
+  const [library, setLibrary] = useState<ShelfArt[]>([]);
+  const [tool, setTool] = useState<Tool | null>(null);
+  const [pinned, setPinned] = useState(false);
+  const [letter, setLetter] = useState('');
+  const [letterFont, setLetterFont] = useState('clash');
+  const [letterEffect, setLetterEffect] = useState('shadow');
+  const [letterColor, setLetterColor] = useState('#ffffff');
+  const [letterSize, setLetterSize] = useState(32);
+  const [letterPos, setLetterPos] = useState({ x: 50, y: 50 });
+  const [editingText, setEditingText] = useState<string | null>(null);
   const [uploading, setUploading] = useState<'plain' | 'cut' | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [asGuest, setAsGuest] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const cutRef = useRef<HTMLInputElement>(null);
   const stickersRef = useRef(stickers);
   const draftWidthRef = useRef(draftWidth);
   stickersRef.current = stickers;
@@ -130,6 +177,14 @@ export const BirthdayTicket: FC = () => {
     return [...map.values()].sort((a, b) => a.month - b.month || a.day - b.day || a.name.localeCompare(b.name, 'pt-BR'));
   }, [saved]);
 
+  useEffect(() => {
+    let alive = true;
+    void listStickers().then((items) => {
+      if (alive) setLibrary(items.map((item) => ({ id: item.id, src: item.url, label: 'Minha figurinha' })));
+    }).catch(() => { if (alive) setLibrary([]); });
+    return () => { alive = false; };
+  }, [demo]);
+
   const person = people.find((item) => item.id === params.get('pessoa')) ?? null;
   const composing = Boolean(person && viewerId && viewerId !== person.id);
   const canAdd = unlimited || !mine;
@@ -144,10 +199,13 @@ export const BirthdayTicket: FC = () => {
     setDraftMessage('');
     setDraftWidth(24);
     setEditingId(null);
+    setEditingText(null);
+    setLetter('');
     setSavedFlash(false);
     void loadBirthdayCard(person.id).then((payload) => {
       if (!alive) return;
       setStickers(payload.stickers);
+      setTexts(payload.texts ?? []);
       setCardColor(cardHex(payload.color));
       setViewerId(payload.viewer.id);
       setUnlimited(payload.viewer.unlimited);
@@ -171,6 +229,10 @@ export const BirthdayTicket: FC = () => {
   }, [params, people, setParams]);
 
   function chooseArt(id: string) {
+    if (!draftMessage.trim()) {
+      toast.error('Escreva o recado antes de escolher o adesivo.');
+      return;
+    }
     setDraftArt(id);
     setDraftPos(spot(stickersRef.current));
     setEditingId(null);
@@ -189,6 +251,16 @@ export const BirthdayTicket: FC = () => {
     }
   }
 
+  function openPhoto(cut: boolean) {
+    if (!draftMessage.trim()) {
+      toast.error('Escreva o recado antes de escolher o adesivo.');
+      return;
+    }
+    setTool('stickers');
+    setPinned(true);
+    (cut ? cutRef : photoRef).current?.click();
+  }
+
   async function uploadFigurine(file: File | undefined, cut: boolean) {
     if (!file || uploading) return;
     const image = file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name);
@@ -204,6 +276,7 @@ export const BirthdayTicket: FC = () => {
     try {
       const prepared = cut ? await removePhotoBackground(file) : await fitPhoto(file);
       const saved = await saveSticker(prepared);
+      setLibrary((current) => [{ id: saved.id, src: saved.url, label: 'Minha figurinha' }, ...current.filter((item) => item.id !== saved.id)]);
       chooseArt(saved.id);
       toast.success(cut ? 'Figurinha sem fundo pronta. Escreva o recado e finalize.' : 'Figurinha pronta. Escreva o recado e finalize.');
     } catch (error) {
@@ -250,6 +323,107 @@ export const BirthdayTicket: FC = () => {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function placeLetter() {
+    if (!person || saving) return;
+    const body = letter.trim();
+    if (!body) {
+      toast.error('Escreva o texto antes de colocar.');
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editingText) {
+        const result = await updateBirthdayText(editingText, { body, font: letterFont, effect: letterEffect, color: letterColor, size: letterSize });
+        setTexts((current) => current.map((item) => item.id === result.text.id ? result.text : item));
+        toast.success('Texto atualizado.');
+      } else {
+        const result = await placeBirthdayText({ personId: person.id, body, x: letterPos.x, y: letterPos.y, size: letterSize, font: letterFont, effect: letterEffect, color: letterColor });
+        setTexts((current) => [...current, result.text]);
+        toast.success('Texto colocado no cartão.');
+      }
+      setLetter('');
+      setEditingText(null);
+    } catch {
+      toast.error('Não foi possível colocar o texto.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function editLetter(item: BirthdayText) {
+    setEditingText(item.id);
+    setLetter(item.body);
+    setLetterFont(FONTS.some((font) => font.id === item.font) ? item.font : 'clash');
+    setLetterEffect(EFFECTS.some((effect) => effect.id === item.effect) ? item.effect : 'shadow');
+    setLetterColor(cardHex(item.color));
+    setLetterSize(item.size);
+    setTool('text');
+    setPinned(true);
+  }
+
+  async function removeLetter(item: BirthdayText) {
+    if (item.authorId !== viewerId) return;
+    try {
+      await deleteBirthdayText(item.id);
+      setTexts((current) => current.filter((entry) => entry.id !== item.id));
+      if (editingText === item.id) {
+        setEditingText(null);
+        setLetter('');
+      }
+      toast.success('Texto excluído.');
+    } catch {
+      toast.error('Não foi possível excluir o texto.');
+    }
+  }
+
+  function beginLetterDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    const board = boardRef.current?.getBoundingClientRect();
+    if (!board) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const move = (pointer: PointerEvent) => {
+      setLetterPos({
+        x: Math.min(92, Math.max(8, ((pointer.clientX - board.left) / board.width) * 100)),
+        y: Math.min(88, Math.max(12, ((pointer.clientY - board.top) / board.height) * 100)),
+      });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+
+  function beginTextDrag(event: ReactPointerEvent<HTMLDivElement>, item: BirthdayText) {
+    if (!composing || asGuest || item.authorId !== viewerId) return;
+    const board = boardRef.current?.getBoundingClientRect();
+    if (!board) return;
+    event.preventDefault();
+    const origin = { x: item.x, y: item.y };
+    let next = origin;
+    let moved = false;
+    const move = (pointer: PointerEvent) => {
+      if (Math.hypot(pointer.clientX - event.clientX, pointer.clientY - event.clientY) > 4) moved = true;
+      next = {
+        x: Math.min(92, Math.max(8, ((pointer.clientX - board.left) / board.width) * 100)),
+        y: Math.min(88, Math.max(12, ((pointer.clientY - board.top) / board.height) * 100)),
+      };
+      setTexts((current) => current.map((entry) => entry.id === item.id ? { ...entry, ...next } : entry));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      if (!moved) return;
+      void updateBirthdayText(item.id, next).catch(() => {
+        setTexts((current) => current.map((entry) => entry.id === item.id ? { ...entry, ...origin } : entry));
+        toast.error('Não foi possível mover o texto.');
+      });
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
   }
 
   function closeLift() {
@@ -418,6 +592,16 @@ export const BirthdayTicket: FC = () => {
     window.addEventListener('pointerup', up);
   }
 
+  function pinTool(next: Tool) {
+    if (tool === next && pinned) {
+      setPinned(false);
+      setTool(null);
+      return;
+    }
+    setTool(next);
+    setPinned(true);
+  }
+
   const lifted = lift ? stickers.find((item) => item.id === lift.id) : null;
   const liftedArt = lifted ? birthdayStickerArt(lifted.stickerId) : null;
   const reading = !composing || asGuest;
@@ -508,45 +692,128 @@ export const BirthdayTicket: FC = () => {
                 </div>
               );
             })}
+            {texts.map((item) => {
+              const live = editingText === item.id ? { ...item, body: letter.trim() || item.body, font: letterFont, effect: letterEffect, color: letterColor, size: letterSize } : item;
+              const own = item.authorId === viewerId;
+              return (
+                <div key={item.id} className="group absolute z-20 max-w-[70%] cursor-grab" style={{ left: `${item.x}%`, top: `${item.y}%`, transform: 'translate(-50%, -50%)', ...letterStyle(live) }} onPointerDown={(event) => beginTextDrag(event, item)}>
+                  {composing && !asGuest && own ? (
+                    <span className="absolute -top-8 right-0 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100" onPointerDown={(event) => event.stopPropagation()}>
+                      <button type="button" aria-label="Editar texto" onClick={() => editLetter(item)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button>
+                      <button type="button" aria-label="Excluir texto" onClick={() => void removeLetter(item)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-[#9D174D] shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </span>
+                  ) : null}
+                  {live.body}
+                </div>
+              );
+            })}
+            {composing && !asGuest && !editingText && letter.trim() ? (
+              <div className="absolute z-20 max-w-[70%] cursor-grab" style={{ left: `${letterPos.x}%`, top: `${letterPos.y}%`, transform: 'translate(-50%, -50%)', ...letterStyle({ font: letterFont, size: letterSize, color: letterColor, effect: letterEffect }) }} onPointerDown={beginLetterDrag}>
+                {letter}
+              </div>
+            ) : null}
           </div>
           {composing && !asGuest ? (
-            <aside className="w-full shrink-0 rounded-[28px] border border-gray-100 p-4 lg:w-[248px]">
-              <h3 className="mb-3 text-sm font-semibold text-gray-800">Adesivos</h3>
-              <label className="relative mb-3 grid h-11 w-11 cursor-pointer place-items-center rounded-full shadow-[0_8px_24px_rgba(15,23,42,0.06)]" style={{ background: 'conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d55, #ff3b30)' }}>
-                <span className="pointer-events-none h-5 w-5 rounded-full border-2 border-white" style={{ backgroundColor: cardColor }} />
-                <input type="color" value={cardColor} aria-label="Escolher cor do cartão" onInput={(event) => setCardColor(event.currentTarget.value)} onChange={(event) => void paintCard(event.currentTarget.value)} className="absolute inset-0 cursor-pointer opacity-0" />
-              </label>
-              {canAdd ? (
-                <div className="mb-3 flex gap-2">
-                  <label aria-label="Enviar figurinha" className={cn('relative grid h-11 w-11 cursor-pointer place-items-center rounded-full border border-gray-100 bg-white text-blue-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]', uploading && 'pointer-events-none opacity-50')}>
-                    <Plus className="pointer-events-none h-4 w-4" />
-                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={Boolean(uploading)} onChange={(event) => { void uploadFigurine(event.target.files?.[0], false); event.target.value = ''; }} className="absolute inset-0 cursor-pointer opacity-0" />
-                  </label>
-                  <label aria-label="Criar figurinha sem fundo" className={cn('relative grid h-11 w-11 cursor-pointer place-items-center rounded-full border border-gray-200', uploading && 'pointer-events-none opacity-50')} style={{ backgroundImage: 'linear-gradient(45deg,#d1d5db 25%,transparent 25%),linear-gradient(-45deg,#d1d5db 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d1d5db 75%),linear-gradient(-45deg,transparent 75%,#d1d5db 75%)', backgroundSize: '10px 10px', backgroundPosition: '0 0, 0 5px, 5px -5px, -5px 0' }}>
-                    <span className="pointer-events-none grid h-6 w-6 place-items-center rounded-full bg-white text-gray-700 shadow">
-                      <ImagePlus className="h-3.5 w-3.5" />
-                    </span>
-                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={Boolean(uploading)} onChange={(event) => { void uploadFigurine(event.target.files?.[0], true); event.target.value = ''; }} className="absolute inset-0 cursor-pointer opacity-0" />
-                  </label>
-                  {uploading ? <span className="self-center text-xs text-gray-500">{uploading === 'cut' ? 'Tirando o fundo...' : 'Salvando...'}</span> : null}
-                </div>
+            <div className="flex w-full shrink-0 flex-col gap-3 lg:w-auto lg:flex-row lg:items-start" onMouseLeave={() => { if (!pinned) setTool(null); }}>
+              <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={(event) => { void uploadFigurine(event.target.files?.[0], false); event.target.value = ''; }} />
+              <input ref={cutRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={(event) => { void uploadFigurine(event.target.files?.[0], true); event.target.value = ''; }} />
+              <nav aria-label="Ferramentas do cartão" className="flex h-fit flex-row justify-center gap-2 rounded-[28px] bg-[#6B33F6] p-2 text-white shadow-[0_12px_30px_rgba(70,0,243,0.28)] lg:w-[76px] lg:flex-col">
+                {([
+                  ['color', 'Cor do cartão', Palette],
+                  ['stickers', 'Adesivos', Sticker],
+                  ['text', 'Texto', Type],
+                ] as const).map(([id, label, Icon]) => (
+                  <button key={id} type="button" aria-label={label} aria-pressed={tool === id} onMouseEnter={() => setTool(id)} onClick={() => pinTool(id)} className={cn('grid h-11 w-11 place-items-center rounded-2xl', tool === id ? 'bg-white text-[#6B33F6] shadow-sm' : 'text-white hover:bg-white/15')}>
+                    <Icon className="h-[18px] w-[18px]" strokeWidth={1.5} />
+                  </button>
+                ))}
+              </nav>
+              {tool ? (
+                <aside className="max-h-[70vh] w-full overflow-y-auto rounded-[28px] border border-gray-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)] lg:w-[280px]" onMouseDown={() => setPinned(true)}>
+                  {tool === 'color' ? (
+                    <>
+                      <h3 className="mb-3 text-sm font-semibold text-gray-800">Cor do cartão</h3>
+                      <div className="relative grid h-16 w-16 place-items-center rounded-full shadow-[0_8px_24px_rgba(15,23,42,0.06)]" style={{ background: 'conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d55, #ff3b30)' }}>
+                        <span className="pointer-events-none h-7 w-7 rounded-full border-2 border-white" style={{ backgroundColor: cardColor }} />
+                        <input type="color" value={cardColor} aria-label="Escolher cor do cartão" onInput={(event) => setCardColor(event.currentTarget.value)} onChange={(event) => void paintCard(event.currentTarget.value)} className="absolute inset-0 cursor-pointer opacity-0" />
+                      </div>
+                    </>
+                  ) : null}
+                  {tool === 'stickers' ? (
+                    <>
+                      <h3 className="mb-3 text-sm font-semibold text-gray-800">Adesivos</h3>
+                      <label className="mb-3 block">
+                        <span className="mb-2 block text-xs font-medium text-gray-500">Recado</span>
+                        <textarea value={draftMessage} maxLength={240} onChange={(event) => { setDraftMessage(event.target.value); setSavedFlash(false); }} className="min-h-20 w-full rounded-2xl border border-gray-100 bg-white px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Escreva o recado primeiro." />
+                      </label>
+                      {canAdd ? (
+                        <div className="mb-3 flex gap-2">
+                          <button type="button" aria-label="Enviar figurinha" disabled={Boolean(uploading)} onClick={() => openPhoto(false)} className="grid h-11 w-11 place-items-center rounded-full border border-gray-100 bg-white text-blue-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] disabled:opacity-50">
+                            <Plus className="h-4 w-4" />
+                          </button>
+                          <button type="button" aria-label="Criar figurinha sem fundo" disabled={Boolean(uploading)} onClick={() => openPhoto(true)} className="grid h-11 w-11 place-items-center rounded-full border border-gray-200 disabled:opacity-50" style={{ backgroundImage: 'linear-gradient(45deg,#d1d5db 25%,transparent 25%),linear-gradient(-45deg,#d1d5db 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d1d5db 75%),linear-gradient(-45deg,transparent 75%,#d1d5db 75%)', backgroundSize: '10px 10px', backgroundPosition: '0 0, 0 5px, 5px -5px, -5px 0' }}>
+                            <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-gray-700 shadow">
+                              <ImagePlus className="h-3.5 w-3.5" />
+                            </span>
+                          </button>
+                          {uploading ? <span className="self-center text-xs text-gray-500">{uploading === 'cut' ? 'Tirando o fundo...' : 'Salvando...'}</span> : null}
+                        </div>
+                      ) : null}
+                      {canAdd && library.length ? (
+                        <>
+                          <p className="mb-2 text-xs font-medium text-gray-500">Minha galeria</p>
+                          <div className="mb-3 grid grid-cols-4 gap-2">
+                            {library.map((item) => (
+                              <button key={item.id} type="button" aria-label={item.label} aria-pressed={draftArt === item.id} onClick={() => chooseArt(item.id)} className={cn('grid h-16 place-items-center rounded-2xl bg-white p-1.5', draftArt === item.id && 'ring-2 ring-blue-600')}>
+                                <img src={item.src} alt="" className="sticker-cut max-h-full max-w-full object-contain" />
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      ) : null}
+                      {canAdd ? <StickerShelf items={PACK} selected={draftArt} onPick={chooseArt} /> : (
+                        <p className="text-sm text-gray-500">
+                          {minePerson && mine?.personId !== person.id ? `Seu adesivo já está no bilhete de ${minePerson.name.split(' ')[0]}.` : 'Você já colocou o seu adesivo. Passe o mouse nele para editar ou excluir.'}
+                        </p>
+                      )}
+                      {canAdd || editingId ? (
+                        <button type="button" disabled={saving || !draftMessage.trim() || (!editingId && !draftArt)} onClick={() => void finish()} className="mt-3 h-11 w-full rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 disabled:cursor-not-allowed disabled:opacity-45">
+                          {saving ? 'Salvando...' : editingId ? 'Atualizar recado' : 'Finalizar'}
+                        </button>
+                      ) : null}
+                      {savedFlash ? <p className="mt-2 text-center text-xs font-medium text-[#3600C2]">Recado salvo no bilhete.</p> : null}
+                    </>
+                  ) : null}
+                  {tool === 'text' ? (
+                    <>
+                      <h3 className="mb-3 text-sm font-semibold text-gray-800">Texto</h3>
+                      <textarea value={letter} maxLength={80} onChange={(event) => setLetter(event.target.value)} className="min-h-16 w-full rounded-2xl border border-gray-100 px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Um texto solto no cartão." />
+                      <p className="mb-2 mt-3 text-xs font-medium text-gray-500">Fonte</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {FONTS.map((font) => (
+                          <button key={font.id} type="button" aria-pressed={letterFont === font.id} onClick={() => setLetterFont(font.id)} className={cn('h-9 rounded-2xl border px-3 text-xs', letterFont === font.id ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-100 bg-white text-gray-700')} style={{ fontFamily: font.family }}>{font.label}</button>
+                        ))}
+                      </div>
+                      <p className="mb-2 mt-3 text-xs font-medium text-gray-500">Efeito</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {EFFECTS.map((effect) => (
+                          <button key={effect.id} type="button" aria-pressed={letterEffect === effect.id} onClick={() => setLetterEffect(effect.id)} className={cn('h-9 rounded-2xl border px-3 text-xs font-medium', letterEffect === effect.id ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-100 bg-white text-gray-700')}>{effect.label}</button>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex items-center gap-3">
+                        <div className="relative grid h-9 w-9 place-items-center rounded-full border border-gray-100" style={{ backgroundColor: letterColor }}>
+                          <input type="color" value={letterColor} aria-label="Cor do texto" onChange={(event) => setLetterColor(event.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
+                        </div>
+                        <input type="range" min={18} max={64} value={letterSize} aria-label="Tamanho do texto" onChange={(event) => setLetterSize(Number(event.target.value))} className="w-full" />
+                      </div>
+                      <button type="button" disabled={saving || !letter.trim()} onClick={() => void placeLetter()} className="mt-3 h-11 w-full rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 disabled:cursor-not-allowed disabled:opacity-45">
+                        {saving ? 'Salvando...' : editingText ? 'Atualizar texto' : 'Colocar no cartão'}
+                      </button>
+                    </>
+                  ) : null}
+                </aside>
               ) : null}
-              <label className="mb-3 block">
-                <span className="mb-2 block text-xs font-medium text-gray-500">Recado</span>
-                <textarea value={draftMessage} maxLength={240} onChange={(event) => { setDraftMessage(event.target.value); setSavedFlash(false); }} className="min-h-20 w-full rounded-2xl border border-gray-100 bg-white px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Escreva o recado primeiro." />
-              </label>
-              {canAdd ? <StickerShelf items={PACK} selected={draftArt} onPick={chooseArt} /> : (
-                <p className="text-sm text-gray-500">
-                  {minePerson && mine?.personId !== person.id ? `Seu adesivo já está no bilhete de ${minePerson.name.split(' ')[0]}.` : 'Você já colocou o seu adesivo. Passe o mouse nele para editar ou excluir.'}
-                </p>
-              )}
-              {canAdd || editingId ? (
-                <button type="button" disabled={saving || !draftMessage.trim() || (!editingId && !draftArt)} onClick={() => void finish()} className="mt-3 h-11 w-full rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 disabled:cursor-not-allowed disabled:opacity-45">
-                  {saving ? 'Salvando...' : editingId ? 'Atualizar recado' : 'Finalizar'}
-                </button>
-              ) : null}
-              {savedFlash ? <p className="mt-2 text-center text-xs font-medium text-[#3600C2]">Recado salvo no bilhete.</p> : null}
-            </aside>
+            </div>
           ) : null}
         </div>
       ) : null}

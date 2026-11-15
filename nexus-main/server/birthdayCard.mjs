@@ -8,8 +8,11 @@ const PERSON_ID = /^[a-z0-9-]{1,80}$/;
 const DEFAULT_COLOR = '#8c4632';
 const HEX_COLOR = /^#[0-9a-f]{6}$/;
 
+const TEXT_FONTS = new Set(['manrope', 'clash', 'general', 'serif', 'script']);
+const TEXT_EFFECTS = new Set(['plain', 'shadow', 'outline', 'highlight']);
+
 function empty() {
-  return { stickers: [], colors: {} };
+  return { stickers: [], colors: {}, texts: [] };
 }
 
 function read(file) {
@@ -18,6 +21,7 @@ function read(file) {
     return {
       stickers: Array.isArray(parsed.stickers) ? parsed.stickers : [],
       colors: parsed.colors && typeof parsed.colors === 'object' ? parsed.colors : {},
+      texts: Array.isArray(parsed.texts) ? parsed.texts : [],
     };
   } catch {
     return empty();
@@ -75,6 +79,22 @@ function publicSticker(item) {
   };
 }
 
+function publicText(item) {
+  return {
+    id: item.id,
+    personId: item.personId,
+    body: item.body,
+    x: item.x,
+    y: item.y,
+    size: item.size,
+    font: item.font,
+    effect: item.effect,
+    color: item.color,
+    authorId: item.authorId,
+    authorName: item.authorName,
+  };
+}
+
 function mine(store, userId) {
   const sticker = store.stickers.find((item) => item.authorId === userId);
   return sticker ? { id: sticker.id, personId: sticker.personId } : null;
@@ -90,6 +110,7 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
     if (!PERSON_ID.test(personId)) return send(res, 400, { error: 'person' });
     send(res, 200, {
       stickers: store.stickers.filter((item) => item.personId === personId).map(publicSticker),
+      texts: store.texts.filter((item) => item.personId === personId).map(publicText),
       color: HEX_COLOR.test(String(store.colors?.[personId] ?? '')) ? String(store.colors[personId]) : DEFAULT_COLOR,
       viewer: { id: user.id, unlimited },
       mine: mine(store, user.id),
@@ -114,6 +135,8 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
     const stickerId = String(body.stickerId ?? '');
     if (!PERSON_ID.test(personId) || !STICKER_FILE.test(stickerId)) return send(res, 400, { error: 'fields' });
     if (!canPlaceSticker(user.id, store.stickers)) return send(res, 409, { error: 'limit' });
+    const message = cleanMessage(body.message);
+    if (!message) return send(res, 400, { error: 'message' });
     const sticker = {
       id: randomBytes(8).toString('hex'),
       personId,
@@ -122,7 +145,7 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
       y: clamp(body.y, 12, 88, 46),
       width: clamp(body.width, 14, 46, 24),
       rotation: clamp(body.rotation, -180, 180, 0),
-      message: cleanMessage(body.message),
+      message,
       open: false,
       authorId: user.id,
       authorName: user.name,
@@ -131,6 +154,68 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
     store.stickers.push(sticker);
     write(file, store);
     send(res, 201, { sticker: publicSticker(sticker), mine: { id: sticker.id, personId } });
+    return;
+  }
+
+  if (req.method === 'POST' && url === '/api/birthday-card/text') {
+    const body = JSON.parse((await readBody(req)) || '{}');
+    const personId = String(body.personId ?? '');
+    const textBody = cleanMessage(body.body).slice(0, 80);
+    const font = String(body.font ?? '');
+    const effect = String(body.effect ?? '');
+    const color = String(body.color ?? '').toLowerCase();
+    if (!PERSON_ID.test(personId) || !textBody || !TEXT_FONTS.has(font) || !TEXT_EFFECTS.has(effect) || !HEX_COLOR.test(color)) {
+      return send(res, 400, { error: 'fields' });
+    }
+    const text = {
+      id: randomBytes(8).toString('hex'),
+      personId,
+      body: textBody,
+      x: clamp(body.x, 8, 92, 50),
+      y: clamp(body.y, 12, 88, 46),
+      size: clamp(body.size, 18, 64, 32),
+      font,
+      effect,
+      color,
+      authorId: user.id,
+      authorName: user.name,
+      createdAt: new Date().toISOString(),
+    };
+    store.texts.push(text);
+    write(file, store);
+    send(res, 201, { text: publicText(text) });
+    return;
+  }
+
+  const textMatch = /^\/api\/birthday-card\/text\/([^/]+)$/.exec(url);
+  if (textMatch && req.method === 'DELETE') {
+    const index = store.texts.findIndex((item) => item.id === textMatch[1]);
+    if (index < 0) return send(res, 404, { error: 'missing' });
+    if (store.texts[index].authorId !== user.id) return send(res, 403, { error: 'forbidden' });
+    store.texts.splice(index, 1);
+    write(file, store);
+    send(res, 200, { ok: true });
+    return;
+  }
+
+  if (textMatch && req.method === 'PATCH') {
+    const text = store.texts.find((item) => item.id === textMatch[1]);
+    if (!text) return send(res, 404, { error: 'missing' });
+    if (text.authorId !== user.id) return send(res, 403, { error: 'forbidden' });
+    const body = JSON.parse((await readBody(req)) || '{}');
+    if (body.body !== undefined) {
+      const next = cleanMessage(body.body).slice(0, 80);
+      if (!next) return send(res, 400, { error: 'fields' });
+      text.body = next;
+    }
+    if (body.x !== undefined) text.x = clamp(body.x, 8, 92, text.x);
+    if (body.y !== undefined) text.y = clamp(body.y, 12, 88, text.y);
+    if (body.size !== undefined) text.size = clamp(body.size, 18, 64, text.size);
+    if (body.font !== undefined && TEXT_FONTS.has(String(body.font))) text.font = String(body.font);
+    if (body.effect !== undefined && TEXT_EFFECTS.has(String(body.effect))) text.effect = String(body.effect);
+    if (body.color !== undefined && HEX_COLOR.test(String(body.color).toLowerCase())) text.color = String(body.color).toLowerCase();
+    write(file, store);
+    send(res, 200, { text: publicText(text) });
     return;
   }
 
