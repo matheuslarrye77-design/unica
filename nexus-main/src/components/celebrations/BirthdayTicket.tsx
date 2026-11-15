@@ -201,27 +201,26 @@ function letterStyle(item: TextStyle): CSSProperties {
 }
 
 function Doodle({ kind, className }: { kind: BirthdayMark['kind']; className?: string }) {
-  const pen = { fill: 'none', stroke: 'currentColor', strokeWidth: 2.35, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  const box = className ?? 'h-14 w-14';
+  if (kind === 'heart') {
+    return (
+      <svg viewBox="0 0 325 340" className={box} aria-hidden>
+        <path fill="currentColor" d="M277 9L257 8L243 12L226 22L204 45L185 78L175 106L168 141L166 175L145 140L125 115L99 92L74 78L58 74L43 74L32 77L26 80L17 88L12 96L9 105L8 127L11 141L19 160L31 178L55 203L67 213L147 267L160 280L169 292L177 309L180 329L185 332L190 329L191 316L186 297L176 277L156 255L99 213L75 193L58 176L45 159L33 136L29 119L30 102L34 94L40 88L50 84L60 84L74 88L99 103L121 124L134 140L147 160L161 188L170 217L172 219L177 219L180 215L180 169L184 138L197 92L210 64L231 36L240 28L252 21L262 18L270 18L276 20L285 28L291 39L296 60L295 99L286 138L268 187L241 243L217 283L197 312L199 315L203 314L224 291L242 268L273 220L288 192L300 165L313 123L317 94L317 71L312 46L300 24L287 13Z" />
+      </svg>
+    );
+  }
+  if (kind === 'star') {
+    return (
+      <svg viewBox="0 0 630 648" className={box} aria-hidden>
+        <path fill="currentColor" d="M337 8L307 26L283 66L270 82L261 103L248 120L227 162L221 169L214 215L235 213L267 184L312 98L319 94L325 154L329 277L345 279L387 278L412 284L490 293L521 301L524 298L544 308L540 312L521 320L462 339L348 366L373 439L385 487L403 532L409 560L405 560L362 516L264 409L257 412L202 457L154 490L98 521L91 519L102 490L123 453L200 348L200 345L122 275L118 273L119 277L115 276L84 244L45 197L49 194L55 196L67 194L74 198L91 200L101 206L107 204L121 207L127 206L132 207L135 211L171 218L113 182L99 180L92 176L44 163L21 164L12 169L8 176L9 206L18 219L17 226L35 252L43 258L52 272L60 277L91 315L101 313L136 349L138 348L139 341L146 352L139 362L124 374L121 385L113 393L109 393L96 407L87 420L88 422L90 419L90 423L68 457L68 451L61 456L61 460L37 513L33 530L33 551L45 571L60 580L91 580L131 568L136 562L146 559L165 543L191 527L200 516L209 515L217 511L243 488L248 486L255 487L256 481L260 476L265 480L274 496L299 521L307 535L340 565L341 569L346 570L357 587L360 586L375 602L375 609L383 613L387 620L408 633L411 638L420 640L422 633L445 636L455 632L463 621L462 612L466 599L465 594L468 592L463 571L462 552L454 522L455 517L443 484L444 475L426 433L422 419L422 408L428 403L492 382L506 381L528 374L581 352L590 344L605 336L614 327L622 310L622 298L612 278L604 273L599 273L581 263L580 259L550 250L540 251L492 244L448 235L405 233L393 227L383 231L378 229L378 158L370 66L361 33L353 17L347 10Z" />
+      </svg>
+    );
+  }
   return (
-    <svg viewBox="0 0 80 80" className={className ?? 'h-14 w-14'} aria-hidden>
-      {kind === 'heart' ? <path {...pen} d="M43.4 65.6c-1.6-2.4-6.2-6.2-10.4-10-2.8-2.6-6.2-5.8-8.6-8.8-4.2-5.2-8.4-10.6-8.8-16.4-.4-6.2 3.2-11.6 9.2-12.8 3.4-.6 6.6.8 8.8 3.4 1.6 1.8 2.6 4.2 2.8 6.2.4-2.6 2.2-6.4 5.4-9 4.6-3.6 11.2-4.2 15.6-.4 4.6 4 5.8 10.2 3.6 15.6-1.8 4.4-5.4 8.4-8.8 12.2-2.6 2.8-5.4 5.8-6.8 8.4-1 1.8-1.6 4.2-2 5.6" /> : null}
-      {kind === 'star' ? <path {...pen} d="M44.8 12.6c1.2 5.4 3.6 11.2 5.2 15.4 4.8-1.6 11.4-3.4 16.6-.8-4.2 4.8-9.6 9.6-12.8 13.6 2.4 5.2 6.2 11.2 6.4 16.4-6.4-2.6-12.8-7.2-17.2-10.8-5.2 4.6-11.8 9.8-17.6 11.6.6-5.8 3.2-12.4 4.6-17.2-5.2-2.8-11.6-7.4-14.8-12.4 6.2-.6 13.2-.2 18.2 1.4.8-5.8 4.2-12.6 11.6-17.2" /> : null}
-      {kind === 'spark' ? (
-        <g {...pen}>
-          <path d="M39.4 16.8c.4 3.6-.6 6.8.6 10.4" />
-          <path d="M41.2 51.6c.2 3.8-.8 7.2.5 10.6" />
-          <path d="M15.6 37.4c4.2.4 7.6-1.1 11.4.5" />
-          <path d="M52.8 42.6c3.8-.3 7.4 1.1 11.2-.5" />
-          <path d="M20.4 21.6c2.8 2.6 5.6 5.8 7.8 8.6" />
-          <path d="M51.2 51.8c2.8 2.4 5.4 4.8 8.8 6.6" />
-          <path d="M61.4 19.8c-3.2 2.2-5.8 5.2-7.4 8.6" />
-          <path d="M27.6 54.2c-2.6 2.4-4.8 5.2-7.8 6.8" />
-          <path d="M26.2 15.4c1.2 3.2 2 6.2 1.4 9.6" />
-          <path d="M58.6 33.2c3.2-.6 6.2-2 9.4-1" />
-          <path d="M17.4 51.2c3.2-1.4 6.2-2.8 9.4-2.1" />
-          <path d="M48.8 16.2c2 1.2 3.2 3.2 3.8 5.8" />
-        </g>
-      ) : null}
+    <svg viewBox="0 0 799 449" className={box} aria-hidden>
+      <path fill="currentColor" d="M703 127L699 125L690 125L686 127L679 135L475 415L471 422L471 431L476 438L484 441L493 439L789 232L791 227L791 219L789 215Z" />
+      <path fill="currentColor" d="M96 127L10 215L8 227L11 233L304 438L312 441L323 438L328 431L328 422L155 183L113 127L109 125L100 125Z" />
+      <path fill="currentColor" d="M339 8L335 9L328 15L326 26L384 383L388 392L394 396L402 397L411 391L414 384L473 20L471 15L466 10L461 8Z" />
     </svg>
   );
 }
@@ -323,8 +322,8 @@ function ColorGraph({ color, onLive, onCommit }: { color: string; onLive: (hex: 
 
 function Swatch({ color, pressed, label, onPick, onRemove }: { color: string; pressed?: boolean; label: string; onPick: () => void; onRemove?: () => void }) {
   return (
-    <span className="group relative shrink-0">
-      <button type="button" aria-label={label} aria-pressed={pressed} onClick={onPick} className={cn('block h-7 w-7 rounded-full border border-black/10', pressed && 'ring-2 ring-[#6B33F6] ring-offset-2')} style={{ backgroundColor: color }} />
+    <span className="group relative block min-w-0 flex-1">
+      <button type="button" aria-label={label} aria-pressed={pressed} onClick={onPick} className={cn('block aspect-square w-full rounded-full border border-black/10', pressed && 'ring-2 ring-[#6B33F6] ring-offset-1')} style={{ backgroundColor: color }} />
       {onRemove ? <button type="button" aria-label={`Remover cor ${color}`} onClick={onRemove} className="absolute -top-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-white text-[10px] leading-none text-gray-500 shadow">×</button> : null}
     </span>
   );
@@ -334,9 +333,9 @@ function spreadRows(nodes: ReactNode[], columns = COLOR_COLUMNS) {
   const rows: ReactNode[][] = [];
   for (let index = 0; index < nodes.length; index += columns) rows.push(nodes.slice(index, index + columns));
   return (
-    <div className="w-full space-y-2">
+    <div className="w-full space-y-1.5">
       {rows.map((row, index) => (
-        <div key={index} className={cn('flex w-full items-center', row.length > 1 ? 'justify-between' : 'justify-end')}>{row}</div>
+        <div key={index} className="flex w-full items-center gap-1.5">{row}</div>
       ))}
     </div>
   );
@@ -1125,7 +1124,7 @@ export const BirthdayTicket: FC = () => {
                       const overflow = palette.length > room;
                       const shown = colorsOpen || !overflow ? palette : palette.slice(0, room - 1);
                       const nodes = shown.map((color) => <Swatch key={color} color={color} pressed={cardColor === color} label={`Cor ${color}`} onPick={() => void paintCard(color)} onRemove={swatches.includes(color) ? () => forgetColor(color) : undefined} />);
-                      if (overflow) nodes.push(<button key="mais" type="button" aria-label={colorsOpen ? 'Recolher cores' : 'Ver mais cores'} aria-expanded={colorsOpen} onClick={() => setColorsOpen((open) => !open)} className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-gray-200 bg-white text-sm leading-none text-gray-500">…</button>);
+                      if (overflow) nodes.push(<button key="mais" type="button" aria-label={colorsOpen ? 'Recolher cores' : 'Ver mais cores'} aria-expanded={colorsOpen} onClick={() => setColorsOpen((open) => !open)} className="grid aspect-square w-full min-w-0 flex-1 place-items-center rounded-full border border-gray-200 bg-white text-sm leading-none text-gray-500">…</button>);
                       return spreadRows(nodes);
                     })()}
                     <div className="flex items-center gap-2">
@@ -1197,27 +1196,29 @@ export const BirthdayTicket: FC = () => {
                         <button type="button" title="Sombra no texto" aria-label="Sombra no texto" aria-pressed={look.shadow} onClick={() => { pushPast(); setLook((current) => ({ ...current, shadow: !current.shadow, effect: 'plain' })); }} className={cn('grid h-8 w-8 place-items-center rounded-full text-[13px]', look.shadow ? 'bg-[#6B33F6] text-white' : 'text-gray-500 hover:bg-[#F4F1FB]')} style={{ textShadow: '1px 1px 0 currentColor' }}>A</button>
                         <button type="button" title="Contorno do texto" aria-label="Contorno do texto" aria-pressed={look.outline} onClick={() => { pushPast(); setLook((current) => ({ ...current, outline: !current.outline, effect: 'plain' })); }} className={cn('grid h-8 w-8 place-items-center rounded-full text-[13px]', look.outline ? 'bg-[#6B33F6] text-white' : 'text-gray-500 hover:bg-[#F4F1FB]')} style={{ WebkitTextStroke: '1px currentColor', color: 'transparent', WebkitTextFillColor: look.outline ? '#fff' : '#6b7280' }}>A</button>
                       </div>
-                      <div className="flex items-center gap-1">
-                        {([
-                          ['left', 'Alinhamento à esquerda', AlignLeft],
-                          ['center', 'Alinhamento centralizado', AlignCenter],
-                          ['right', 'Alinhamento à direita', AlignRight],
-                        ] as const).map(([id, title, Icon]) => (
-                          <button key={id} type="button" title={title} aria-label={title} aria-pressed={look.align === id} onClick={() => { pushPast(); setLook((current) => ({ ...current, align: id })); }} className={cn('grid h-8 w-8 place-items-center rounded-full', look.align === id ? 'bg-[#6B33F6] text-white' : 'text-gray-500 hover:bg-[#F4F1FB]')}>
-                            <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
-                          </button>
-                        ))}
-                      </div>
                       <div className="flex w-full items-center justify-between">
-                        {([
-                          ['heart', 'Coração'],
-                          ['star', 'Estrela'],
-                          ['spark', 'Raios'],
-                        ] as const).map(([id, title]) => (
-                          <button key={id} type="button" title={title} aria-label={title} aria-pressed={marks.some((item) => item.id === selectedMark && item.kind === id)} disabled={saving} onClick={() => void dropMark(id)} className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-full text-gray-800', marks.some((item) => item.id === selectedMark && item.kind === id) ? 'bg-[#6B33F6] text-white' : 'hover:bg-[#F4F1FB]')}>
-                            <Doodle kind={id} className="h-8 w-8" />
-                          </button>
-                        ))}
+                        <div className="flex items-center gap-1">
+                          {([
+                            ['left', 'Alinhamento à esquerda', AlignLeft],
+                            ['center', 'Alinhamento centralizado', AlignCenter],
+                            ['right', 'Alinhamento à direita', AlignRight],
+                          ] as const).map(([id, title, Icon]) => (
+                            <button key={id} type="button" title={title} aria-label={title} aria-pressed={look.align === id} onClick={() => { pushPast(); setLook((current) => ({ ...current, align: id })); }} className={cn('grid h-8 w-8 place-items-center rounded-full', look.align === id ? 'bg-[#6B33F6] text-white' : 'text-gray-500 hover:bg-[#F4F1FB]')}>
+                              <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {([
+                            ['heart', 'Coração'],
+                            ['star', 'Estrela'],
+                            ['spark', 'Raios'],
+                          ] as const).map(([id, title]) => (
+                            <button key={id} type="button" title={title} aria-label={title} aria-pressed={marks.some((item) => item.id === selectedMark && item.kind === id)} disabled={saving} onClick={() => void dropMark(id)} className={cn('grid h-9 w-9 place-items-center rounded-full text-gray-900', marks.some((item) => item.id === selectedMark && item.kind === id) ? 'bg-[#6B33F6] text-white' : 'hover:bg-[#F4F1FB]')}>
+                              <Doodle kind={id} className="h-7 w-7" />
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <label className="block text-[11px] font-medium text-gray-500">
@@ -1236,10 +1237,10 @@ export const BirthdayTicket: FC = () => {
                       {(() => {
                         const ink = marks.find((item) => item.id === selectedMark)?.color ?? look.color;
                         return (
-                          <div className="flex w-full items-center justify-between">
-                            <span className="relative grid h-7 w-7 shrink-0 place-items-center" onPointerDownCapture={pushPast}>
-                              <span className="pointer-events-none absolute inset-0 rounded-full" style={{ background: 'conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d55, #ff3b30)' }} />
-                              <span className="pointer-events-none h-2.5 w-2.5 rounded-full border border-white" style={{ backgroundColor: ink }} />
+                          <div className="flex w-full items-center gap-1.5">
+                            <span className="relative block min-w-0 flex-1" onPointerDownCapture={pushPast}>
+                              <span className="pointer-events-none block aspect-square w-full rounded-full" style={{ background: 'conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d55, #ff3b30)' }} />
+                              <span className="pointer-events-none absolute top-1/2 left-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white" style={{ backgroundColor: ink }} />
                               <input type="color" value={ink} aria-label={selectedMark ? 'Cor do desenho' : 'Cor do texto'} onChange={(event) => paintInk(event.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
                             </span>
                             {inkTones(cardColor).map((color) => <Swatch key={color} color={color} pressed={ink === color} label={selectedMark ? `Cor do desenho ${color}` : `Cor do texto ${color}`} onPick={() => { pushPast(); paintInk(color); }} />)}
