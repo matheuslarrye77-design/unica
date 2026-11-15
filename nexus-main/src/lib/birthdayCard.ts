@@ -30,6 +30,7 @@ export type TextStyle = {
   shadow: boolean;
   outline: boolean;
   opacity: number;
+  glyph: 'none' | 'heart' | 'star' | 'spark';
 };
 
 export type BirthdayText = {

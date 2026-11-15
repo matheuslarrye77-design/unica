@@ -11,6 +11,7 @@ const HEX_COLOR = /^#[0-9a-f]{6}$/;
 const TEXT_FONTS = new Set(['arial', 'general', 'clash', 'dm', 'poppins', 'montserrat', 'playfair', 'cormorant', 'lora', 'baskerville', 'sora', 'manrope', 'outfit', 'grotesk', 'vibes', 'pacifico', 'lobster', 'caveat', 'sacramento', 'abril', 'bebas', 'cinzel', 'bungee', 'unbounded', 'fredoka', 'yeseva', 'comfortaa']);
 const TEXT_EFFECTS = new Set(['plain', 'shadow', 'outline', 'highlight']);
 const TEXT_ALIGNS = new Set(['left', 'center', 'right']);
+const TEXT_GLYPHS = new Set(['none', 'heart', 'star', 'spark']);
 
 function empty() {
   return { stickers: [], colors: {}, texts: [] };
@@ -100,6 +101,7 @@ function readStyle(body, previous = {}) {
     underline: flag('underline'),
     strike: flag('strike'),
     align,
+    glyph: TEXT_GLYPHS.has(body.glyph) ? body.glyph : (TEXT_GLYPHS.has(previous.glyph) ? previous.glyph : 'none'),
     upper: flag('upper'),
     tracking: clamp(body.tracking ?? previous.tracking, -2, 24, 0),
     shadow: flag('shadow') || effect === 'shadow',
