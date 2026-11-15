@@ -194,7 +194,7 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
       stickerId,
       x: clamp(body.x, 8, 92, 50),
       y: clamp(body.y, 12, 88, 46),
-      width: clamp(body.width, 14, 46, 24),
+      width: clamp(body.width, 6, 46, 24),
       rotation: clamp(body.rotation, -180, 180, 0),
       flip: Boolean(body.flip),
       message,
@@ -340,7 +340,7 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
     const body = JSON.parse((await readBody(req)) || '{}');
     if (body.x !== undefined) sticker.x = clamp(body.x, 8, 92, sticker.x);
     if (body.y !== undefined) sticker.y = clamp(body.y, 12, 88, sticker.y);
-    if (body.width !== undefined) sticker.width = clamp(body.width, 14, 46, sticker.width);
+    if (body.width !== undefined) sticker.width = clamp(body.width, 6, 46, sticker.width);
     if (body.rotation !== undefined) sticker.rotation = clamp(body.rotation, -180, 180, sticker.rotation);
     if (body.flip !== undefined) sticker.flip = Boolean(body.flip);
     if (body.message !== undefined) sticker.message = cleanMessage(body.message);

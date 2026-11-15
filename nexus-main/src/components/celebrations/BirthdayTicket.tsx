@@ -428,9 +428,10 @@ function StickerFaces({ src, message, author, avatar, turned }: { src: string; m
         <img src={src} alt="" draggable={false} className="sticker-cut max-h-full max-w-full object-contain" />
       </span>
       <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl border border-white/80 bg-[#FFF8F2] px-6 py-5 text-center shadow-[0_8px_24px_rgba(15,23,42,0.06)]" style={{ transform: 'rotateY(180deg)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}>
-        <span className="flex items-center justify-center gap-2">
-          {avatar ? <img src={avatar} alt="" className="h-9 w-9 rounded-full object-cover" /> : null}
+        <span className="grid w-full grid-cols-[1fr_auto_1fr] items-center">
+          <span className="flex justify-end pr-2">{avatar ? <img src={avatar} alt="" className="h-9 w-9 rounded-full object-cover" /> : null}</span>
           <span className="text-sm font-semibold text-gray-800">{author}</span>
+          <span />
         </span>
         <span className="whitespace-pre-wrap text-[clamp(16px,4.2cqw,22px)] font-medium leading-snug text-gray-800">{message || 'Este adesivo ainda não tem recado.'}</span>
       </span>
@@ -779,7 +780,6 @@ export const BirthdayTicket: FC = () => {
         const placed = result.sticker;
         setStickers((current) => [...current, placed]);
         setMine(result.mine);
-        keep = placed.id;
         const box = { id: placed.id };
         pushCommand({
           undo: async () => {
@@ -801,7 +801,11 @@ export const BirthdayTicket: FC = () => {
       setDraftRotation(0);
       setDraftFlip(false);
       setDraftLive(false);
-      setEditingId(keep);
+      if (editingId) setEditingId(keep);
+      else {
+        setDraftMessage('');
+        setEditingId(null);
+      }
       setSavedFlash(true);
     } catch (error) {
       toast.error(error instanceof Error && error.message === 'limit' ? 'Você já usou o seu adesivo.' : 'Não foi possível salvar o recado.');
@@ -1244,7 +1248,7 @@ export const BirthdayTicket: FC = () => {
 
   function beginDraftResize(event: ReactPointerEvent<HTMLButtonElement>) {
     const origin = draftWidthRef.current;
-    stretch(event, origin, 14, 46, setDraftWidth, (width) => {
+    stretch(event, origin, 6, 46, setDraftWidth, (width) => {
       pushCommand({ undo: () => setDraftWidth(origin), redo: () => setDraftWidth(width) });
     });
   }
@@ -1364,7 +1368,7 @@ export const BirthdayTicket: FC = () => {
 
   function beginResize(event: ReactPointerEvent<HTMLButtonElement>, sticker: BirthdaySticker) {
     const origin = sticker.width;
-    stretch(event, origin, 14, 46, (width) => {
+    stretch(event, origin, 6, 46, (width) => {
       setStickers((current) => current.map((item) => item.id === sticker.id ? { ...item, width } : item));
     }, (width) => {
       void updateBirthdaySticker(sticker.id, { width }).then(() => {
