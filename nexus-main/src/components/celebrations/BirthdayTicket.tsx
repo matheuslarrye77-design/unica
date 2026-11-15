@@ -256,28 +256,24 @@ function turn(value: number) {
   return Math.round(((value + 180) % 360 + 360) % 360 - 180);
 }
 
-const FRAME_EDGES = [
+const FRAME_CORNERS = [
   ['left-0 top-0', 'nwse-resize', 'pelo canto superior esquerdo'],
-  ['left-1/2 top-0', 'ns-resize', 'pela borda de cima'],
-  ['left-full top-0', 'nesw-resize', 'pelo canto superior direito'],
-  ['left-full top-1/2', 'ew-resize', 'pela borda direita'],
-  ['left-full top-full', 'nwse-resize', 'pelo canto inferior direito'],
-  ['left-1/2 top-full', 'ns-resize', 'pela borda de baixo'],
-  ['left-0 top-full', 'nesw-resize', 'pelo canto inferior esquerdo'],
-  ['left-0 top-1/2', 'ew-resize', 'pela borda esquerda'],
+  ['right-0 top-0', 'nesw-resize', 'pelo canto superior direito'],
+  ['left-0 bottom-0', 'nesw-resize', 'pelo canto inferior esquerdo'],
+  ['right-0 bottom-0', 'nwse-resize', 'pelo canto inferior direito'],
 ] as const;
 
 function SelectionBox({ label, onMove, onResize, onRotate, onDelete }: { label: string; onMove: (event: ReactPointerEvent<HTMLButtonElement>) => void; onResize: (event: ReactPointerEvent<HTMLButtonElement>) => void; onRotate?: (event: ReactPointerEvent<HTMLButtonElement>) => void; onDelete?: () => void }) {
   const knob = 'pointer-events-auto absolute z-20 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]';
   return (
-    <span className="pointer-events-none absolute -inset-1.5 z-10">
-      <span className="absolute inset-0 rounded-md border border-white shadow-[0_0_0_1px_#6B33F6]" />
-      {FRAME_EDGES.map(([place, cursor, edge]) => (
-        <button key={edge} type="button" title="Ampliar" aria-label={`Ampliar ${label} ${edge}`} onPointerDown={onResize} className={cn('pointer-events-auto absolute z-20 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-[3px] border border-[#6B33F6] bg-white', place)} style={{ cursor }} />
+    <span className="pointer-events-none absolute inset-0 z-10">
+      <span className="absolute inset-0 rounded-sm border border-white shadow-[0_0_0_1px_#6B33F6]" />
+      {FRAME_CORNERS.map(([place, cursor, edge]) => (
+        <button key={edge} type="button" title="Ampliar" aria-label={`Ampliar ${label} ${edge}`} onPointerDown={onResize} className={cn('pointer-events-auto absolute z-20 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-[3px] border border-[#6B33F6] bg-white', place)} style={{ cursor }} />
       ))}
-      <button type="button" title="Mover" aria-label={`Mover ${label}`} onPointerDown={onMove} className={cn(knob, 'left-0 top-0 -translate-x-[140%] -translate-y-[140%]')}><Move className="h-3.5 w-3.5" /></button>
-      {onRotate ? <button type="button" title="Girar" aria-label={`Girar ${label}`} onPointerDown={onRotate} className={cn(knob, 'left-1/2 top-0 -translate-x-1/2 -translate-y-[160%]')}><RotateCw className="h-3.5 w-3.5" /></button> : null}
-      {onDelete ? <button type="button" title="Excluir" aria-label={`Excluir ${label}`} onPointerDown={(event) => event.stopPropagation()} onClick={onDelete} className={cn(knob, 'left-1/2 top-[calc(100%+12px)] -translate-x-1/2 text-[#9D174D]')}><Trash2 className="h-3.5 w-3.5" /></button> : null}
+      <button type="button" title="Mover" aria-label={`Mover ${label}`} onPointerDown={onMove} className={cn(knob, '-left-9 -top-9')}><Move className="h-3.5 w-3.5" /></button>
+      {onRotate ? <button type="button" title="Girar" aria-label={`Girar ${label}`} onPointerDown={onRotate} className={cn(knob, 'left-1/2 -top-9 -translate-x-1/2')}><RotateCw className="h-3.5 w-3.5" /></button> : null}
+      {onDelete ? <button type="button" title="Excluir" aria-label={`Excluir ${label}`} onPointerDown={(event) => event.stopPropagation()} onClick={onDelete} className={cn(knob, '-right-9 -top-9 text-[#9D174D]')}><Trash2 className="h-3.5 w-3.5" /></button> : null}
     </span>
   );
 }
@@ -699,7 +695,6 @@ export const BirthdayTicket: FC = () => {
       toast.error('Não foi possível abrir a escolha de imagem.');
       return;
     }
-    input.value = '';
     (cut ? cutRef : photoRef).current?.click();
   }
 
@@ -1500,9 +1495,11 @@ export const BirthdayTicket: FC = () => {
             })}
           </div>
           {composing && !asGuest ? (
-            <div className="relative w-full shrink-0 lg:w-[340px]">
-              <input ref={photoRef} type="file" accept={IMAGE_ACCEPT} tabIndex={-1} className="absolute left-0 top-0 z-0 h-8 w-8 opacity-[0.02]" onChange={(event) => { void uploadFigurine(event.target.files?.[0], false); event.target.value = ''; }} />
-              <input ref={cutRef} type="file" accept={IMAGE_ACCEPT} tabIndex={-1} className="absolute left-8 top-0 z-0 h-8 w-8 opacity-[0.02]" onChange={(event) => { void uploadFigurine(event.target.files?.[0], true); event.target.value = ''; }} />
+            <div className="w-full shrink-0 lg:w-[340px]">
+              <div className="fixed h-0 w-0 overflow-hidden" style={{ left: '-100vw', top: 0 }} aria-hidden="true">
+                <input ref={photoRef} type="file" accept={IMAGE_ACCEPT} tabIndex={-1} className="h-8 w-8" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; void uploadFigurine(file, false); }} />
+                <input ref={cutRef} type="file" accept={IMAGE_ACCEPT} tabIndex={-1} className="h-8 w-8" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; void uploadFigurine(file, true); }} />
+              </div>
               <aside className="max-h-[70vh] w-full overflow-y-auto rounded-[28px] border border-gray-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
                 <div className="mb-4 grid grid-cols-3 rounded-2xl bg-[#F4F1FB] p-1" role="tablist" aria-label="Ferramentas do cartão">
                   {([
