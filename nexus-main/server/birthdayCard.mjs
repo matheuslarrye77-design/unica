@@ -8,7 +8,7 @@ const PERSON_ID = /^[a-z0-9-]{1,80}$/;
 const DEFAULT_COLOR = '#8c4632';
 const HEX_COLOR = /^#[0-9a-f]{6}$/;
 
-const TEXT_FONTS = new Set(['arial', 'general', 'clash', 'dm', 'poppins', 'montserrat', 'playfair', 'cormorant', 'lora', 'baskerville', 'sora', 'manrope', 'outfit', 'grotesk']);
+const TEXT_FONTS = new Set(['arial', 'general', 'clash', 'dm', 'poppins', 'montserrat', 'playfair', 'cormorant', 'lora', 'baskerville', 'sora', 'manrope', 'outfit', 'grotesk', 'vibes', 'pacifico', 'lobster', 'caveat', 'sacramento', 'abril', 'bebas', 'cinzel', 'bungee', 'unbounded', 'fredoka', 'yeseva', 'comfortaa']);
 const TEXT_EFFECTS = new Set(['plain', 'shadow', 'outline', 'highlight']);
 const TEXT_ALIGNS = new Set(['left', 'center', 'right']);
 
@@ -62,6 +62,10 @@ function clamp(value, min, max, fallback) {
 
 function cleanMessage(value) {
   return String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, 240);
+}
+
+function cleanLetter(value) {
+  return String(value ?? '').replace(/\r\n/g, '\n').replace(/[^\S\n]+/g, ' ').trim().slice(0, 80);
 }
 
 function publicSticker(item) {
@@ -182,7 +186,7 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
   if (req.method === 'POST' && url === '/api/birthday-card/text') {
     const body = JSON.parse((await readBody(req)) || '{}');
     const personId = String(body.personId ?? '');
-    const textBody = cleanMessage(body.body).slice(0, 80);
+    const textBody = cleanLetter(body.body);
     if (!PERSON_ID.test(personId) || !textBody || (body.font !== undefined && !TEXT_FONTS.has(String(body.font)))) return send(res, 400, { error: 'fields' });
     const text = {
       id: randomBytes(8).toString('hex'),
@@ -218,7 +222,7 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
     if (text.authorId !== user.id) return send(res, 403, { error: 'forbidden' });
     const body = JSON.parse((await readBody(req)) || '{}');
     if (body.body !== undefined) {
-      const next = cleanMessage(body.body).slice(0, 80);
+      const next = cleanLetter(body.body);
       if (!next) return send(res, 400, { error: 'fields' });
       text.body = next;
     }

@@ -19,7 +19,7 @@ import { parseAgendaDate, useAgendaEvents } from '@/lib/events';
 import { useDemoProfile } from '@/lib/session';
 import { listStickers, saveSticker } from '@/lib/stickers';
 import { cn } from '@/lib/utils';
-import { AlignCenter, AlignLeft, AlignRight, Cake, ChevronDown, Eraser, ImagePlus, Paintbrush, Pencil, Pipette, Scaling, Sticker, Trash2, Type } from 'lucide-react';
+import { AlignCenter, AlignLeft, AlignRight, Cake, ChevronDown, Eraser, Heart, ImagePlus, Paintbrush, Pencil, Pipette, Scaling, Sparkles, Star, Sticker, Trash2, Type, Undo2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FC, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
@@ -42,24 +42,54 @@ const DEFAULT_CARD = '#8c4632';
 const SWATCH_KEY = 'unica-card-colors';
 type ShelfArt = { id: string; src: string; label: string };
 const PACK: ShelfArt[] = BIRTHDAY_STICKERS.map((item) => ({ id: item.id, src: item.src, label: `Adicionar ${item.id}` }));
+const FAMILIES: Record<string, string> = {
+  arial: 'Arial, Helvetica, sans-serif',
+  general: '"General Sans", sans-serif',
+  clash: '"Clash Display", sans-serif',
+  dm: '"DM Sans", sans-serif',
+  poppins: 'Poppins, sans-serif',
+  montserrat: 'Montserrat, sans-serif',
+  playfair: '"Playfair Display", serif',
+  cormorant: '"Cormorant Garamond", serif',
+  lora: 'Lora, serif',
+  baskerville: '"Libre Baskerville", serif',
+  sora: 'Sora, sans-serif',
+  manrope: 'Manrope, sans-serif',
+  outfit: 'Outfit, sans-serif',
+  grotesk: '"Space Grotesk", sans-serif',
+  vibes: '"Great Vibes", cursive',
+  pacifico: 'Pacifico, cursive',
+  lobster: 'Lobster, cursive',
+  caveat: 'Caveat, cursive',
+  sacramento: 'Sacramento, cursive',
+  abril: '"Abril Fatface", serif',
+  bebas: '"Bebas Neue", sans-serif',
+  cinzel: 'Cinzel, serif',
+  bungee: 'Bungee, sans-serif',
+  unbounded: 'Unbounded, sans-serif',
+  fredoka: 'Fredoka, sans-serif',
+  yeseva: '"Yeseva One", serif',
+  comfortaa: 'Comfortaa, sans-serif',
+};
 const FONTS = [
-  { id: 'arial', label: 'Arial', family: 'Arial, Helvetica, sans-serif' },
-  { id: 'general', label: 'General Sans', family: '"General Sans", sans-serif' },
-  { id: 'clash', label: 'Clash Display', family: '"Clash Display", sans-serif' },
-  { id: 'dm', label: 'DM Sans', family: '"DM Sans", sans-serif' },
-  { id: 'poppins', label: 'Poppins', family: 'Poppins, sans-serif' },
-  { id: 'montserrat', label: 'Montserrat', family: 'Montserrat, sans-serif' },
-  { id: 'playfair', label: 'Playfair Display', family: '"Playfair Display", serif' },
-  { id: 'cormorant', label: 'Cormorant Garamond', family: '"Cormorant Garamond", serif' },
-  { id: 'lora', label: 'Lora', family: 'Lora, serif' },
-  { id: 'baskerville', label: 'Libre Baskerville', family: '"Libre Baskerville", serif' },
-  { id: 'sora', label: 'Sora', family: 'Sora, sans-serif' },
-  { id: 'manrope', label: 'Manrope', family: 'Manrope, sans-serif' },
-  { id: 'outfit', label: 'Outfit', family: 'Outfit, sans-serif' },
-  { id: 'grotesk', label: 'Space Grotesk', family: '"Space Grotesk", sans-serif' },
+  { id: 'vibes', label: 'Great Vibes' },
+  { id: 'pacifico', label: 'Pacifico' },
+  { id: 'lobster', label: 'Lobster' },
+  { id: 'caveat', label: 'Caveat' },
+  { id: 'sacramento', label: 'Sacramento' },
+  { id: 'abril', label: 'Abril Fatface' },
+  { id: 'bebas', label: 'Bebas Neue' },
+  { id: 'cinzel', label: 'Cinzel' },
+  { id: 'bungee', label: 'Bungee' },
+  { id: 'unbounded', label: 'Unbounded' },
+  { id: 'fredoka', label: 'Fredoka' },
+  { id: 'yeseva', label: 'Yeseva One' },
+  { id: 'comfortaa', label: 'Comfortaa' },
+  { id: 'playfair', label: 'Playfair Display' },
 ];
-const PRESETS = ['#f6f1ea', '#f3d6e4', '#e4d7f5', '#d7e6f8', '#d7efe4', '#f8e3c4', '#ffffff', '#e7e2da', '#b7aea4', '#5c564f', '#6b33f6', '#4600f3', '#db2777', '#e11d48', '#f59e0b', '#0f766e', '#8c4632', '#1f2937'];
-const EMPTY_LOOK: TextStyle = { font: 'arial', effect: 'plain', color: '#ffffff', size: 36, bold: false, italic: false, underline: false, strike: false, align: 'center', upper: false, tracking: 0, shadow: false, outline: false, opacity: 1 };
+const PRESETS = ['#f6f1ea', '#f3d6e4', '#e4d7f5', '#d7e6f8', '#d7efe4', '#f8e3c4', '#ffffff', '#5c564f', '#6b33f6', '#4600f3', '#db2777', '#e11d48', '#f59e0b', '#0f766e', '#8c4632', '#1f2937'];
+const QUICK = ['#ffffff', '#f6f1ea', '#6b33f6', '#db2777', '#f59e0b', '#1f2937'];
+const EMPTY_LOOK: TextStyle = { font: 'vibes', effect: 'plain', color: '#ffffff', size: 36, bold: false, italic: false, underline: false, strike: false, align: 'center', upper: false, tracking: 0, shadow: false, outline: false, opacity: 1 };
 type Tool = 'color' | 'stickers' | 'text';
 type EyeDropperCtor = new () => { open: () => Promise<{ sRGBHex: string }> };
 
@@ -72,8 +102,45 @@ function readSwatches() {
   }
 }
 
+function hexToHsv(hex: string) {
+  const value = /^#[0-9a-f]{6}$/i.test(hex) ? hex : DEFAULT_CARD;
+  const bits = Number.parseInt(value.slice(1), 16);
+  const r = ((bits >> 16) & 255) / 255;
+  const g = ((bits >> 8) & 255) / 255;
+  const b = (bits & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  let hue = 0;
+  if (delta !== 0) {
+    if (max === r) hue = ((g - b) / delta) % 6;
+    else if (max === g) hue = (b - r) / delta + 2;
+    else hue = (r - g) / delta + 4;
+    hue *= 60;
+    if (hue < 0) hue += 360;
+  }
+  return { h: hue, s: max === 0 ? 0 : delta / max, v: max };
+}
+
+function hsvToHex(hue: number, saturation: number, value: number) {
+  const chroma = value * saturation;
+  const x = chroma * (1 - Math.abs(((hue / 60) % 2) - 1));
+  const m = value - chroma;
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  if (hue < 60) [r, g, b] = [chroma, x, 0];
+  else if (hue < 120) [r, g, b] = [x, chroma, 0];
+  else if (hue < 180) [r, g, b] = [0, chroma, x];
+  else if (hue < 240) [r, g, b] = [0, x, chroma];
+  else if (hue < 300) [r, g, b] = [x, 0, chroma];
+  else [r, g, b] = [chroma, 0, x];
+  const byte = (channel: number) => Math.round((channel + m) * 255).toString(16).padStart(2, '0');
+  return `#${byte(r)}${byte(g)}${byte(b)}`;
+}
+
 function letterStyle(item: TextStyle): CSSProperties {
-  const family = FONTS.find((font) => font.id === item.font)?.family ?? 'Arial, sans-serif';
+  const family = FAMILIES[item.font] ?? FAMILIES.vibes;
   const decoration = [item.underline ? 'underline' : '', item.strike ? 'line-through' : ''].filter(Boolean).join(' ');
   const style: CSSProperties = {
     fontFamily: family,
@@ -87,6 +154,7 @@ function letterStyle(item: TextStyle): CSSProperties {
     letterSpacing: `${item.tracking || 0}px`,
     opacity: item.opacity ?? 1,
     lineHeight: 1.15,
+    whiteSpace: 'pre-wrap',
   };
   if (item.shadow || item.effect === 'shadow') style.textShadow = '0 2px 0 rgba(15,23,42,0.28)';
   if (item.outline || item.effect === 'outline') {
@@ -102,7 +170,7 @@ function letterStyle(item: TextStyle): CSSProperties {
 }
 
 function lookFrom(item: BirthdayText): TextStyle {
-  const font = FONTS.some((entry) => entry.id === item.font) ? item.font : 'arial';
+  const font = FONTS.some((entry) => entry.id === item.font) ? item.font : 'vibes';
   return {
     ...EMPTY_LOOK,
     font,
@@ -153,6 +221,48 @@ function StickerShelf({ items, selected, onPick }: { items: ShelfArt[]; selected
   );
 }
 
+function ColorGraph({ color, onLive, onCommit }: { color: string; onLive: (hex: string) => void; onCommit: (hex: string) => void }) {
+  const hsv = hexToHsv(color);
+  const field = useRef<HTMLDivElement>(null);
+  function paint(event: ReactPointerEvent<HTMLDivElement>, commit: boolean) {
+    const rect = field.current?.getBoundingClientRect();
+    if (!rect) return;
+    const saturation = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    const value = 1 - Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+    const hex = hsvToHex(hsv.h, saturation, value);
+    onLive(hex);
+    if (commit) onCommit(hex);
+  }
+  return (
+    <div className="min-w-0 flex-1 space-y-2">
+      <div
+        ref={field}
+        role="slider"
+        aria-label="Gráfico de cor"
+        aria-valuetext={color}
+        className="relative h-36 w-full cursor-crosshair rounded-2xl"
+        style={{ backgroundColor: `hsl(${hsv.h} 100% 50%)`, backgroundImage: 'linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent)' }}
+        onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); paint(event, false); }}
+        onPointerMove={(event) => { if (event.currentTarget.hasPointerCapture(event.pointerId)) paint(event, false); }}
+        onPointerUp={(event) => paint(event, true)}
+      >
+        <span className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow" style={{ left: `${hsv.s * 100}%`, top: `${(1 - hsv.v) * 100}%` }} />
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={360}
+        value={Math.round(hsv.h)}
+        aria-label="Matiz"
+        onChange={(event) => onLive(hsvToHex(Number(event.target.value), hsv.s, hsv.v))}
+        onPointerUp={(event) => onCommit(hsvToHex(Number(event.currentTarget.value), hsv.s, hsv.v))}
+        className="h-3 w-full cursor-pointer appearance-none rounded-full [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow"
+        style={{ background: 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' }}
+      />
+    </div>
+  );
+}
+
 function Swatch({ color, pressed, label, onPick, onRemove }: { color: string; pressed?: boolean; label: string; onPick: () => void; onRemove?: () => void }) {
   return (
     <span className="group relative">
@@ -198,6 +308,7 @@ export const BirthdayTicket: FC = () => {
   const [look, setLook] = useState<TextStyle>(EMPTY_LOOK);
   const [fontOpen, setFontOpen] = useState(false);
   const [swatches, setSwatches] = useState<string[]>(readSwatches);
+  const [canUndo, setCanUndo] = useState(false);
   const [letterPos, setLetterPos] = useState({ x: 50, y: 50 });
   const [editingText, setEditingText] = useState<string | null>(null);
   const [uploading, setUploading] = useState<'plain' | 'cut' | null>(null);
@@ -205,6 +316,8 @@ export const BirthdayTicket: FC = () => {
   const [savedFlash, setSavedFlash] = useState(false);
   const [asGuest, setAsGuest] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
+  const past = useRef<{ cardColor: string; letter: string; look: TextStyle }[]>([]);
+  const applying = useRef(false);
   const photoRef = useRef<HTMLInputElement>(null);
   const cutRef = useRef<HTMLInputElement>(null);
   const stickersRef = useRef(stickers);
@@ -238,6 +351,11 @@ export const BirthdayTicket: FC = () => {
   }, [demo]);
 
   const person = people.find((item) => item.id === params.get('pessoa')) ?? null;
+
+  useEffect(() => {
+    past.current = [];
+    setCanUndo(false);
+  }, [person?.id]);
   const composing = Boolean(person && viewerId && viewerId !== person.id);
   const canAdd = unlimited || !mine;
   const minePerson = people.find((item) => item.id === mine?.personId);
@@ -291,8 +409,33 @@ export const BirthdayTicket: FC = () => {
     setSavedFlash(false);
   }
 
-  async function paintCard(color: string) {
+  function pushPast() {
+    if (applying.current) return;
+    past.current = [...past.current.slice(-29), { cardColor, letter, look: { ...look } }];
+    setCanUndo(true);
+  }
+
+  async function undo() {
+    const previous = past.current.pop();
+    setCanUndo(past.current.length > 0);
+    if (!previous || !person) return;
+    applying.current = true;
+    const colorChanged = previous.cardColor !== cardColor;
+    setCardColor(previous.cardColor);
+    setLetter(previous.letter);
+    setLook(previous.look);
+    applying.current = false;
+    if (!colorChanged) return;
+    try {
+      await saveBirthdayColor(person.id, previous.cardColor);
+    } catch {
+      toast.error('Não foi possível voltar a cor.');
+    }
+  }
+
+  async function paintCard(color: string, record = true) {
     if (!person) return;
+    if (record) pushPast();
     const previous = cardColor;
     setCardColor(color);
     try {
@@ -789,6 +932,11 @@ export const BirthdayTicket: FC = () => {
               <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={(event) => { void uploadFigurine(event.target.files?.[0], false); event.target.value = ''; }} />
               <input ref={cutRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={(event) => { void uploadFigurine(event.target.files?.[0], true); event.target.value = ''; }} />
               <aside className="max-h-[70vh] w-full overflow-y-auto rounded-[28px] border border-gray-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+                <div className="mb-3 flex justify-end">
+                  <button type="button" title="Voltar" aria-label="Voltar" disabled={!canUndo} onClick={() => void undo()} className="grid h-8 w-8 place-items-center rounded-full bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8] disabled:opacity-30">
+                    <Undo2 className="h-4 w-4" />
+                  </button>
+                </div>
                 <div className="mb-4 grid grid-cols-3 rounded-2xl bg-[#F4F1FB] p-1" role="tablist" aria-label="Ferramentas do cartão">
                   {([
                     ['color', 'Fundo', Paintbrush],
@@ -803,26 +951,25 @@ export const BirthdayTicket: FC = () => {
                 </div>
                 {tool === 'color' ? (
                   <div className="space-y-4">
-                    <div className="flex flex-wrap gap-2">
-                      {PRESETS.map((color) => <Swatch key={color} color={color} pressed={cardColor === color} label={`Cor ${color}`} onPick={() => void paintCard(color)} />)}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="relative grid h-14 w-14 shrink-0 place-items-center">
-                        <span className="pointer-events-none absolute inset-0 rounded-full" style={{ background: 'conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d55, #ff3b30)' }} />
-                        <span className="pointer-events-none h-5 w-5 rounded-full border-2 border-white" style={{ backgroundColor: cardColor }} />
-                        <input type="color" value={cardColor} aria-label="Escolher cor do cartão" onInput={(event) => setCardColor(event.currentTarget.value)} onChange={(event) => void paintCard(event.currentTarget.value)} className="absolute inset-0 cursor-pointer opacity-0" />
+                    <div className="flex items-start gap-3">
+                      <div className="min-w-0 flex-1" onPointerDownCapture={pushPast}>
+                        <ColorGraph color={cardColor} onLive={setCardColor} onCommit={(hex) => void paintCard(hex, false)} />
                       </div>
+                      <div className="grid grid-cols-1 gap-1.5">
+                        {QUICK.map((color) => <Swatch key={color} color={color} pressed={cardColor === color} label={`Cor rápida ${color}`} onPick={() => void paintCard(color)} />)}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {PRESETS.map((color) => <Swatch key={color} color={color} pressed={cardColor === color} label={`Cor ${color}`} onPick={() => void paintCard(color)} />)}
+                      {swatches.map((color) => <Swatch key={`salva-${color}`} color={color} pressed={cardColor === color} label={`Cor salva ${color}`} onPick={() => void paintCard(color)} onRemove={() => forgetColor(color)} />)}
+                    </div>
+                    <div className="flex items-center gap-2">
                       <button type="button" title="Conta-gotas" aria-label="Conta-gotas" onClick={() => void grabColor((hex) => void paintCard(hex))} className="grid h-9 w-9 place-items-center rounded-full bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]">
                         <Pipette className="h-4 w-4" />
                       </button>
                       <button type="button" onClick={() => rememberColor(cardColor)} className="h-9 rounded-full bg-[#F4F1FB] px-3 text-xs font-medium text-gray-700 hover:bg-[#E7E0F8]">Salvar cor</button>
                       <span className="text-[11px] text-gray-400">{cardColor}</span>
                     </div>
-                    {swatches.length ? (
-                      <div className="flex flex-wrap gap-2">
-                        {swatches.map((color) => <Swatch key={color} color={color} pressed={cardColor === color} label={`Cor salva ${color}`} onPick={() => void paintCard(color)} onRemove={() => forgetColor(color)} />)}
-                      </div>
-                    ) : null}
                   </div>
                 ) : null}
                   {tool === 'stickers' ? (
@@ -859,16 +1006,16 @@ export const BirthdayTicket: FC = () => {
                   ) : null}
                   {tool === 'text' ? (
                     <div className="space-y-3">
-                      <textarea value={letter} maxLength={80} onChange={(event) => setLetter(event.target.value)} className="min-h-16 w-full rounded-2xl border border-gray-100 bg-[#F6F4FB] px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Um texto solto no cartão." />
+                      <textarea value={letter} maxLength={80} onChange={(event) => { pushPast(); setLetter(event.target.value); }} className="min-h-16 w-full rounded-2xl border border-gray-100 bg-[#F6F4FB] px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Um texto solto no cartão." />
                       <div className="relative">
                         <button type="button" aria-label="Fonte" aria-expanded={fontOpen} onClick={() => setFontOpen((open) => !open)} className="flex h-10 w-full items-center justify-between rounded-xl bg-[#F4F1FB] px-3 text-sm text-gray-800">
-                          <span style={{ fontFamily: (FONTS.find((font) => font.id === look.font) ?? FONTS[0]).family }}>{(FONTS.find((font) => font.id === look.font) ?? FONTS[0]).label}</span>
+                          <span style={{ fontFamily: FAMILIES[(FONTS.find((font) => font.id === look.font) ?? FONTS[0]).id] }}>{(FONTS.find((font) => font.id === look.font) ?? FONTS[0]).label}</span>
                           <ChevronDown className="h-4 w-4 text-gray-400" />
                         </button>
                         {fontOpen ? (
                           <div className="mt-1 max-h-52 overflow-y-auto rounded-xl bg-[#F6F4FB] p-1">
                             {FONTS.map((font) => (
-                              <button key={font.id} type="button" onClick={() => { setLook((current) => ({ ...current, font: font.id })); setFontOpen(false); }} className={cn('flex h-9 w-full items-center rounded-lg px-3 text-left text-sm', look.font === font.id ? 'bg-white text-[#6B33F6]' : 'text-gray-700 hover:bg-white')} style={{ fontFamily: font.family }}>{font.label}</button>
+                              <button key={font.id} type="button" onClick={() => { pushPast(); setLook((current) => ({ ...current, font: font.id })); setFontOpen(false); }} className={cn('flex h-10 w-full items-center rounded-lg px-3 text-left text-lg', look.font === font.id ? 'bg-white text-[#6B33F6]' : 'text-gray-700 hover:bg-white')} style={{ fontFamily: FAMILIES[font.id] }}>{font.label}</button>
                             ))}
                           </div>
                         ) : null}
@@ -880,40 +1027,55 @@ export const BirthdayTicket: FC = () => {
                           ['underline', 'Sublinhado', <span key="u" className="underline">A</span>],
                           ['strike', 'Tachado', <span key="s" className="line-through">A</span>],
                         ] as const).map(([key, title, mark]) => (
-                          <button key={key} type="button" title={title} aria-label={title} aria-pressed={look[key]} onClick={() => setLook((current) => ({ ...current, [key]: !current[key], effect: 'plain' }))} className={cn('grid h-8 w-8 place-items-center rounded-full text-[13px]', look[key] ? 'bg-[#6B33F6] text-white' : 'bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]')}>{mark}</button>
+                          <button key={key} type="button" title={title} aria-label={title} aria-pressed={look[key]} onClick={() => { pushPast(); setLook((current) => ({ ...current, [key]: !current[key], effect: 'plain' })); }} className={cn('grid h-8 w-8 place-items-center rounded-full text-[13px]', look[key] ? 'bg-[#6B33F6] text-white' : 'bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]')}>{mark}</button>
                         ))}
+                        <button type="button" title="Maiúsculas" aria-label="Maiúsculas" aria-pressed={look.upper} onClick={() => { pushPast(); setLook((current) => ({ ...current, upper: !current.upper })); }} className={cn('grid h-8 w-8 place-items-center rounded-full text-[11px] font-semibold', look.upper ? 'bg-[#6B33F6] text-white' : 'bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]')}>AA</button>
+                        <button type="button" title="Sombra no texto" aria-label="Sombra no texto" aria-pressed={look.shadow} onClick={() => { pushPast(); setLook((current) => ({ ...current, shadow: !current.shadow, effect: 'plain' })); }} className={cn('grid h-8 w-8 place-items-center rounded-full text-[13px]', look.shadow ? 'bg-[#6B33F6] text-white' : 'bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]')} style={{ textShadow: '1px 1px 0 currentColor' }}>A</button>
+                        <button type="button" title="Contorno do texto" aria-label="Contorno do texto" aria-pressed={look.outline} onClick={() => { pushPast(); setLook((current) => ({ ...current, outline: !current.outline, effect: 'plain' })); }} className={cn('grid h-8 w-8 place-items-center rounded-full text-[13px]', look.outline ? 'bg-[#6B33F6] text-white' : 'bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]')} style={{ WebkitTextStroke: '1px currentColor', color: 'transparent', WebkitTextFillColor: look.outline ? '#fff' : '#374151' }}>A</button>
+                      </div>
+                      <div className="flex items-center gap-1.5">
                         {([
                           ['left', 'Alinhamento à esquerda', AlignLeft],
                           ['center', 'Alinhamento centralizado', AlignCenter],
                           ['right', 'Alinhamento à direita', AlignRight],
                         ] as const).map(([id, title, Icon]) => (
-                          <button key={id} type="button" title={title} aria-label={title} aria-pressed={look.align === id} onClick={() => setLook((current) => ({ ...current, align: id }))} className={cn('grid h-8 w-8 place-items-center rounded-full', look.align === id ? 'bg-[#6B33F6] text-white' : 'bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]')}>
+                          <button key={id} type="button" title={title} aria-label={title} aria-pressed={look.align === id} onClick={() => { pushPast(); setLook((current) => ({ ...current, align: id })); }} className={cn('grid h-8 w-8 place-items-center rounded-full', look.align === id ? 'bg-[#6B33F6] text-white' : 'bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]')}>
                             <Icon className="h-3.5 w-3.5" />
                           </button>
                         ))}
-                        <button type="button" title="Maiúsculas" aria-label="Maiúsculas" aria-pressed={look.upper} onClick={() => setLook((current) => ({ ...current, upper: !current.upper }))} className={cn('grid h-8 w-8 place-items-center rounded-full text-[11px] font-semibold', look.upper ? 'bg-[#6B33F6] text-white' : 'bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]')}>AA</button>
-                        <button type="button" title="Sombra no texto" aria-label="Sombra no texto" aria-pressed={look.shadow} onClick={() => setLook((current) => ({ ...current, shadow: !current.shadow, effect: 'plain' }))} className={cn('grid h-8 w-8 place-items-center rounded-full text-[13px]', look.shadow ? 'bg-[#6B33F6] text-white' : 'bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]')} style={{ textShadow: '1px 1px 0 currentColor' }}>A</button>
-                        <button type="button" title="Contorno do texto" aria-label="Contorno do texto" aria-pressed={look.outline} onClick={() => setLook((current) => ({ ...current, outline: !current.outline, effect: 'plain' }))} className={cn('grid h-8 w-8 place-items-center rounded-full text-[13px]', look.outline ? 'bg-[#6B33F6] text-white' : 'bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]')} style={{ WebkitTextStroke: '1px currentColor', color: look.outline ? 'transparent' : 'transparent', WebkitTextFillColor: look.outline ? '#fff' : '#374151' }}>A</button>
+                        <span className="mx-1 h-5 w-px bg-gray-200" aria-hidden />
+                        {([
+                          ['Coração', ' ♥ ', Heart],
+                          ['Estrela', ' ★ ', Star],
+                          ['Brilho', ' ✨ ', Sparkles],
+                        ] as const).map(([title, mark, Icon]) => (
+                          <button key={title} type="button" title={title} aria-label={title} onClick={() => { pushPast(); setLetter((current) => (current + mark).slice(0, 80)); }} className="grid h-8 w-8 place-items-center rounded-full bg-[#F4F1FB] text-[#6B33F6] hover:bg-[#E7E0F8]">
+                            <Icon className="h-3.5 w-3.5" />
+                          </button>
+                        ))}
                       </div>
                       <label className="block text-[11px] text-gray-500">Tamanho
-                        <input type="range" min={18} max={72} value={look.size} aria-label="Tamanho do texto" onChange={(event) => setLook((current) => ({ ...current, size: Number(event.target.value) }))} className="mt-1 w-full accent-[#6B33F6]" />
+                        <input type="range" min={18} max={72} value={look.size} aria-label="Tamanho do texto" onPointerDown={pushPast} onChange={(event) => setLook((current) => ({ ...current, size: Number(event.target.value) }))} className="mt-1 w-full accent-[#6B33F6]" />
                       </label>
                       <label className="block text-[11px] text-gray-500">Espaçamento entre letras
-                        <input type="range" min={-2} max={24} value={look.tracking} aria-label="Espaçamento entre letras" onChange={(event) => setLook((current) => ({ ...current, tracking: Number(event.target.value) }))} className="mt-1 w-full accent-[#6B33F6]" />
+                        <input type="range" min={-2} max={24} value={look.tracking} aria-label="Espaçamento entre letras" onPointerDown={pushPast} onChange={(event) => setLook((current) => ({ ...current, tracking: Number(event.target.value) }))} className="mt-1 w-full accent-[#6B33F6]" />
                       </label>
                       <label className="block text-[11px] text-gray-500">Opacidade
-                        <input type="range" min={15} max={100} value={Math.round(look.opacity * 100)} aria-label="Opacidade" onChange={(event) => setLook((current) => ({ ...current, opacity: Number(event.target.value) / 100 }))} className="mt-1 w-full accent-[#6B33F6]" />
+                        <input type="range" min={15} max={100} value={Math.round(look.opacity * 100)} aria-label="Opacidade" onPointerDown={pushPast} onChange={(event) => setLook((current) => ({ ...current, opacity: Number(event.target.value) / 100 }))} className="mt-1 w-full accent-[#6B33F6]" />
                       </label>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="relative grid h-8 w-8 place-items-center">
+                        <span className="relative grid h-8 w-8 shrink-0 place-items-center" onPointerDownCapture={pushPast}>
                           <span className="pointer-events-none absolute inset-0 rounded-full" style={{ background: 'conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d55, #ff3b30)' }} />
                           <span className="pointer-events-none h-3 w-3 rounded-full border border-white" style={{ backgroundColor: look.color }} />
                           <input type="color" value={look.color} aria-label="Cor do texto" onChange={(event) => setLook((current) => ({ ...current, color: event.target.value }))} className="absolute inset-0 cursor-pointer opacity-0" />
                         </span>
-                        <button type="button" title="Conta-gotas" aria-label="Conta-gotas do texto" onClick={() => void grabColor((hex) => setLook((current) => ({ ...current, color: hex })))} className="grid h-8 w-8 place-items-center rounded-full bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]">
+                        <div className="flex flex-wrap gap-1.5">
+                          {QUICK.map((color) => <Swatch key={color} color={color} pressed={look.color === color} label={`Cor do texto ${color}`} onPick={() => { pushPast(); setLook((current) => ({ ...current, color })); }} />)}
+                          {swatches.map((color) => <Swatch key={`texto-${color}`} color={color} pressed={look.color === color} label={`Usar cor ${color}`} onPick={() => { pushPast(); setLook((current) => ({ ...current, color })); }} onRemove={() => forgetColor(color)} />)}
+                        </div>
+                        <button type="button" title="Conta-gotas" aria-label="Conta-gotas do texto" onClick={() => void grabColor((hex) => { pushPast(); setLook((current) => ({ ...current, color: hex })); })} className="grid h-8 w-8 place-items-center rounded-full bg-[#F4F1FB] text-gray-700 hover:bg-[#E7E0F8]">
                           <Pipette className="h-3.5 w-3.5" />
                         </button>
-                        {swatches.map((color) => <Swatch key={color} color={color} pressed={look.color === color} label={`Usar cor ${color}`} onPick={() => setLook((current) => ({ ...current, color }))} />)}
                         <span className="text-[11px] text-gray-400">{look.color}</span>
                       </div>
                       <button type="button" disabled={saving || !letter.trim()} onClick={() => void placeLetter()} className="h-11 w-full rounded-2xl bg-[#6B33F6] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
