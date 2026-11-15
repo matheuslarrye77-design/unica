@@ -23,7 +23,7 @@ import { parseAgendaDate, useAgendaEvents } from '@/lib/events';
 import { useDemoProfile } from '@/lib/session';
 import { listStickers, saveSticker } from '@/lib/stickers';
 import { cn } from '@/lib/utils';
-import { AlignCenter, AlignLeft, AlignRight, Cake, ChevronDown, Eraser, ImagePlus, Info, Move, Paintbrush, Pencil, Pipette, Redo2, RotateCw, Scaling, Sticker, Trash2, Type, Undo2 } from 'lucide-react';
+import { AlignCenter, AlignLeft, AlignRight, Cake, ChevronDown, Eraser, ImagePlus, Info, Move, Paintbrush, Pencil, Pipette, Redo2, RotateCw, Sticker, Trash2, Type, Undo2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FC, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
@@ -256,15 +256,52 @@ function turn(value: number) {
   return Math.round(((value + 180) % 360 + 360) % 360 - 180);
 }
 
-function FigureHandles({ label, onMove, onResize, onRotate }: { label: string; onMove: (event: ReactPointerEvent<HTMLButtonElement>) => void; onResize: (event: ReactPointerEvent<HTMLButtonElement>) => void; onRotate: (event: ReactPointerEvent<HTMLButtonElement>) => void }) {
-  const button = 'grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]';
+const FRAME_EDGES = [
+  ['left-0 top-0', 'nwse-resize', 'pelo canto superior esquerdo'],
+  ['left-1/2 top-0', 'ns-resize', 'pela borda de cima'],
+  ['left-full top-0', 'nesw-resize', 'pelo canto superior direito'],
+  ['left-full top-1/2', 'ew-resize', 'pela borda direita'],
+  ['left-full top-full', 'nwse-resize', 'pelo canto inferior direito'],
+  ['left-1/2 top-full', 'ns-resize', 'pela borda de baixo'],
+  ['left-0 top-full', 'nesw-resize', 'pelo canto inferior esquerdo'],
+  ['left-0 top-1/2', 'ew-resize', 'pela borda esquerda'],
+] as const;
+
+function SelectionBox({ label, onMove, onResize, onRotate, onDelete }: { label: string; onMove: (event: ReactPointerEvent<HTMLButtonElement>) => void; onResize: (event: ReactPointerEvent<HTMLButtonElement>) => void; onRotate?: (event: ReactPointerEvent<HTMLButtonElement>) => void; onDelete?: () => void }) {
+  const knob = 'pointer-events-auto absolute z-20 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]';
   return (
-    <span className="absolute -top-9 left-1/2 z-10 flex -translate-x-1/2 gap-1" onPointerDown={(event) => event.stopPropagation()}>
-      <button type="button" title="Mover" aria-label={`Mover ${label}`} onPointerDown={onMove} className={button}><Move className="h-3.5 w-3.5" /></button>
-      <button type="button" title="Espalhar" aria-label={`Espalhar ${label}`} onPointerDown={onResize} className={button}><Scaling className="h-3.5 w-3.5" /></button>
-      <button type="button" title="Girar" aria-label={`Girar ${label}`} onPointerDown={onRotate} className={button}><RotateCw className="h-3.5 w-3.5" /></button>
+    <span className="pointer-events-none absolute -inset-1.5 z-10">
+      <span className="absolute inset-0 rounded-md border border-white shadow-[0_0_0_1px_#6B33F6]" />
+      {FRAME_EDGES.map(([place, cursor, edge]) => (
+        <button key={edge} type="button" title="Ampliar" aria-label={`Ampliar ${label} ${edge}`} onPointerDown={onResize} className={cn('pointer-events-auto absolute z-20 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-[3px] border border-[#6B33F6] bg-white', place)} style={{ cursor }} />
+      ))}
+      <button type="button" title="Mover" aria-label={`Mover ${label}`} onPointerDown={onMove} className={cn(knob, 'left-0 top-0 -translate-x-[140%] -translate-y-[140%]')}><Move className="h-3.5 w-3.5" /></button>
+      {onRotate ? <button type="button" title="Girar" aria-label={`Girar ${label}`} onPointerDown={onRotate} className={cn(knob, 'left-1/2 top-0 -translate-x-1/2 -translate-y-[160%]')}><RotateCw className="h-3.5 w-3.5" /></button> : null}
+      {onDelete ? <button type="button" title="Excluir" aria-label={`Excluir ${label}`} onPointerDown={(event) => event.stopPropagation()} onClick={onDelete} className={cn(knob, 'left-1/2 top-[calc(100%+12px)] -translate-x-1/2 text-[#9D174D]')}><Trash2 className="h-3.5 w-3.5" /></button> : null}
     </span>
   );
+}
+
+function stretch(event: ReactPointerEvent<HTMLButtonElement>, origin: number, min: number, max: number, apply: (value: number) => void, done: (value: number) => void) {
+  event.stopPropagation();
+  event.preventDefault();
+  const frame = event.currentTarget.parentElement?.getBoundingClientRect();
+  if (!frame) return;
+  const cx = frame.left + frame.width / 2;
+  const cy = frame.top + frame.height / 2;
+  const start = Math.max(16, Math.hypot(event.clientX - cx, event.clientY - cy));
+  let value = origin;
+  const move = (pointer: PointerEvent) => {
+    value = Math.min(max, Math.max(min, Math.round(origin * (Math.hypot(pointer.clientX - cx, pointer.clientY - cy) / start))));
+    apply(value);
+  };
+  const up = () => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    if (value !== origin) done(value);
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
 }
 
 function ActionBar({ canUndo, canRedo, onUndo, onRedo, children }: { canUndo: boolean; canRedo: boolean; onUndo: () => void; onRedo: () => void; children: ReactNode }) {
@@ -954,111 +991,34 @@ export const BirthdayTicket: FC = () => {
   }
 
   function beginLetterResize(event: ReactPointerEvent<HTMLButtonElement>) {
-    event.stopPropagation();
-    event.preventDefault();
-    const board = boardRef.current?.getBoundingClientRect();
-    if (!board) return;
-    const start = event.clientX;
     const origin = look.size;
-    let size = origin;
-    const move = (pointer: PointerEvent) => {
-      size = Math.min(120, Math.max(18, Math.round(origin + ((pointer.clientX - start) / board.width) * 90)));
-      setLook((current) => ({ ...current, size }));
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-  }
-
-  function beginLetterRotate(event: ReactPointerEvent<HTMLButtonElement>) {
-    event.stopPropagation();
-    event.preventDefault();
-    const move = (pointer: PointerEvent) => {
-      const rotation = spin(pointer, letterPos.x, letterPos.y);
-      setLook((current) => ({ ...current, rotation }));
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
+    stretch(event, origin, 18, 120, (size) => setLook((current) => ({ ...current, size })), () => undefined);
   }
 
   function beginTextResize(event: ReactPointerEvent<HTMLButtonElement>, item: BirthdayText) {
-    event.stopPropagation();
-    event.preventDefault();
-    const board = boardRef.current?.getBoundingClientRect();
-    if (!board) return;
-    const start = event.clientX;
     const origin = item.size;
-    let size = origin;
-    const move = (pointer: PointerEvent) => {
-      size = Math.min(120, Math.max(18, Math.round(origin + ((pointer.clientX - start) / board.width) * 90)));
+    stretch(event, origin, 18, 120, (size) => {
       setLook((current) => ({ ...current, size }));
       setTexts((current) => current.map((entry) => entry.id === item.id ? { ...entry, size } : entry));
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
+    }, (size) => {
       void updateBirthdayText(item.id, { size }).catch(() => {
         setTexts((current) => current.map((entry) => entry.id === item.id ? { ...entry, size: origin } : entry));
         setLook((current) => ({ ...current, size: origin }));
         toast.error('Não foi possível redimensionar o texto.');
       });
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-  }
-
-  function beginTextRotate(event: ReactPointerEvent<HTMLButtonElement>, item: BirthdayText) {
-    event.stopPropagation();
-    event.preventDefault();
-    const origin = item.rotation || 0;
-    let rotation = origin;
-    const move = (pointer: PointerEvent) => {
-      rotation = spin(pointer, item.x, item.y);
-      setLook((current) => ({ ...current, rotation }));
-      setTexts((current) => current.map((entry) => entry.id === item.id ? { ...entry, rotation } : entry));
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      void updateBirthdayText(item.id, { rotation }).catch(() => {
-        setTexts((current) => current.map((entry) => entry.id === item.id ? { ...entry, rotation: origin } : entry));
-        setLook((current) => ({ ...current, rotation: origin }));
-        toast.error('Não foi possível girar o texto.');
-      });
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
+    });
   }
 
   function beginMarkResize(event: ReactPointerEvent<HTMLButtonElement>, item: BirthdayMark) {
-    event.stopPropagation();
-    event.preventDefault();
-    const board = boardRef.current?.getBoundingClientRect();
-    if (!board) return;
-    const start = event.clientX;
     const origin = item.size;
-    let size = origin;
-    const move = (pointer: PointerEvent) => {
-      size = Math.min(240, Math.max(28, Math.round(origin + ((pointer.clientX - start) / board.width) * 160)));
+    stretch(event, origin, 28, 240, (size) => {
       setMarks((current) => current.map((entry) => entry.id === item.id ? { ...entry, size } : entry));
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
+    }, (size) => {
       void updateBirthdayMark(item.id, { size }).catch(() => {
         setMarks((current) => current.map((entry) => entry.id === item.id ? { ...entry, size: origin } : entry));
         toast.error('Não foi possível redimensionar o desenho.');
       });
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
+    });
   }
 
   function beginMarkRotate(event: ReactPointerEvent<HTMLButtonElement>, item: BirthdayMark) {
@@ -1133,26 +1093,10 @@ export const BirthdayTicket: FC = () => {
   }
 
   function beginDraftResize(event: ReactPointerEvent<HTMLButtonElement>) {
-    event.stopPropagation();
-    event.preventDefault();
-    const board = boardRef.current?.getBoundingClientRect();
-    if (!board) return;
-    const start = event.clientX;
     const origin = draftWidthRef.current;
-    let width = origin;
-    const move = (pointer: PointerEvent) => {
-      width = Math.min(46, Math.max(14, origin + ((pointer.clientX - start) / board.width) * 100));
-      setDraftWidth(width);
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      if (width === origin) return;
-      const after = width;
-      pushCommand({ undo: () => setDraftWidth(origin), redo: () => setDraftWidth(after) });
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
+    stretch(event, origin, 14, 46, setDraftWidth, (width) => {
+      pushCommand({ undo: () => setDraftWidth(origin), redo: () => setDraftWidth(width) });
+    });
   }
 
   function beginDraftRotate(event: ReactPointerEvent<HTMLButtonElement>) {
@@ -1269,38 +1213,25 @@ export const BirthdayTicket: FC = () => {
   }
 
   function beginResize(event: ReactPointerEvent<HTMLButtonElement>, sticker: BirthdaySticker) {
-    event.stopPropagation();
-    event.preventDefault();
-    const board = boardRef.current?.getBoundingClientRect();
-    if (!board) return;
-    const start = event.clientX;
     const origin = sticker.width;
-    let width = origin;
-    const move = (pointer: PointerEvent) => {
-      width = Math.min(46, Math.max(14, origin + ((pointer.clientX - start) / board.width) * 100));
+    stretch(event, origin, 14, 46, (width) => {
       setStickers((current) => current.map((item) => item.id === sticker.id ? { ...item, width } : item));
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      const after = width;
-      void updateBirthdaySticker(sticker.id, { width: after }).then(() => {
+    }, (width) => {
+      void updateBirthdaySticker(sticker.id, { width }).then(() => {
         pushCommand({
           undo: async () => {
             setStickers((items) => items.map((item) => item.id === sticker.id ? { ...item, width: origin } : item));
             await updateBirthdaySticker(sticker.id, { width: origin });
           },
           redo: async () => {
-            setStickers((items) => items.map((item) => item.id === sticker.id ? { ...item, width: after } : item));
-            await updateBirthdaySticker(sticker.id, { width: after });
+            setStickers((items) => items.map((item) => item.id === sticker.id ? { ...item, width } : item));
+            await updateBirthdaySticker(sticker.id, { width });
           },
         });
       }).catch(() => {
         setStickers((items) => items.map((item) => item.id === sticker.id ? { ...item, width: origin } : item));
       });
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
+    });
   }
 
   function beginRotate(event: ReactPointerEvent<HTMLButtonElement>, sticker: BirthdaySticker) {
@@ -1483,7 +1414,7 @@ export const BirthdayTicket: FC = () => {
             {reading ? <p className="pointer-events-none absolute bottom-4 left-4 text-sm font-medium text-white/90">Toque em um adesivo para ler o recado.</p> : null}
             {composing && !asGuest && draftPreview ? (
               <div className={cn('absolute z-10', draftLive && 'cursor-grab touch-none')} style={{ left: `${draftPos.x}%`, top: `${draftPos.y}%`, width: `${draftWidth}%`, transform: `translate(-50%, -50%) rotate(${draftRotation}deg)` }} onPointerDown={(event) => { if (draftLive) beginDraftDrag(event); }}>
-                {draftLive ? <FigureHandles label="adesivo" onMove={beginDraftDrag} onResize={beginDraftResize} onRotate={beginDraftRotate} /> : (
+                {draftLive ? <SelectionBox label="adesivo" onMove={beginDraftDrag} onResize={beginDraftResize} onRotate={beginDraftRotate} /> : (
                   <button type="button" aria-label="Editar adesivo" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setDraftLive(true); setEditingId(null); setEditingText(null); setSelectedMark(null); setTextLive(false); }} className="absolute -right-1 -top-1 z-20 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button>
                 )}
                 <img src={draftPreview.src} alt="" draggable={false} className="sticker-cut aspect-square w-full object-contain" />
@@ -1495,14 +1426,12 @@ export const BirthdayTicket: FC = () => {
               return (
                 <div key={sticker.id} className="group absolute" style={{ left: `${sticker.x}%`, top: `${sticker.y}%`, width: `${sticker.width}%`, transform: `translate(-50%, -50%) rotate(${sticker.rotation}deg)`, zIndex: editingId === sticker.id ? 2 : 1, visibility: lift?.id === sticker.id ? 'hidden' : 'visible' }}>
                   <div className="relative aspect-square" style={{ containerType: 'inline-size', perspective: '900px' }}>
-                    {editingId === sticker.id ? <FigureHandles label="adesivo" onMove={(event) => beginDrag(event, sticker)} onResize={(event) => beginResize(event, sticker)} onRotate={(event) => beginRotate(event, sticker)} /> : null}
-                    {composing && !asGuest && own ? (
-                      <span className={cn('absolute -right-1 -top-1 z-20 flex gap-1 transition-opacity', editingId === sticker.id ? 'opacity-100' : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100')}>
-                        {!draftArt && editingId !== sticker.id ? (
-                          <button type="button" aria-label="Editar adesivo" onClick={() => unlock(sticker)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                        ) : null}
+                    {editingId === sticker.id ? <SelectionBox label="adesivo" onMove={(event) => beginDrag(event, sticker)} onResize={(event) => beginResize(event, sticker)} onRotate={(event) => beginRotate(event, sticker)} onDelete={() => void removeSticker(sticker)} /> : null}
+                    {composing && !asGuest && own && editingId !== sticker.id && !draftArt ? (
+                      <span className="pointer-events-none absolute -right-1 -top-1 z-20 flex gap-1 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100">
+                        <button type="button" aria-label="Editar adesivo" onClick={() => unlock(sticker)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
                         <button type="button" aria-label="Excluir adesivo" onClick={() => void removeSticker(sticker)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-[#9D174D] shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -1529,10 +1458,10 @@ export const BirthdayTicket: FC = () => {
               return (
                 <div key={item.id} ref={open ? textScaleRef : undefined} className={cn('group absolute z-20 w-max max-w-[92%]', open ? 'cursor-grab touch-none' : (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${item.x}%`, top: `${item.y}%`, transform: `translate(-50%, -50%) rotate(${live.rotation || 0}deg)` }} onPointerDown={(event) => { if (open) beginTextDrag(event, item); else { event.stopPropagation(); setEditingId(null); setSelectedMark(null); setTextLive(false); setDraftLive(false); if (editingText && editingText !== item.id) { setEditingText(null); setLetter(''); setLook(EMPTY_LOOK); } } }}>
                   <div className="relative">
-                    {open ? <FigureHandles label="texto" onMove={(event) => beginTextDrag(event, item)} onResize={(event) => beginTextResize(event, item)} onRotate={(event) => beginTextRotate(event, item)} /> : null}
-                    {composing && !asGuest && own ? (
-                      <span className="pointer-events-auto absolute -top-8 right-0 z-20 flex gap-1 opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-100" onPointerDown={(event) => event.stopPropagation()}>
-                        {!open ? <button type="button" aria-label="Editar texto" onClick={() => editLetter(item)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button> : null}
+                    {open ? <SelectionBox label="texto" onMove={(event) => beginTextDrag(event, item)} onResize={(event) => beginTextResize(event, item)} onDelete={() => void removeLetter(item)} /> : null}
+                    {composing && !asGuest && own && !open ? (
+                      <span className="pointer-events-none absolute -right-1 -top-1 z-20 flex gap-1 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100" onPointerDown={(event) => event.stopPropagation()}>
+                        <button type="button" aria-label="Editar texto" onClick={() => editLetter(item)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button>
                         <button type="button" aria-label="Excluir texto" onClick={() => void removeLetter(item)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-[#9D174D] shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Trash2 className="h-3.5 w-3.5" /></button>
                       </span>
                     ) : null}
@@ -1541,10 +1470,12 @@ export const BirthdayTicket: FC = () => {
                 </div>
               );
             })}
-            {composing && !asGuest && textLive && !editingText && letter.trim() ? (
-              <div ref={textScaleRef} className={cn('absolute z-20 w-max max-w-[92%] cursor-grab touch-none', (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${letterPos.x}%`, top: `${letterPos.y}%`, transform: `translate(-50%, -50%) rotate(${look.rotation || 0}deg)` }} onPointerDown={beginLetterDrag}>
+            {composing && !asGuest && !editingText && letter.trim() ? (
+              <div ref={textLive ? textScaleRef : undefined} className={cn('group absolute z-20 w-max max-w-[92%]', textLive && 'cursor-grab touch-none', (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${letterPos.x}%`, top: `${letterPos.y}%`, transform: `translate(-50%, -50%) rotate(${look.rotation || 0}deg)` }} onPointerDown={(event) => { if (textLive) beginLetterDrag(event); else event.stopPropagation(); }}>
                 <div className="relative">
-                  <FigureHandles label="texto" onMove={beginLetterDrag} onResize={beginLetterResize} onRotate={beginLetterRotate} />
+                  {textLive ? <SelectionBox label="texto" onMove={beginLetterDrag} onResize={beginLetterResize} /> : (
+                    <button type="button" aria-label="Editar texto" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setTextLive(true); setEditingId(null); setSelectedMark(null); setDraftLive(false); }} className="pointer-events-none absolute -right-1 -top-1 z-20 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 opacity-0 shadow-[0_8px_24px_rgba(15,23,42,0.06)] group-hover:pointer-events-auto group-hover:opacity-100"><Pencil className="h-3.5 w-3.5" /></button>
+                  )}
                   <p style={letterStyle(look)}>{letter}</p>
                 </div>
               </div>
@@ -1555,10 +1486,10 @@ export const BirthdayTicket: FC = () => {
               return (
                 <div key={mark.id} className={cn('group absolute z-20', open ? 'cursor-grab touch-none' : (draftArt || editingId) && 'pointer-events-none')} style={{ left: `${mark.x}%`, top: `${mark.y}%`, width: mark.size, height: mark.size, transform: `translate(-50%, -50%) rotate(${mark.rotation || 0}deg)`, color: mark.color }} onPointerDown={(event) => { if (open) beginMarkDrag(event, mark); else { event.stopPropagation(); setEditingId(null); setTextLive(false); setDraftLive(false); if (editingTextRef.current) { setEditingText(null); setLetter(''); setLook(EMPTY_LOOK); } if (selectedMark !== mark.id) setSelectedMark(null); } }}>
                   <div className="relative h-full w-full">
-                    {open ? <FigureHandles label="desenho" onMove={(event) => beginMarkDrag(event, mark)} onResize={(event) => beginMarkResize(event, mark)} onRotate={(event) => beginMarkRotate(event, mark)} /> : null}
-                    {composing && !asGuest && own ? (
-                      <span className="pointer-events-auto absolute -top-8 right-0 z-20 flex gap-1 opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-100" onPointerDown={(event) => event.stopPropagation()}>
-                        {!open ? <button type="button" aria-label="Editar desenho" onClick={() => unlockMark(mark)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button> : null}
+                    {open ? <SelectionBox label="desenho" onMove={(event) => beginMarkDrag(event, mark)} onResize={(event) => beginMarkResize(event, mark)} onRotate={(event) => beginMarkRotate(event, mark)} onDelete={() => void removeMark(mark)} /> : null}
+                    {composing && !asGuest && own && !open ? (
+                      <span className="pointer-events-none absolute -right-1 -top-1 z-20 flex gap-1 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100" onPointerDown={(event) => event.stopPropagation()}>
+                        <button type="button" aria-label="Editar desenho" onClick={() => unlockMark(mark)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Pencil className="h-3.5 w-3.5" /></button>
                         <button type="button" aria-label="Excluir desenho" onClick={() => void removeMark(mark)} className="grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-[#9D174D] shadow-[0_8px_24px_rgba(15,23,42,0.06)]"><Trash2 className="h-3.5 w-3.5" /></button>
                       </span>
                     ) : null}
