@@ -5,15 +5,20 @@ import path from 'node:path';
 export const UNLIMITED_USER_ID = '1';
 const STICKER_FILE = /^(?:png|svg)-(?:0|[1-9]\d?)(?:b|_1)?\.(?:png|svg)$|^2400_3104(?:---(?:[1-9]|1\d|2[0-6]))?\.svg$|^figurinha-(?:aplauso|festa|joinha|parabens|risada|surpresa|vergonha|desespero)$|^stk-[a-f0-9]{16}$/;
 const PERSON_ID = /^[a-z0-9-]{1,80}$/;
+const DEFAULT_COLOR = '#e7d5c8';
+const CARD_COLORS = new Set(['#e7d5c8', '#f3c6d4', '#d9c8f2', '#c9e6d8', '#f6d3b4', '#c9d7f2', '#f6f1ea', '#e8b4c4']);
 
 function empty() {
-  return { stickers: [] };
+  return { stickers: [], colors: {} };
 }
 
 function read(file) {
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
-    return { stickers: Array.isArray(parsed.stickers) ? parsed.stickers : [] };
+    return {
+      stickers: Array.isArray(parsed.stickers) ? parsed.stickers : [],
+      colors: parsed.colors && typeof parsed.colors === 'object' ? parsed.colors : {},
+    };
   } catch {
     return empty();
   }
@@ -85,9 +90,21 @@ export async function handleBirthdayCard(req, res, url, user, dir) {
     if (!PERSON_ID.test(personId)) return send(res, 400, { error: 'person' });
     send(res, 200, {
       stickers: store.stickers.filter((item) => item.personId === personId).map(publicSticker),
+      color: CARD_COLORS.has(store.colors?.[personId]) ? store.colors[personId] : DEFAULT_COLOR,
       viewer: { id: user.id, unlimited },
       mine: mine(store, user.id),
     });
+    return;
+  }
+
+  if (req.method === 'POST' && url === '/api/birthday-card/color') {
+    const body = JSON.parse((await readBody(req)) || '{}');
+    const personId = String(body.personId ?? '');
+    const color = String(body.color ?? '').toLowerCase();
+    if (!PERSON_ID.test(personId) || !CARD_COLORS.has(color)) return send(res, 400, { error: 'fields' });
+    store.colors[personId] = color;
+    write(file, store);
+    send(res, 200, { color });
     return;
   }
 

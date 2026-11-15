@@ -4,15 +4,17 @@ import { calendarEvents } from '@/data/mockData';
 import {
   loadBirthdayCard,
   placeBirthdaySticker,
+  saveBirthdayColor,
   updateBirthdaySticker,
   type BirthdaySticker,
 } from '@/lib/birthdayCard';
 import { celebrationPersonId } from '@/lib/celebrations';
+import { removePhotoBackground } from '@/lib/cutout';
 import { parseAgendaDate, useAgendaEvents } from '@/lib/events';
 import { useDemoProfile } from '@/lib/session';
-import { listStickers } from '@/lib/stickers';
+import { listStickers, saveSticker } from '@/lib/stickers';
 import { cn } from '@/lib/utils';
-import { Cake, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Cake, ChevronLeft, ChevronRight, ImagePlus, Pencil, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FC, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
@@ -31,6 +33,7 @@ function spot(stickers: BirthdaySticker[]) {
 }
 
 const PAGE = 16;
+const CARD_COLORS = ['#e7d5c8', '#f3c6d4', '#d9c8f2', '#c9e6d8', '#f6d3b4', '#c9d7f2', '#f6f1ea', '#e8b4c4'];
 
 type ShelfArt = { id: string; src: string; label: string };
 
@@ -69,13 +72,12 @@ function StickerShelf({ items, selected, onPick }: { items: ShelfArt[]; selected
 function StickerFaces({ src, message, author, turned }: { src: string; message: string; author: string; turned: boolean }) {
   return (
     <div className="absolute inset-0" style={{ transformStyle: 'preserve-3d', transform: turned ? 'rotateY(180deg)' : 'rotateY(0deg)', transition: 'transform 700ms cubic-bezier(0.22, 0.8, 0.24, 1)' }}>
-      <span className="absolute inset-0" style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}>
-        <img src={src} alt="" draggable={false} className="sticker-cut h-full w-full object-contain" />
+      <span className="absolute inset-0 grid place-items-center" style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}>
+        <img src={src} alt="" draggable={false} className="sticker-cut max-h-full max-w-full object-contain" />
       </span>
-      <span className="absolute inset-0" style={{ transform: 'rotateY(180deg)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', backgroundColor: '#fff', WebkitMaskImage: `url("${src}")`, maskImage: `url("${src}")`, maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center' }} />
-      <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-[12%] text-center" style={{ transform: 'rotateY(180deg)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}>
-        <span className="text-[clamp(15px,4.2cqw,28px)] font-medium leading-snug text-gray-800">{message || 'Este adesivo ainda não tem recado.'}</span>
-        <span className="text-[clamp(11px,2.4cqw,14px)] text-gray-500">{author}</span>
+      <span className="absolute inset-0 flex flex-col justify-center gap-3 rounded-2xl border border-white/80 bg-[#FFF8F2] px-6 py-5 text-left shadow-[0_8px_24px_rgba(15,23,42,0.06)]" style={{ transform: 'rotateY(180deg)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}>
+        <span className="text-xs font-medium uppercase tracking-wide text-gray-500">{author}</span>
+        <span className="text-[clamp(16px,4.4cqw,26px)] font-medium leading-snug text-gray-800">{message || 'Este adesivo ainda não tem recado.'}</span>
       </span>
     </div>
   );
@@ -89,16 +91,20 @@ export const BirthdayTicket: FC = () => {
   const [viewerId, setViewerId] = useState('');
   const [unlimited, setUnlimited] = useState(false);
   const [mine, setMine] = useState<{ id: string; personId: string } | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [lift, setLift] = useState<Lift | null>(null);
   const [library, setLibrary] = useState<ShelfArt[]>([]);
   const [draftMessage, setDraftMessage] = useState('');
   const [draftArt, setDraftArt] = useState<string | null>(null);
+  const [draftPos, setDraftPos] = useState({ x: 50, y: 46 });
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [cardColor, setCardColor] = useState(CARD_COLORS[0]);
+  const [uploading, setUploading] = useState<'plain' | 'cut' | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [asGuest, setAsGuest] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const cutRef = useRef<HTMLInputElement>(null);
   const stickersRef = useRef(stickers);
   stickersRef.current = stickers;
 
@@ -150,10 +156,10 @@ export const BirthdayTicket: FC = () => {
     void loadBirthdayCard(person.id).then((payload) => {
       if (!alive) return;
       setStickers(payload.stickers);
+      setCardColor(CARD_COLORS.includes(payload.color) ? payload.color : CARD_COLORS[0]);
       setViewerId(payload.viewer.id);
       setUnlimited(payload.viewer.unlimited);
       setMine(payload.mine);
-      setSelectedId(null);
     }).catch(() => toast.error('Não foi possível abrir o bilhete.'));
     return () => { alive = false; };
   }, [person?.id, demo]);
@@ -174,8 +180,45 @@ export const BirthdayTicket: FC = () => {
 
   function chooseArt(id: string) {
     setDraftArt(id);
+    setDraftPos(spot(stickersRef.current));
     setEditingId(null);
     setSavedFlash(false);
+  }
+
+  async function paintCard(color: string) {
+    if (!person) return;
+    const previous = cardColor;
+    setCardColor(color);
+    try {
+      await saveBirthdayColor(person.id, color);
+    } catch {
+      setCardColor(previous);
+      toast.error('Não foi possível trocar a cor do cartão.');
+    }
+  }
+
+  async function uploadFigurine(file: File | undefined, cut: boolean) {
+    if (!file || uploading) return;
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+      toast.error('Escolha uma imagem JPG, PNG, WEBP ou GIF.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('A imagem precisa ter até 2 MB.');
+      return;
+    }
+    setUploading(cut ? 'cut' : 'plain');
+    try {
+      const prepared = cut ? await removePhotoBackground(file) : file;
+      const saved = await saveSticker(prepared);
+      setLibrary((current) => [{ id: saved.id, src: saved.url, label: 'Minha figurinha' }, ...current.filter((item) => item.id !== saved.id)]);
+      chooseArt(saved.id);
+      toast.success(cut ? 'Figurinha sem fundo pronta. Escreva o recado e finalize.' : 'Figurinha pronta. Escreva o recado e finalize.');
+    } catch {
+      toast.error(cut ? 'Não foi possível tirar o fundo da foto.' : 'Não foi possível salvar a figurinha.');
+    } finally {
+      setUploading(null);
+    }
   }
 
   async function finish() {
@@ -198,12 +241,10 @@ export const BirthdayTicket: FC = () => {
         setStickers((current) => current.map((item) => item.id === result.sticker.id ? result.sticker : item));
         toast.success('Recado atualizado.');
       } else {
-        const place = spot(stickersRef.current);
         if (!art) return;
-        const result = await placeBirthdaySticker({ personId: person.id, stickerId: art, width: 24, rotation: 0, message, ...place });
+        const result = await placeBirthdaySticker({ personId: person.id, stickerId: art, width: 24, rotation: 0, message, x: draftPos.x, y: draftPos.y });
         setStickers((current) => [...current, result.sticker]);
         setMine(result.mine);
-        setSelectedId(result.sticker.id);
         toast.success('Recado salvo no bilhete.');
       }
       setDraftArt(null);
@@ -242,12 +283,37 @@ export const BirthdayTicket: FC = () => {
     start();
   }
 
-  function beginDrag(event: ReactPointerEvent<HTMLDivElement>, sticker: BirthdaySticker) {
-    if (!composing || sticker.authorId !== viewerId) return;
+  function beginDraftDrag(event: ReactPointerEvent<HTMLDivElement>) {
     const board = boardRef.current?.getBoundingClientRect();
     if (!board) return;
     event.preventDefault();
-    setSelectedId(sticker.id);
+    event.stopPropagation();
+    const move = (pointer: PointerEvent) => {
+      setDraftPos({
+        x: Math.min(92, Math.max(8, ((pointer.clientX - board.left) / board.width) * 100)),
+        y: Math.min(88, Math.max(12, ((pointer.clientY - board.top) / board.height) * 100)),
+      });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+
+  function unlock(sticker: BirthdaySticker) {
+    setEditingId(sticker.id);
+    setDraftArt(null);
+    setDraftMessage(sticker.message);
+    setSavedFlash(false);
+  }
+
+  function beginDrag(event: ReactPointerEvent<HTMLDivElement>, sticker: BirthdaySticker) {
+    if (!composing || editingId !== sticker.id || sticker.authorId !== viewerId) return;
+    const board = boardRef.current?.getBoundingClientRect();
+    if (!board) return;
+    event.preventDefault();
     const startX = event.clientX;
     const startY = event.clientY;
     const origin = { x: sticker.x, y: sticker.y };
@@ -264,13 +330,7 @@ export const BirthdayTicket: FC = () => {
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
-      if (!moved) {
-        setEditingId(sticker.id);
-        setDraftMessage(sticker.message);
-        setDraftArt(sticker.stickerId);
-        setSavedFlash(false);
-        return;
-      }
+      if (!moved) return;
       void updateBirthdaySticker(sticker.id, next).catch(() => {
         setStickers((items) => items.map((item) => item.id === sticker.id ? { ...item, ...origin } : item));
         toast.error('Não foi possível mover o adesivo.');
@@ -364,35 +424,43 @@ export const BirthdayTicket: FC = () => {
       </div>
       {person ? (
         <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start">
-          <div ref={boardRef} onClick={(event) => { if (lift && event.target === event.currentTarget) closeLift(); }} className={cn('relative aspect-[967/577] w-full flex-1 overflow-hidden rounded-[28px] bg-[#c4b4aa]', lift && 'z-50')}>
-            <img src="/aniversario/cartao.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
-            {reading ? <p className="pointer-events-none absolute bottom-4 left-4 text-sm font-medium text-gray-700">Toque em um adesivo para ler o recado.</p> : null}
+          <div ref={boardRef} onClick={(event) => { if (lift && event.target === event.currentTarget) closeLift(); }} className={cn('relative aspect-[967/577] w-full flex-1 overflow-hidden rounded-[28px]', lift && 'z-50')} style={{ backgroundColor: cardColor }}>
+            <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
+              <rect x="3.2%" y="5.5%" width="93.6%" height="89%" rx="18" fill="none" stroke="rgba(90,58,42,0.55)" strokeWidth="2" strokeDasharray="2 7" strokeLinecap="round" />
+              <rect x="4.6%" y="8%" width="90.8%" height="84%" rx="16" fill="none" stroke="rgba(255,255,255,0.72)" strokeWidth="1.5" strokeDasharray="2 7" strokeLinecap="round" />
+            </svg>
+            {reading ? <p className="pointer-events-none absolute bottom-4 left-4 text-sm font-medium text-[#5C4638]">Toque em um adesivo para ler o recado.</p> : null}
             {composing && !asGuest && draftPreview ? (
-              <div className="pointer-events-none absolute left-1/2 top-1/2 w-[22%] -translate-x-1/2 -translate-y-1/2">
-                <img src={draftPreview.src} alt="" className="sticker-cut aspect-square w-full object-contain" />
+              <div className="absolute z-10 cursor-grab touch-none" style={{ left: `${draftPos.x}%`, top: `${draftPos.y}%`, width: '24%', transform: 'translate(-50%, -50%)' }} onPointerDown={beginDraftDrag}>
+                <img src={draftPreview.src} alt="" draggable={false} className="sticker-cut aspect-square w-full object-contain" />
               </div>
             ) : null}
             {stickers.map((sticker) => {
               const art = birthdayStickerArt(sticker.stickerId);
               const own = sticker.authorId === viewerId;
               return (
-                <div key={sticker.id} className="absolute" style={{ left: `${sticker.x}%`, top: `${sticker.y}%`, width: `${sticker.width}%`, transform: `translate(-50%, -50%) rotate(${sticker.rotation}deg)`, zIndex: selectedId === sticker.id ? 2 : 1, visibility: lift?.id === sticker.id ? 'hidden' : 'visible' }}>
+                <div key={sticker.id} className="group absolute" style={{ left: `${sticker.x}%`, top: `${sticker.y}%`, width: `${sticker.width}%`, transform: `translate(-50%, -50%) rotate(${sticker.rotation}deg)`, zIndex: editingId === sticker.id ? 2 : 1, visibility: lift?.id === sticker.id ? 'hidden' : 'visible' }}>
                   <div className="relative aspect-square" style={{ containerType: 'inline-size', perspective: '900px' }}>
-                    {!reading && own && selectedId === sticker.id ? (
+                    {editingId === sticker.id ? (
                       <>
                         <button type="button" aria-label="Girar adesivo" onPointerDown={(event) => beginRotate(event, sticker)} className="absolute -top-3 left-1/2 z-10 h-6 w-6 -translate-x-1/2 rounded-full border border-gray-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)]" />
                         <button type="button" aria-label="Redimensionar adesivo" onPointerDown={(event) => beginResize(event, sticker)} className="absolute -bottom-2 -right-2 z-10 h-6 w-6 rounded-full border border-gray-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)]" />
                       </>
                     ) : null}
+                    {composing && !asGuest && own && !draftArt && editingId !== sticker.id ? (
+                      <button type="button" aria-label="Editar adesivo" onClick={() => unlock(sticker)} className="absolute -right-1 -top-1 z-20 grid h-7 w-7 place-items-center rounded-full border border-gray-100 bg-white text-gray-700 opacity-0 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-opacity group-hover:opacity-100">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    ) : null}
                     <div
                       role="button"
                       tabIndex={0}
-                      aria-label={reading ? `Abrir recado de ${sticker.authorName}` : (own ? `Mover adesivo de ${sticker.authorName}` : `Adesivo de ${sticker.authorName}`)}
-                      onPointerDown={(event) => { if (!reading) beginDrag(event, sticker); }}
+                      aria-label={reading ? `Abrir recado de ${sticker.authorName}` : `Adesivo de ${sticker.authorName}`}
+                      onPointerDown={(event) => { if (editingId === sticker.id) beginDrag(event, sticker); }}
                       onClick={(event) => { if (reading && art) { event.stopPropagation(); openSticker(sticker, event.currentTarget.parentElement?.parentElement ?? event.currentTarget); } }}
-                      className={cn('absolute inset-0', !reading && own ? 'cursor-grab touch-none' : 'cursor-pointer', !reading && composing && selectedId === sticker.id && own && 'rounded-2xl ring-2 ring-blue-600')}
+                      className={cn('absolute inset-0', editingId === sticker.id ? 'cursor-grab touch-none' : reading ? 'cursor-pointer' : '')}
                     >
-                      {art ? <StickerFaces src={art.src} message={sticker.message} author={sticker.authorName} turned={false} /> : null}
+                      {art ? <img src={art.src} alt="" draggable={false} className="pointer-events-none sticker-cut h-full w-full object-contain" /> : null}
                     </div>
                   </div>
                 </div>
@@ -402,6 +470,26 @@ export const BirthdayTicket: FC = () => {
           {composing && !asGuest ? (
             <aside className="w-full shrink-0 rounded-[28px] border border-gray-100 p-4 lg:w-[248px]">
               <h3 className="mb-3 text-sm font-semibold text-gray-800">Adesivos</h3>
+              <div className="mb-3 flex gap-1.5" aria-label="Cor do cartão">
+                {CARD_COLORS.map((color) => (
+                  <button key={color} type="button" aria-label={`Cor ${color}`} aria-pressed={cardColor === color} onClick={() => void paintCard(color)} className={cn('h-6 w-6 rounded-full border border-black/10', cardColor === color && 'ring-2 ring-blue-600 ring-offset-2')} style={{ backgroundColor: color }} />
+                ))}
+              </div>
+              {canAdd ? (
+                <div className="mb-3 flex gap-2">
+                  <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(event) => { void uploadFigurine(event.target.files?.[0], false); event.target.value = ''; }} />
+                  <input ref={cutRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(event) => { void uploadFigurine(event.target.files?.[0], true); event.target.value = ''; }} />
+                  <button type="button" aria-label="Enviar figurinha" disabled={Boolean(uploading)} onClick={() => photoRef.current?.click()} className="grid h-11 w-11 place-items-center rounded-full border border-gray-100 bg-white text-blue-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] disabled:opacity-50">
+                    <Plus className="h-4 w-4" />
+                  </button>
+                  <button type="button" aria-label="Criar figurinha sem fundo" disabled={Boolean(uploading)} onClick={() => cutRef.current?.click()} className="grid h-11 w-11 place-items-center rounded-full border border-gray-200 disabled:opacity-50" style={{ backgroundImage: 'linear-gradient(45deg,#d1d5db 25%,transparent 25%),linear-gradient(-45deg,#d1d5db 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d1d5db 75%),linear-gradient(-45deg,transparent 75%,#d1d5db 75%)', backgroundSize: '10px 10px', backgroundPosition: '0 0, 0 5px, 5px -5px, -5px 0' }}>
+                    <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-gray-700 shadow">
+                      <ImagePlus className="h-3.5 w-3.5" />
+                    </span>
+                  </button>
+                  {uploading ? <span className="self-center text-xs text-gray-500">{uploading === 'cut' ? 'Tirando o fundo...' : 'Salvando...'}</span> : null}
+                </div>
+              ) : null}
               <label className="mb-3 block">
                 <span className="mb-2 block text-xs font-medium text-gray-500">Recado</span>
                 <textarea value={draftMessage} maxLength={240} onChange={(event) => { setDraftMessage(event.target.value); setSavedFlash(false); }} className="min-h-20 w-full rounded-2xl border border-gray-100 bg-white px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Escreva o recado primeiro." />
@@ -429,8 +517,8 @@ export const BirthdayTicket: FC = () => {
             style={{
               left: lift.zoom && !lift.closing ? '50%' : lift.from.left,
               top: lift.zoom && !lift.closing ? '50%' : lift.from.top,
-              width: lift.zoom && !lift.closing ? 'min(78vw, 440px)' : lift.from.width,
-              height: lift.zoom && !lift.closing ? 'min(78vw, 440px)' : lift.from.height,
+              width: lift.zoom && !lift.closing ? 'min(82vw, 380px)' : lift.from.width,
+              height: lift.zoom && !lift.closing ? 'min(62vh, 230px)' : lift.from.height,
               transform: lift.zoom && !lift.closing ? 'translate(-50%, -50%)' : undefined,
               transition: 'left 700ms cubic-bezier(0.22, 0.8, 0.24, 1), top 700ms cubic-bezier(0.22, 0.8, 0.24, 1), width 700ms cubic-bezier(0.22, 0.8, 0.24, 1), height 700ms cubic-bezier(0.22, 0.8, 0.24, 1), transform 700ms cubic-bezier(0.22, 0.8, 0.24, 1)',
             }}

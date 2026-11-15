@@ -17,6 +17,7 @@ export type BirthdaySticker = {
 
 export type BirthdayCardPayload = {
   stickers: BirthdaySticker[];
+  color: string;
   viewer: { id: string; unlimited: boolean };
   mine: { id: string; personId: string } | null;
 };
@@ -31,6 +32,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(String(body.error ?? response.status));
   return body as T;
+}
+
+export function saveBirthdayColor(personId: string, color: string) {
+  return request<{ color: string }>('/api/birthday-card/color', { method: 'POST', body: JSON.stringify({ personId, color }) });
 }
 
 export function loadBirthdayCard(personId: string) {
