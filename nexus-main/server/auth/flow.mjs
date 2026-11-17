@@ -52,6 +52,20 @@ export async function performSession(store, cookieHeader) {
   return { status: 200, body: { user: found.user } };
 }
 
+export async function performPasswordChange(store, body) {
+  const current = String(body?.current ?? '');
+  const next = String(body?.next ?? '');
+  if (!current || next.length < 4 || next.length > 72) return { status: 400, body: { error: 'fields' } };
+  if (current === next) return { status: 400, body: { error: 'same' } };
+  try {
+    const changed = await store.updatePassword(current, next, String(body?.email ?? ''));
+    if (!changed) return { status: 401, body: { error: 'invalid' } };
+  } catch {
+    return unavailable('password');
+  }
+  return { status: 200, body: { ok: true } };
+}
+
 export async function performLogout(store, cookieHeader) {
   const token = readCookie(cookieHeader, SESSION_COOKIE);
   if (token) {

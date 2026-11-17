@@ -72,7 +72,6 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   const leader = isLeader(actor());
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<AgendaEvent | null>(null);
-  const [boardView, setBoardView] = useState<'month' | 'week' | 'agenda'>('month');
   const [createType, setCreateType] = useState<'reuniao' | 'aniversario'>('reuniao');
 
   useEffect(() => {
@@ -324,14 +323,6 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
     for (let day = 1; day <= daysInMonth; day += 1) cells.push({ day, outside: false });
     let nextDay = 1;
     while (cells.length % 7 !== 0) cells.push({ day: nextDay++, outside: true });
-    const weekStart = new Date(currentDate);
-    weekStart.setDate(currentDate.getDate() - currentDate.getDay());
-    const weekDays = Array.from({ length: 7 }, (_, index) => {
-      const date = new Date(weekStart);
-      date.setDate(weekStart.getDate() + index);
-      return date;
-    });
-    const agenda = [...visibleEvents].sort((a, b) => a.date.getTime() - b.date.getTime() || a.title.localeCompare(b.title, 'pt-BR'));
     const openBirthdays = () => {
       const next = new URLSearchParams(params);
       next.set('tipo', 'aniversarios');
@@ -364,104 +355,50 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           }
         />
         {birthdaysFocus ? <BirthdayTicket /> : <>
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <button type="button" aria-label="Mês anterior" onClick={() => boardView === 'week' ? shiftWeek(-1) : shiftMonth(-1)} className="grid h-8 w-8 place-items-center rounded-full text-[#5C5168] hover:bg-white"><ChevronLeft className="h-4 w-4" /></button>
-            <p className="min-w-[140px] text-center text-[15px] font-semibold text-[#2C2433]">{monthLabel}</p>
-            <button type="button" aria-label="Próximo mês" onClick={() => boardView === 'week' ? shiftWeek(1) : shiftMonth(1)} className="grid h-8 w-8 place-items-center rounded-full text-[#5C5168] hover:bg-white"><ChevronRight className="h-4 w-4" /></button>
-          </div>
-          <div className="flex rounded-[10px] border border-[#E9E9EF] bg-white p-1">
-            {([['month', 'Mês'], ['week', 'Semana'], ['agenda', 'Agenda']] as const).map(([id, label]) => (
-              <button key={id} type="button" onClick={() => setBoardView(id)} className={cn('rounded-[10px] px-3 py-1.5 text-[13px] font-medium', boardView === id ? 'bg-[#EFEDFC] text-[#7065C5]' : 'text-[#858593] hover:bg-[#F4F4F7]')}>{label}</button>
-            ))}
-          </div>
+        <div className="mt-5 flex items-center justify-center gap-2">
+          <button type="button" aria-label="Mês anterior" onClick={() => shiftMonth(-1)} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600"><ChevronLeft className="h-4 w-4" /></button>
+          <p className="min-w-[180px] text-center text-lg font-bold capitalize text-gray-800">{monthLabel}</p>
+          <button type="button" aria-label="Próximo mês" onClick={() => shiftMonth(1)} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600"><ChevronRight className="h-4 w-4" /></button>
         </div>
-        {boardView === 'agenda' ? (
-          <div className="mt-4 grid gap-3">
-            {agenda.length === 0 ? <p className="rounded-[22px] border border-[#EDE7FE] bg-white px-4 py-8 text-sm text-[#8A7C98]">Nenhum compromisso neste mês.</p> : agenda.reduce<{ date: Date; events: typeof agenda }[]>((groups, event) => {
-              const last = groups[groups.length - 1];
-              if (last && sameDay(last.date, event.date)) last.events.push(event);
-              else groups.push({ date: event.date, events: [event] });
-              return groups;
-            }, []).map((group) => (
-              <article key={group.date.toISOString()} className="flex gap-3 rounded-[22px] border border-[#EDE7FE] bg-white p-3 shadow-[0_8px_22px_rgba(70,0,243,0.04)]">
-                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-[#F5F1FF] text-center leading-tight text-[#3600C2]">
-                  <span className="text-[18px] font-semibold">{group.date.toLocaleDateString('pt-BR', { day: '2-digit' })}</span>
-                  <span className="text-[11px] capitalize">{group.date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
-                </div>
-                <div className="grid min-w-0 flex-1 gap-2">
-                  {group.events.map((event) => (
-                    <button key={event.id} type="button" onClick={(click) => openEvent(event, click.currentTarget)} className="flex items-center gap-3 rounded-xl px-1 py-1 text-left hover:bg-[#FBF7FC]">
-                      <span className={cn('min-w-0 flex-1 truncate rounded-lg px-2 py-1.5 text-[13px] font-medium', eventTone(event))}>{event.type === 'birthday' ? `Aniversário de ${event.personName?.split(' ')[0]}` : event.title}</span>
-                      <span className="shrink-0 text-[12px] text-[#8A7C98]">{[event.time, event.place].filter(Boolean).join(' · ')}</span>
-                    </button>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : boardView === 'week' ? (
-          <div className="mt-4 grid grid-cols-7 gap-2">
-            {weekDays.map((date) => {
-              const dayEvents = calendarEvents.filter((event) => sameDay(event.date, date));
-              const isCurrent = sameDay(date, today);
+        <div className="mt-4 rounded-[28px] border border-gray-100 bg-white p-3 shadow-[0_8px_24px_rgba(15,23,42,0.06)] sm:p-4">
+          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+            {weekdays.map((day) => <div key={day} className="pb-1 text-center text-[11px] font-semibold uppercase tracking-wide text-gray-400">{day}</div>)}
+            {cells.map((cell, index) => {
+              const dayEvents = cell.outside ? [] : eventsOn(cell.day);
+              const isCurrent = !cell.outside && sameDay(new Date(year, month, cell.day), today);
+              const picked = !cell.outside && selectedDay === cell.day;
               return (
-                <div key={date.toISOString()} className="flex aspect-square flex-col overflow-hidden rounded-2xl border border-[#EDE7FE] bg-white p-2">
-                  <p className="text-center text-[11px] text-[#8A7C98]">{weekdays[date.getDay()]}</p>
-                  <p className={cn('mx-auto mt-1 grid h-7 w-7 place-items-center rounded-full text-[13px] font-semibold', isCurrent ? 'bg-[#7065C5] text-white' : 'text-[#343440]')}>{date.getDate()}</p>
-                  <div className="mt-1 grid min-h-0 gap-1 overflow-hidden">
-                    {dayEvents.slice(0, 2).map((event) => (
-                      <button key={event.id} type="button" onClick={(click) => openEvent(event, click.currentTarget)} className={cn('truncate rounded-md px-1.5 py-0.5 text-left text-[10px]', eventTone(event))}>
-                        {event.type === 'birthday' ? event.personName?.split(' ')[0] : event.title}
-                      </button>
-                    ))}
-                    {dayEvents.length > 2 ? <p className="text-center text-[10px] text-[#8A7C98]">+{dayEvents.length - 2}</p> : null}
+                <div key={`${cell.outside}-${cell.day}-${index}`} className={cn('flex min-h-[96px] flex-col rounded-2xl p-1.5 sm:min-h-[112px] sm:p-2', cell.outside ? 'bg-transparent' : picked ? 'bg-[#F8FAFC] ring-2 ring-blue-600' : 'bg-[#F8FAFC]')}>
+                  <p className={cn('mb-1 grid h-7 w-7 place-items-center rounded-full text-sm font-semibold', cell.outside ? 'text-gray-300' : isCurrent ? 'bg-blue-600 text-white' : 'text-gray-800')}>{cell.day}</p>
+                  <div className="grid gap-1">
+                    {dayEvents.slice(0, 2).map((event) => {
+                      const first = event.personName?.split(' ')[0];
+                      return (
+                        <button key={event.id} type="button" onClick={(click) => openEvent(event, click.currentTarget)} className={cn('min-w-0 rounded-xl px-1.5 py-1 text-left', eventTone(event))}>
+                          {event.type === 'birthday' ? (
+                            <span className="flex min-w-0 items-center gap-1">
+                              {event.avatar ? <img src={event.avatar} alt="" className="h-5 w-5 shrink-0 rounded-full" /> : null}
+                              <span className="min-w-0">
+                                <span className="block truncate text-[11px] font-semibold">{first}</span>
+                                <span className="block truncate text-[10px] opacity-80">Aniversário</span>
+                              </span>
+                            </span>
+                          ) : (
+                            <>
+                              <span className="block truncate text-[11px] font-medium">{event.time ? `${event.time} · ` : ''}{event.title}</span>
+                              {event.place ? <span className="mt-0.5 flex items-center gap-0.5 truncate text-[10px] opacity-75"><MapPin className="h-2.5 w-2.5 shrink-0" />{event.place}</span> : null}
+                            </>
+                          )}
+                        </button>
+                      );
+                    })}
+                    {dayEvents.length > 2 ? <p className="px-1 text-[10px] font-semibold text-gray-400">+{dayEvents.length - 2}</p> : null}
                   </div>
                 </div>
               );
             })}
           </div>
-        ) : (
-          <div className="mt-4 min-w-0 overflow-hidden rounded-[22px] border border-[#EDE7FE] bg-white">
-            <div className="grid grid-cols-7 border-b border-[#F3EDF6]">
-              {weekdays.map((day) => <div key={day} className="px-2 py-2 text-center text-[12px] font-medium text-[#8A7C98]">{day}</div>)}
-            </div>
-            <div className="grid min-w-0 grid-cols-7">
-              {cells.map((cell, index) => {
-                const dayEvents = cell.outside ? [] : eventsOn(cell.day);
-                const isCurrent = !cell.outside && sameDay(new Date(year, month, cell.day), today);
-                return (
-                  <div key={`${cell.outside}-${cell.day}-${index}`} className="min-h-[112px] min-w-0 border-r border-b border-[#F6F1F8] p-1.5">
-                    <p className={cn('mb-1 grid h-6 w-6 place-items-center rounded-full text-[12px]', cell.outside && 'text-[#C4B6D4]', isCurrent && 'bg-[#7065C5] font-semibold text-white')}>{cell.day}</p>
-                    <div className="grid gap-1">
-                      {dayEvents.slice(0, 2).map((event) => {
-                        const first = event.personName?.split(' ')[0];
-                        return (
-                          <button key={event.id} type="button" onClick={(click) => openEvent(event, click.currentTarget)} className={cn('min-w-0 rounded-lg px-1.5 py-1 text-left', eventTone(event))}>
-                            {event.type === 'birthday' ? (
-                              <span className="flex min-w-0 items-center gap-1">
-                                {event.avatar ? <img src={event.avatar} alt="" className="h-5 w-5 shrink-0 rounded-full" /> : null}
-                                <span className="min-w-0">
-                                  <span className="block truncate text-[11px] font-semibold">{first}</span>
-                                  <span className="block truncate text-[10px] opacity-80">Aniversário</span>
-                                </span>
-                              </span>
-                            ) : (
-                              <>
-                                <span className="block truncate text-[11px] font-medium">{event.time ? `${event.time} · ` : ''}{event.title}</span>
-                                {event.place ? <span className="mt-0.5 flex items-center gap-0.5 truncate text-[10px] opacity-75"><MapPin className="h-2.5 w-2.5 shrink-0" />{event.place}</span> : null}
-                              </>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        </div>
         {active ? (
           <div ref={dialogRef} role="dialog" aria-label={active.event.title} className="fixed z-50 w-72 rounded-xl border bg-card p-4 text-sm shadow-lg" style={{ top: active.top, left: active.left }} onClick={(event) => event.stopPropagation()}>
             <button type="button" aria-label="Fechar" className="absolute top-2 right-2 rounded-md p-1 text-muted-foreground hover:bg-muted" onClick={() => setActive(null)}><X className="h-4 w-4" /></button>

@@ -171,6 +171,8 @@
   --unica-lilac: #8878D6;
   --unica-lavender: #F1EEFC;
   --unica-ice: #F7F8FA;
+  --unica-brand: #2563EB;
+  --unica-rail: #6B33F6;
   --unica-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
   --ds-font: Manrope, "Helvetica Neue", Helvetica, Arial, sans-serif;
   --ds-leading-body: 1.5;
@@ -522,6 +524,12 @@ svg.lucide {
 @container (min-width: 56rem) {
   .equipe-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
+html .bg-blue-600 { background-color: var(--unica-brand); }
+html .text-blue-600 { color: var(--unica-brand); }
+html .border-blue-600 { border-color: var(--unica-brand); }
+html .hover\:bg-blue-500:hover { background-color: color-mix(in srgb, var(--unica-brand) 88%, white); }
+html .hover\:text-blue-600:hover { color: var(--unica-brand); }
 
 .sticker-cut {
   filter:

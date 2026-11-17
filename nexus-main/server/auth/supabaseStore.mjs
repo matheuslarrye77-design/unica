@@ -1,4 +1,6 @@
+import { randomBytes } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
+import { hashPassword, normalizeLoginId, passwordMatches } from './credentials.mjs';
 
 export function serverSecretKey(env = process.env) {
   return String(env.SUPABASE_SECRET_KEY || env.SUPABASE_SECRET_KEY_Key || env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
@@ -83,6 +85,20 @@ export function supabaseAuthStore(env = process.env) {
     async deleteSession(hash) {
       const { error } = await db.from('unica_sessions').delete().eq('token_hash', hash);
       if (error) fail(error);
+    },
+    async updatePassword(currentPassword, nextPassword, email) {
+      const loginId = normalizeLoginId(email);
+      if (!loginId) return false;
+      const found = await db.from('unica_users').select('id, password_hash, password_salt').eq('email', loginId).maybeSingle();
+      if (found.error) fail(found.error);
+      if (!found.data || !passwordMatches(currentPassword, found.data.password_salt, found.data.password_hash)) return false;
+      const salt = randomBytes(16).toString('hex');
+      const saved = await db.from('unica_users').update({
+        password_hash: hashPassword(nextPassword, salt),
+        password_salt: salt,
+      }).eq('id', found.data.id);
+      if (saved.error) fail(saved.error);
+      return true;
     },
   };
 }

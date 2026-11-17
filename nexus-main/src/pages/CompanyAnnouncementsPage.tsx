@@ -205,7 +205,7 @@ export const CompanyAnnouncementsPage: FC = () => {
           <section>
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-lg font-bold text-gray-800">{savedOnly ? 'Salvas' : showingDefault ? 'Em destaque' : 'Publicações'}</h2>
-              <button type="button" aria-pressed={savedOnly} onClick={() => setSavedOnly((value) => !value)} className={`rounded-full px-3 py-1 text-[13px] ${savedOnly ? 'bg-blue-600 text-white' : 'text-[#5C5870] hover:bg-white'}`}>Salvos</button>
+              <button type="button" aria-pressed={savedOnly} onClick={() => setSavedOnly((value) => !value)} className={cn('inline-flex h-11 items-center rounded-2xl px-4 text-base font-semibold', savedOnly ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600')}>Salvos</button>
             </div>
             {(savedOnly ? savedArticles : cards).length === 0 ? (
               <p className="rounded-2xl border border-gray-100 bg-white px-4 py-10 text-center text-sm text-gray-500 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">{savedOnly ? 'Nenhuma publicação salva.' : 'Nenhuma publicação encontrada.'}</p>

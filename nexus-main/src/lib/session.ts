@@ -1,4 +1,5 @@
 import { currentUser } from '@/data/mockData';
+import { profilePhoto } from '@/lib/appearance';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { useSyncExternalStore } from 'react';
 
@@ -84,6 +85,7 @@ export function getSessionUser(): SessionUser | null {
 }
 
 export function actor(): SessionUser {
+  const photo = profilePhoto();
   if (!LOGIN_REQUIRED) {
     const profile = DEMO_PROFILES.find((item) => item.id === demoId) ?? DEMO_PROFILES[0];
     return {
@@ -91,11 +93,12 @@ export function actor(): SessionUser {
       name: profile.name,
       role: profile.role,
       department: profile.department,
-      avatar: profile.avatar,
+      avatar: photo || profile.avatar,
       email: profile.email,
     };
   }
-  return getSessionUser() ?? { ...currentUser, email: 'matheus.larrie@unica.local' };
+  const session = getSessionUser() ?? { ...currentUser, email: 'matheus.larrie@unica.local' };
+  return photo ? { ...session, avatar: photo } : session;
 }
 
 export function authHeaders() {

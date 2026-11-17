@@ -35,9 +35,7 @@ export function clipChoices(total: number): ClipChoice[] {
 
 export function initialClipSeconds(total: number) {
   if (!Number.isFinite(total) || total <= 0) return 0;
-  if (total >= 30) return 30;
-  const fit = [60, 45, 30, 15, 10].find((choice) => choice <= total);
-  return fit ?? total;
+  return Math.min(total, 120);
 }
 
 export function clampClip(total: number, selected: number, start: number) {

@@ -8,7 +8,7 @@ import { createFeedStore, FEED_LOAD_UNAVAILABLE, FEED_UNAVAILABLE } from './feed
 import { LOGIN_REQUIRED } from '../src/lib/loginGate.js';
 import { builtinAccounts } from './auth/accounts.js';
 import { hashPassword } from './auth/credentials.mjs';
-import { performLogin, performLogout, performSession } from './auth/flow.mjs';
+import { performLogin, performLogout, performPasswordChange, performSession } from './auth/flow.mjs';
 import { applyAuthResult } from './auth/http.mjs';
 import { createLocalStore, localUserFromRequest } from './auth/localStore.mjs';
 import { isLeader } from './auth/permissions.mjs';
@@ -563,7 +563,7 @@ export function extraApi(): Connect.NextHandleFunction {
     const goalsRoute = url === '/api/goals' || url.startsWith('/api/goals/');
     const journalRoute = url === '/api/journal';
     const birthdayRoute = url === '/api/birthday-card' || url.startsWith('/api/birthday-card/');
-    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && !feedRoute && !uploadRoute && !celebrationRoute && !gifRoute && !stickerRoute && !goalsRoute && !journalRoute && !birthdayRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
+    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && url !== '/api/account' && !feedRoute && !uploadRoute && !celebrationRoute && !gifRoute && !stickerRoute && !goalsRoute && !journalRoute && !birthdayRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
       return next();
     }
     try {
@@ -586,6 +586,18 @@ export function extraApi(): Connect.NextHandleFunction {
 
       if (req.method === 'POST' && url === '/api/logout') {
         applyAuthResult(res, await performLogout(createLocalStore(authFile, accounts), req.headers.cookie));
+        return;
+      }
+
+      if (req.method === 'POST' && url === '/api/account') {
+        let body: { current?: string; next?: string } = {};
+        try {
+          body = JSON.parse((await readBody(req)).toString('utf8') || '{}') as { current?: string; next?: string };
+        } catch {
+          applyAuthResult(res, { status: 400, body: { error: 'fields' } });
+          return;
+        }
+        applyAuthResult(res, await performPasswordChange(createLocalStore(authFile, accounts), body));
         return;
       }
 

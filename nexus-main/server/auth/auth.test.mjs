@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { hashPassword } from './credentials.mjs';
-import { performLogin, performLogout, performSession } from './flow.mjs';
+import { performLogin, performLogout, performPasswordChange, performSession } from './flow.mjs';
 import { applyAuthResult } from './http.mjs';
 import { createLocalStore, localUserFromRequest } from './localStore.mjs';
 import { guardLeader } from './permissions.mjs';
@@ -77,6 +77,19 @@ test('login válido, inválido e e-mail normalizado', async () => {
     assert.equal(saved.sessions['legacy-token'], 'keep-me');
     assert.deepEqual(saved.favorites, auth.favorites);
   }
+});
+
+test('redefine a senha quando a atual confere', async () => {
+  const { file } = fixture();
+  const store = createLocalStore(file, [user]);
+  const wrong = await performPasswordChange(store, { current: 'errada', next: 'nova-senha', email: user.email });
+  assert.equal(wrong.status, 401);
+  const changed = await performPasswordChange(store, { current: '1234', next: 'nova-senha', email: user.email });
+  assert.equal(changed.status, 200);
+  const oldLogin = await performLogin(store, { email: user.email, password: '1234' });
+  assert.equal(oldLogin.status, 401);
+  const login = await performLogin(store, { email: user.email, password: 'nova-senha' });
+  assert.equal(login.status, 200);
 });
 
 test('sessão válida, expirada e logout', async () => {

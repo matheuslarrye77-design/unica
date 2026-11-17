@@ -1,7 +1,8 @@
+import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { readCookie, SESSION_COOKIE } from './cookies.mjs';
-import { tokenHash } from './credentials.mjs';
+import { hashPassword, passwordMatches, tokenHash } from './credentials.mjs';
 
 function emptyStore() {
   return { salt: '', passwordHash: '', sessions: {}, sessionExpiry: {}, favorites: {}, colleagues: [] };
@@ -75,6 +76,15 @@ export function createLocalStore(file, accounts) {
       delete auth.sessions[hash];
       delete auth.sessionExpiry[hash];
       writeAuth(file, auth);
+    },
+    async updatePassword(currentPassword, nextPassword) {
+      const auth = readAuth(file);
+      if (!auth.salt || !auth.passwordHash || !passwordMatches(currentPassword, auth.salt, auth.passwordHash)) return false;
+      const salt = randomBytes(16).toString('hex');
+      auth.salt = salt;
+      auth.passwordHash = hashPassword(nextPassword, salt);
+      writeAuth(file, auth);
+      return true;
     },
   };
 }

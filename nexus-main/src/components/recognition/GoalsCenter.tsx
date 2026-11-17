@@ -946,16 +946,16 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {buckets.length ? (
-              <div className="inline-flex items-center gap-1 rounded-full border border-[#DDD4F5] bg-white px-1.5 py-1 text-[12.5px] font-medium text-[#5C5168]">
-                <button type="button" aria-label="Período anterior" disabled={periodIndex <= 0} onClick={() => setSelected(buckets[periodIndex - 1])} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button>
-                <span className="inline-flex items-center gap-1.5 px-1"><Calendar className="h-3.5 w-3.5 text-[#4600F3]" /> {periodLabel}</span>
-                <button type="button" aria-label="Período seguinte" disabled={periodIndex < 0 || periodIndex >= buckets.length - 1} onClick={() => setSelected(buckets[periodIndex + 1])} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button>
+              <div className="inline-flex h-11 items-center gap-1 rounded-2xl bg-white px-2 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+                <button type="button" aria-label="Período anterior" disabled={periodIndex <= 0} onClick={() => setSelected(buckets[periodIndex - 1])} className="grid h-8 w-8 place-items-center rounded-xl hover:text-blue-600 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
+                <span className="inline-flex items-center gap-1.5 px-1"><Calendar className="h-4 w-4 text-blue-600" /> {periodLabel}</span>
+                <button type="button" aria-label="Período seguinte" disabled={periodIndex < 0 || periodIndex >= buckets.length - 1} onClick={() => setSelected(buckets[periodIndex + 1])} className="grid h-8 w-8 place-items-center rounded-xl hover:text-blue-600 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
               </div>
             ) : null}
-            <button type="button" onClick={() => setClearMode((value) => value ? '' : 'period')} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#DDD4F5] px-3 text-[12.5px] font-medium text-[#8A7C98] hover:bg-[#EDE7FE] hover:text-[#3600C2]">
-              <Trash2 className="h-3.5 w-3.5" /> Limpar
+            <button type="button" onClick={() => setClearMode((value) => value ? '' : 'period')} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-white px-4 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
+              <Trash2 className="h-4 w-4" /> Limpar
             </button>
-            <button type="button" onClick={onClose} aria-label="Fechar banco dos relatórios" className="grid h-10 w-10 place-items-center rounded-xl border border-[#DDD4F5] text-[#3600C2] hover:bg-[#EDE7FE]">
+            <button type="button" onClick={onClose} aria-label="Fechar banco dos relatórios" className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -965,8 +965,8 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
             <p className="font-semibold text-[#241B33]">Limpar banco de relatórios</p>
             <p className="mt-1">Esta ação apaga resultados gravados. Cadastros da Equipe e a estrutura das metas são preservados.</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" onClick={() => setClearMode('period')} className={cn('h-9 rounded-full border px-3', clearMode === 'period' ? 'border-[#4600F3] bg-[#EDE7FE] text-[#3600C2]' : 'border-[#DDD4F5]')}>Limpar {periodLabel || 'este período'}</button>
-              <button type="button" onClick={() => setClearMode('all')} className={cn('h-9 rounded-full border px-3', clearMode === 'all' ? 'border-[#4600F3] bg-[#EDE7FE] text-[#3600C2]' : 'border-[#DDD4F5]')}>Limpar banco completo</button>
+              <button type="button" onClick={() => setClearMode('period')} className={cn('inline-flex h-11 items-center rounded-2xl px-4 text-base font-semibold', clearMode === 'period' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]')}>Limpar {periodLabel || 'este período'}</button>
+              <button type="button" onClick={() => setClearMode('all')} className={cn('inline-flex h-11 items-center rounded-2xl px-4 text-base font-semibold', clearMode === 'all' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]')}>Limpar banco completo</button>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -978,11 +978,11 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
                     if (data?.kind === 'cleared' && clearMode === 'all') setSelected('');
                   });
                 }}
-                className="h-9 rounded-full bg-[#4600F3] px-4 text-[12.5px] font-semibold text-white"
+                className="inline-flex h-11 items-center rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25"
               >
                 Confirmar {clearMode === 'all' ? 'limpeza completa' : `limpeza de ${periodLabel}`}
               </button>
-              <button type="button" onClick={() => setClearMode('')} className="h-9 rounded-full border border-[#DDD4F5] px-4">Cancelar</button>
+              <button type="button" onClick={() => setClearMode('')} className="inline-flex h-11 items-center rounded-2xl bg-white px-4 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">Cancelar</button>
             </div>
           </section>
         ) : null}
@@ -1177,7 +1177,7 @@ function ReportBank({ goals, onClose }: { goals: GoalsPayload; onClose: () => vo
   return typeof document === 'undefined' ? bank : createPortal(bank, document.body);
 }
 
-export const GoalsAssistant: FC<{ startWide?: boolean }> = () => {
+export const GoalsAssistant: FC<{ startWide?: boolean; onClose?: () => void }> = ({ onClose }) => {
   const board = useBoard();
   const { goals, messages, draft, setDraft, busy, talk, phase, pendingRules, setPendingRules, conference, pendingPodium, confirmPodium, saveTemplate, cancelProposal } = board;
   const thread = useRef<HTMLDivElement>(null);
@@ -1195,13 +1195,18 @@ export const GoalsAssistant: FC<{ startWide?: boolean }> = () => {
 
   return (
     <aside className={cn('z-[70] flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-gray-100 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.12)]', wide ? 'fixed top-3 right-3 bottom-3 left-3 lg:left-[104px]' : 'fixed right-5 bottom-[160px] h-[min(70vh,640px)] w-[min(92vw,380px)]')}>
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#F3EAF8] px-3 py-3 pr-10">
-        <h3 className="flex min-w-0 items-center gap-2 text-[14px] font-semibold text-[#241B33]">
-          <Sparkles className="h-4 w-4 shrink-0 text-[#4600F3]" /> <span className="truncate">Fale com o assistente de metas</span>
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-100 px-3 py-3">
+        <h3 className="flex min-w-0 items-center gap-2 text-base font-semibold text-gray-800">
+          <Sparkles className="h-4 w-4 shrink-0 text-blue-600" /> <span className="truncate">Fale com o assistente de metas</span>
         </h3>
-        <button type="button" aria-label="Abrir banco de dados dos relatórios" title="Banco de dados" onClick={() => setBankOpen(true)} className="grid h-8 w-8 place-items-center rounded-lg text-[#4600F3] hover:bg-[#EDE7FE]">
-          <FileText className="h-4 w-4" />
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button type="button" aria-label="Abrir banco de dados dos relatórios" title="Banco de dados" onClick={() => setBankOpen(true)} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
+            <FileText className="h-4 w-4" />
+          </button>
+          <button type="button" aria-label="Fechar assistente" onClick={onClose} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
       {bankOpen ? <ReportBank goals={goals} onClose={() => setBankOpen(false)} /> : null}
       <div ref={thread} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
@@ -1216,8 +1221,8 @@ export const GoalsAssistant: FC<{ startWide?: boolean }> = () => {
             <p className="text-[12px] font-semibold text-[#4A1C73]">Só o pódio. As metas não mudam.</p>
             <p className="text-[12.5px] text-[#5C5168]">Critério: {pendingPodium.mode === 'overall' ? 'Desempenho geral' : METRICS.find((item) => item[0] === pendingPodium.indicator)?.[1] ?? pendingPodium.indicator}</p>
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" disabled={busy} onClick={() => void confirmPodium()} className="h-9 rounded-full bg-[#4600F3] text-[12.5px] font-semibold text-white disabled:bg-[#B09AF5]">Confirmar pódio</button>
-              <button type="button" disabled={busy} onClick={cancelProposal} className="h-9 rounded-full border border-[#DDD4F5] text-[12.5px] font-semibold text-[#3600C2]">Cancelar</button>
+              <button type="button" disabled={busy} onClick={() => void confirmPodium()} className="inline-flex h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 disabled:opacity-40">Confirmar pódio</button>
+              <button type="button" disabled={busy} onClick={cancelProposal} className="inline-flex h-11 items-center justify-center rounded-2xl bg-white px-4 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">Cancelar</button>
             </div>
           </div>
         ) : null}
@@ -1293,8 +1298,8 @@ export const GoalsAssistant: FC<{ startWide?: boolean }> = () => {
             ) : null}
             <p className="text-[12px] text-[#8A7C98]">O pódio permanece como está.</p>
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" disabled={busy} onClick={() => void saveTemplate()} className="h-9 rounded-full bg-[#4600F3] text-[12.5px] font-semibold text-white disabled:bg-[#B09AF5]">Confirmar metas</button>
-              <button type="button" disabled={busy} onClick={cancelProposal} className="h-9 rounded-full border border-[#DDD4F5] text-[12.5px] font-semibold text-[#3600C2]">Cancelar</button>
+              <button type="button" disabled={busy} onClick={() => void saveTemplate()} className="inline-flex h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 disabled:opacity-40">Confirmar metas</button>
+              <button type="button" disabled={busy} onClick={cancelProposal} className="inline-flex h-11 items-center justify-center rounded-2xl bg-white px-4 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">Cancelar</button>
             </div>
           </div>
         ) : pendingRules ? (
@@ -1340,8 +1345,8 @@ export const GoalsAssistant: FC<{ startWide?: boolean }> = () => {
               <input value={pendingRules.name} onChange={(event) => setPendingRules({ ...pendingRules, name: event.target.value })} placeholder="Nome do pódio" className="h-9 w-full rounded-lg border border-[#DDD4F5] bg-white px-2 text-[13px]" />
             )}
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" disabled={busy} onClick={() => void saveTemplate()} className="h-9 rounded-full bg-[#4600F3] text-[12.5px] font-semibold text-white disabled:bg-[#B09AF5]">Confirmar metas</button>
-              <button type="button" disabled={busy} onClick={cancelProposal} className="h-9 rounded-full border border-[#DDD4F5] text-[12.5px] font-semibold text-[#3600C2]">Cancelar</button>
+              <button type="button" disabled={busy} onClick={() => void saveTemplate()} className="inline-flex h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 disabled:opacity-40">Confirmar metas</button>
+              <button type="button" disabled={busy} onClick={cancelProposal} className="inline-flex h-11 items-center justify-center rounded-2xl bg-white px-4 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">Cancelar</button>
             </div>
           </div>
         ) : null}
@@ -1355,7 +1360,7 @@ export const GoalsAssistant: FC<{ startWide?: boolean }> = () => {
             rows={wide ? 5 : 3}
             className={cn('min-h-[72px] flex-1 resize-none bg-transparent text-[13px] outline-none', wide ? 'max-h-40' : 'max-h-28')}
           />
-          <button type="submit" disabled={busy || !draft.trim()} aria-label="Enviar" className="grid h-8 w-8 place-items-center rounded-full bg-[#4600F3] text-white disabled:bg-[#B09AF5]"><Send className="h-3.5 w-3.5" /></button>
+          <button type="submit" disabled={busy || !draft.trim()} aria-label="Enviar" className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 disabled:opacity-40"><Send className="h-4 w-4" /></button>
         </div>
       </form>
     </aside>

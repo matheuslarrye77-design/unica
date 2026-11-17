@@ -177,7 +177,7 @@ export const Sidebar: FC<{ open: boolean; onClose: () => void }> = ({ open, onCl
 
   return (
     <>
-      <aside className="fixed top-3 bottom-3 left-3 z-40 hidden w-[76px] flex-col overflow-visible rounded-[28px] bg-[#6B33F6] text-white shadow-[0_12px_30px_rgba(70,0,243,0.28)] lg:flex">
+      <aside className="fixed top-3 bottom-3 left-3 z-40 hidden w-[76px] flex-col overflow-visible rounded-[28px] bg-[var(--unica-rail)] text-white shadow-[0_12px_30px_rgba(70,0,243,0.28)] lg:flex">
         {nav(true, true)}
       </aside>
       {open ? (

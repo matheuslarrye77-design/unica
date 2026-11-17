@@ -1,6 +1,7 @@
 import { ArrowUp, ImagePlay, Plus, Smile, Sticker, X } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
 import { MURAL_FIGURINES } from '@/data/muralStickers';
+import { fitPhoto } from '@/lib/cutout';
 import { forgetSticker, listStickers, prioritizeSticker, saveSticker, subscribeStickerLibrary, useSticker, type SavedSticker } from '@/lib/stickers';
 import { GifPicker } from './GifPicker';
 import { EMOJI_GROUPS } from './mediaCatalog';
@@ -36,24 +37,23 @@ export const ComposerExtras: FC<{
   async function uploadSticker(file: File | undefined) {
     if (!file || uploading) return;
     setUploadError('');
-    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
-      setUploadError('Escolha uma imagem JPG, PNG, WEBP ou GIF.');
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setUploadError('A imagem precisa ter até 2 MB.');
+    const looksLikeImage = file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|heic|heif|avif)$/i.test(file.name);
+    if (!looksLikeImage) {
+      setUploadError('Escolha uma imagem.');
       return;
     }
     setUploading(true);
     try {
-      const sticker = await saveSticker(file);
+      const ready = file.size <= 900_000 && ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) ? file : await fitPhoto(file);
+      const sticker = await saveSticker(ready);
       setSavedStickers((current) => [sticker, ...current.filter((item) => item.id !== sticker.id)]);
       onSticker?.(sticker.url);
       setPanel(null);
       onPicked?.();
     } catch (error) {
       const code = error instanceof Error ? error.message : '';
-      setUploadError(code === 'limit' ? 'Você chegou ao limite de 40 figurinhas salvas.' : code === 'file' ? 'Essa imagem não pode virar figurinha.' : 'Não foi possível salvar a figurinha.');
+      const unreadable = /canvas|png|decode|empty/i.test(code);
+      setUploadError(unreadable ? 'Não foi possível abrir essa imagem.' : code === 'limit' ? 'Você chegou ao limite de 40 figurinhas salvas.' : code === 'file' ? 'Essa imagem não coube no envio. Tente uma menor.' : 'Não foi possível salvar a figurinha.');
     } finally {
       setUploading(false);
     }

@@ -3,10 +3,11 @@ import test from 'node:test';
 import { clampClip, clipChoices, encodeWavChannels, initialClipSeconds, peaksFromSamples, wavDuration } from '../src/lib/audioClip.ts';
 
 test('the clip window matches the chosen seconds', () => {
-  assert.equal(initialClipSeconds(80), 30);
-  assert.equal(initialClipSeconds(20), 15);
-  assert.equal(initialClipSeconds(12), 10);
+  assert.equal(initialClipSeconds(80), 80);
+  assert.equal(initialClipSeconds(20), 20);
+  assert.equal(initialClipSeconds(12), 12);
   assert.equal(initialClipSeconds(8), 8);
+  assert.equal(initialClipSeconds(180), 120);
   assert.deepEqual(clampClip(120, 30, 40), { start: 40, duration: 30, end: 70 });
   assert.deepEqual(clampClip(120, 15, 65), { start: 65, duration: 15, end: 80 });
   assert.deepEqual(clampClip(50, 45, 20), { start: 5, duration: 45, end: 50 });

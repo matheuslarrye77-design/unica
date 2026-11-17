@@ -195,8 +195,10 @@ export const KudosFeedPage: FC = () => {
                               {item.received ? `${item.to} recebeu de ${item.from}` : `${item.from} reconheceu ${item.to}`} · {item.when}
                             </p>
                           </div>
-                          <div className="inline-flex shrink-0 items-center gap-1">
-                            <span className="inline-flex items-center gap-1 text-[12.5px] text-[var(--ds-muted)]"><Heart className="h-3.5 w-3.5 text-[var(--ds-purple)]" /> {item.likes}</span>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span className="inline-flex h-11 items-center gap-1.5 rounded-2xl bg-white px-3 text-sm font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+                              <Heart className="h-4 w-4 text-blue-600" /> {item.likes}
+                            </span>
                             <button
                               type="button"
                               aria-label={posted[item.id] ? 'Publicado no mural' : 'Postar no mural'}
@@ -277,7 +279,7 @@ export const KudosFeedPage: FC = () => {
           <button type="button" aria-pressed={assistant} aria-label="Assistente de metas" onClick={() => setAssistant((value) => !value)} className="fixed right-5 bottom-[88px] z-[60] grid h-14 w-14 place-items-center rounded-full border-2 border-[#4600F3] bg-white text-[#4600F3] shadow-lg">
             <Sparkles className="h-5 w-5" />
           </button>
-          {assistant ? <GoalsAssistant startWide /> : null}
+          {assistant ? <GoalsAssistant startWide onClose={() => setAssistant(false)} /> : null}
         </>,
         document.body,
       ) : null}
