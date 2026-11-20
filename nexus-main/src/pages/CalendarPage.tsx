@@ -365,12 +365,12 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           }
         />
         {birthdaysFocus ? <BirthdayTicket /> : <>
-        <div className="mt-5 rounded-[32px] bg-white p-6 shadow-[12px_12px_28px_#d6deeb,-10px_-10px_24px_#fff] sm:p-7 dark:bg-[#202a3d] dark:shadow-none">
+        <div className="mt-5 rounded-[32px] bg-white p-6 shadow-[12px_12px_28px_#d6deeb,-10px_-10px_24px_#fff] sm:p-7">
           <div className="flex items-center justify-between">
             <button type="button" aria-label="Mês anterior" onClick={() => { setHoverDay(null); shiftMonth(-1); }} className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#12274a] shadow-[5px_5px_11px_#d6deeb,-5px_-5px_11px_#fff] active:shadow-[inset_3px_3px_7px_#d6deeb,inset_-3px_-3px_7px_#fff]"><ChevronLeft className="h-4 w-4" /></button>
             <div className="text-center">
-              <p className="font-fraunces text-[38px] leading-none font-normal text-[#12274a] lowercase dark:text-[#e6edf9]">{currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
-              <p className="mt-1 text-[13px] tracking-[0.35em] text-[#12274a] dark:text-[#e6edf9]">{year}</p>
+              <p className="font-fraunces text-[38px] leading-none font-normal text-[#12274a] lowercase">{currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
+              <p className="mt-1 text-[13px] tracking-[0.35em] text-[#12274a]">{year}</p>
             </div>
             <button type="button" aria-label="Próximo mês" onClick={() => { setHoverDay(null); shiftMonth(1); }} className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#12274a] shadow-[5px_5px_11px_#d6deeb,-5px_-5px_11px_#fff] active:shadow-[inset_3px_3px_7px_#d6deeb,inset_-3px_-3px_7px_#fff]"><ChevronRight className="h-4 w-4" /></button>
           </div>
@@ -378,7 +378,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
             <span className="inline-flex items-center gap-1.5"><i className="h-1.5 w-1.5 rounded-full bg-[#4cd1d4]" />Compromisso</span>
             <span className="inline-flex items-center gap-1.5"><i className="h-1.5 w-1.5 rounded-full bg-[#f59aa8]" />Aniversário</span>
           </div>
-          <div className="relative mt-6 grid grid-cols-7 border-b border-[#eceff5] pb-3 text-center text-[13px] font-bold text-[#12274a] dark:border-[#2f4a58] dark:text-[#e6edf9]">
+          <div className="relative mt-6 grid grid-cols-7 border-b border-[#eceff5] pb-3 text-center text-[13px] font-bold text-[#12274a]">
             {weekdayLetters.map((day, index) => <div key={`${day}-${index}`} className={index % 6 === 0 ? 'text-[#f0647a]' : undefined}>{day}</div>)}
           </div>
           <div className="cal-grid relative mt-4 grid grid-cols-7 gap-2" onMouseLeave={() => setHoverDay(null)}>
@@ -402,9 +402,9 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
                     setHoverDay({ day: cell.day, top: Math.min(Math.max(12, rect.top), window.innerHeight - 220), left });
                   }}
                   onClick={() => { if (!cell.outside) setSelectedDay(cell.day); }}
-                  className={cn('cal-day flex min-h-[132px] flex-col gap-1.5 rounded-[26px] p-2', cell.outside ? 'bg-transparent' : 'bg-white hover:shadow-[5px_5px_12px_#d6deeb,-5px_-5px_12px_#fff] dark:bg-[#243049]')}
+                  className={cn('cal-day flex min-h-[132px] flex-col gap-1.5 rounded-[26px] p-2', cell.outside ? 'bg-transparent' : 'bg-white hover:shadow-[5px_5px_12px_#d6deeb,-5px_-5px_12px_#fff]')}
                 >
-                  <p className={cn('grid h-8 w-8 place-items-center rounded-full text-sm', cell.outside ? 'font-normal text-[#8a97ad]' : weekend ? 'text-[#f0647a]' : 'text-[#12274a] dark:text-[#e6edf9]', isCurrent && 'shadow-[inset_0_0_0_1.5px_#4cd1d4]', picked && 'bg-white font-bold shadow-[4px_4px_9px_#d6deeb,-4px_-4px_9px_#fff]')}>{cell.day}</p>
+                  <p className={cn('grid h-8 w-8 place-items-center rounded-full text-sm', cell.outside ? 'font-normal text-[#8a97ad]' : weekend ? 'text-[#f0647a]' : 'text-[#12274a]', isCurrent && 'shadow-[inset_0_0_0_1.5px_#4cd1d4]', picked && 'bg-white font-bold shadow-[4px_4px_9px_#d6deeb,-4px_-4px_9px_#fff]')}>{cell.day}</p>
                   <div className="grid gap-1">
                     {dayEvents.slice(0, 2).map((event) => {
                       const birthday = event.type === 'birthday';
@@ -428,8 +428,8 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           </div>
         </div>
         {selectedDay ? (
-          <div className="cal-mobile mt-5 rounded-[32px] bg-white p-5 shadow-[12px_12px_28px_#d6deeb,-10px_-10px_24px_#fff] dark:bg-[#202a3d]">
-            <p className="font-fraunces text-[22px] text-[#12274a] dark:text-[#e6edf9]">{selectedDay} de {currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
+          <div className="cal-mobile mt-5 rounded-[32px] bg-white p-5 shadow-[12px_12px_28px_#d6deeb,-10px_-10px_24px_#fff]">
+            <p className="font-fraunces text-[22px] text-[#12274a]">{selectedDay} de {currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
             <p className="mb-3.5 text-[13px] text-[#8a97ad]">{weekNames[new Date(year, month, selectedDay).getDay()]}</p>
             {eventsOn(selectedDay).length === 0 ? <p className="text-sm text-[#8a97ad]">Nada marcado para este dia.</p> : eventsOn(selectedDay).map((event) => (
               <div key={event.id} className="mb-2.5 flex items-center gap-3.5 rounded-[20px] px-4 py-3 shadow-[inset_3px_3px_8px_#d6deeb,inset_-3px_-3px_8px_#fff] last:mb-0">
