@@ -239,7 +239,7 @@ export const JournalArticlePage: FC = () => {
             Jornal
           </Link>
           <div className="mx-auto w-full max-w-[980px] rounded-3xl bg-white px-6 py-[22px] shadow-[0_2px_10px_rgba(60,40,140,0.06)] sm:px-[34px] sm:py-8">
-            <div className="relative overflow-hidden rounded-[20px] bg-white px-6 py-6 shadow-[0_3px_16px_rgba(60,40,140,0.10)] before:absolute before:top-0 before:bottom-0 before:left-0 before:w-[5px] before:bg-[#6D32F5] sm:px-[34px] sm:py-8">
+            <div className="relative overflow-hidden rounded-[20px] bg-white px-5 py-6 shadow-[0_3px_16px_rgba(60,40,140,0.10)] before:absolute before:top-0 before:bottom-0 before:left-0 before:w-[5px] before:bg-[#6D32F5] sm:px-6 sm:py-8">
               <JournalBadge category={article.category} className="w-fit" />
               <h1 className="mt-[22px] text-[clamp(26px,4vw,38px)] font-semibold leading-[1.15] tracking-[-0.02em] text-gray-800">{article.title}</h1>
               <p className="mt-3 mb-[30px] text-[15px] text-gray-500">
@@ -309,7 +309,7 @@ export const JournalArticlePage: FC = () => {
               ) : null}
             </div>
 
-            <section id="comentarios-noticia" className="mt-[30px] border-t border-[#E6E9F2] px-6 pt-6 sm:px-[34px]">
+            <section id="comentarios-noticia" className="mt-[30px] border-t border-[#E6E9F2] px-5 pt-6 sm:px-6">
               <h2 className="mb-3.5 text-lg font-semibold">Comentários</h2>
               {article.comments.filter((item) => !item.replyTo).map((item) => {
                 const replies = article.comments.filter((entry) => entry.replyTo === item.id);

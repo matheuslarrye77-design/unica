@@ -265,7 +265,7 @@ export const ResourcesPage: FC = () => {
               </DialogHeader>
               <div className="flex flex-wrap justify-center gap-2">
                 <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#4f33b8] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]">{systemLabel(selected.system)}</span>
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#4f33b8] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]">{selected.author}</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white py-1 pr-3 pl-1.5 text-xs font-semibold text-[#4f33b8] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]"><span className="grid h-[22px] w-[22px] place-items-center rounded-full bg-[#ece6ff] text-[9px] font-bold">{selected.author.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}</span>{selected.author}</span>
                 <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#4f33b8] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]">{formatDate(selected.publishedAt)}</span>
               </div>
               <div className="max-h-[150px] overflow-y-auto rounded-[22px] bg-white p-4 text-[13.5px] leading-6 text-[#4a4560] shadow-[10px_10px_24px_#d8d2ee,-6px_-6px_18px_#fff,0_0_0_1px_#e8e4f4]">

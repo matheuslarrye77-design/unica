@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { isLeader } from '@/lib/institution';
 import { actor, authHeaders, getDemoId } from '@/lib/session';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
-import { ChevronRight, Filter, LayoutGrid, List, Mail, MessageCircle, MoreHorizontal, Phone, Plus, User, UserRound, Users } from 'lucide-react';
+import { Filter, LayoutGrid, List, Mail, MessageCircle, Phone, Plus, User, UserRound, Users } from 'lucide-react';
 import { usePageSearch } from '@/lib/pageSearch';
 import { useEffect, useMemo, useState, type FC, type FormEvent } from 'react';
 import { toast } from 'sonner';
@@ -22,16 +22,6 @@ const ROLE_ICON: Record<TeamFuncao, FC<{ className?: string }>> = {
   'E-mail': Mail,
   'Ligação': Phone,
 };
-
-function RoleBadge({ funcao }: { funcao: TeamFuncao }) {
-  const Icon = ROLE_ICON[funcao];
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--ds-lavender)] px-2 py-0.5 text-[11px] font-medium text-[var(--ds-purple)]">
-      <Icon className="h-3 w-3" />
-      {funcao}
-    </span>
-  );
-}
 
 const emptyForm = { name: '', email: '', role: '', funcao: 'Chat' as TeamFuncao, phone: '', ramal: '' };
 
@@ -190,47 +180,34 @@ export const EmployeeDirectoryPage: FC = () => {
             <p className="mt-1 text-sm text-[#8A7C98]">Ajuste a pesquisa ou os filtros.</p>
           </div>
         ) : (
-          <div className={cn('mt-5', layout === 'grid' ? 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4' : 'grid gap-3')}>
-            {filtered.map((person) => (
-              <article key={person.id} className="relative rounded-[22px] bg-white p-4 shadow-[10px_10px_24px_#d8d2ee,-6px_-6px_18px_#fff,0_0_0_1px_#e8e4f4] transition-transform hover:-translate-y-0.5">
-                <div className="flex items-start gap-3">
-                  <img src={person.avatar} alt="" className="h-12 w-12 shrink-0 rounded-full bg-[#EDE7FE]" />
+          <div className={cn('mt-5', layout === 'grid' ? 'grid grid-cols-1 gap-[18px] md:grid-cols-2 xl:grid-cols-3' : 'grid gap-3.5')}>
+            {filtered.map((person) => {
+              const Icon = ROLE_ICON[person.funcao];
+              return (
+              <article key={person.id} className="rounded-[22px] bg-white p-5 shadow-[10px_10px_24px_#d8d2ee,-6px_-6px_18px_#fff,0_0_0_1px_#e8e4f4] transition-transform hover:-translate-y-0.5">
+                <div className="flex items-center gap-3">
+                  <img src={person.avatar} alt="" className="h-11 w-11 shrink-0 rounded-full bg-[#ece6ff]" />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <h2 className="text-[15px] font-semibold leading-tight text-[#2C2433]">{person.name}</h2>
-                        <div className="mt-1"><RoleBadge funcao={person.funcao} /></div>
-                      </div>
-                      <div className="flex shrink-0 items-center">
-                        <a href={`mailto:${person.email}`} aria-label={`Enviar e-mail para ${person.name}`} className="grid h-8 w-8 place-items-center rounded-lg text-[#4600F3] hover:bg-[#F5F1FF]">
-                          <Mail className="h-4 w-4" />
-                        </a>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button type="button" aria-label={`Ações de ${person.name}`} className="grid h-8 w-8 place-items-center rounded-lg text-[#8A7C98] hover:bg-[#F5F1FF]">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => window.open(`mailto:${person.email}`)}>Enviar e-mail</DropdownMenuItem>
-                            {canAliases ? <DropdownMenuItem onClick={() => void openAliases(person)}>Nomes nos relatórios</DropdownMenuItem> : null}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
+                    <h2 className="truncate text-[15px] font-semibold text-[#1f1b2e]">{person.name}</h2>
+                    <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#4f33b8] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]">
+                      <Icon className="h-3 w-3 text-[#9b82ff]" />
+                      {person.funcao}
+                    </span>
                   </div>
+                  <a href={`mailto:${person.email}`} aria-label={`Enviar e-mail para ${person.name}`} className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full bg-white text-[#6644e0] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4] hover:bg-[#f6f3ff]">
+                    <Mail className="h-4 w-4" />
+                  </a>
                 </div>
-                <div className="mt-3 px-6 text-center">
-                  <p className="flex items-center justify-center gap-1.5 text-[12.5px] text-[#5C5168]">
-                    <Phone className="h-3.5 w-3.5 text-[#4600F3]" /> Ramal: {person.ramal || '—'}
-                  </p>
-                  <a href={`mailto:${person.email}`} className="mt-1 block text-center text-[11px] leading-tight text-[#4600F3]">{person.email}</a>
+                <div className="mt-3 flex flex-col items-start gap-1.5 border-t border-[#e8e4f4] pt-3 text-[13px]">
+                  <span className="inline-flex items-center gap-1.5 text-[#5f5a78]"><Phone className="h-3.5 w-3.5 text-[#9b82ff]" /> Ramal: {person.ramal || '—'}</span>
+                  <a href={`mailto:${person.email}`} className="font-medium text-[#6644e0] hover:underline">{person.email}</a>
                 </div>
-                <a href={`mailto:${person.email}`} aria-label={`Contato de ${person.name}`} className="absolute right-3 bottom-3 grid h-7 w-7 place-items-center rounded-full text-[#C4B6D4] hover:bg-[#F5F1FF] hover:text-[#4600F3]">
-                  <ChevronRight className="h-4 w-4" />
-                </a>
+                {canAliases ? (
+                  <button type="button" className="mt-3 inline-flex h-[38px] items-center rounded-full bg-white px-4 text-[13px] font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4] hover:bg-[#f6f3ff] hover:text-[#4f33b8]" onClick={() => void openAliases(person)}>Nomes nos relatórios</button>
+                ) : null}
               </article>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

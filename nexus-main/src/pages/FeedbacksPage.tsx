@@ -13,11 +13,17 @@ import { usePageSearch } from '@/lib/pageSearch';
 import { useEffect, useMemo, useRef, useState, type FC, type KeyboardEvent } from 'react';
 import { toast } from 'sonner';
 
-const STATUS: Record<SuggestionStatus, { label: string; className: string }> = {
-  novo: { label: 'Novo', className: 'bg-[#FCE7F3] text-[#BE185D]' },
-  analise: { label: 'Análise', className: 'bg-[#F3E8FF] text-[#3600C2]' },
-  respondido: { label: 'Respondido', className: 'bg-[#E0E7FF] text-[#2A0094]' },
+const STATUS: Record<SuggestionStatus, { label: string; dot: string }> = {
+  novo: { label: 'Novo', dot: '#d6336c' },
+  analise: { label: 'Análise', dot: '#d98a14' },
+  respondido: { label: 'Respondido', dot: '#17a58b' },
 };
+const STATUS_FILTERS: { id: SuggestionStatus | 'todos'; label: string; dot: string }[] = [
+  { id: 'todos', label: 'Todos', dot: '#7c5cf5' },
+  { id: 'novo', label: 'Novo', dot: '#ec6fb0' },
+  { id: 'analise', label: 'Análise', dot: '#f2a33a' },
+  { id: 'respondido', label: 'Respondido', dot: '#22b8a0' },
+];
 
 function initials(name: string) {
   const parts = name.split(' ').filter(Boolean);
@@ -182,16 +188,18 @@ export const FeedbacksPage: FC = () => {
               <span className="rounded-full bg-[#f6f3ff] px-3 py-1 text-[12.5px] font-semibold text-[#4f33b8]">{statusFilter === 'todos' ? 'Todos' : STATUS[statusFilter].label}</span>
             </button>
             {filtersOpen ? (
-              <div className="absolute right-0 z-20 mt-2 w-64 rounded-[22px] bg-white p-3 shadow-[14px_14px_30px_#d8d2ee,-8px_-8px_22px_#fff,0_0_0_1px_#e8e4f4]">
-                <label className="block text-[12px] font-medium text-[#6B5A7A]">
-                  Status
-                  <select className="mt-1 h-9 w-full rounded-lg border border-[#EFE6F4] bg-white px-2 text-[13px]" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as SuggestionStatus | 'todos')}>
-                    <option value="todos">Todos</option>
-                    <option value="novo">Novo</option>
-                    <option value="analise">Análise</option>
-                    <option value="respondido">Respondido</option>
-                  </select>
-                </label>
+              <div className="absolute right-0 z-20 mt-2 flex w-[236px] flex-col gap-2 rounded-[22px] bg-white p-2.5 shadow-[14px_14px_30px_#d8d2ee,-8px_-8px_22px_#fff,0_0_0_1px_#e8e4f4]">
+                {STATUS_FILTERS.map((item) => {
+                  const count = item.id === 'todos' ? items.length : items.filter((entry) => entry.status === item.id).length;
+                  const on = statusFilter === item.id;
+                  return (
+                    <button key={item.id} type="button" className={cn('flex h-10 items-center gap-2.5 rounded-full bg-white px-4 text-[13.5px] font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]', on && 'bg-[#f6f3ff] text-[#4f33b8] shadow-[0_0_0_1.5px_#7c5cf5]')} onClick={() => { setStatusFilter(item.id); setFiltersOpen(false); }}>
+                      <i className="h-2 w-2 rounded-full" style={{ background: item.dot }} />
+                      {item.label}
+                      <em className={cn('ml-auto grid h-6 min-w-6 place-items-center rounded-xl bg-[#f6f5fa] px-1.5 text-[11.5px] not-italic text-[#8a85a0]', on && 'bg-[#6644e0] text-white')}>{count}</em>
+                    </button>
+                  );
+                })}
                 {gestao ? (
                   <>
                     <label className="mt-3 block text-[12px] font-medium text-[#6B5A7A]">
@@ -249,15 +257,17 @@ export const FeedbacksPage: FC = () => {
                       {gestao ? (
                         <button
                           type="button"
-                          className={cn('rounded-full px-2.5 py-1 text-[12px] font-medium', STATUS[item.status].className, savingStatus === item.id && 'opacity-60')}
+                          className={cn('inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-bold shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]', savingStatus === item.id && 'opacity-60')}
+                          style={{ color: STATUS[item.status].dot }}
                           onClick={() => setStatusMenu(statusMenu === item.id ? null : item.id)}
                           disabled={savingStatus === item.id}
                           aria-label={`Alterar status de ${item.title || 'sugestão'}`}
                         >
+                          <i className="h-1.5 w-1.5 rounded-full" style={{ background: STATUS[item.status].dot }} />
                           {STATUS[item.status].label}
                         </button>
                       ) : (
-                        <button type="button" className={cn('rounded-full px-2.5 py-1 text-[12px] font-medium', STATUS[item.status].className)} onClick={() => toast.error('Somente a gestão pode alterar o status.')}>{STATUS[item.status].label}</button>
+                        <button type="button" className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-bold shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]" style={{ color: STATUS[item.status].dot }} onClick={() => toast.error('Somente a gestão pode alterar o status.')}><i className="h-1.5 w-1.5 rounded-full" style={{ background: STATUS[item.status].dot }} />{STATUS[item.status].label}</button>
                       )}
                       {statusMenu === item.id ? (
                         <div className="absolute right-0 z-10 mt-1 w-36 rounded-xl border border-[#EFE6F4] bg-white p-1 shadow-lg">

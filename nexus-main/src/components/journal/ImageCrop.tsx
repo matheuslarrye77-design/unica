@@ -258,9 +258,9 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
 
   return (
     <div data-journal-overlay className="pointer-events-auto fixed inset-0 z-[80] grid place-items-center bg-black/60 p-4" style={{ pointerEvents: 'auto' }}>
-      <div className="pointer-events-auto w-full max-w-xl rounded-3xl bg-card p-4 shadow-xl" style={{ pointerEvents: 'auto' }} role="dialog" aria-label={banner ? 'Ajustar capa' : 'Ajustar foto'}>
-        <p className="text-sm font-medium text-foreground">{lock === 'circular' ? 'Ajustar foto de perfil' : banner ? 'Ajustar capa' : 'Ajustar foto'}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{lock ? 'Esse recorte já tem o formato certo. Arraste a foto e use o zoom.' : banner ? 'Arraste a foto e use o zoom para escolher o enquadramento.' : 'A imagem entra inteira. A tesoura só recorta se você escolher um formato.'}</p>
+      <div className="pointer-events-auto w-full max-w-[460px] rounded-[22px] bg-white p-5 text-[#1f1b2e] shadow-[0_30px_80px_-20px_rgba(79,51,184,0.45)]" style={{ pointerEvents: 'auto' }} role="dialog" aria-label={banner ? 'Ajustar capa' : 'Ajustar foto'}>
+        <p className="text-lg font-bold">{lock === 'circular' ? 'Ajustar foto de perfil' : banner ? 'Ajustar capa' : 'Ajustar foto'}</p>
+        <p className="mt-1 text-xs text-[#8a85a0]">{lock ? 'Esse recorte já tem o formato certo. Arraste a foto e use o zoom.' : banner ? 'Arraste a foto e use o zoom para escolher o enquadramento.' : 'Arraste para posicionar. O corte só muda se você escolher um formato.'}</p>
         <div
           ref={stageRef}
           onPointerDown={banner && !format ? (event) => onPointerDown(event, 'pan') : undefined}
@@ -349,9 +349,11 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
             <input aria-label="Opacidade" type="range" min={0.2} max={1} step={0.01} value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} className="h-2 flex-1 accent-[#6644e0]" />
           </label>
         ) : null}
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" className="rounded-full px-4 py-2 text-sm text-[#3600C2]" onClick={onCancel}>Cancelar</button>
-          <button type="button" className="rounded-full bg-[#4600F3] px-4 py-2 text-sm font-medium text-white" onClick={confirm}>Confirmar</button>
+        <div className="mt-4 flex items-center gap-2 border-t border-[#e8e4f4] pt-3.5">
+          <button type="button" className="rounded-[11px] px-4 py-2.5 text-sm font-semibold text-[#6b6682] hover:bg-[#f6f3ff]" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); setOpacity(1); if (!lock && !banner) chooseFormat(null); }}>Redefinir</button>
+          <span className="flex-1" />
+          <button type="button" className="rounded-[11px] px-4 py-2.5 text-sm font-semibold text-[#6b6682] hover:bg-[#f6f3ff]" onClick={onCancel}>Cancelar</button>
+          <button type="button" className="rounded-[11px] bg-[#6644e0] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)] hover:bg-[#4f33b8]" onClick={confirm}>Confirmar</button>
         </div>
       </div>
     </div>
