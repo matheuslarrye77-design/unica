@@ -692,7 +692,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
     setMedia((current) => [...current, item].slice(0, 8));
   }
 
-  function onDrop(event: DragEvent<HTMLButtonElement>) {
+  function onDrop(event: DragEvent<HTMLElement>) {
     event.preventDefault();
     const file = event.dataTransfer.files?.[0];
     if (file) onCoverFile(file);
@@ -760,7 +760,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         overlayClassName="bg-slate-900/25 backdrop-blur-md"
-        className="flex max-h-[min(920px,calc(100dvh-1rem))] w-[min(840px,calc(100%-2rem))] max-w-none flex-col gap-0 overflow-hidden rounded-[22px] border border-gray-100 bg-white p-6 shadow-[0_30px_80px_-20px_rgba(79,51,184,0.35)] sm:max-w-[840px]"
+        className="!flex max-h-[min(920px,calc(100dvh-1rem))] w-[min(840px,calc(100%-2rem))] max-w-none !flex-col gap-0 !overflow-hidden rounded-[22px] border border-gray-100 bg-white p-6 shadow-[0_30px_80px_-20px_rgba(79,51,184,0.35)] sm:max-w-[840px]"
         onPointerDown={(event) => {
           const target = event.target as HTMLElement | null;
           if (pinHint && !target?.closest('[data-pin-hint]')) setPinHint(false);
@@ -810,9 +810,9 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
           <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto pr-1">
             <label className="grid gap-1">
               <span className="flex items-center gap-2 text-sm font-semibold text-gray-800"><Type className="h-4 w-4 text-gray-400" /> Título</span>
-              <span className="relative">
-                <input value={title} maxLength={TITLE_LIMIT} onChange={(event) => setTitle(event.target.value.slice(0, TITLE_LIMIT))} placeholder="Digite o título da publicação..." className="h-11 w-full rounded-2xl border border-[#DDD4F5] bg-[#FBF9FD] px-4 pr-16 text-base text-gray-800 outline-none placeholder:text-[#B0A8BA] focus:border-[#E0D6FC] focus:ring-2 focus:ring-[#EDE7FE]" />
-                <span className="absolute top-1/2 right-4 -translate-y-1/2 text-[12px] text-[#B0A8BA]">{title.length}/{TITLE_LIMIT}</span>
+              <span className="rounded-2xl border border-[#DDD4F5] bg-[#FBF9FD] px-3 py-2 focus-within:border-[#E0D6FC] focus-within:ring-2 focus-within:ring-[#EDE7FE]">
+                <textarea value={title} maxLength={TITLE_LIMIT} rows={2} onChange={(event) => setTitle(event.target.value.slice(0, TITLE_LIMIT))} placeholder="Digite o título da publicação..." className="grow-desc w-full resize-none bg-transparent text-[13.5px] leading-5 text-[#241B33] outline-none placeholder:text-[#B0A8BA]" />
+                <span className="block pt-1 text-right text-[12px] leading-4 text-[#B0A8BA]">{title.length}/{TITLE_LIMIT}</span>
               </span>
             </label>
             <div className="grid gap-1">
@@ -852,8 +852,8 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
               </label>
             </div>
             <div className="grid gap-1.5">
-              <span className="flex items-center justify-between gap-2 text-sm font-semibold text-gray-800"><span className="flex items-center gap-2"><ImageIcon className="h-4 w-4 text-gray-400" /> Imagem de capa</span><button type="button" onClick={() => setLibrary((current) => !current)} className="text-xs font-semibold text-[#6D32F5]">Biblioteca</button></span>
-              <button type="button" onClick={() => coverInput.current?.click()} onDragOver={(event) => event.preventDefault()} onDrop={onDrop} className="overflow-hidden rounded-2xl border border-dashed border-[#D9C6E8] bg-[#FBF9FD] text-left">
+              <span className="flex items-center justify-between gap-2 text-sm font-semibold text-gray-800"><button type="button" onClick={() => coverInput.current?.click()} className="flex items-center gap-2"><ImageIcon className="h-4 w-4 text-gray-400" /> Imagem de capa</button><button type="button" onClick={() => setLibrary((current) => !current)} className="text-xs font-semibold text-[#6D32F5]">Biblioteca</button></span>
+              <label htmlFor="capa-da-noticia" onDragOver={(event) => event.preventDefault()} onDrop={onDrop} className="block cursor-pointer overflow-hidden rounded-2xl border border-dashed border-[#D9C6E8] bg-[#FBF9FD] text-left">
                 {coverUrl ? (
                   <span className="relative block">
                     <img src={coverUrl} alt="Pré-visualização da capa" className="aspect-[1400/320] w-full object-cover" />
@@ -866,7 +866,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
                     <span className="text-[12px] text-[#8A7C98]">Formatos: JPG, PNG, WEBP • Tamanho máximo: 5MB</span>
                   </span>
                 )}
-              </button>
+              </label>
               {library ? (
                 <div className="rounded-2xl border border-[#DDD4F5] bg-white p-3">
                   <div className="mb-3 flex items-center justify-between gap-2">
@@ -890,7 +890,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
                   )}
                 </div>
               ) : null}
-              <input ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; void onCoverFile(file); }} />
+              <input id="capa-da-noticia" ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; void onCoverFile(file); }} />
             </div>
             {media.length > 0 ? <AttachedMedia items={media} onRemove={(id) => setMedia((current) => current.filter((file) => file.id !== id))} /> : null}
             {sending ? <p className="text-[12px] text-[#8A7C98]">Enviando {sending === 'audio' ? 'áudio' : sending === 'video' ? 'vídeo' : 'arquivo'}...</p> : null}

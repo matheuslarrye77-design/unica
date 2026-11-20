@@ -36,7 +36,7 @@ const FeaturedCard: FC<{ article: JournalArticle; saved: boolean; onRemove?: () 
           aria-label={saved ? 'Remover dos salvos' : 'Salvar'}
           aria-pressed={saved}
           onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleJournalSave(article.id); }}
-          className={cn('grid h-7 w-7 place-items-center rounded-full', saved ? 'text-[#3600C2]' : 'text-[#C9BED6] hover:text-[#4600F3]')}
+          className={cn('grid h-9 w-9 place-items-center rounded-[14px] bg-white shadow-[0_4px_14px_rgba(60,40,140,0.12)]', saved ? 'bg-[#6D32F5] text-white' : 'text-gray-500')}
         >
           <Bookmark className="h-4 w-4" fill={saved ? 'currentColor' : 'none'} />
         </button>
@@ -45,7 +45,7 @@ const FeaturedCard: FC<{ article: JournalArticle; saved: boolean; onRemove?: () 
           aria-label={article.pinned ? 'Desafixar' : 'Fixar'}
           aria-pressed={article.pinned}
           onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleJournalPin(article.id); }}
-          className={cn('grid h-7 w-7 place-items-center rounded-full', article.pinned ? 'text-[#3600C2]' : 'text-[#C9BED6] hover:text-[#4600F3]')}
+          className={cn('grid h-9 w-9 place-items-center rounded-[14px] bg-white shadow-[0_4px_14px_rgba(60,40,140,0.12)]', article.pinned ? 'bg-[#6D32F5] text-white' : 'text-gray-500')}
         >
           <Pin className="h-4 w-4" fill={article.pinned ? 'currentColor' : 'none'} />
         </button>

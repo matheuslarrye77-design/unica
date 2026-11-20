@@ -80,13 +80,15 @@ const CommentComposer: FC<{
   value: string;
   placeholder: string;
   label: string;
+  autoFocus?: boolean;
   onChange: (value: string) => void;
   onSend: (text: string, media: JournalCommentMedia[]) => void;
-}> = ({ value, placeholder, label, onChange, onSend }) => {
+}> = ({ value, placeholder, label, autoFocus, onChange, onSend }) => {
   const [media, setMedia] = useState<JournalCommentMedia[]>([]);
   const [recording, setRecording] = useState(false);
   const [crops, setCrops] = useState<File[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
   const busy = media.some((item) => item.url.startsWith('blob:'));
@@ -141,8 +143,15 @@ const CommentComposer: FC<{
     setMedia((current) => (current.length >= 8 ? current : [...current, { kind, url, name }]));
   }
 
+  useEffect(() => {
+    if (!autoFocus) return;
+    const field = boxRef.current?.querySelector('textarea');
+    field?.focus();
+    boxRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [autoFocus]);
+
   return (
-    <div className="mt-2">
+    <div ref={boxRef} className="mt-2" data-reply-box>
       {media.length ? (
         <div className="mb-2 flex flex-wrap gap-2">
           {media.map((item) => (
@@ -154,7 +163,7 @@ const CommentComposer: FC<{
         </div>
       ) : null}
       <div className="flex items-end gap-1">
-        <Textarea value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="min-h-10 flex-1" />
+        <Textarea value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="min-h-10 flex-1 rounded-2xl border-[#DDD4F5] bg-[#FBF9FD]" />
         <input ref={fileRef} type="file" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" className="hidden" onChange={(event) => {
           const files = [...(event.target.files ?? [])];
           event.target.value = '';
@@ -238,8 +247,8 @@ export const JournalArticlePage: FC = () => {
             <ArrowLeft className="h-4 w-4" />
             Jornal
           </Link>
-          <div className="mx-auto w-full max-w-[980px] rounded-3xl bg-white px-6 py-[22px] shadow-[0_2px_10px_rgba(60,40,140,0.06)] sm:px-[34px] sm:py-8">
-            <div className="relative overflow-hidden rounded-[20px] bg-white px-5 py-6 shadow-[0_3px_16px_rgba(60,40,140,0.10)] before:absolute before:top-0 before:bottom-0 before:left-0 before:w-[5px] before:bg-[#6D32F5] sm:px-6 sm:py-8">
+          <div className="mx-auto w-full max-w-[980px] rounded-3xl bg-white px-6 py-[22px] shadow-[0_2px_10px_rgba(60,40,140,0.06)] sm:px-8 sm:py-8">
+            <div className="relative overflow-hidden rounded-[20px] bg-white px-5 py-6 shadow-[0_3px_16px_rgba(60,40,140,0.10)] before:absolute before:top-0 before:bottom-0 before:left-0 before:w-[5px] before:bg-[#6D32F5] sm:px-5 sm:py-8">
               <JournalBadge category={article.category} className="w-fit" />
               <h1 className="mt-[22px] text-[clamp(26px,4vw,38px)] font-semibold leading-[1.15] tracking-[-0.02em] text-gray-800">{article.title}</h1>
               <p className="mt-3 mb-[30px] text-[15px] text-gray-500">
@@ -309,7 +318,7 @@ export const JournalArticlePage: FC = () => {
               ) : null}
             </div>
 
-            <section id="comentarios-noticia" className="mt-[30px] border-t border-[#E6E9F2] px-5 pt-6 sm:px-6">
+            <section id="comentarios-noticia" className="mt-[30px] border-t border-[#E6E9F2] px-5 pt-6">
               <h2 className="mb-3.5 text-lg font-semibold">Comentários</h2>
               {article.comments.filter((item) => !item.replyTo).map((item) => {
                 const replies = article.comments.filter((entry) => entry.replyTo === item.id);
@@ -324,12 +333,13 @@ export const JournalArticlePage: FC = () => {
                         <CommentPieces media={item.media} />
                         <button type="button" className="mt-1 text-xs font-semibold text-gray-500 hover:text-[#6D32F5]" onClick={() => { setReplyTo(item.id); setReplyDraft(''); }}>Responder</button>
                       </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <button type="button" aria-label={liked ? 'Descurtir comentário' : 'Curtir comentário'} aria-pressed={liked} onClick={() => toggleJournalCommentLike(article.id, item.id, currentUser.name)} className={cn('grid h-8 w-8 place-items-center rounded-full text-gray-500 hover:bg-[#F6F3FF]', liked && 'text-[#6D32F5]')}>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button type="button" aria-label={liked ? 'Descurtir comentário' : 'Curtir comentário'} aria-pressed={liked} onClick={() => toggleJournalCommentLike(article.id, item.id, currentUser.name)} className={cn('inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-[14px] bg-white px-2 text-gray-500 shadow-[0_4px_14px_rgba(60,40,140,0.12)]', liked && 'bg-[#6D32F5] text-white')}>
                           <Heart className="h-4 w-4" fill={liked ? 'currentColor' : 'none'} />
+                          {(item.likes ?? 0) > 0 ? <span className="text-xs font-semibold">{item.likes}</span> : null}
                         </button>
                         {item.author === currentUser.name || canManage ? (
-                          <button type="button" aria-label="Excluir comentário" className="grid h-8 w-8 place-items-center rounded-full text-gray-500 hover:bg-[#F6F3FF] hover:text-[#D6334B]" onClick={() => { if (!window.confirm('Excluir este comentário?')) return; deleteJournalComment(article.id, item.id); }}><Trash2 className="h-4 w-4" /></button>
+                          <button type="button" aria-label="Excluir comentário" className="grid h-9 w-9 place-items-center rounded-[14px] bg-white text-gray-500 shadow-[0_4px_14px_rgba(60,40,140,0.12)] hover:text-[#D6334B]" onClick={() => { if (!window.confirm('Excluir este comentário?')) return; deleteJournalComment(article.id, item.id); }}><Trash2 className="h-4 w-4" /></button>
                         ) : null}
                       </div>
                     </div>
@@ -347,12 +357,13 @@ export const JournalArticlePage: FC = () => {
                             {reply.text ? <p className="text-[14px] leading-6 whitespace-pre-wrap">{reply.text}</p> : null}
                             <CommentPieces media={reply.media} />
                           </div>
-                          <div className="flex shrink-0 items-center gap-1">
-                            <button type="button" aria-label={replyLiked ? 'Descurtir resposta' : 'Curtir resposta'} aria-pressed={replyLiked} onClick={() => toggleJournalCommentLike(article.id, reply.id, currentUser.name)} className={cn('grid h-8 w-8 place-items-center rounded-full text-gray-500 hover:bg-[#F6F3FF]', replyLiked && 'text-[#6D32F5]')}>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <button type="button" aria-label={replyLiked ? 'Descurtir resposta' : 'Curtir resposta'} aria-pressed={replyLiked} onClick={() => toggleJournalCommentLike(article.id, reply.id, currentUser.name)} className={cn('inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-[14px] bg-white px-2 text-gray-500 shadow-[0_4px_14px_rgba(60,40,140,0.12)]', replyLiked && 'bg-[#6D32F5] text-white')}>
                               <Heart className="h-4 w-4" fill={replyLiked ? 'currentColor' : 'none'} />
+                              {(reply.likes ?? 0) > 0 ? <span className="text-xs font-semibold">{reply.likes}</span> : null}
                             </button>
                             {reply.author === currentUser.name || canManage ? (
-                              <button type="button" aria-label="Excluir resposta" className="grid h-8 w-8 place-items-center rounded-full text-gray-500 hover:text-[#D6334B]" onClick={() => { if (!window.confirm('Excluir este comentário?')) return; deleteJournalComment(article.id, reply.id); }}><Trash2 className="h-4 w-4" /></button>
+                              <button type="button" aria-label="Excluir resposta" className="grid h-9 w-9 place-items-center rounded-[14px] bg-white text-gray-500 shadow-[0_4px_14px_rgba(60,40,140,0.12)] hover:text-[#D6334B]" onClick={() => { if (!window.confirm('Excluir este comentário?')) return; deleteJournalComment(article.id, reply.id); }}><Trash2 className="h-4 w-4" /></button>
                             ) : null}
                           </div>
                         </div>
@@ -360,7 +371,7 @@ export const JournalArticlePage: FC = () => {
                     }) : null}
                     {replyTo === item.id ? (
                       <div className="ml-8">
-                        <CommentComposer value={replyDraft} placeholder={`Responder ${item.author}...`} label="Enviar resposta" onChange={setReplyDraft} onSend={(text, media) => sendComment(text, item.id, media)} />
+                        <CommentComposer autoFocus value={replyDraft} placeholder={`Responder ${item.author}...`} label="Enviar resposta" onChange={setReplyDraft} onSend={(text, media) => sendComment(text, item.id, media)} />
                       </div>
                     ) : null}
                   </div>

@@ -1,4 +1,4 @@
-import { Scissors, Search } from 'lucide-react';
+import { Minus, Plus, Scissors, Search } from 'lucide-react';
 import { useEffect, useRef, useState, type FC, type PointerEvent as ReactPointerEvent } from 'react';
 
 type FormatId = 'livre' | 'retangular' | 'quadrado' | 'circular' | 'triangular' | 'faixa';
@@ -338,16 +338,18 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
           ) : null}
         </div>
         {banner || lock || zoomOpen ? (
-          <label className="mt-3 flex items-center gap-3 text-xs font-semibold text-[#4a4560]">
-            {Math.round(zoom * 100)}%
-            <input aria-label="Zoom" type="range" min={1} max={3} step={0.01} value={zoom} onChange={(event) => changeZoom(Number(event.target.value))} className="h-2 min-w-0 flex-1 accent-[#6644e0]" />
-          </label>
+          <div className="mx-auto mt-3 flex w-full max-w-[280px] items-center justify-between rounded-full bg-white px-1.5 py-1 shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]">
+            <button type="button" aria-label="Diminuir zoom" className="grid h-9 w-9 place-items-center rounded-full text-[#4f33b8] hover:bg-[#f6f3ff]" onClick={() => changeZoom(Math.max(1, Math.round((zoom - 0.1) * 100) / 100))}><Minus className="h-4 w-4" /></button>
+            <span className="text-sm font-semibold tabular-nums text-[#1f1b2e]">Zoom {Math.round(zoom * 100)}%</span>
+            <button type="button" aria-label="Aumentar zoom" className="grid h-9 w-9 place-items-center rounded-full text-[#4f33b8] hover:bg-[#f6f3ff]" onClick={() => changeZoom(Math.min(3, Math.round((zoom + 0.1) * 100) / 100))}><Plus className="h-4 w-4" /></button>
+          </div>
         ) : null}
         {darken && opacityOpen ? (
-          <label className="mt-3 flex items-center gap-3 text-xs font-semibold text-[#4a4560]">
-            {Math.round(opacity * 100)}%
-            <input aria-label="Opacidade" type="range" min={0.2} max={1} step={0.01} value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} className="h-2 flex-1 accent-[#6644e0]" />
-          </label>
+          <div className="mx-auto mt-3 flex w-full max-w-[280px] items-center justify-between rounded-full bg-white px-1.5 py-1 shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]">
+            <button type="button" aria-label="Diminuir opacidade" className="grid h-9 w-9 place-items-center rounded-full text-[#4f33b8] hover:bg-[#f6f3ff]" onClick={() => setOpacity(Math.max(0.2, Math.round((opacity - 0.05) * 100) / 100))}><Minus className="h-4 w-4" /></button>
+            <span className="text-sm font-semibold tabular-nums text-[#1f1b2e]">Opacidade {Math.round(opacity * 100)}%</span>
+            <button type="button" aria-label="Aumentar opacidade" className="grid h-9 w-9 place-items-center rounded-full text-[#4f33b8] hover:bg-[#f6f3ff]" onClick={() => setOpacity(Math.min(1, Math.round((opacity + 0.05) * 100) / 100))}><Plus className="h-4 w-4" /></button>
+          </div>
         ) : null}
         <div className="mt-4 flex items-center gap-2 border-t border-[#e8e4f4] pt-3.5">
           <button type="button" className="rounded-[11px] px-4 py-2.5 text-sm font-semibold text-[#6b6682] hover:bg-[#f6f3ff]" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); setOpacity(1); if (!lock && !banner) chooseFormat(null); }}>Redefinir</button>

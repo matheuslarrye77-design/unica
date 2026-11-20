@@ -300,22 +300,33 @@ export function extraApi(): Connect.NextHandleFunction {
   const journalFile = path.join(dir, 'journal.json');
   const retiredDrafts = ['j-rascunho'];
 
+  function readSavedMap(value: unknown) {
+    if (!value || typeof value !== 'object') return {} as Record<string, string[]>;
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).flatMap(([userId, ids]) => {
+      if (!userId || userId.length > 80 || !Array.isArray(ids)) return [];
+      const clean = ids.filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 80).slice(0, 200);
+      return [[userId, clean]];
+    }));
+  }
+
   function loadJournal() {
     try {
-      const parsed = JSON.parse(fs.readFileSync(journalFile, 'utf8')) as { initialized?: boolean; articles?: unknown; deletedIds?: unknown };
+      const parsed = JSON.parse(fs.readFileSync(journalFile, 'utf8')) as { initialized?: boolean; articles?: unknown; deletedIds?: unknown; saved?: unknown; documentSaved?: unknown };
       return {
         initialized: Boolean(parsed.initialized),
         articles: Array.isArray(parsed.articles) ? parsed.articles : [],
         deletedIds: Array.isArray(parsed.deletedIds) ? parsed.deletedIds.filter((id): id is string => typeof id === 'string') : [],
+        saved: readSavedMap(parsed.saved),
+        documentSaved: readSavedMap(parsed.documentSaved),
       };
     } catch {
-      return { initialized: false, articles: [] as unknown[], deletedIds: [] as string[] };
+      return { initialized: false, articles: [] as unknown[], deletedIds: [] as string[], saved: {} as Record<string, string[]>, documentSaved: {} as Record<string, string[]> };
     }
   }
 
-  function saveJournal(store: { initialized: boolean; articles: Record<string, unknown>[]; deletedIds: string[] }) {
+  function saveJournal(store: { initialized: boolean; articles: unknown[]; deletedIds: string[]; saved?: Record<string, string[]>; documentSaved?: Record<string, string[]> }) {
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(journalFile, JSON.stringify(store));
+    fs.writeFileSync(journalFile, JSON.stringify({ ...store, saved: store.saved ?? {}, documentSaved: store.documentSaved ?? {} }));
   }
 
   function presentJournal(store: { initialized: boolean; articles: unknown[]; deletedIds: string[] }) {
@@ -363,7 +374,26 @@ export function extraApi(): Connect.NextHandleFunction {
       const row = entry as Record<string, unknown>;
       const commentId = clip(row.id, 80).trim();
       if (!commentId) return [];
-      return [{ id: commentId, author: clip(row.author, 120), text: clip(row.text, 4000), date: clip(row.date, 40) }];
+      const replyTo = clip(row.replyTo, 80).trim();
+      const media = Array.isArray(row.media) ? row.media.slice(0, 8).flatMap((piece) => {
+        if (!piece || typeof piece !== 'object') return [];
+        const file = piece as Record<string, unknown>;
+        const kind = clip(file.kind, 20);
+        const url = clip(file.url, 2000);
+        if (!['gif', 'sticker', 'image', 'video', 'audio', 'document'].includes(kind)) return [];
+        if (!url.startsWith('/api/') && !url.startsWith('/figurinhas/') && !url.startsWith('https://')) return [];
+        return [{ kind, url, ...(typeof file.name === 'string' && file.name ? { name: clip(file.name, 180) } : {}) }];
+      }) : [];
+      return [{
+        id: commentId,
+        author: clip(row.author, 120),
+        text: clip(row.text, 4000),
+        date: clip(row.date, 40),
+        ...(replyTo ? { replyTo } : {}),
+        likes: Math.max(0, Number(row.likes) || 0),
+        likedBy: Array.isArray(row.likedBy) ? row.likedBy.filter((name): name is string => typeof name === 'string').slice(0, 500) : [],
+        ...(media.length ? { media } : {}),
+      }];
     }) : [];
     return {
       id,
@@ -586,7 +616,7 @@ export function extraApi(): Connect.NextHandleFunction {
     const gifRoute = url === '/api/gifs';
     const stickerRoute = url === '/api/stickers' || url.startsWith('/api/stickers/');
     const goalsRoute = url === '/api/goals' || url.startsWith('/api/goals/');
-    const journalRoute = url === '/api/journal';
+    const journalRoute = url === '/api/journal' || url === '/api/journal/saved';
     const birthdayRoute = url === '/api/birthday-card' || url.startsWith('/api/birthday-card/');
     if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && url !== '/api/account' && !feedRoute && !uploadRoute && !celebrationRoute && !gifRoute && !stickerRoute && !goalsRoute && !journalRoute && !birthdayRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
       return next();
@@ -1075,16 +1105,25 @@ export function extraApi(): Connect.NextHandleFunction {
       }
 
       if (req.method === 'GET' && url === '/api/document-favorites') {
-        send(res, 200, { ids: loadAuth().favorites[user.id] ?? [] });
+        const current = loadJournal();
+        const stored = current.documentSaved[user.id];
+        if (stored) return send(res, 200, { ids: stored });
+        const legacy = loadAuth().favorites[user.id] ?? [];
+        if (legacy.length) {
+          current.documentSaved[user.id] = legacy;
+          saveJournal(current);
+        }
+        send(res, 200, { ids: legacy });
         return;
       }
 
       if (req.method === 'PUT' && url === '/api/document-favorites') {
         const body = JSON.parse((await readBody(req)).toString('utf8')) as { ids?: string[] };
-        const auth = loadAuth();
-        auth.favorites[user.id] = Array.isArray(body.ids) ? body.ids : [];
-        saveAuth(auth);
-        send(res, 200, { ids: auth.favorites[user.id] });
+        const ids = Array.isArray(body.ids) ? body.ids.filter((id) => typeof id === 'string' && id.length > 0 && id.length <= 80).slice(0, 200) : [];
+        const current = loadJournal();
+        current.documentSaved[user.id] = ids;
+        saveJournal(current);
+        send(res, 200, { ids });
         return;
       }
 
@@ -1128,17 +1167,27 @@ export function extraApi(): Connect.NextHandleFunction {
         return;
       }
 
-      if (req.method === 'GET' && journalRoute) {
+      if (req.method === 'GET' && url === '/api/journal') {
         const current = loadJournal();
         const next = presentJournal(current);
         if (current.initialized && (next.articles.length !== current.articles.length || next.deletedIds.length !== current.deletedIds.length)) {
-          saveJournal({ initialized: true, articles: next.articles as Record<string, unknown>[], deletedIds: next.deletedIds });
+          saveJournal({ initialized: true, articles: next.articles as Record<string, unknown>[], deletedIds: next.deletedIds, saved: current.saved, documentSaved: current.documentSaved });
         }
-        send(res, 200, next);
+        send(res, 200, { ...next, savedIds: current.saved[user.id] ?? [] });
         return;
       }
 
-      if (req.method === 'PUT' && journalRoute) {
+      if (req.method === 'PUT' && url === '/api/journal/saved') {
+        const body = JSON.parse((await readBody(req)).toString('utf8')) as { ids?: unknown };
+        const ids = Array.isArray(body.ids) ? body.ids.filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 80).slice(0, 200) : [];
+        const current = loadJournal();
+        current.saved[user.id] = ids;
+        saveJournal({ initialized: current.initialized, articles: current.articles as Record<string, unknown>[], deletedIds: current.deletedIds, saved: current.saved, documentSaved: current.documentSaved });
+        send(res, 200, { ids });
+        return;
+      }
+
+      if (req.method === 'PUT' && url === '/api/journal') {
         if (!isLeader(user)) return send(res, 403, { error: 'forbidden' });
         const body = JSON.parse((await readBody(req)).toString('utf8')) as { articles?: unknown; deletedIds?: unknown };
         const current = loadJournal();
@@ -1152,7 +1201,7 @@ export function extraApi(): Connect.NextHandleFunction {
           .slice(0, 400)
           .map((item) => cleanJournalArticle(item))
           .filter((article): article is NonNullable<ReturnType<typeof cleanJournalArticle>> => article !== null && !blocked.has(article.id));
-        const next = { initialized: true, articles, deletedIds };
+        const next = { initialized: true, articles, deletedIds, saved: current.saved, documentSaved: current.documentSaved };
         saveJournal(next);
         send(res, 200, next);
         return;

@@ -95,7 +95,7 @@ const LEGACY_COVERS: Record<string, string> = {
 };
 
 export const PIN_LIMIT = 3;
-export const SAVE_LIMIT = 8;
+export const SAVE_LIMIT = 200;
 export const TITLE_LIMIT = 150;
 export const CONTENT_LIMIT = 10000;
 const STORAGE_KEY = 'unica-journal';
@@ -662,9 +662,26 @@ export function saveJournalArticle(draft: JournalDraft, id?: string) {
   return { article: pinned.list.find((article) => article.id === articleId) ?? next, replacedId: pinned.replacedId };
 }
 
+function writeSaved(ids: string[]) {
+  const next = [...new Set(ids.filter((item) => typeof item === 'string' && item))].slice(0, SAVE_LIMIT);
+  localStorage.setItem(SAVED_KEY, JSON.stringify(next));
+  notify();
+  return next;
+}
+
+function pushSaved(ids: string[]) {
+  if (typeof window === 'undefined') return;
+  void fetch('/api/journal/saved', {
+    method: 'PUT',
+    credentials: 'include',
+    headers: journalHeaders(),
+    body: JSON.stringify({ ids }),
+  }).catch(() => undefined);
+}
+
 function dropSaved(id: string) {
-  const saved = savedJournalIds().filter((item) => item !== id);
-  localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+  const saved = writeSaved(savedJournalIds().filter((item) => item !== id));
+  pushSaved(saved);
 }
 
 export function deleteJournalArticle(id: string) {
@@ -731,9 +748,8 @@ export function trimSavedJournal() {
 
 export function toggleJournalSave(id: string) {
   const current = readSavedIds();
-  const next = current.includes(id) ? current.filter((item) => item !== id) : [id, ...current.filter((item) => item !== id)].slice(0, SAVE_LIMIT);
-  localStorage.setItem(SAVED_KEY, JSON.stringify(next));
-  notify();
+  const next = writeSaved(current.includes(id) ? current.filter((item) => item !== id) : [id, ...current]);
+  pushSaved(next);
   return next.includes(id);
 }
 
@@ -830,7 +846,15 @@ async function hydrateJournal() {
   try {
     const response = await fetch('/api/journal', { credentials: 'include', headers: journalHeaders() });
     if (!response.ok) return;
-    const data = await response.json() as { initialized?: boolean; articles?: unknown[]; deletedIds?: unknown[] };
+    const data = await response.json() as { initialized?: boolean; articles?: unknown[]; deletedIds?: unknown[]; savedIds?: unknown[] };
+    const remoteSaved = Array.isArray(data.savedIds) ? data.savedIds.filter((id): id is string => typeof id === 'string') : [];
+    const localSaved = readSavedIds();
+    if (!remoteSaved.length && localSaved.length) pushSaved(localSaved);
+    else if (!localSaved.length && remoteSaved.length) writeSaved(remoteSaved);
+    else if (localSaved.join('|') !== remoteSaved.join('|')) {
+      const merged = writeSaved([...localSaved, ...remoteSaved]);
+      pushSaved(merged);
+    }
     const remoteDeleted = Array.isArray(data.deletedIds) ? data.deletedIds.filter((id): id is string => typeof id === 'string') : [];
     const localIds = new Set(articles.map((article) => article.id));
     const trackDeletions = localStorage.getItem(STORAGE_KEY) !== null || localStorage.getItem(READY_KEY) === '1';
