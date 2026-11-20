@@ -44,7 +44,7 @@ export const ComposerExtras: FC<{
     }
     setUploading(true);
     try {
-      const ready = file.size <= 900_000 && ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) ? file : await fitPhoto(file);
+      const ready = await fitPhoto(file);
       const sticker = await saveSticker(ready);
       setSavedStickers((current) => [sticker, ...current.filter((item) => item.id !== sticker.id)]);
       onSticker?.(sticker.url);

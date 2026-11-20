@@ -173,6 +173,27 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
     const image = imageRef.current;
     if (!image) return;
     if (!format) {
+      if (banner) {
+        const sx = Math.max(0, ((0 - frame.x) / frame.w) * image.width);
+        const sy = Math.max(0, ((0 - frame.y) / frame.h) * image.height);
+        const sw = Math.min(image.width - sx, (stage.w / frame.w) * image.width);
+        const sh = Math.min(image.height - sy, (stage.h / frame.h) * image.height);
+        const output = document.createElement('canvas');
+        output.width = Math.max(1, Math.round(sw));
+        output.height = Math.max(1, Math.round(sh));
+        const context = output.getContext('2d');
+        if (!context) return;
+        context.drawImage(image, sx, sy, sw, sh, 0, 0, output.width, output.height);
+        if (darken && opacity < 1) {
+          context.fillStyle = `rgba(0,0,0,${1 - opacity})`;
+          context.fillRect(0, 0, output.width, output.height);
+        }
+        output.toBlob((blob) => {
+          if (!blob) return;
+          onConfirm(new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.92);
+        return;
+      }
       if (!darken || opacity >= 1) {
         onConfirm(file);
         return;
@@ -237,9 +258,10 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
     <div data-journal-overlay className="pointer-events-auto fixed inset-0 z-[80] grid place-items-center bg-black/60 p-4" style={{ pointerEvents: 'auto' }}>
       <div className="pointer-events-auto w-full max-w-xl rounded-3xl bg-card p-4 shadow-xl" style={{ pointerEvents: 'auto' }} role="dialog" aria-label={banner ? 'Ajustar capa' : 'Ajustar foto'}>
         <p className="text-sm font-medium text-foreground">{banner ? 'Ajustar capa' : 'Ajustar foto'}</p>
-        <p className="mt-1 text-xs text-muted-foreground">A imagem entra inteira. A tesoura só recorta se você escolher um formato.</p>
+        <p className="mt-1 text-xs text-muted-foreground">{banner ? 'Arraste a foto e use o zoom para escolher o enquadramento.' : 'A imagem entra inteira. A tesoura só recorta se você escolher um formato.'}</p>
         <div
           ref={stageRef}
+          onPointerDown={banner && !format ? (event) => onPointerDown(event, 'pan') : undefined}
           className="relative mx-auto mt-3 touch-none overflow-hidden rounded-2xl bg-[#F6F3FA]"
           style={{ width: stage.w, maxWidth: '100%', aspectRatio: `${stage.w} / ${stage.h}` }}
           onPointerMove={onPointerMove}
@@ -286,13 +308,15 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
           ) : null}
         </div>
         <div className="relative mt-3 flex items-center gap-2">
+          {banner ? <span className="text-xs text-muted-foreground">Zoom</span> : (
           <button type="button" aria-expanded={zoomOpen} aria-label="Zoom" onClick={() => { setZoomOpen((current) => !current); setShapesOpen(false); }} className={`grid h-8 w-8 place-items-center rounded-full ${zoomOpen ? 'bg-[#4600F3] text-white' : 'bg-[#EDE7FE] text-[#3600C2]'}`}>
             <Search className="h-3.5 w-3.5" />
           </button>
+          )}
           <button type="button" aria-expanded={shapesOpen} aria-label="Recortar" onClick={() => { setShapesOpen((current) => !current); setZoomOpen(false); }} className={`grid h-8 w-8 place-items-center rounded-full ${shapesOpen || format ? 'bg-[#4600F3] text-white' : 'bg-[#EDE7FE] text-[#3600C2]'}`}>
             <Scissors className="h-3.5 w-3.5" />
           </button>
-          {zoomOpen ? (
+          {banner || zoomOpen ? (
             <input aria-label="Zoom" type="range" min={1} max={3} step={0.01} value={zoom} onChange={(event) => changeZoom(Number(event.target.value))} className="h-1.5 min-w-0 flex-1 accent-[#4600F3]" />
           ) : null}
           {shapesOpen ? (

@@ -66,7 +66,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
   const [photos, setPhotos] = useState<Piece[]>([]);
   const [stickers, setStickers] = useState<Piece[]>([]);
   const [gifs, setGifs] = useState<Piece[]>([]);
-  const [attachment, setAttachment] = useState<Attachment | undefined>();
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [pollOpen, setPollOpen] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
@@ -89,7 +89,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
     setPollOpen(false);
     setPollQuestion('');
     setOptions(['', '']);
-    setAttachment(undefined);
+    setAttachments([]);
     setAudioFile(null);
     setStickers([]);
     setGifs([]);
@@ -156,7 +156,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
     try {
       setProgress(0);
       const uploaded = await uploadMedia(file, setProgress);
-      setAttachment({ type, name: type === 'audio' ? 'Áudio' : (uploaded.name || file.name), url: uploaded.url, start: clip?.start, duration: clip?.duration });
+      setAttachments((current) => [...current, { type, name: type === 'audio' ? 'Áudio' : (uploaded.name || file.name), url: uploaded.url, start: clip?.start, duration: clip?.duration }]);
     } catch {
       toast.error('Não foi possível enviar o arquivo.');
     } finally {
@@ -245,9 +245,9 @@ export const MuralPublishDialog: FC<Props> = (props) => {
     if (!decorative && photoUrls.length === 0) return undefined;
     if (!decorative) return undefined;
     return [
-      ...photoUrls.map((url) => ({ type: 'image' as const, url })),
       ...stickers.map((item) => ({ type: 'image' as const, url: item.url, display: 'sticker' as const })),
       ...gifs.map((item) => ({ type: 'image' as const, url: item.url, display: 'gif' as const })),
+      ...photoUrls.map((url) => ({ type: 'image' as const, url })),
     ];
   }
 
@@ -272,7 +272,8 @@ export const MuralPublishDialog: FC<Props> = (props) => {
       body,
       images,
       blocks: built,
-      attachment,
+      attachment: attachments[0],
+      attachments,
       poll,
       likes: 0,
       liked: false,
@@ -320,7 +321,8 @@ export const MuralPublishDialog: FC<Props> = (props) => {
           journalHref: `/announcements/${article.id}`,
           images: built ? undefined : photoUrls,
           blocks: built,
-          attachment,
+          attachment: attachments[0],
+      attachments,
           poll,
           caption: message || undefined,
           journalCategory: article.category,
@@ -344,7 +346,8 @@ export const MuralPublishDialog: FC<Props> = (props) => {
         comment: existing?.comment,
         images: built ? undefined : photoUrls,
         blocks: built,
-        attachment,
+        attachment: attachments[0],
+      attachments,
         poll,
         bannerTitle: recognizedName,
         nonce: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -380,11 +383,13 @@ export const MuralPublishDialog: FC<Props> = (props) => {
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(next) => { if (!next) close(); }}>
+    <Dialog open={open} onOpenChange={(next) => { if (!next && (audioFile || recording)) return; if (!next) close(); }}>
       <DialogContent
         showCloseButton={false}
         overlayClassName="bg-slate-900/25 backdrop-blur-md"
         className={`gap-0 overflow-visible rounded-2xl border border-gray-100 bg-white p-0 shadow-[0_8px_24px_rgba(15,23,42,0.08)] ${isRecognition ? 'sm:max-w-[680px]' : 'sm:max-w-[640px]'}`}
+        onPointerDownOutside={(event) => { if (audioFile || recording) event.preventDefault(); }}
+        onInteractOutside={(event) => { if (audioFile || recording) event.preventDefault(); }}
       >
         <DialogDescription className="sr-only">{dialogText}</DialogDescription>
         <div className="flex max-h-[min(760px,calc(100dvh-2rem))] flex-col">
@@ -500,26 +505,28 @@ export const MuralPublishDialog: FC<Props> = (props) => {
                   </div>
                 ) : null}
 
-                {attachment?.type === 'audio' && attachment.url ? (
-                  <div className="relative mt-3 rounded-xl border border-border px-3 py-2">
-                    <audio src={attachment.url} controls preload="metadata" className="w-full" />
-                    <button type="button" aria-label="Remover áudio" onClick={() => setAttachment(undefined)} className="absolute right-2 top-2 rounded-full bg-background/90 p-1"><X className="h-4 w-4" /></button>
+                {attachments.map((item, index) => (
+                  <div key={`${item.url}-${index}`} className="mt-3">
+                    {item.type === 'audio' && item.url ? (
+                      <div className="relative rounded-xl border border-border px-3 py-2">
+                        <audio src={item.url} controls preload="metadata" className="w-full" />
+                        <button type="button" aria-label="Remover áudio" onClick={() => setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="absolute right-2 top-2 rounded-full bg-background/90 p-1"><X className="h-4 w-4" /></button>
+                      </div>
+                    ) : null}
+                    {item.type === 'video' && item.url ? (
+                      <div className="relative overflow-hidden rounded-xl bg-black">
+                        <video src={item.url} controls preload="metadata" playsInline className="max-h-64 w-full" />
+                        <button type="button" aria-label="Remover vídeo" onClick={() => setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="absolute right-2 top-2 rounded-full bg-white/90 p-1"><X className="h-4 w-4" /></button>
+                      </div>
+                    ) : null}
+                    {item.type === 'document' ? (
+                      <div className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm">
+                        <span className="flex min-w-0 items-center gap-2"><FileText className="h-4 w-4 shrink-0 text-primary" />{item.name}</span>
+                        <button type="button" aria-label="Remover arquivo" onClick={() => setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))}><X className="h-4 w-4" /></button>
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-
-                {attachment?.type === 'video' && attachment.url ? (
-                  <div className="relative mt-3 overflow-hidden rounded-xl bg-black">
-                    <video src={attachment.url} controls preload="metadata" playsInline className="max-h-64 w-full" />
-                    <button type="button" aria-label="Remover vídeo" onClick={() => setAttachment(undefined)} className="absolute right-2 top-2 rounded-full bg-white/90 p-1"><X className="h-4 w-4" /></button>
-                  </div>
-                ) : null}
-
-                {attachment?.type === 'document' ? (
-                  <div className="mt-3 flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm">
-                    <span className="flex min-w-0 items-center gap-2"><FileText className="h-4 w-4 shrink-0 text-primary" />{attachment.name}</span>
-                    <button type="button" aria-label="Remover arquivo" onClick={() => setAttachment(undefined)}><X className="h-4 w-4" /></button>
-                  </div>
-                ) : null}
+                ))}
 
                 {pollOpen ? (
                   <div className="mt-3 space-y-2">
@@ -541,29 +548,31 @@ export const MuralPublishDialog: FC<Props> = (props) => {
                         {options.length > 2 ? <button type="button" aria-label={`Remover alternativa ${index + 1}`} onClick={() => setOptions((current) => current.filter((_, itemIndex) => itemIndex !== index))}><X className="h-4 w-4" /></button> : null}
                       </div>
                     ))}
-                    {options.length < 12 ? (
-                      <button type="button" onClick={() => setOptions((current) => [...current, ''])} className="text-sm font-medium text-[#4600F3]">Adicionar alternativa</button>
-                    ) : null}
-                    <button type="button" onClick={() => { setPollOpen(false); setPollQuestion(''); setOptions(['', '']); }} className="text-[12.5px] text-[#8A7C98]">Remover enquete</button>
+                    <div className="flex flex-wrap items-center gap-4 pt-2">
+                      {options.length < 12 ? (
+                        <button type="button" onClick={() => setOptions((current) => [...current, ''])} className="text-sm font-medium text-[#4600F3]">Adicionar alternativa</button>
+                      ) : null}
+                      <button type="button" onClick={() => { setPollOpen(false); setPollQuestion(''); setOptions(['', '']); }} className="text-[12.5px] text-[#8A7C98]">Remover enquete</button>
+                    </div>
                   </div>
                 ) : null}
 
-                {panel ? (
-                  <div className="mt-3 rounded-2xl border border-[#EFE6F4] bg-white p-2 shadow-sm">
-                    <ComposerExtras
-                      embedded={panel}
-                      onEmoji={insertEmoji}
-                      onSticker={(url) => { addPiece(setStickers, url, 'sticker'); setPanel(null); }}
-                      onGif={(url) => { addPiece(setGifs, url, 'gif'); setPanel(null); }}
-                      onPicked={() => setPanel(null)}
-                    />
-                  </div>
-                ) : null}
               </>
             )}
           </div>
 
           <div className="relative flex flex-wrap items-center gap-3 border-t border-gray-100 px-5 py-4">
+            {panel ? (
+              <div className="absolute bottom-full left-4 z-30 mb-2 max-h-64 w-[min(360px,calc(100%-2rem))] overflow-y-auto rounded-2xl border border-[#EFE6F4] bg-white p-2 shadow-lg">
+                <ComposerExtras
+                  embedded={panel}
+                  onEmoji={insertEmoji}
+                  onSticker={(url) => { addPiece(setStickers, url, 'sticker'); setPanel(null); }}
+                  onGif={(url) => { addPiece(setGifs, url, 'gif'); setPanel(null); }}
+                  onPicked={() => setPanel(null)}
+                />
+              </div>
+            ) : null}
             <input ref={fileRef} type="file" multiple className="hidden" onChange={onFiles} />
             <button type="button" aria-label="Anexar arquivo" title="Anexar arquivo" onClick={() => fileRef.current?.click()} className={tool}><Paperclip className="h-4 w-4" /></button>
             <button type="button" aria-label={recording ? 'Parar gravação' : 'Gravar áudio'} aria-pressed={recording} title={recording ? 'Parar gravação' : 'Gravar áudio'} onClick={() => void toggleRecord()} className={`${tool} ${recording ? 'bg-blue-600 text-white hover:text-white' : ''}`}><Mic className="h-4 w-4" /></button>

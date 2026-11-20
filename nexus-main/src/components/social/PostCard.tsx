@@ -68,10 +68,11 @@ export const PostCard: FC<{
   onMedia?: (media: CommentMedia | null) => void;
   onPasteFile?: (file: File) => void;
   onGifFile?: (file: File) => void;
+  onAudioFile?: (file: File) => void;
   repost?: { name: string; avatar: string; note: string };
   anchorId?: string;
   preview?: boolean;
-}> = ({ post, commentDraft, onCommentDraft, onLike, onReact, onToggleSave, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, onSaveEdit, republished, canDeleteComment, onDeleteComment, pendingMedia, onMedia, onGifFile, onPasteFile, repost, anchorId }) => {
+}> = ({ post, commentDraft, onCommentDraft, onLike, onReact, onToggleSave, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, onSaveEdit, republished, canDeleteComment, onDeleteComment, pendingMedia, onMedia, onGifFile, onPasteFile, onAudioFile, repost, anchorId }) => {
   const plain = post.kind === 'text' || post.kind === 'image' || post.kind === 'leadership';
   const domId = anchorId ?? post.id;
   const composed = post.kind === 'recognition' || post.kind === 'announcement';
@@ -181,7 +182,7 @@ export const PostCard: FC<{
           {blocks.map((block, index) => {
             if (block.type === 'text') return <ReadMore key={`${domId}-texto-${index}`} id={`${domId}-texto-${index}`} text={block.text} className="text-[13.5px] leading-5 text-[#3C3952] dark:text-foreground/90" />;
             if (block.display === 'sticker' || block.display === 'gif') return <ZoomImage key={`${post.id}-imagem-${index}`} src={block.url} alt={block.display === 'gif' ? 'GIF' : 'Figurinha'} className="h-24 w-24 rounded-xl bg-[#F5F1FF] object-contain" />;
-            return <ZoomImage key={`${post.id}-imagem-${index}`} src={block.url} className="max-h-[480px] w-full rounded-[12px] bg-[#F6F4FC] object-contain" />;
+            return <ZoomImage key={`${post.id}-imagem-${index}`} src={block.url} className={`${block.frame === 'sm' ? 'max-h-40 max-w-[240px]' : block.frame === 'lg' ? 'max-h-[640px]' : 'max-h-[480px]'} w-full rounded-[12px] bg-[#F6F4FC] object-contain`} />;
           })}
         </div>
       ) : (
@@ -190,7 +191,7 @@ export const PostCard: FC<{
           {post.kind !== 'announcement' && post.kind !== 'recognition' && post.images && post.images.length > 0 ? <PhotoGallery images={post.images} /> : post.kind === 'image' && post.image ? <ZoomImage src={post.image} className="mt-3 max-h-80 w-full rounded-[12px] object-contain bg-[#F6F4FC]" /> : null}
         </>
       )}
-      {decorations.length > 0 ? (
+      {decorations.length > 0 && !recognition ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {decorations.map((block, index) => (
             block.type === 'image' ? <ZoomImage key={`${post.id}-extra-${index}`} src={block.url} alt={block.display === 'gif' ? 'GIF' : 'Figurinha'} className="h-24 w-24 rounded-xl bg-[#F5F1FF] object-contain" /> : null
@@ -198,30 +199,34 @@ export const PostCard: FC<{
         </div>
       ) : null}
       {post.kind === 'leadership' && post.image ? <ZoomImage src={post.image} className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
-      {post.attachment?.type === 'video' && post.attachment.url ? <video src={post.attachment.url} controls preload="metadata" className="mt-3 max-h-[420px] w-full rounded-xl bg-black" /> : null}
-      {post.attachment?.type === 'audio' && post.attachment.url ? (
-        <div className="mt-3 rounded-xl border border-border px-3 py-2">
-          <AudioClip url={post.attachment.url} start={post.attachment.start ?? 0} duration={post.attachment.duration} />
+      {(post.attachments?.length ? post.attachments : post.attachment ? [post.attachment] : []).map((item, index) => (
+        <div key={`${item.url ?? item.name}-${index}`}>
+          {item.type === 'video' && item.url ? <video src={item.url} controls preload="metadata" className="mt-3 max-h-[420px] w-full rounded-xl bg-black" /> : null}
+          {item.type === 'audio' && item.url ? (
+            <div className="mt-3 rounded-xl border border-border px-3 py-2">
+              <AudioClip url={item.url} start={item.start ?? 0} duration={item.duration} />
+            </div>
+          ) : null}
+          {item.type === 'document' ? (
+            item.url ? (
+              <a href={item.url} download={item.name} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm text-foreground">
+                <FileText className="h-4 w-4 text-primary" />
+                {item.name}
+              </a>
+            ) : (
+              <p className="mt-3 inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm">
+                <FileText className="h-4 w-4 text-primary" />
+                {item.name}
+              </p>
+            )
+          ) : null}
         </div>
-      ) : null}
-      {post.attachment?.type === 'document' ? (
-        post.attachment.url ? (
-          <a href={post.attachment.url} download={post.attachment.name} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm text-foreground">
-            <FileText className="h-4 w-4 text-primary" />
-            {post.attachment.name}
-          </a>
-        ) : (
-          <p className="mt-3 inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm">
-            <FileText className="h-4 w-4 text-primary" />
-            {post.attachment.name}
-          </p>
-        )
-      ) : null}
+      ))}
 
       {post.kind === 'announcement' ? <AnnouncementPost post={post} expandId={`${domId}-noticia`} /> : null}
-      {post.kind === 'recognition' ? <RecognitionPost post={post} expandId={`${domId}-reconhecimento`} /> : null}
+      {post.kind === 'recognition' ? <RecognitionPost post={post} expandId={`${domId}-reconhecimento`} onVote={onVote} /> : null}
       {post.kind === 'poll' ? <PollPost post={post} onVote={onVote} expandId={`${domId}-enquete`} /> : null}
-      {post.kind !== 'poll' && post.poll && post.poll.length > 0 ? <PollPost post={post} onVote={onVote} optionsOnly expandId={`${domId}-enquete`} /> : null}
+      {post.kind !== 'poll' && post.kind !== 'recognition' && post.poll && post.poll.length > 0 ? <PollPost post={post} onVote={onVote} optionsOnly expandId={`${domId}-enquete`} /> : null}
       {post.kind === 'event' ? <EventPost post={post} expandId={`${domId}-evento`} /> : null}
 
       {repost ? (
@@ -240,6 +245,7 @@ export const PostCard: FC<{
           onMedia={onMedia}
           onGifFile={onGifFile}
           onPasteFile={onPasteFile}
+          onAudioFile={onAudioFile}
           canDelete={canDeleteComment}
           onDelete={onDeleteComment}
         />

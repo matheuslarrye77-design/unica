@@ -80,11 +80,13 @@ async function storeLibrary(dir, items, gifs) {
 async function storeBytes(dir, id, bytes, mime) {
   const remote = await writeStickerFile(id, bytes, mime);
   if (remote) return true;
-  const library = await readStickerLibrary();
-  if (library.mode === 'blob') return false;
-  fs.mkdirSync(path.join(dir, 'stickers'), { recursive: true });
-  fs.writeFileSync(imageFile(dir, id), bytes);
-  return true;
+  try {
+    fs.mkdirSync(path.join(dir, 'stickers'), { recursive: true });
+    fs.writeFileSync(imageFile(dir, id), bytes);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function loadBytes(dir, id) {

@@ -21,6 +21,7 @@ export type JournalComment = {
   author: string;
   text: string;
   date: string;
+  replyTo?: string;
 };
 
 export type JournalArticle = {
@@ -739,8 +740,8 @@ export function toggleJournalReaction(id: string, name: string) {
   }));
 }
 
-export function addJournalComment(id: string, author: string, text: string) {
-  const comment: JournalComment = { id: generateId(), author, text: text.trim(), date: new Date().toISOString() };
+export function addJournalComment(id: string, author: string, text: string, replyTo?: string) {
+  const comment: JournalComment = { id: generateId(), author, text: text.trim(), date: new Date().toISOString(), replyTo };
   if (!comment.text) return;
   commit(articles.map((article) => (article.id === id ? { ...article, comments: [...article.comments, comment] } : article)));
 }

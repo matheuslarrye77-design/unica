@@ -90,7 +90,10 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
         image: draft.images?.[0],
         blocks: draft.blocks,
         attachment: draft.attachment,
+        attachments: draft.attachments,
         poll: draft.poll,
+        pollMultiple: draft.pollMultiple,
+        pollClosesAt: draft.pollClosesAt,
         audience: draft.audience,
         mood: draft.mood,
         moodAudience: draft.moodAudience,
@@ -231,7 +234,15 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
           onCommentDraft={(value) => setDrafts((current) => ({ ...current, [post.id]: value }))}
           onLike={() => void likeFeedPost(post.id, 'like').then((result) => { holdFeed(); replace(result.post); }).catch(() => toast.error('Não foi possível registrar a reação.'))}
           onReact={(kind) => void likeFeedPost(post.id, kind).then((result) => { holdFeed(); replace(result.post); }).catch(() => toast.error('Não foi possível registrar a reação.'))}
-          onToggleSave={() => void saveFeedPost(post.id).then((result) => replace(result.post)).catch(() => toast.error('Não foi possível salvar a publicação.'))}
+          onToggleSave={() => {
+            holdFeed();
+            const nextSaved = !post.saved;
+            replace({ ...post, saved: nextSaved });
+            void saveFeedPost(post.id).then((result) => replace(result.post)).catch(() => {
+              replace({ ...post, saved: !nextSaved });
+              toast.error('Não foi possível salvar a publicação.');
+            });
+          }}
           onShare={() => setShareId(cardKey)}
           onToggleComments={() => {
             const open = openCard !== cardKey;
@@ -257,6 +268,14 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
           onMedia={(media) => setCommentMedia((current) => ({ ...current, [post.id]: media }))}
           onGifFile={(file) => {
             void uploadMedia(file).then((uploaded) => setCommentMedia((current) => ({ ...current, [post.id]: { kind: 'gif', url: uploaded.url } }))).catch(() => toast.error('Não foi possível enviar o GIF.'));
+          }}
+          onAudioFile={(file) => {
+            const local = URL.createObjectURL(file);
+            setCommentMedia((current) => ({ ...current, [post.id]: { kind: 'audio', url: local } }));
+            void uploadMedia(file).then((uploaded) => {
+              URL.revokeObjectURL(local);
+              setCommentMedia((current) => ({ ...current, [post.id]: { kind: 'audio', url: uploaded.url } }));
+            }).catch(() => toast.error('Não foi possível enviar o áudio.'));
           }}
           onPasteFile={(file) => {
             const kind = file.type.startsWith('video/') ? 'video' : 'image';

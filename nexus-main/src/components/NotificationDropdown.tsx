@@ -90,8 +90,10 @@ export const NotificationDropdown: FC<{ compact?: boolean }> = ({ compact = fals
           ) : (
             <div className="py-2">
               {displayItems.map((item, index) => (
-                <div 
-                  key={item.id} 
+                <Link
+                  key={item.id}
+                  to={item.type === 'news' ? '/announcements' : item.type === 'document' ? '/resources' : item.type === 'task' ? '/calendar' : '/'}
+                  onClick={() => setOpen(false)}
                   className="flex gap-3 p-4 hover:bg-muted/200 transition-colors cursor-pointer bg-primary/3"
                 >
                   <div className={`mt-1 flex-shrink-0 ${getTypeColor(item.type)}`}>
@@ -120,7 +122,7 @@ export const NotificationDropdown: FC<{ compact?: boolean }> = ({ compact = fals
                       <div className="w-2 h-2 bg-primary rounded-full"></div>
                     </div>
                   )}
-                </div>
+                </Link>
               ))}
             </div>
           )}

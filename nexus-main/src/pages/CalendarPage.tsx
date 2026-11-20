@@ -3,7 +3,7 @@ import { Header } from '@/components/Header';
 import { calendarEvents, type CalendarEvent } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { directoryPeople, isLeader, useInstitution, wallpaperUrl, type CalendarTheme } from '@/lib/institution';
-import { Calendar, Cake, ChevronLeft, ChevronRight, MapPin, Plus, X } from 'lucide-react';
+import { Calendar, Cake, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { PageHero } from '@/components/social/LilacWash';
 import { BirthdayTicket } from '@/components/celebrations/BirthdayTicket';
 import { EventDialog } from '@/components/calendar/EventDialog';
@@ -18,6 +18,7 @@ type BirthdayDisplay = 'name' | 'photo' | 'both';
 
 const DISPLAY_KEY = 'unica-birthday-display';
 const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const weekdayLetters = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
 function loadDisplay(): BirthdayDisplay {
   const stored = localStorage.getItem(DISPLAY_KEY);
@@ -62,6 +63,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
+  const [hoverDay, setHoverDay] = useState<{ day: number; top: number; left: number } | null>(null);
   const [active, setActive] = useState<{ event: CalendarEvent; top: number; left: number } | null>(null);
   const [pile, setPile] = useState<{ events: CalendarEvent[]; top: number; left: number } | null>(null);
   const [hint, setHint] = useState<{ text: string; top: number; left: number; below: boolean } | null>(null);
@@ -355,50 +357,79 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           }
         />
         {birthdaysFocus ? <BirthdayTicket /> : <>
-        <div className="mt-5 flex items-center justify-center gap-2">
-          <button type="button" aria-label="Mês anterior" onClick={() => shiftMonth(-1)} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600"><ChevronLeft className="h-4 w-4" /></button>
-          <p className="min-w-[180px] text-center text-lg font-bold capitalize text-gray-800">{monthLabel}</p>
-          <button type="button" aria-label="Próximo mês" onClick={() => shiftMonth(1)} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600"><ChevronRight className="h-4 w-4" /></button>
-        </div>
-        <div className="mt-4 rounded-[28px] border border-gray-100 bg-white p-3 shadow-[0_8px_24px_rgba(15,23,42,0.06)] sm:p-4">
-          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-            {weekdays.map((day) => <div key={day} className="pb-1 text-center text-[11px] font-semibold uppercase tracking-wide text-gray-400">{day}</div>)}
+        <div className="mt-5 rounded-[32px] bg-white p-6 shadow-[12px_12px_28px_#d6deeb,-10px_-10px_24px_#fff] sm:p-7">
+          <div className="flex items-center justify-between">
+            <button type="button" aria-label="Mês anterior" onClick={() => { setHoverDay(null); shiftMonth(-1); }} className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#12274a] shadow-[5px_5px_11px_#d6deeb,-5px_-5px_11px_#fff]"><ChevronLeft className="h-4 w-4" /></button>
+            <div className="text-center">
+              <p className="font-serif text-[38px] leading-none font-normal text-[#12274a] lowercase">{currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
+              <p className="mt-1 text-[13px] tracking-[0.35em] text-[#12274a]">{year}</p>
+            </div>
+            <button type="button" aria-label="Próximo mês" onClick={() => { setHoverDay(null); shiftMonth(1); }} className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#12274a] shadow-[5px_5px_11px_#d6deeb,-5px_-5px_11px_#fff]"><ChevronRight className="h-4 w-4" /></button>
+          </div>
+          <div className="mt-6 grid grid-cols-7 border-b border-[#eceff5] pb-3 text-center text-[13px] font-bold text-[#12274a]">
+            {weekdayLetters.map((day, index) => <div key={`${day}-${index}`} className={index % 6 === 0 ? 'text-[#f0647a]' : undefined}>{day}</div>)}
+          </div>
+          <div className="mt-4 grid grid-cols-7 gap-2" onMouseLeave={() => setHoverDay(null)}>
             {cells.map((cell, index) => {
               const dayEvents = cell.outside ? [] : eventsOn(cell.day);
-              const isCurrent = !cell.outside && sameDay(new Date(year, month, cell.day), today);
+              const date = new Date(year, month, cell.day);
+              const weekend = date.getDay() === 0 || date.getDay() === 6;
+              const isCurrent = !cell.outside && sameDay(date, today);
               const picked = !cell.outside && selectedDay === cell.day;
               return (
-                <div key={`${cell.outside}-${cell.day}-${index}`} className={cn('flex min-h-[96px] flex-col rounded-2xl p-1.5 sm:min-h-[112px] sm:p-2', cell.outside ? 'bg-transparent' : picked ? 'bg-[#F8FAFC] ring-2 ring-blue-600' : 'bg-[#F8FAFC]')}>
-                  <p className={cn('mb-1 grid h-7 w-7 place-items-center rounded-full text-sm font-semibold', cell.outside ? 'text-gray-300' : isCurrent ? 'bg-blue-600 text-white' : 'text-gray-800')}>{cell.day}</p>
+                <div
+                  key={`${cell.outside}-${cell.day}-${index}`}
+                  role="gridcell"
+                  tabIndex={cell.outside ? -1 : 0}
+                  onMouseEnter={(event) => {
+                    if (cell.outside || dayEvents.length === 0) { setHoverDay(null); return; }
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const width = 272;
+                    let left = rect.right + 10;
+                    if (left + width > window.innerWidth - 12) left = rect.left - width - 10;
+                    setHoverDay({ day: cell.day, top: Math.min(Math.max(12, rect.top), window.innerHeight - 220), left });
+                  }}
+                  onClick={() => { if (!cell.outside) setSelectedDay(cell.day); }}
+                  className={cn('flex min-h-[112px] flex-col gap-1.5 rounded-[26px] p-2', cell.outside ? 'bg-transparent' : 'bg-white hover:shadow-[5px_5px_12px_#d6deeb,-5px_-5px_12px_#fff]')}
+                >
+                  <p className={cn('grid h-8 w-8 place-items-center rounded-full text-sm', cell.outside ? 'font-normal text-[#8a97ad]' : weekend ? 'text-[#f0647a]' : 'text-[#12274a]', isCurrent && 'shadow-[inset_0_0_0_1.5px_#4cd1d4]', picked && 'bg-white font-bold shadow-[4px_4px_9px_#d6deeb,-4px_-4px_9px_#fff]')}>{cell.day}</p>
                   <div className="grid gap-1">
                     {dayEvents.slice(0, 2).map((event) => {
+                      const birthday = event.type === 'birthday';
                       const first = event.personName?.split(' ')[0];
                       return (
-                        <button key={event.id} type="button" onClick={(click) => openEvent(event, click.currentTarget)} className={cn('min-w-0 rounded-xl px-1.5 py-1 text-left', eventTone(event))}>
-                          {event.type === 'birthday' ? (
-                            <span className="flex min-w-0 items-center gap-1">
-                              {event.avatar ? <img src={event.avatar} alt="" className="h-5 w-5 shrink-0 rounded-full" /> : null}
-                              <span className="min-w-0">
-                                <span className="block truncate text-[11px] font-semibold">{first}</span>
-                                <span className="block truncate text-[10px] opacity-80">Aniversário</span>
-                              </span>
-                            </span>
-                          ) : (
-                            <>
-                              <span className="block truncate text-[11px] font-medium">{event.time ? `${event.time} · ` : ''}{event.title}</span>
-                              {event.place ? <span className="mt-0.5 flex items-center gap-0.5 truncate text-[10px] opacity-75"><MapPin className="h-2.5 w-2.5 shrink-0" />{event.place}</span> : null}
-                            </>
-                          )}
+                        <button key={event.id} type="button" onClick={(click) => { click.stopPropagation(); openEvent(event, click.currentTarget); }} className="flex min-w-0 items-center gap-2 rounded-[18px] bg-white px-2.5 py-1.5 text-left shadow-[3px_3px_7px_#d6deeb,-3px_-3px_7px_#fff]">
+                          {birthday && event.avatar ? <img src={event.avatar} alt="" className="h-4 w-4 shrink-0 rounded-full" /> : <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', birthday ? 'bg-[#f59aa8]' : 'bg-[#4cd1d4]')} />}
+                          <span className="min-w-0">
+                            <span className="block truncate text-[12px] font-medium text-[#12274a]">{birthday ? first : event.title}</span>
+                            <span className="block truncate text-[10.5px] text-[#8a97ad]">{birthday ? 'Aniversário' : [event.time, event.place].filter(Boolean).join(' · ')}</span>
+                          </span>
                         </button>
                       );
                     })}
-                    {dayEvents.length > 2 ? <p className="px-1 text-[10px] font-semibold text-gray-400">+{dayEvents.length - 2}</p> : null}
+                    {dayEvents.length > 2 ? <p className="pl-3 text-[11px] text-[#8a97ad]">+{dayEvents.length - 2} mais</p> : null}
                   </div>
                 </div>
               );
             })}
           </div>
         </div>
+        {hoverDay && eventsOn(hoverDay.day).length > 0 ? (
+          <div className="pointer-events-none fixed z-20 w-[272px] rounded-[26px] bg-white p-[18px] shadow-[14px_14px_30px_#d6deeb,-8px_-8px_22px_#fff]" style={{ top: hoverDay.top, left: hoverDay.left }}>
+            <p className="font-serif text-[19px] text-[#12274a]">{hoverDay.day} de {currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
+            <p className="mb-3 text-xs text-[#8a97ad]">{eventsOn(hoverDay.day).length} {eventsOn(hoverDay.day).length > 1 ? 'eventos' : 'evento'}</p>
+            {eventsOn(hoverDay.day).map((event) => (
+              <div key={event.id} className="mb-2 flex items-center gap-3 rounded-[20px] px-3 py-2.5 shadow-[inset_3px_3px_8px_#d6deeb,inset_-3px_-3px_8px_#fff] last:mb-0">
+                <span className={cn('w-1 self-stretch rounded', event.type === 'birthday' ? 'bg-[#f59aa8]' : 'bg-[#4cd1d4]')} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{event.type === 'birthday' ? event.personName : event.title}</span>
+                  <span className="block truncate text-xs text-[#8a97ad]">{event.type === 'birthday' ? 'Aniversário' : event.place}</span>
+                </span>
+                {event.time ? <span className="text-[13px] font-bold">{event.time}</span> : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
         {active ? (
           <div ref={dialogRef} role="dialog" aria-label={active.event.title} className="fixed z-50 w-72 rounded-xl border bg-card p-4 text-sm shadow-lg" style={{ top: active.top, left: active.left }} onClick={(event) => event.stopPropagation()}>
             <button type="button" aria-label="Fechar" className="absolute top-2 right-2 rounded-md p-1 text-muted-foreground hover:bg-muted" onClick={() => setActive(null)}><X className="h-4 w-4" /></button>

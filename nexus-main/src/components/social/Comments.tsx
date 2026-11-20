@@ -1,4 +1,4 @@
-import { Heart, Send, Star, Trash2, X } from 'lucide-react';
+import { Heart, Mic, Send, Star, Trash2, X } from 'lucide-react';
 import { useEffect, useState, useRef, type ClipboardEvent, type FC, type FormEvent, type KeyboardEvent } from 'react';
 import { actor } from '@/lib/session';
 import { forgetSticker, keepSticker, stickerIsSaved } from '@/lib/stickers';
@@ -20,8 +20,12 @@ export const Comments: FC<{
   onMedia?: (media: CommentMedia | null) => void;
   onGifFile?: (file: File) => void;
   onPasteFile?: (file: File) => void;
-}> = ({ inputId, comments, draft, onDraft, onSubmit, onLike, canDelete, onDelete, pendingMedia, onMedia, onPasteFile }) => {
+  onAudioFile?: (file: File) => void;
+}> = ({ inputId, comments, draft, onDraft, onSubmit, onLike, canDelete, onDelete, pendingMedia, onMedia, onPasteFile, onAudioFile }) => {
   const fieldRef = useRef<HTMLTextAreaElement>(null);
+  const recorder = useRef<MediaRecorder | null>(null);
+  const chunks = useRef<Blob[]>([]);
+  const [recording, setRecording] = useState(false);
   const expand = useExpand();
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -41,6 +45,33 @@ export const Comments: FC<{
     if (!file) return;
     event.preventDefault();
     onPasteFile?.(file);
+  }
+  async function toggleRecord() {
+    if (recorder.current && recorder.current.state === 'recording') {
+      recorder.current.stop();
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+      const media = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      chunks.current = [];
+      media.ondataavailable = (event) => { if (event.data.size > 0) chunks.current.push(event.data); };
+      media.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        setRecording(false);
+        recorder.current = null;
+        const blob = new Blob(chunks.current, { type: media.mimeType || 'audio/webm' });
+        if (blob.size < 1) return;
+        onAudioFile?.(new File([blob], 'gravacao.webm', { type: blob.type || 'audio/webm' }));
+      };
+      recorder.current = media;
+      media.start();
+      setRecording(true);
+    } catch {
+      setRecording(false);
+    }
   }
   function onKey(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -73,6 +104,8 @@ export const Comments: FC<{
                 <div className="relative mt-1 inline-block">
                   {comment.media.kind === 'video' ? (
                     <video src={comment.media.url} controls className="max-h-48 max-w-full rounded-xl bg-black" />
+                  ) : comment.media.kind === 'audio' ? (
+                    <audio src={comment.media.url} controls className="h-10 max-w-full" />
                   ) : (
                     <ZoomImage src={comment.media.url} alt={comment.media.kind === 'gif' ? 'GIF' : comment.media.kind === 'sticker' ? 'Figurinha' : 'Foto'} className={`${comment.media.kind === 'image' ? 'max-h-60 max-w-full' : 'h-28 w-28'} rounded-xl bg-[#F5F1FF] object-contain`} />
                   )}
@@ -99,7 +132,7 @@ export const Comments: FC<{
       <form onSubmit={submit} className="space-y-2">
         {pendingMedia ? (
           <div className="relative inline-block">
-            {pendingMedia.kind === 'video' ? <video src={pendingMedia.url} className="h-16 rounded-xl" /> : <img src={pendingMedia.url} alt="" className="h-16 w-16 rounded-xl object-cover" />}
+            {pendingMedia.kind === 'video' ? <video src={pendingMedia.url} className="h-16 rounded-xl" /> : pendingMedia.kind === 'audio' ? <audio src={pendingMedia.url} controls className="h-10" /> : <img src={pendingMedia.url} alt="" className="h-16 w-16 rounded-xl object-cover" />}
             <button type="button" aria-label="Remover anexo" className="absolute -right-1 -top-1 rounded-full bg-card p-0.5" onClick={() => onMedia?.(null)}><X className="h-3 w-3" /></button>
           </div>
         ) : null}
@@ -116,7 +149,10 @@ export const Comments: FC<{
             placeholder="Escreva um comentário..."
             className="min-h-10 min-w-0 flex-1 resize-none rounded-2xl border border-border bg-muted/40 px-4 py-2 text-sm outline-none focus-visible:border-primary"
           />
-          <button type="submit" aria-label={pendingMedia?.url.startsWith('blob:') ? 'Enviando' : 'Publicar'} disabled={(!draft.trim() && !pendingMedia) || Boolean(pendingMedia?.url.startsWith('blob:'))} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500 disabled:opacity-40">
+          <button type="button" aria-label={recording ? 'Parar gravação' : 'Gravar áudio'} aria-pressed={recording} onClick={() => void toggleRecord()} className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl outline-none ${recording ? 'bg-[#DB2777] text-white' : 'bg-white text-gray-600 shadow-[0_4px_14px_rgba(60,40,140,0.12)]'}`}>
+            <Mic className="h-4 w-4" />
+          </button>
+          <button type="submit" aria-label={pendingMedia?.url.startsWith('blob:') ? 'Enviando' : 'Publicar'} disabled={(!draft.trim() && !pendingMedia) || Boolean(pendingMedia?.url.startsWith('blob:'))} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 outline-none hover:bg-blue-500 focus-visible:ring-0 disabled:opacity-40">
             <Send className="h-4 w-4" />
           </button>
         </div>

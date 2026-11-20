@@ -1,10 +1,8 @@
-import { AudioLines, FileText, ImagePlus, ListChecks, Loader2, Lock, Plus, Send, Smile, Users, Video, X } from 'lucide-react';
+import { AudioLines, FileText, ImagePlus, ListChecks, Loader2, Lock, Mic, Plus, Send, Smile, Users, Video, X } from 'lucide-react';
 import { type ChangeEvent, type ClipboardEvent, type DragEvent, type FC, type FormEvent, type KeyboardEvent, type MouseEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
-import { Emoji } from '@/components/Emoji';
 import { MOODS } from '@/components/shell/TeamMood';
-import { formatClip } from '@/lib/audioClip';
 import { uploadMedia } from '@/lib/feed';
 import { actor } from '@/lib/session';
 import { AudioTrim } from './AudioTrim';
@@ -16,7 +14,7 @@ const VIDEO_MAX = 200 * 1024 * 1024;
 const DOC_MAX = 40 * 1024 * 1024;
 const AUDIO_MAX = 80 * 1024 * 1024;
 
-type DraftBlock = { id: string; type: 'text'; text: string } | { id: string; type: 'image'; url: string; display?: 'sticker' | 'gif' };
+type DraftBlock = { id: string; type: 'text'; text: string } | { id: string; type: 'image'; url: string; display?: 'sticker' | 'gif'; frame?: 'sm' | 'md' | 'lg' };
 
 export type JournalShare = { id: string; title: string; summary: string; href: string; cover?: string };
 
@@ -25,7 +23,10 @@ export type NewPostDraft = {
   images?: string[];
   blocks?: PostBlock[];
   attachment?: Attachment;
+  attachments?: Attachment[];
   poll?: PollOption[];
+  pollMultiple?: boolean;
+  pollClosesAt?: string;
   audience?: 'team' | 'management';
   mood?: string;
   moodAudience?: 'team' | 'management' | 'self';
@@ -52,7 +53,12 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
   const [editing, setEditing] = useState<File | null>(null);
   const [queue, setQueue] = useState<File[]>([]);
   const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [attachment, setAttachment] = useState<Attachment | undefined>();
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [pollMultiple, setPollMultiple] = useState(false);
+  const [pollCloses, setPollCloses] = useState('');
+  const [recording, setRecording] = useState(false);
+  const recorder = useRef<MediaRecorder | null>(null);
+  const chunks = useRef<Blob[]>([]);
   const [progress, setProgress] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
@@ -146,7 +152,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     try {
       setProgress(0);
       const uploaded = await uploadMedia(file, setProgress);
-      setAttachment({ type, name: type === 'audio' ? 'Áudio' : (uploaded.name || file.name), url: uploaded.url, start: clip?.start, duration: clip?.duration });
+      setAttachments((current) => [...current, { type, name: type === 'audio' ? 'Áudio' : (uploaded.name || file.name), url: uploaded.url, start: clip?.start, duration: clip?.duration }]);
       return true;
     } catch {
       toast.error('Não foi possível enviar o arquivo. Tente novamente.');
@@ -161,7 +167,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
       if (current.startsWith('blob:')) URL.revokeObjectURL(current);
       return '';
     });
-    setAttachment((current) => current?.type === 'video' ? undefined : current);
+    setAttachments((current) => current.filter((item) => item.type !== 'video' || item.url !== videoPreview));
   }
 
   function takeVideo(file: File) {
@@ -183,9 +189,9 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
   }
 
   function readVideo(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const files = [...(event.target.files ?? [])];
     event.target.value = '';
-    if (file) takeVideo(file);
+    files.forEach((file) => takeVideo(file));
   }
 
   function takeAudio(file: File) {
@@ -197,9 +203,9 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
   }
 
   function readAudio(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const files = [...(event.target.files ?? [])];
     event.target.value = '';
-    if (file) takeAudio(file);
+    files.forEach((file) => takeAudio(file));
   }
 
   function fileKind(file: File) {
@@ -211,13 +217,10 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
 
   function receiveFiles(files: File[]) {
     const images = files.filter((file) => fileKind(file) === 'image');
-    const video = files.find((file) => fileKind(file) === 'video');
-    const audio = files.find((file) => fileKind(file) === 'audio');
-    const document = files.find((file) => fileKind(file) === 'document');
     if (images.length > 0) addImages(images);
-    if (video) takeVideo(video);
-    if (audio) takeAudio(audio);
-    if (document) void uploadAttachment(document, 'document');
+    files.filter((file) => fileKind(file) === 'video').forEach((file) => takeVideo(file));
+    files.filter((file) => fileKind(file) === 'audio').forEach((file) => takeAudio(file));
+    files.filter((file) => fileKind(file) === 'document').forEach((file) => { void uploadAttachment(file, 'document'); });
   }
 
   function onDropFiles(event: DragEvent<HTMLFormElement>) {
@@ -227,9 +230,40 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
   }
 
   function readFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const files = [...(event.target.files ?? [])];
     event.target.value = '';
-    if (file) void uploadAttachment(file, 'document');
+    files.forEach((file) => { void uploadAttachment(file, 'document'); });
+  }
+
+  async function toggleRecord() {
+    if (recorder.current && recorder.current.state === 'recording') {
+      recorder.current.stop();
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error('Este navegador não grava áudio.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+      const media = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      chunks.current = [];
+      media.ondataavailable = (event) => { if (event.data.size > 0) chunks.current.push(event.data); };
+      media.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        setRecording(false);
+        recorder.current = null;
+        const blob = new Blob(chunks.current, { type: media.mimeType || 'audio/webm' });
+        if (blob.size < 1) return;
+        takeAudio(new File([blob], 'gravacao.webm', { type: blob.type || 'audio/webm' }));
+      };
+      recorder.current = media;
+      media.start();
+      setRecording(true);
+    } catch {
+      toast.error('Não foi possível usar o microfone.');
+    }
   }
 
   function pasteMedia(event: ClipboardEvent<HTMLTextAreaElement>) {
@@ -266,7 +300,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
     if (sending) return;
     const content: PostBlock[] = [];
     for (const block of blocks) {
-      if (block.type === 'image') content.push(block.display ? { type: 'image', url: block.url, display: block.display } : { type: 'image', url: block.url });
+      if (block.type === 'image') content.push({ type: 'image', url: block.url, ...(block.display ? { display: block.display } : {}), ...(block.frame ? { frame: block.frame } : {}) });
       else if (block.text.trim()) content.push({ type: 'text', text: block.text.trim() });
     }
     const body = content.flatMap((block) => block.type === 'text' ? [block.text] : []).join('\n\n');
@@ -277,7 +311,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
       toast.error('As opções da enquete não podem se repetir.');
       return;
     }
-    const hasMedia = images.length > 0 || Boolean(attachment) || Boolean(journal);
+    const hasMedia = images.length > 0 || attachments.length > 0 || Boolean(journal);
     if ((!body && !hasMedia) || (pollOpen && labels.length < 2)) return;
     setSending(true);
     try {
@@ -286,8 +320,11 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
         body,
         images,
         blocks: content,
-        attachment,
+        attachment: attachments[0],
+        attachments,
         poll: pollOpen ? poll : undefined,
+        pollMultiple: pollOpen ? pollMultiple : undefined,
+        pollClosesAt: pollOpen && pollCloses ? new Date(pollCloses).toISOString() : undefined,
         audience,
         mood: feeling?.emoji,
         moodAudience: feeling ? moodAudience : undefined,
@@ -300,8 +337,10 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
       setBlocks([{ id: 'texto', type: 'text', text: '' }]);
       focusId.current = 'texto';
       clearVideo();
-      setAttachment(undefined);
+      setAttachments([]);
       setPollOpen(false);
+      setPollMultiple(false);
+      setPollCloses('');
       setOptions(['', '']);
       setMoodId(null);
       setMenu(null);
@@ -370,7 +409,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
 
   const textReady = blocks.some((block) => block.type === 'text' && block.text.trim());
   const imageReady = blocks.some((block) => block.type === 'image');
-  const ready = !sending && progress === null && (textReady || imageReady || Boolean(attachment) || Boolean(journal)) && (!pollOpen || options.filter((item) => item.trim()).length >= 2);
+  const ready = !sending && progress === null && (textReady || imageReady || attachments.length > 0 || Boolean(journal)) && (!pollOpen || options.filter((item) => item.trim()).length >= 2);
   const user = actor();
   const feeling = MOODS.find((item) => item.id === moodId);
   const moodLabel = moodAudience === 'self' ? 'Somente eu' : moodAudience === 'management' ? 'Somente a gestão' : 'Público';
@@ -385,11 +424,18 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
       if (target?.closest('[data-composer-menu], [data-composer-tool]')) return;
       setMenu(null);
     }
+    function onScroll(event: Event) {
+      const target = event.target;
+      if (target instanceof Element && target.closest('[data-composer-menu]')) return;
+      setMenu(null);
+    }
     window.addEventListener('keydown', onKey);
     document.addEventListener('pointerdown', onPointer);
+    window.addEventListener('scroll', onScroll, true);
     return () => {
       window.removeEventListener('keydown', onKey);
       document.removeEventListener('pointerdown', onPointer);
+      window.removeEventListener('scroll', onScroll, true);
     };
   }, [menu]);
 
@@ -445,11 +491,18 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
                   event.currentTarget.style.height = `${Math.min(Math.max(event.currentTarget.scrollHeight, index === 0 ? 40 : 32), 180)}px`;
                 }}
                 placeholder={index === 0 ? (journal ? 'Escreva uma legenda se quiser...' : 'Compartilhe algo com a equipe...') : ''}
-                className={`w-full resize-none overflow-y-auto bg-transparent text-[13.5px] leading-5 outline-none placeholder:text-muted-foreground ${index === 0 ? '' : 'mt-2 min-h-8'}`}
+                className={`w-full resize-none overflow-y-auto bg-transparent text-[13.5px] leading-5 outline-none placeholder:text-muted-foreground ${!block.text && blocks[index + 1]?.type === 'image' ? 'h-0 min-h-0 p-0' : index === 0 ? '' : 'mt-2 min-h-8'}`}
               />
             ) : (
-              <div key={block.id} className={`relative mt-2 ${block.display ? 'w-24' : ''}`}>
-                <img src={block.url} alt="" className={block.display ? 'h-24 w-24 rounded-xl bg-[#F5F1FF] object-contain' : 'max-h-80 w-full rounded-xl object-contain'} />
+              <div key={block.id} className={`relative ${(() => { const previous = blocks[index - 1]; return previous?.type === 'text' && previous.text.trim() ? 'mt-2' : ''; })()} ${block.display ? 'w-24' : block.frame === 'sm' ? 'max-w-[220px]' : block.frame === 'lg' ? '' : 'max-w-md'}`}>
+                <img src={block.url} alt="" className={block.display ? 'h-24 w-24 rounded-xl bg-[#F5F1FF] object-contain' : `w-full rounded-xl object-contain ${block.frame === 'sm' ? 'max-h-40' : block.frame === 'lg' ? 'max-h-[640px]' : 'max-h-80'}`} />
+                {block.display ? null : (
+                  <span className="absolute bottom-1 left-1 flex gap-1">
+                    {(['sm', 'md', 'lg'] as const).map((size) => (
+                      <button key={size} type="button" aria-label={size === 'sm' ? 'Imagem pequena' : size === 'lg' ? 'Imagem grande' : 'Imagem média'} aria-pressed={(block.frame ?? 'md') === size} onClick={() => setBlocks((current) => current.map((item) => item.id === block.id && item.type === 'image' ? { ...item, frame: size } : item))} className={`grid h-6 w-6 place-items-center rounded-full text-[10px] font-semibold ${(block.frame ?? 'md') === size ? 'bg-[#4600F3] text-white' : 'bg-white/90 text-[#3600C2]'}`}>{size === 'sm' ? 'P' : size === 'lg' ? 'G' : 'M'}</button>
+                    ))}
+                  </span>
+                )}
                 <button type="button" onClick={() => removeImage(block.id)} className="absolute right-1 top-1 rounded-full bg-background/90 p-1" aria-label={block.display === 'gif' ? 'Remover GIF' : block.display === 'sticker' ? 'Remover figurinha' : 'Remover foto'}>
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -472,33 +525,41 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
 
       {progress !== null ? (
         <div className="mt-3">
-          <p className="mb-1 text-xs text-muted-foreground">{progress === 0 && videoPreview && attachment?.type !== 'video' ? 'Preparando o vídeo...' : `Enviando ${Math.round(progress * 100)}%`}</p>
+          <p className="mb-1 text-xs text-muted-foreground">{progress === 0 && videoPreview ? 'Preparando o vídeo...' : `Enviando ${Math.round(progress * 100)}%`}</p>
           <div className="h-1 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary" style={{ width: `${Math.round(progress * 100)}%` }} /></div>
         </div>
       ) : null}
 
-      {videoPreview || (attachment?.type === 'video' && attachment.url) ? (
+      {videoPreview ? (
         <div className="relative mt-3 overflow-hidden rounded-xl bg-black">
-          <video src={videoPreview || attachment?.url} controls preload="metadata" playsInline className="max-h-80 w-full" />
+          <video src={videoPreview} controls preload="metadata" playsInline className="max-h-80 w-full" />
           <button type="button" onClick={clearVideo} className="absolute right-2 top-2 rounded-full bg-background/90 p-1" aria-label="Remover vídeo">
             <X className="h-4 w-4" />
           </button>
         </div>
       ) : null}
-
-      {attachment?.type === 'audio' && attachment.url ? (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2 text-sm">
-          <span className="flex min-w-0 items-center gap-2 text-sm"><AudioLines className="h-4 w-4 text-primary" />Trecho de {formatClip(attachment.duration ?? 0)}</span>
-          <button type="button" onClick={() => setAttachment(undefined)} aria-label="Remover áudio"><X className="h-4 w-4" /></button>
+      {attachments.map((item, index) => (
+        <div key={`${item.url}-${index}`} className="mt-3">
+          {item.type === 'video' && item.url ? (
+            <div className="relative overflow-hidden rounded-xl bg-black">
+              <video src={item.url} controls preload="metadata" playsInline className="max-h-80 w-full" />
+              <button type="button" onClick={() => setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="absolute right-2 top-2 rounded-full bg-background/90 p-1" aria-label="Remover vídeo"><X className="h-4 w-4" /></button>
+            </div>
+          ) : null}
+          {item.type === 'audio' && item.url ? (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2 text-sm">
+              <span className="flex min-w-0 items-center gap-2"><AudioLines className="h-4 w-4 text-primary" />{item.name}</span>
+              <button type="button" onClick={() => setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label="Remover áudio"><X className="h-4 w-4" /></button>
+            </div>
+          ) : null}
+          {item.type === 'document' ? (
+            <div className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm">
+              <span className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" />{item.name}</span>
+              <button type="button" onClick={() => setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label="Remover documento"><X className="h-4 w-4" /></button>
+            </div>
+          ) : null}
         </div>
-      ) : null}
-
-      {attachment?.type === 'document' ? (
-        <div className="mt-3 flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm">
-          <span className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" />{attachment.name}</span>
-          <button type="button" onClick={() => setAttachment(undefined)} aria-label="Remover documento"><X className="h-4 w-4" /></button>
-        </div>
-      ) : null}
+      ))}
 
       {pollOpen ? (
         <div className="mt-3 space-y-2">
@@ -513,22 +574,32 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
               {options.length > 2 ? <button type="button" aria-label={`Remover opção ${index + 1}`} onClick={() => setOptions((current) => current.filter((_, itemIndex) => itemIndex !== index))}><X className="h-4 w-4" /></button> : null}
             </div>
           ))}
-          {options.length < 12 ? (
-            <button type="button" onClick={() => setOptions((current) => [...current, ''])} className="text-sm font-medium text-primary">
-              Adicionar opção
-            </button>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            {options.length < 12 ? (
+              <button type="button" onClick={() => setOptions((current) => [...current, ''])} className="text-sm font-medium text-primary">
+                Adicionar opção
+              </button>
+            ) : null}
+            <label className="flex items-center gap-2 text-sm text-[#3C3952]">
+              <input type="checkbox" checked={pollMultiple} onChange={(event) => setPollMultiple(event.target.checked)} className="accent-[#4600F3]" />
+              Mais de uma opção
+            </label>
+            <label className="flex items-center gap-2 text-sm text-[#3C3952]">
+              Encerra
+              <input type="datetime-local" value={pollCloses} onChange={(event) => setPollCloses(event.target.value)} className="h-9 rounded-xl border border-border px-2 text-sm outline-none" />
+            </label>
+          </div>
         </div>
       ) : null}
 
       <div className="mt-2 flex items-center gap-1.5">
         <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple className="hidden" onChange={readImage} />
-        <input ref={videoRef} type="file" accept="video/*" className="hidden" onChange={readVideo} />
-        <input ref={audioRef} type="file" accept="audio/*" className="hidden" onChange={readAudio} />
-        <input ref={fileRef} type="file" className="hidden" onChange={readFile} />
+        <input ref={videoRef} type="file" accept="video/*" multiple className="hidden" onChange={readVideo} />
+        <input ref={audioRef} type="file" accept="audio/*" multiple className="hidden" onChange={readAudio} />
+        <input ref={fileRef} type="file" multiple className="hidden" onChange={readFile} />
         <button type="button" data-composer-tool aria-label={feeling ? `Humor: ${feeling.label}` : 'Emojis, humor, GIFs e figurinhas'} aria-expanded={menu === 'face'} title={feeling ? feeling.label : 'Emojis, humor, GIFs e figurinhas'} onClick={(event) => toggleMenu('face', event)} className={`relative grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#EDE7FE] text-[#4600F3] transition-colors hover:bg-[#EBD4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4600F3]/40 active:bg-[#E0D6FC] ${menu === 'face' || feeling ? 'ring-2 ring-[#4600F3]/30' : ''}`}>
           <Smile className="h-3.5 w-3.5" />
-          {feeling ? <span className="absolute -bottom-0.5 -right-0.5 grid h-3.5 w-3.5 place-items-center rounded-full bg-white ring-1 ring-[#E0D6FC]"><Emoji emoji={feeling.emoji} className="h-2.5 w-2.5" /></span> : null}
+          {feeling ? <span className="absolute -bottom-0.5 -right-0.5 grid h-3.5 w-3.5 place-items-center rounded-full bg-white text-[11px] leading-none ring-1 ring-[#E0D6FC]">{feeling.emoji}</span> : null}
         </button>
         <button type="button" data-composer-tool aria-label={audience === 'management' ? 'Somente gestão' : 'Público'} aria-pressed={audience === 'management'} aria-expanded={menu === 'lock'} title={audience === 'management' ? 'Somente gestão' : 'Público'} onClick={(event) => toggleMenu('lock', event)} className={`grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#EDE7FE] text-[#4600F3] transition-colors hover:bg-[#EBD4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4600F3]/40 active:bg-[#E0D6FC] ${menu === 'lock' || audience === 'management' ? 'ring-2 ring-[#4600F3]/30' : ''}`}>
           <Lock className="h-3.5 w-3.5" />
@@ -536,7 +607,10 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
         <button type="button" data-composer-tool aria-label="Adicionar conteúdo" aria-expanded={menu === 'add'} title="Adicionar conteúdo" onClick={(event) => toggleMenu('add', event)} className={`grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#EDE7FE] text-[#4600F3] transition-colors hover:bg-[#EBD4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4600F3]/40 active:bg-[#E0D6FC] ${menu === 'add' ? 'ring-2 ring-[#4600F3]/30' : ''}`}>
           <Plus className="h-3.5 w-3.5" />
         </button>
-        <button type="submit" aria-label="Publicar" title="Publicar" aria-busy={sending} disabled={!ready} className="ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 transition-colors hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-45">
+        <button type="button" aria-label={recording ? 'Parar gravação' : 'Gravar áudio'} aria-pressed={recording} title={recording ? 'Parar gravação' : 'Gravar áudio'} onClick={() => void toggleRecord()} className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${recording ? 'bg-[#DB2777] text-white' : 'bg-[#EDE7FE] text-[#4600F3]'}`}>
+          <Mic className="h-3.5 w-3.5" />
+        </button>
+        <button type="submit" aria-label="Publicar" title="Publicar" aria-busy={sending} disabled={!ready} className="ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 transition-colors outline-none hover:bg-blue-500 focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-45">
           {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
         </button>
       </div>
@@ -559,7 +633,7 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
                     <div role="listbox" aria-label="Humor">
                       {MOODS.map((mood) => (
                         <button key={mood.id} type="button" role="option" aria-selected={moodId === mood.id} onClick={() => setMoodId(mood.id)} className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4600F3]/40 ${moodId === mood.id ? 'bg-[#EDE7FE] text-[#3600C2]' : 'text-[#3C3952] hover:bg-[#F6F4FC]'}`}>
-                          <Emoji emoji={mood.emoji} className="h-4 w-4" />
+                          <span className="text-[18px] leading-none">{mood.emoji}</span>
                           {mood.label}
                         </button>
                       ))}

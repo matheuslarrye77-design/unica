@@ -1,4 +1,3 @@
-import { Emoji } from '@/components/Emoji';
 import { actor } from '@/lib/session';
 import { saveMood, useInstitution } from '@/lib/institution';
 import { cn } from '@/lib/utils';
@@ -122,9 +121,7 @@ export const TeamMood: FC = () => {
           const portrait = (
             <div className="relative mx-auto h-10 w-10">
               <img src={person.avatar} alt="" className="h-10 w-10 rounded-full bg-muted object-cover ring-2 ring-white" />
-              <span className="absolute -bottom-1 -left-1 flex h-5 w-5 items-center justify-center rounded-full bg-white ring-2 ring-white">
-                <Emoji emoji={emoji} className="h-3.5 w-3.5" />
-              </span>
+              <span className="absolute -bottom-1 -left-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[16px] leading-none ring-2 ring-white">{emoji}</span>
               {self ? (
                 <span className="absolute -bottom-0.5 -right-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[12px] font-bold leading-none text-white ring-2 ring-white">+</span>
               ) : null}
@@ -187,7 +184,7 @@ export const TeamMood: FC = () => {
                   mine === mood.emoji ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >
-                <Emoji emoji={mood.emoji} className="h-4 w-4" />
+                <span className="text-[18px] leading-none">{mood.emoji}</span>
                 {mood.label}
               </button>
             ))}

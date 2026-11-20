@@ -30,8 +30,8 @@ export const DOCUMENT_CATEGORIES: { id: DocumentCategory; label: string }[] = [
 ];
 
 export const DOCUMENT_SYSTEMS: { id: DocumentSystem; label: string }[] = [
-  { id: 'pincel', label: 'Pincel Atômico' },
   { id: 'prominas', label: 'Prominas' },
+  { id: 'pincel', label: 'Pincel' },
 ];
 
 export const ORIGIN_SYSTEMS = DOCUMENT_SYSTEMS.filter((item) => item.id === 'pincel' || item.id === 'prominas');

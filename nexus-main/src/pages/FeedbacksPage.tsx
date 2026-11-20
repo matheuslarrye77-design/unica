@@ -169,9 +169,9 @@ export const FeedbacksPage: FC = () => {
           title="Sugestões"
           subtitle="Sua opinião também constrói o nosso futuro. Deixe aqui suas ideias, comentários e sugestões."
           aside={
-            <Button className="rounded-full" onClick={() => setComposer(true)}>
+            <button type="button" onClick={() => setComposer(true)} className="inline-flex h-11 items-center gap-2 rounded-full bg-[#6644e0] px-5 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)] outline-none hover:bg-[#4f33b8]">
               <Plus className="h-4 w-4" /> Nova sugestão
-            </Button>
+            </button>
           }
         />
 

@@ -251,6 +251,10 @@
   a, button {
     transition: background-color var(--ds-ease), color var(--ds-ease), border-color var(--ds-ease), box-shadow var(--ds-ease);
   }
+  button:focus,
+  button:focus-visible {
+    outline: none;
+  }
   p, li, dd, figcaption, textarea {
     font-weight: 400;
     line-height: var(--ds-leading-body);

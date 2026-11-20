@@ -73,6 +73,7 @@ export const KudosFeedPage: FC = () => {
     try { return JSON.parse(sessionStorage.getItem('unica-recognition-mural') ?? '{}') as Record<string, boolean>; } catch { return {}; }
   });
   useEffect(() => { sessionStorage.setItem('unica-recognition-mural', JSON.stringify(posted)); }, [posted]);
+  const [liked, setLiked] = useState<Record<string, boolean>>({});
   const [goals, setGoals] = useState<GoalsPayload | null>(null);
   const [week, setWeek] = useState('');
   const [podiumMonth, setPodiumMonth] = useState('');
@@ -196,16 +197,15 @@ export const KudosFeedPage: FC = () => {
                             </p>
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
-                            <span className="inline-flex h-11 items-center gap-1.5 rounded-2xl bg-white px-3 text-sm font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-                              <Heart className="h-4 w-4 text-blue-600" /> {item.likes}
-                            </span>
+                            <button type="button" aria-pressed={Boolean(liked[item.id])} onClick={() => setLiked((current) => ({ ...current, [item.id]: !current[item.id] }))} className={`inline-flex h-11 items-center gap-1.5 rounded-2xl bg-white px-3 text-sm font-semibold shadow-[0_8px_24px_rgba(15,23,42,0.06)] ${liked[item.id] ? 'text-[#6D32F5]' : 'text-gray-600'}`}>
+                              <Heart className="h-4 w-4" fill={liked[item.id] ? 'currentColor' : 'none'} /> {item.likes + (liked[item.id] ? 1 : 0)}
+                            </button>
                             <button
                               type="button"
-                              aria-label={posted[item.id] ? 'Publicado no mural' : 'Postar no mural'}
-                              title={posted[item.id] ? 'Publicado no mural' : 'Postar no mural'}
-                              disabled={posted[item.id]}
+                              aria-label="Postar no mural"
+                              title="Postar no mural"
                               onClick={() => setMuralTarget(item)}
-                              className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600 disabled:text-gray-300"
+                              className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600"
                             >
                               <Megaphone className="h-4 w-4" />
                             </button>
@@ -269,7 +269,6 @@ export const KudosFeedPage: FC = () => {
             photos: muralTarget.photos,
           }}
           onPublished={() => {
-            setPosted((current) => ({ ...current, [muralTarget.id]: true }));
             setMuralTarget(null);
           }}
         />

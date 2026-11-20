@@ -36,14 +36,6 @@ import { toast } from 'sonner';
 type SortMode = 'az' | 'za' | 'recent' | 'old' | 'accessed';
 type CategoryFilter = 'todos' | DocumentCategory;
 
-const sorts: { id: SortMode; label: string }[] = [
-  { id: 'az', label: 'A–Z' },
-  { id: 'za', label: 'Z–A' },
-  { id: 'recent', label: 'Mais recentes' },
-  { id: 'old', label: 'Mais antigos' },
-  { id: 'accessed', label: 'Mais acessados' },
-];
-
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR');
 }
@@ -177,14 +169,8 @@ export const ResourcesPage: FC = () => {
             {filterOpen ? (
               <div className="absolute top-12 right-0 z-20 max-h-80 w-56 overflow-y-auto rounded-2xl border border-gray-100 bg-white p-1 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
                 <button type="button" onClick={() => { setCategory('todos'); setSystem('todos'); setSort('az'); setFilterOpen(false); }} className="block w-full rounded-xl px-3 py-2 text-left text-base font-semibold text-gray-600 hover:text-blue-600">Limpar filtros</button>
-                {DOCUMENT_CATEGORIES.map((item) => (
-                  <button key={item.id} type="button" onClick={() => { setCategory(item.id); setFilterOpen(false); }} className={cn('block w-full rounded-xl px-3 py-2 text-left text-base font-semibold', category === item.id ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-blue-600')}>{item.label}</button>
-                ))}
                 {ORIGIN_SYSTEMS.map((item) => (
                   <button key={item.id} type="button" onClick={() => { setSystem(item.id); setFilterOpen(false); }} className={cn('block w-full rounded-xl px-3 py-2 text-left text-base font-semibold', system === item.id ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-blue-600')}>{item.label}</button>
-                ))}
-                {sorts.map((item) => (
-                  <button key={item.id} type="button" onClick={() => { setSort(item.id); setFilterOpen(false); }} className={cn('block w-full rounded-xl px-3 py-2 text-left text-base font-semibold', sort === item.id ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-blue-600')}>{item.label}</button>
                 ))}
               </div>
             ) : null}

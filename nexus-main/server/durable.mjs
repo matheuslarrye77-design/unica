@@ -234,8 +234,40 @@ export async function writeStickerLibrary(items, gifs = []) {
   return { mode: 'blob', ok: await writeBlob('stickers', { items, gifs }) };
 }
 
+async function writeSupabaseSticker(id, bytes, contentType) {
+  if (!STICKER_FILE.test(id) || supabaseConfigError()) return false;
+  try {
+    const db = supabaseClient();
+    await db.storage.createBucket(MURAL_BUCKET, { public: false, fileSizeLimit: '209715200' }).catch(() => undefined);
+    const body = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
+    const file = await db.storage.from(MURAL_BUCKET).upload(`stickers/${id}`, body, { contentType, upsert: true });
+    if (file.error) {
+      console.error('[unica] sticker write', file.error.message || 'supabase');
+      return false;
+    }
+    return true;
+  } catch {
+    console.error('[unica] sticker write', 'network');
+    return false;
+  }
+}
+
+async function readSupabaseSticker(id) {
+  if (!STICKER_FILE.test(id) || supabaseConfigError()) return null;
+  try {
+    const db = supabaseClient();
+    const file = await db.storage.from(MURAL_BUCKET).download(`stickers/${id}`);
+    if (file.error || !file.data) return null;
+    return { bytes: Buffer.from(await file.data.arrayBuffer()), type: file.data.type || '' };
+  } catch {
+    return null;
+  }
+}
+
 export async function readStickerFile(id) {
   if (!STICKER_FILE.test(id)) return { ok: false, bytes: null, type: '' };
+  const stored = await readSupabaseSticker(id);
+  if (stored?.bytes?.length) return { mode: 'blob', ok: true, bytes: stored.bytes, type: stored.type };
   if (!blobToken()) return { mode: 'local', ok: false, bytes: null, type: '' };
   const file = await getPrivate(`unica/stickers/${id}`);
   if (!file) return { mode: 'blob', ok: false, bytes: null, type: '' };
@@ -258,8 +290,10 @@ async function getPrivate(pathname) {
 
 export async function writeStickerFile(id, bytes, contentType) {
   if (!STICKER_FILE.test(id)) return false;
-  if (!blobToken()) return false;
-  return putPrivate(`unica/stickers/${id}`, bytes, contentType);
+  const stored = await writeSupabaseSticker(id, bytes, contentType);
+  if (!blobToken()) return stored;
+  const file = await putPrivate(`unica/stickers/${id}`, bytes, contentType);
+  return Boolean(file || stored);
 }
 
 const UPLOAD_FILE = /^up-[a-f0-9]{16}$/;

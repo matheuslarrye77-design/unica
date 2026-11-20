@@ -6,9 +6,9 @@ export type Attachment = {
   duration?: number;
 };
 
-export type CommentMedia = { kind: 'gif' | 'sticker' | 'image' | 'video'; url: string };
+export type CommentMedia = { kind: 'gif' | 'sticker' | 'image' | 'video' | 'audio'; url: string };
 
-export type PostBlock = { type: 'text'; text: string } | { type: 'image'; url: string; display?: 'sticker' | 'gif' };
+export type PostBlock = { type: 'text'; text: string } | { type: 'image'; url: string; display?: 'sticker' | 'gif'; frame?: 'sm' | 'md' | 'lg' };
 
 export type SocialComment = {
   id: string;
@@ -44,6 +44,7 @@ export type SocialPost = {
   images?: string[];
   blocks?: PostBlock[];
   attachment?: Attachment;
+  attachments?: Attachment[];
   likes: number;
   liked: boolean;
   reaction?: 'like' | 'love' | null;
@@ -65,7 +66,11 @@ export type SocialPost = {
   comment?: string;
   tag?: string;
   poll?: PollOption[];
+  pollMultiple?: boolean;
+  pollClosesAt?: string;
+  pollClosed?: boolean;
   votedId?: string | null;
+  votedIds?: string[];
   eventWhen?: string;
   eventWhere?: string;
   audience?: 'team' | 'management';

@@ -92,13 +92,19 @@ export const ActivityDialog: FC<{
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label className="text-sm font-medium text-gray-600">Prioridade</Label>
-            <Select value={priority} onValueChange={(value) => setPriority(value as ActivityPriority)}>
-              <SelectTrigger className={`${field} w-full`}><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {priorities.map((item) => <SelectItem key={item} value={item}>{PRIORITY_LABEL[item]}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label className="text-[11px] font-semibold tracking-[0.08em] text-[#8a85a0] uppercase">Prioridade</Label>
+            <div className="flex gap-1.5">
+              {priorities.map((item) => {
+                const dot = item === 'high' ? '#e5484d' : item === 'medium' ? '#f5a524' : '#4cb782';
+                const on = priority === item;
+                return (
+                  <button key={item} type="button" aria-pressed={on} onClick={() => setPriority(item)} className={`flex h-10 flex-1 items-center justify-center gap-1.5 rounded-[11px] text-[13px] outline-none ${on ? 'h-[46px] bg-[#6644e0] font-semibold text-white shadow-[0_6px_14px_-6px_rgba(102,68,224,0.7)]' : 'border border-[#e8e4f4] bg-white text-[#4a4560]'}`}>
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: on ? '#fff' : dot }} />
+                    {PRIORITY_LABEL[item]}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           {leadership ? (
             <div className="grid gap-2">

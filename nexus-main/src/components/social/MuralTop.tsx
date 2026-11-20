@@ -1,4 +1,3 @@
-import { Emoji } from '@/components/Emoji';
 import { NotificationDropdown } from '@/components/NotificationDropdown';
 import { MOODS } from '@/components/shell/TeamMood';
 import { calendarEvents } from '@/data/mockData';
@@ -54,19 +53,17 @@ function readOrder() {
 const Face: FC<{ person: Person; self?: boolean; mood?: string; gift?: string; onMood?: () => void }> = ({ person, self, mood, gift, onMood }) => {
   const portrait = (
     <span className="relative block aspect-square w-full">
-      <img src={person.avatar} alt="" className="h-full w-full rounded-full bg-[#EDE7FE] object-cover" style={gift ? { boxShadow: '0 0 0 4px #fff, 0 0 0 8px #4600F3' } : { boxShadow: '0 0 0 3px #fff' }} />
+      <img src={person.avatar} alt="" className="h-full w-full rounded-full bg-[#EDE7FE] object-cover" style={{ boxShadow: '0 0 0 3px #fff' }} />
       {mood ? (
-        <span className="absolute bottom-0 left-0 grid h-8 w-8 place-items-center rounded-full bg-white ring-2 ring-white">
-          <Emoji emoji={mood} className="h-5 w-5" />
-        </span>
+        <span className="absolute bottom-0 left-0 grid h-8 w-8 place-items-center rounded-full bg-white text-[18px] leading-none ring-2 ring-white" aria-hidden="true">{mood}</span>
       ) : null}
       {self ? (
         <span className="absolute right-0 bottom-0 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-[#6B33F6] text-lg font-bold leading-none text-white ring-2 ring-white">+</span>
       ) : null}
       {gift ? (
-        <span className="group/gift absolute -top-3 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full bg-[#4600F3] text-white shadow-sm">
-          <Gift className="h-5 w-5" />
-          <span className="pointer-events-none absolute top-7 left-1/2 z-20 hidden w-max -translate-x-1/2 rounded-lg bg-[#1F2937] px-2.5 py-1.5 text-left text-[11px] font-medium text-white group-hover/gift:block group-focus-within/gift:block">
+        <span className="group/gift absolute -top-4 left-1/2 z-10 -translate-x-1/2 text-[#3C3952]">
+          <Gift className="h-5 w-5" strokeWidth={1.6} />
+          <span className="pointer-events-none absolute top-6 left-1/2 z-20 hidden w-max -translate-x-1/2 rounded-lg bg-[#1F2937] px-2.5 py-1.5 text-left text-[11px] font-medium text-white group-hover/gift:block group-focus-within/gift:block">
             {gift}
           </span>
         </span>
@@ -148,7 +145,7 @@ export const MuralTop: FC = () => {
     return ranked;
   }, [order, user.id, user.name]);
 
-  const missionItems = loadActivityStore().activities.filter((activity) => activity.origin === 'leadership' && activity.status !== 'done' && canSeeMission(activity));
+  const missionItems = loadActivityStore().activities.filter((activity) => activity.status !== 'done' && canSeeMission(activity));
   const missions = missionItems.length;
   const monthLabel = days[3].toLocaleDateString('pt-BR', { month: 'long' });
   const mine = moods[user.id];
@@ -181,7 +178,7 @@ export const MuralTop: FC = () => {
     return undefined;
   }
 
-  const pageSize = 11;
+  const pageSize = 13;
   const pageCount = Math.max(1, Math.ceil(people.length / pageSize));
   const page = Math.min(avatarPage, pageCount - 1);
   const visiblePeople = people.slice(page * pageSize, page * pageSize + pageSize);
@@ -241,7 +238,7 @@ export const MuralTop: FC = () => {
             <button type="button" aria-label="Perfis anteriores" disabled={page === 0} onClick={() => setAvatarPage((value) => Math.max(0, value - 1))} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#8A7C98] hover:bg-white disabled:opacity-30">
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <div className="grid min-w-0 flex-1 items-center gap-3" style={{ gridTemplateColumns: 'repeat(12, minmax(0, 1fr))' }}>
+            <div className="grid min-w-0 flex-1 items-center gap-2" style={{ gridTemplateColumns: 'repeat(14, minmax(0, 1fr))' }}>
               <Face person={{ id: user.id, name: user.name, avatar: user.avatar }} self mood={mine} gift={giftOf({ id: user.id, name: user.name, avatar: user.avatar })} onMood={() => setMoodOpen((value) => !value)} />
               <SortableContext items={visiblePeople.map((person) => person.id)} strategy={horizontalListSortingStrategy}>
                 {visiblePeople.map((person) => <SortableFace key={person.id} person={person} mood={moodOf(person)} gift={giftOf(person)} />)}
@@ -256,7 +253,7 @@ export const MuralTop: FC = () => {
           <div className="absolute top-16 left-0 z-30 w-44 rounded-2xl border border-gray-100 bg-white p-1 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
             {MOODS.map((mood) => (
               <button key={mood.id} type="button" className="flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left text-[13px] hover:bg-[#F6F4FC]" onClick={() => { void saveMood(mood.emoji).finally(() => setMoodOpen(false)); }}>
-                <Emoji emoji={mood.emoji} className="h-4 w-4" />
+                <span className="text-[18px] leading-none" aria-hidden="true">{mood.emoji}</span>
                 {mood.label}
               </button>
             ))}
@@ -290,7 +287,7 @@ const MissionMenu: FC<{ count: number; items: Activity[] }> = ({ count, items })
       <div className="max-h-72 overflow-y-auto">
         {items.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-gray-500">Você está em dia.</p>
-        ) : items.slice(0, 5).map((item) => {
+        ) : items.map((item) => {
           const channel = missionChannel(item);
           const when = missionWhen(item);
           return (

@@ -241,19 +241,19 @@ export const PodiumStage: FC<{
             <p className="text-[12.5px] text-[#8A7C98]">{subtitle}</p>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {periods.length > 0 ? (
-            <div className="inline-flex items-center gap-1 rounded-full border border-[#DDD4F5] bg-white px-1.5 py-1 text-[12.5px] font-medium text-[#5C5168]">
-              <button type="button" aria-label="Período anterior" disabled={periodIndex <= 0} onClick={() => onPeriod(periods[periodIndex - 1].key)} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button>
-              <span className="inline-flex items-center gap-1.5 px-1"><Calendar className="h-3.5 w-3.5 text-[#4600F3]" /> {active?.periodLabel || monthTitle()}</span>
-              <button type="button" aria-label="Período seguinte" disabled={periodIndex < 0 || periodIndex >= periods.length - 1} onClick={() => onPeriod(periods[periodIndex + 1].key)} className="grid h-6 w-6 place-items-center rounded-full disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button>
+            <div className="inline-flex h-11 items-center gap-1 rounded-2xl bg-white px-1.5 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+              <button type="button" aria-label="Período anterior" disabled={periodIndex <= 0} onClick={() => onPeriod(periods[periodIndex - 1].key)} className="grid h-8 w-8 place-items-center rounded-xl disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
+              <span className="inline-flex items-center gap-1.5 px-1"><Calendar className="h-4 w-4 text-blue-600" /> {active?.periodLabel || monthTitle()}</span>
+              <button type="button" aria-label="Período seguinte" disabled={periodIndex < 0 || periodIndex >= periods.length - 1} onClick={() => onPeriod(periods[periodIndex + 1].key)} className="grid h-8 w-8 place-items-center rounded-xl disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
             </div>
           ) : (
-            <p className="inline-flex items-center gap-1.5 rounded-full border border-[#DDD4F5] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#5C5168]">
-              <Calendar className="h-3.5 w-3.5 text-[#4600F3]" /> {monthTitle()}
+            <p className="inline-flex h-11 items-center gap-1.5 rounded-2xl bg-white px-4 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+              <Calendar className="h-4 w-4 text-blue-600" /> {monthTitle()}
             </p>
           )}
-          <div className="inline-flex items-center gap-1.5">
+          <div className="inline-flex items-center gap-2">
             {CATEGORIES.filter((item) => podiums.some((entry) => entry.periodKey === periodKey && entry.channel === item.id && entry.ranking?.length)).map((item) => (
               <button
                 key={item.id}
@@ -262,7 +262,7 @@ export const PodiumStage: FC<{
                 aria-label={item.id}
                 aria-pressed={channel === item.id}
                 onClick={() => setChannel(item.id)}
-                className={cn('grid h-9 w-9 place-items-center rounded-full transition', channel === item.id ? 'bg-[#4600F3] text-white shadow-[0_8px_16px_rgba(70,0,243,0.28)]' : 'border border-[#DDD4F5] bg-white text-[#4600F3] hover:bg-[#F8F6FF]')}
+                className={cn('grid h-11 w-11 place-items-center rounded-2xl transition', channel === item.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600')}
               >
                 <item.Icon className="h-4 w-4" aria-hidden="true" strokeWidth={2} />
               </button>

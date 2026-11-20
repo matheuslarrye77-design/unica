@@ -225,7 +225,7 @@ const AttachedMedia: FC<{ items: JournalMedia[]; onRemove?: (id: string) => void
           {item.kind === 'image' ? <img src={resolveJournalAsset(item.url)} alt="" className="max-h-28 rounded-lg object-contain" /> : null}
           {item.kind === 'document' ? <a href={resolveJournalAsset(item.url)} target="_blank" rel="noreferrer" className="block truncate text-[13px] font-medium text-[#3600C2] underline">{item.name}</a> : null}
         </span>
-        {onRemove ? <button type="button" className="shrink-0 text-[12px] font-semibold text-[#9D174D]" onClick={() => onRemove(item.id)}>Remover</button> : null}
+        {onRemove ? <button type="button" aria-label="Remover anexo" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#9D174D] hover:bg-white" onClick={() => onRemove(item.id)}><X className="h-4 w-4" /></button> : null}
       </li>
     ))}
   </ul>
@@ -511,7 +511,7 @@ const DescriptionBalloon = forwardRef<DescriptionHandle, {
         data-placeholder="Escreva uma descrição sobre a publicação..."
         data-empty={empty ? 'true' : 'false'}
         suppressContentEditableWarning
-        className={cn('relative whitespace-pre-wrap break-words text-[13.5px] leading-5 text-[#241B33] outline-none data-[empty=true]:before:pointer-events-none data-[empty=true]:before:float-left data-[empty=true]:before:h-0 data-[empty=true]:before:text-[#B0A8BA] data-[empty=true]:before:content-[attr(data-placeholder)]', expanded ? 'min-h-[52vh]' : 'min-h-10')}
+        className={cn('relative whitespace-pre-wrap break-words text-[13.5px] leading-5 text-[#241B33] outline-none data-[empty=true]:before:pointer-events-none data-[empty=true]:before:float-left data-[empty=true]:before:h-0 data-[empty=true]:before:text-[#B0A8BA] data-[empty=true]:before:content-[attr(data-placeholder)]', expanded ? 'min-h-[52vh]' : 'min-h-28')}
         onKeyDown={onKeyDown}
         onKeyUp={rememberCaret}
         onMouseUp={rememberCaret}
@@ -750,7 +750,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         overlayClassName="bg-slate-900/25 backdrop-blur-md"
-        className="flex max-h-[calc(100dvh-1rem)] w-[min(840px,calc(100%-2rem))] max-w-none flex-col gap-0 overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:max-w-[840px]"
+        className="flex max-h-[min(920px,calc(100dvh-1rem))] w-[min(840px,calc(100%-2rem))] max-w-none flex-col gap-0 overflow-hidden rounded-[22px] border border-gray-100 bg-white p-6 shadow-[0_30px_80px_-20px_rgba(79,51,184,0.35)] sm:max-w-[840px]"
         onPointerDown={(event) => {
           const target = event.target as HTMLElement | null;
           if (pinHint && !target?.closest('[data-pin-hint]')) setPinHint(false);
@@ -797,7 +797,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
             <button type="button" onClick={() => setPreview(false)} className="mt-4 h-10 rounded-full px-4 text-sm font-semibold text-[#3600C2] hover:bg-[#EDE7FE]">Voltar à edição</button>
           </div>
         ) : (
-          <div className="grid min-h-0 flex-1 content-start gap-2.5 overflow-y-auto pr-1">
+          <div className="grid content-start gap-4 overflow-hidden">
             <label className="grid gap-1">
               <span className="flex items-center gap-2 text-sm font-semibold text-gray-800"><Type className="h-4 w-4 text-gray-400" /> Título</span>
               <span className="relative">

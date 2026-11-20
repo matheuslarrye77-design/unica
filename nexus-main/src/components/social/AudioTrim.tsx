@@ -1,6 +1,6 @@
 import { Pause, Play } from 'lucide-react';
 import { type FC, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
-import { clampClip, clipChoices, clipToWavFile, formatClip, initialClipSeconds, mixdown, peaksFromSamples } from '@/lib/audioClip';
+import { clampClip, clipChoices, clipToWavFile, initialClipSeconds, mixdown, peaksFromSamples } from '@/lib/audioClip';
 
 function shownBars(peaks: number[] | null, count: number) {
   const source = peaks ?? Array.from({ length: count }, () => 0.28);
@@ -206,7 +206,7 @@ export const AudioTrim: FC<{ file: File; onCancel: () => void; onConfirm: (file:
   const selectionWidth = (selected / span) * 100;
   const progressEnd = playing ? Math.min(start + selected, Math.max(start, playhead)) : start + Math.min(selected, Math.max(selected * 0.12, 0.4));
   const bars = shownBars(peaks, 64);
-  const durationLabel = whole ? 'Tudo' : selected < 60 ? String(Math.max(1, Math.round(selected))) : formatClip(selected);
+  const durationLabel = whole ? 'Tudo' : `${Math.max(1, Math.round(selected / 60))} min`;
   const ready = length > 0 && selected > 0 && Boolean(bufferRef.current);
 
   return (

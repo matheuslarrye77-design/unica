@@ -39,7 +39,7 @@ type Comment = {
   time: string;
   likes: number;
   likedBy: string[];
-  media?: { kind: 'gif' | 'sticker' | 'image' | 'video'; url: string };
+  media?: { kind: 'gif' | 'sticker' | 'image' | 'video' | 'audio'; url: string };
   createdAt?: string;
 };
 
@@ -57,8 +57,9 @@ type FeedPost = {
   body: string;
   image?: string;
   images?: string[];
-  blocks?: ({ type: 'text'; text: string } | { type: 'image'; url: string; display?: 'sticker' | 'gif' })[];
+  blocks?: ({ type: 'text'; text: string } | { type: 'image'; url: string; display?: 'sticker' | 'gif'; frame?: 'sm' | 'md' | 'lg' })[];
   attachment?: { type: 'video' | 'document' | 'audio'; name: string; url?: string; start?: number; duration?: number };
+  attachments?: { type: 'video' | 'document' | 'audio'; name: string; url?: string; start?: number; duration?: number }[];
   likes: number;
   likedBy: string[];
   reactions?: Reaction[];
@@ -75,7 +76,10 @@ type FeedPost = {
   journalExcerpt?: string;
   nonce?: string;
   poll?: { id: string; label: string; votes: number }[];
+  pollMultiple?: boolean;
+  pollClosesAt?: string;
   votes?: Record<string, string>;
+  voteSets?: Record<string, string[]>;
   eventWhen?: string;
   eventWhere?: string;
   audience?: 'team' | 'management';
@@ -187,12 +191,20 @@ function cleanAttachment(value: unknown): FeedPost['attachment'] | undefined {
   return { type: item.type, name, url, ...clip };
 }
 
+function cleanAttachments(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const cleaned = cleanAttachment(item);
+    return cleaned ? [cleaned] : [];
+  }).slice(0, 12);
+}
+
 function cleanBlocks(value: unknown): FeedPost['blocks'] {
   if (!Array.isArray(value)) return [];
   const blocks: NonNullable<FeedPost['blocks']> = [];
   for (const entry of value) {
     if (!entry || typeof entry !== 'object') continue;
-    const block = entry as { type?: string; text?: string; url?: string; display?: string };
+    const block = entry as { type?: string; text?: string; url?: string; display?: string; frame?: string };
     if (block.type === 'text') {
       const text = String(block.text ?? '').trim().slice(0, 4000);
       if (text) blocks.push({ type: 'text', text });
@@ -200,7 +212,8 @@ function cleanBlocks(value: unknown): FeedPost['blocks'] {
     if (block.type === 'image') {
       const url = cleanImage(block.url);
       const display = block.display === 'sticker' || block.display === 'gif' ? block.display : undefined;
-      if (url) blocks.push(display ? { type: 'image', url, display } : { type: 'image', url });
+      const frame = block.frame === 'sm' || block.frame === 'md' || block.frame === 'lg' ? block.frame : undefined;
+      if (url) blocks.push({ type: 'image', url, ...(display ? { display } : {}), ...(frame ? { frame } : {}) });
     }
     if (blocks.length >= 20) break;
   }
@@ -219,8 +232,8 @@ function cleanMedia(value: unknown): Comment['media'] | undefined {
     || Boolean(gifMediaUrl(url))
     || Boolean(stickerMediaUrl(url));
   if (!allowed) return undefined;
-  if (item.kind !== 'gif' && item.kind !== 'sticker' && item.kind !== 'image' && item.kind !== 'video') return undefined;
-  if ((item.kind === 'image' || item.kind === 'video') && !url.startsWith('/api/uploads/up-')) return undefined;
+  if (item.kind !== 'gif' && item.kind !== 'sticker' && item.kind !== 'image' && item.kind !== 'video' && item.kind !== 'audio') return undefined;
+  if ((item.kind === 'image' || item.kind === 'video' || item.kind === 'audio') && !url.startsWith('/api/uploads/up-')) return undefined;
   return { kind: item.kind, url };
 }
 
@@ -492,6 +505,7 @@ export function extraApi(): Connect.NextHandleFunction {
       images,
       blocks: post.blocks,
       attachment: post.attachment,
+      attachments: post.attachments?.length ? post.attachments : (post.attachment ? [post.attachment] : undefined),
       likes: typeof post.likes === 'number' ? post.likes : reactions.length,
       liked: reactions.some((item) => item.userId === userId && item.kind === 'like'),
       reaction: mine?.kind ?? null,
@@ -522,7 +536,11 @@ export function extraApi(): Connect.NextHandleFunction {
       comment: post.comment,
       tag: post.tag,
       poll: post.poll,
+      pollMultiple: Boolean(post.pollMultiple),
+      pollClosesAt: post.pollClosesAt,
+      pollClosed: Boolean(post.pollClosesAt && Date.parse(post.pollClosesAt) <= Date.now()),
       votedId: post.votes?.[userId] ?? null,
+      votedIds: post.voteSets?.[userId] ?? (post.votes?.[userId] ? [post.votes[userId]] : []),
       eventWhen: post.eventWhen,
       eventWhere: post.eventWhere,
       saved: savedIds.includes(post.id),
@@ -658,7 +676,9 @@ export function extraApi(): Connect.NextHandleFunction {
         const blocks = cleanBlocks(body.blocks);
         const text = blocks?.length ? blocks.filter((block) => block.type === 'text').map((block) => block.text).join('\n\n') : String(body.body ?? '').trim();
         const images = blocks?.length ? blocks.filter((block) => block.type === 'image').map((block) => block.url) : cleanImages(body.images ?? (body.image ? [body.image] : []));
-        const attachment = cleanAttachment(body.attachment);
+        const listed = cleanAttachments(body.attachments);
+        const attachment = cleanAttachment(body.attachment) ?? listed[0];
+        const attachments = listed.length ? listed : (attachment ? [attachment] : []);
         const labels = Array.isArray(body.poll)
           ? body.poll.map((item) => String(item.label ?? '').trim()).filter(Boolean).slice(0, 12)
           : [];
@@ -668,7 +688,7 @@ export function extraApi(): Connect.NextHandleFunction {
         const journalHref = typeof body.journalHref === 'string' && /^\/announcements\/[A-Za-z0-9._-]{1,80}$/.test(body.journalHref) ? body.journalHref : undefined;
         const bannerTitle = String(body.bannerTitle ?? '').trim().slice(0, 180);
         const announcement = body.kind === 'announcement' || Boolean(journalHref);
-        if (!text && images.length === 0 && !attachment && !poll && !announcement) return send(res, 400, { error: 'body' });
+        if (!text && images.length === 0 && attachments.length === 0 && !poll && !announcement) return send(res, 400, { error: 'body' });
         const mood = cleanMood(body.mood);
         const audience = cleanAudience(body.audience);
         const moodAudience = mood ? cleanMoodAudience(body.moodAudience) : undefined;
@@ -708,14 +728,18 @@ export function extraApi(): Connect.NextHandleFunction {
             image: images[0],
             images,
             blocks: blocks?.length ? blocks : undefined,
-            attachment,
+            attachment: attachments[0],
+            attachments: attachments.length ? attachments : undefined,
             likes: 0,
             likedBy: [],
             reactions: [],
             shares: 0,
             comments: [],
             poll,
+            pollMultiple: Boolean(poll && body.pollMultiple),
+            pollClosesAt: poll && typeof body.pollClosesAt === 'string' && Number.isFinite(Date.parse(body.pollClosesAt)) ? body.pollClosesAt : undefined,
             votes: {},
+            voteSets: {},
             bannerTitle: announcement
               ? (bannerTitle || 'Jornal')
               : recognition
@@ -791,7 +815,24 @@ export function extraApi(): Connect.NextHandleFunction {
         const result = await applyFeed(res, (feed) => {
           const post = openPost(feed, voteMatch[1], user);
           if (!post?.poll) return { skip: true, missing: true, store: feed };
+          if (post.pollClosesAt && Date.parse(post.pollClosesAt) <= Date.now()) return { skip: true, closed: true, store: feed };
           if (!post.poll.some((item) => item.id === optionId)) return { skip: true, badOption: true, store: feed };
+          if (post.pollMultiple) {
+            post.voteSets = post.voteSets ?? {};
+            const picked = new Set(post.voteSets[user.id] ?? []);
+            const option = post.poll.find((item) => item.id === optionId);
+            if (!option) return { skip: true, badOption: true, store: feed };
+            if (picked.has(optionId)) {
+              picked.delete(optionId);
+              option.votes = Math.max(0, option.votes - 1);
+            } else {
+              picked.add(optionId);
+              option.votes += 1;
+            }
+            post.voteSets[user.id] = [...picked];
+            post.updatedAt = new Date().toISOString();
+            return { store: feed, post };
+          }
           post.votes = post.votes ?? {};
           const previous = post.votes[user.id];
           if (previous === optionId) {
@@ -813,6 +854,7 @@ export function extraApi(): Connect.NextHandleFunction {
         if (!result) return;
         if (result.missing || !result.post) return send(res, 404, { error: 'missing' });
         if (result.badOption) return send(res, 400, { error: 'option' });
+        if (result.closed) return send(res, 409, { error: 'closed' });
         send(res, 200, { post: publicPost(result.post, user, result.store.saved?.[user.id] ?? []) });
         return;
       }
