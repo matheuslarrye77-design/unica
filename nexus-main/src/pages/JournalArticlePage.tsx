@@ -100,7 +100,7 @@ export const JournalArticlePage: FC = () => {
             <ArrowLeft className="h-4 w-4" />
             Jornal
           </Link>
-          <div className="max-w-[980px] rounded-3xl bg-white px-8 py-8 shadow-[0_2px_10px_rgba(60,40,140,0.06)] dark:bg-[#1C1F2B] sm:px-[34px] sm:py-8">
+          <div className="max-w-[980px] rounded-3xl bg-white px-[18px] py-[22px] shadow-[0_2px_10px_rgba(60,40,140,0.06)] dark:bg-[#1C1F2B] sm:px-[34px] sm:py-8">
             <div className="relative overflow-hidden rounded-[20px] bg-white p-6 shadow-[0_3px_16px_rgba(60,40,140,0.10)] before:absolute before:top-0 before:bottom-0 before:left-0 before:w-[5px] before:bg-[#6D32F5] dark:bg-[#242837] sm:p-[34px]">
               <JournalBadge category={article.category} className="w-fit" />
               <h1 className="mt-[22px] text-[clamp(26px,4vw,38px)] font-semibold leading-[1.15] tracking-[-0.02em] text-gray-800">{article.title}</h1>

@@ -73,6 +73,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
   const [options, setOptions] = useState(['', '']);
   const [panel, setPanel] = useState<'emoji' | 'sticker' | 'gif' | null>(null);
   const [menu, setMenu] = useState(false);
+  const [pick, setPick] = useState<'person' | 'tag' | null>(null);
   const [preview, setPreview] = useState(false);
   const [recording, setRecording] = useState(false);
   const [sending, setSending] = useState(false);
@@ -84,6 +85,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
 
   function resetFromProps() {
     setMenu(false);
+    setPick(null);
     setPanel(null);
     setPreview(false);
     setPollOpen(false);
@@ -378,8 +380,12 @@ export const MuralPublishDialog: FC<Props> = (props) => {
 
   const dialogTitle = props.source === 'recognition-new' ? 'Postar reconhecimento' : props.source === 'recognition-existing' ? 'Publicar reconhecimento' : 'Postar no mural';
   const dialogText = props.source === 'journal' ? 'Escreva o conteúdo e publique no mural.' : 'Compartilhe um reconhecimento com sua equipe.';
-  const tool = 'grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-gray-100 bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-colors hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30';
-  const face = 'inline-flex h-11 shrink-0 items-center justify-center gap-1 rounded-2xl border border-gray-100 bg-white px-3 text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-colors hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30';
+  const tool = isRecognition
+    ? 'grid h-[42px] min-w-[42px] shrink-0 place-items-center rounded-full bg-white text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff] hover:text-[#6644e0]'
+    : 'grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-gray-100 bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-colors hover:text-blue-600 focus-visible:outline-none';
+  const face = isRecognition
+    ? 'inline-flex h-[42px] shrink-0 items-center justify-center gap-1 rounded-full bg-white px-3 text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff] hover:text-[#6644e0]'
+    : 'inline-flex h-11 shrink-0 items-center justify-center gap-1 rounded-2xl border border-gray-100 bg-white px-3 text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-colors hover:text-blue-600 focus-visible:outline-none';
 
   return (
     <>
@@ -387,7 +393,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
       <DialogContent
         showCloseButton={false}
         overlayClassName="bg-slate-900/25 backdrop-blur-md"
-        className={`gap-0 overflow-visible rounded-2xl border border-gray-100 bg-white p-0 shadow-[0_8px_24px_rgba(15,23,42,0.08)] ${isRecognition ? 'sm:max-w-[680px]' : 'sm:max-w-[640px]'}`}
+        className={`gap-0 overflow-visible border-0 bg-white p-0 ${isRecognition ? 'rounded-[22px] shadow-[0_30px_80px_-20px_rgba(79,51,184,0.35),0_2px_6px_rgba(31,27,46,0.06)] sm:max-w-[600px]' : 'rounded-2xl border border-gray-100 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:max-w-[640px]'}`}
         onPointerDownOutside={(event) => { if (audioFile || recording) event.preventDefault(); }}
         onInteractOutside={(event) => { if (audioFile || recording) event.preventDefault(); }}
       >
@@ -395,8 +401,8 @@ export const MuralPublishDialog: FC<Props> = (props) => {
         <div className="flex max-h-[min(760px,calc(100dvh-2rem))] flex-col">
           <div className="flex items-start gap-3 px-5 pt-5 pb-3">
             <div className="min-w-0 flex-1">
-              <DialogTitle className="text-xl font-bold tracking-tight text-gray-800">{dialogTitle}</DialogTitle>
-              <p className="mt-1 text-base text-gray-500">{dialogText}</p>
+              <DialogTitle className={isRecognition ? 'text-lg font-bold tracking-tight' : 'text-xl font-bold tracking-tight text-gray-800'}>{dialogTitle}</DialogTitle>
+              <p className={isRecognition ? 'mt-1 text-[13px] text-[#8a85a0]' : 'mt-1 text-base text-gray-500'}>{dialogText}</p>
             </div>
             <button type="button" aria-label="Fechar" onClick={close} disabled={sending} className="grid h-9 w-9 place-items-center rounded-full text-[#6B6280] hover:bg-[#F3EFFF]">
               <X className="h-5 w-5" />
@@ -405,20 +411,42 @@ export const MuralPublishDialog: FC<Props> = (props) => {
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3">
             {props.source === 'recognition-new' ? (
-              <div className="mb-3 grid gap-2 sm:grid-cols-2">
-                <label className="grid gap-1 text-sm font-semibold text-gray-800">
-                  Pessoa reconhecida
-                  <select className="h-11 rounded-2xl border border-gray-100 bg-white px-3 text-base text-gray-800" value={personId} onChange={(event) => setPersonId(event.target.value)}>
-                    <option value="">Selecione</option>
-                    {others.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-                  </select>
-                </label>
-                <label className="grid gap-1 text-sm font-semibold text-gray-800">
-                  Etiqueta
-                  <select className="h-11 rounded-2xl border border-gray-100 bg-white px-3 text-base text-gray-800" value={tag} onChange={(event) => setTag(event.target.value)}>
-                    {tags.map((item) => <option key={item} value={item}>{item}</option>)}
-                  </select>
-                </label>
+              <div className="mb-3 grid gap-3 sm:grid-cols-2">
+                <div className="relative">
+                  <span className="mb-1.5 block text-[11px] font-semibold tracking-[0.08em] text-[#8a85a0] uppercase">Pessoa reconhecida</span>
+                  <button type="button" aria-haspopup="listbox" aria-expanded={pick === 'person'} onClick={() => setPick((value) => value === 'person' ? null : 'person')} className="flex h-[42px] w-full items-center gap-2.5 rounded-[11px] border-[1.5px] border-transparent bg-[#f6f5fa] px-2 text-left text-sm">
+                    {personId ? <><span className="grid h-[26px] w-[26px] place-items-center rounded-full bg-[#ece6ff] text-[10px] font-bold text-[#4f33b8]">{others.find((item) => item.id === personId)?.name.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span><span className="min-w-0 flex-1 truncate">{others.find((item) => item.id === personId)?.name}</span></> : <span className="flex-1 pl-1 text-[#b4b0c6]">Selecione</span>}
+                    <ChevronDown className={`h-4 w-4 text-[#8a85a0] ${pick === 'person' ? 'rotate-180' : ''}`} />
+                  </button>
+                  {pick === 'person' ? (
+                    <div role="listbox" className="absolute right-0 left-0 z-20 mt-1 max-h-[190px] overflow-y-auto rounded-[22px] bg-white p-1.5 shadow-[14px_14px_30px_#d8d2ee,-8px_-8px_22px_#fff,0_0_0_1px_#e8e4f4]">
+                      {others.map((item) => (
+                        <button key={item.id} type="button" role="option" onClick={() => { setPersonId(item.id); setPick(null); }} className={`flex w-full items-center gap-2.5 rounded-[14px] px-2.5 py-2 text-left text-[13.5px] ${item.id === personId ? 'font-semibold text-[#4f33b8]' : ''}`}>
+                          <span className="grid h-[26px] w-[26px] place-items-center rounded-full bg-[#ece6ff] text-[10px] font-bold text-[#4f33b8]">{item.name.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span>
+                          {item.name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="relative">
+                  <span className="mb-1.5 block text-[11px] font-semibold tracking-[0.08em] text-[#8a85a0] uppercase">Etiqueta</span>
+                  <button type="button" aria-haspopup="listbox" aria-expanded={pick === 'tag'} onClick={() => setPick((value) => value === 'tag' ? null : 'tag')} className="flex h-[42px] w-full items-center gap-2.5 rounded-[11px] border-[1.5px] border-transparent bg-[#f6f5fa] px-3 text-left text-sm">
+                    <span className="h-2 w-2 rounded-full" style={{ background: tag === 'Colaboração' ? '#7c5cf5' : tag === 'Atendimento' ? '#4cb782' : tag === 'Entrega' ? '#3b82f6' : '#e5484d' }} />
+                    <span className="min-w-0 flex-1 truncate">{tag}</span>
+                    <ChevronDown className={`h-4 w-4 text-[#8a85a0] ${pick === 'tag' ? 'rotate-180' : ''}`} />
+                  </button>
+                  {pick === 'tag' ? (
+                    <div role="listbox" className="absolute right-0 left-0 z-20 mt-1 rounded-[22px] bg-white p-1.5 shadow-[14px_14px_30px_#d8d2ee,-8px_-8px_22px_#fff,0_0_0_1px_#e8e4f4]">
+                      {tags.map((item) => (
+                        <button key={item} type="button" role="option" onClick={() => { setTag(item); setPick(null); }} className={`flex w-full items-center gap-2.5 rounded-[14px] px-2.5 py-2 text-left text-[13.5px] ${item === tag ? 'font-semibold text-[#4f33b8]' : ''}`}>
+                          <span className="h-2 w-2 rounded-full" style={{ background: item === 'Colaboração' ? '#7c5cf5' : item === 'Atendimento' ? '#4cb782' : item === 'Entrega' ? '#3b82f6' : '#e5484d' }} />
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             ) : null}
 
@@ -450,8 +478,8 @@ export const MuralPublishDialog: FC<Props> = (props) => {
               </ExpandProvider>
             ) : (
               <>
-                <div className={`relative rounded-2xl border border-gray-100 bg-white px-4 pt-3 pb-8 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600/10 ${isRecognition ? 'flex items-start gap-3' : ''}`}>
-                  {isRecognition ? <Pencil className="mt-0.5 h-4 w-4 shrink-0 text-[#4600F3]" /> : null}
+                <div className={isRecognition ? 'relative flex items-start gap-3 rounded-[14px] border-[1.5px] border-transparent bg-[#f6f5fa] px-3.5 pt-3 pb-8 focus-within:border-[#9b82ff] focus-within:bg-white' : 'relative rounded-2xl border border-gray-100 bg-white px-4 pt-3 pb-8 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600/10'}>
+                  {isRecognition ? <Pencil className="mt-1 h-4 w-4 shrink-0 text-[#7c5cf5]" /> : null}
                   <textarea
                     ref={field}
                     value={text}
@@ -590,7 +618,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
             ) : null}
             <div className="ml-auto flex items-center gap-2">
               {isRecognition ? (
-                <button type="button" disabled={sending} onClick={close} className="inline-flex h-11 items-center rounded-2xl border border-gray-100 bg-white px-4 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
+                <button type="button" disabled={sending} onClick={close} className="inline-flex items-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff] hover:text-[#6644e0]">
                   Cancelar
                 </button>
               ) : (
@@ -598,7 +626,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
                   <Eye className="h-4 w-4" />
                 </button>
               )}
-              <button type="button" disabled={!ready} onClick={() => void publish()} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50">
+              <button type="button" disabled={!ready} onClick={() => void publish()} className={isRecognition ? 'inline-flex items-center gap-2 rounded-full bg-[#6644e0] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)] hover:bg-[#4f33b8] disabled:cursor-not-allowed disabled:bg-[#d9ccff] disabled:shadow-none' : 'inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50'}>
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Publicar
               </button>

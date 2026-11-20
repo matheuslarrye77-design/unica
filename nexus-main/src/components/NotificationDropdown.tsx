@@ -6,6 +6,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { forYouFeed, type FeedItem } from '@/data/mockData';
+import { getJournalArticles } from '@/data/journal';
 import { formatRelativeTime } from '@/lib/utils';
 import { FileText, Bell, CheckSquare, Info, ArrowRight } from 'lucide-react';
 import { type FC, useEffect, useState } from 'react';
@@ -25,6 +26,19 @@ const getTypeIcon = (type: FeedItem['type']) => {
       return <Info className="h-4 w-4" />;
   }
 };
+
+function destination(item: FeedItem) {
+  const needle = item.title.trim().toLowerCase();
+  const article = getJournalArticles().find((entry) => {
+    const title = entry.title.toLowerCase();
+    return title === needle || title.includes(needle) || needle.includes(title);
+  });
+  if (article && item.type !== 'document') return `/announcements/${article.id}`;
+  if (item.type === 'news') return '/announcements';
+  if (item.type === 'document') return '/resources';
+  if (item.type === 'task') return '/calendar';
+  return '/';
+}
 
 const getTypeColor = (type: FeedItem['type']) => {
   switch (type) {
@@ -92,7 +106,7 @@ export const NotificationDropdown: FC<{ compact?: boolean }> = ({ compact = fals
               {displayItems.map((item, index) => (
                 <Link
                   key={item.id}
-                  to={item.type === 'news' ? '/announcements' : item.type === 'document' ? '/resources' : item.type === 'task' ? '/calendar' : '/'}
+                  to={destination(item)}
                   onClick={() => setOpen(false)}
                   className="flex gap-3 p-4 hover:bg-muted/200 transition-colors cursor-pointer bg-primary/3"
                 >

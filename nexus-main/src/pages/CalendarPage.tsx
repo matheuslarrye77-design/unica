@@ -19,6 +19,7 @@ type BirthdayDisplay = 'name' | 'photo' | 'both';
 const DISPLAY_KEY = 'unica-birthday-display';
 const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const weekdayLetters = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+const weekNames = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
 
 function loadDisplay(): BirthdayDisplay {
   const stored = localStorage.getItem(DISPLAY_KEY);
@@ -79,6 +80,13 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   useEffect(() => {
     if (birthdaysFocus) setLeftOpen(true);
   }, [birthdaysFocus]);
+
+  useEffect(() => {
+    if (!page) return;
+    const hide = () => setHoverDay(null);
+    window.addEventListener('scroll', hide, true);
+    return () => window.removeEventListener('scroll', hide, true);
+  }, [page]);
 
   useEffect(() => {
     localStorage.setItem(DISPLAY_KEY, display);
@@ -340,7 +348,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
       setParams(next);
     };
     return (
-      <div id="calendario" className="min-w-0">
+      <div id="calendario" className="-mx-4 -my-5 min-w-0 bg-[#f0f3f9] px-4 py-5 sm:-mx-6 sm:-my-6 sm:px-6 sm:py-6 lg:-mx-8 lg:px-8 dark:bg-[#1b2333]">
         <PageHero
           align="start"
           title={<button type="button" onClick={openCalendar} className="text-left">Calendário</button>}
@@ -357,19 +365,24 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           }
         />
         {birthdaysFocus ? <BirthdayTicket /> : <>
-        <div className="mt-5 rounded-[32px] bg-white p-6 shadow-[12px_12px_28px_#d6deeb,-10px_-10px_24px_#fff] sm:p-7">
-          <div className="flex items-center justify-between">
-            <button type="button" aria-label="Mês anterior" onClick={() => { setHoverDay(null); shiftMonth(-1); }} className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#12274a] shadow-[5px_5px_11px_#d6deeb,-5px_-5px_11px_#fff]"><ChevronLeft className="h-4 w-4" /></button>
+        <div className="relative mt-5 overflow-hidden rounded-[32px] bg-white p-6 shadow-[12px_12px_28px_#d6deeb,-10px_-10px_24px_#fff] sm:p-7 dark:bg-[#202a3d] dark:shadow-none">
+          <div className="pointer-events-none absolute -top-8 left-1/2 h-32 w-36 -translate-x-1/2 rotate-[25deg] rounded-[34px] bg-gradient-to-br from-[#5be7b3] to-[#4cd1d4] opacity-75 blur-[22px]" />
+          <div className="relative flex items-center justify-between">
+            <button type="button" aria-label="Mês anterior" onClick={() => { setHoverDay(null); shiftMonth(-1); }} className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#12274a] shadow-[5px_5px_11px_#d6deeb,-5px_-5px_11px_#fff] active:shadow-[inset_3px_3px_7px_#d6deeb,inset_-3px_-3px_7px_#fff]"><ChevronLeft className="h-4 w-4" /></button>
             <div className="text-center">
-              <p className="font-serif text-[38px] leading-none font-normal text-[#12274a] lowercase">{currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
-              <p className="mt-1 text-[13px] tracking-[0.35em] text-[#12274a]">{year}</p>
+              <p className="font-fraunces text-[38px] leading-none font-normal text-[#12274a] lowercase dark:text-[#e6edf9]">{currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
+              <p className="mt-1 text-[13px] tracking-[0.35em] text-[#12274a] dark:text-[#e6edf9]">{year}</p>
             </div>
-            <button type="button" aria-label="Próximo mês" onClick={() => { setHoverDay(null); shiftMonth(1); }} className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#12274a] shadow-[5px_5px_11px_#d6deeb,-5px_-5px_11px_#fff]"><ChevronRight className="h-4 w-4" /></button>
+            <button type="button" aria-label="Próximo mês" onClick={() => { setHoverDay(null); shiftMonth(1); }} className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#12274a] shadow-[5px_5px_11px_#d6deeb,-5px_-5px_11px_#fff] active:shadow-[inset_3px_3px_7px_#d6deeb,inset_-3px_-3px_7px_#fff]"><ChevronRight className="h-4 w-4" /></button>
           </div>
-          <div className="mt-6 grid grid-cols-7 border-b border-[#eceff5] pb-3 text-center text-[13px] font-bold text-[#12274a]">
+          <div className="relative mt-5 flex items-center gap-4 px-1 text-xs text-[#8a97ad]">
+            <span className="inline-flex items-center gap-1.5"><i className="h-1.5 w-1.5 rounded-full bg-[#4cd1d4]" />Compromisso</span>
+            <span className="inline-flex items-center gap-1.5"><i className="h-1.5 w-1.5 rounded-full bg-[#f59aa8]" />Aniversário</span>
+          </div>
+          <div className="relative mt-6 grid grid-cols-7 border-b border-[#eceff5] pb-3 text-center text-[13px] font-bold text-[#12274a] dark:border-[#2f4a58] dark:text-[#e6edf9]">
             {weekdayLetters.map((day, index) => <div key={`${day}-${index}`} className={index % 6 === 0 ? 'text-[#f0647a]' : undefined}>{day}</div>)}
           </div>
-          <div className="mt-4 grid grid-cols-7 gap-2" onMouseLeave={() => setHoverDay(null)}>
+          <div className="cal-grid relative mt-4 grid grid-cols-7 gap-2" onMouseLeave={() => setHoverDay(null)}>
             {cells.map((cell, index) => {
               const dayEvents = cell.outside ? [] : eventsOn(cell.day);
               const date = new Date(year, month, cell.day);
@@ -390,15 +403,15 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
                     setHoverDay({ day: cell.day, top: Math.min(Math.max(12, rect.top), window.innerHeight - 220), left });
                   }}
                   onClick={() => { if (!cell.outside) setSelectedDay(cell.day); }}
-                  className={cn('flex min-h-[112px] flex-col gap-1.5 rounded-[26px] p-2', cell.outside ? 'bg-transparent' : 'bg-white hover:shadow-[5px_5px_12px_#d6deeb,-5px_-5px_12px_#fff]')}
+                  className={cn('cal-day flex min-h-[132px] flex-col gap-1.5 rounded-[26px] p-2', cell.outside ? 'bg-transparent' : 'bg-white hover:shadow-[5px_5px_12px_#d6deeb,-5px_-5px_12px_#fff] dark:bg-[#243049]')}
                 >
-                  <p className={cn('grid h-8 w-8 place-items-center rounded-full text-sm', cell.outside ? 'font-normal text-[#8a97ad]' : weekend ? 'text-[#f0647a]' : 'text-[#12274a]', isCurrent && 'shadow-[inset_0_0_0_1.5px_#4cd1d4]', picked && 'bg-white font-bold shadow-[4px_4px_9px_#d6deeb,-4px_-4px_9px_#fff]')}>{cell.day}</p>
+                  <p className={cn('grid h-8 w-8 place-items-center rounded-full text-sm', cell.outside ? 'font-normal text-[#8a97ad]' : weekend ? 'text-[#f0647a]' : 'text-[#12274a] dark:text-[#e6edf9]', isCurrent && 'shadow-[inset_0_0_0_1.5px_#4cd1d4]', picked && 'bg-white font-bold shadow-[4px_4px_9px_#d6deeb,-4px_-4px_9px_#fff]')}>{cell.day}</p>
                   <div className="grid gap-1">
                     {dayEvents.slice(0, 2).map((event) => {
                       const birthday = event.type === 'birthday';
                       const first = event.personName?.split(' ')[0];
                       return (
-                        <button key={event.id} type="button" onClick={(click) => { click.stopPropagation(); openEvent(event, click.currentTarget); }} className="flex min-w-0 items-center gap-2 rounded-[18px] bg-white px-2.5 py-1.5 text-left shadow-[3px_3px_7px_#d6deeb,-3px_-3px_7px_#fff]">
+                        <button key={event.id} type="button" onClick={(click) => { click.stopPropagation(); openEvent(event, click.currentTarget); }} className="cal-pill flex min-w-0 items-center gap-2 rounded-[18px] bg-white px-2.5 py-1.5 text-left shadow-[3px_3px_7px_#d6deeb,-3px_-3px_7px_#fff]">
                           {birthday && event.avatar ? <img src={event.avatar} alt="" className="h-4 w-4 shrink-0 rounded-full" /> : <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', birthday ? 'bg-[#f59aa8]' : 'bg-[#4cd1d4]')} />}
                           <span className="min-w-0">
                             <span className="block truncate text-[12px] font-medium text-[#12274a]">{birthday ? first : event.title}</span>
@@ -407,17 +420,34 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
                         </button>
                       );
                     })}
-                    {dayEvents.length > 2 ? <p className="pl-3 text-[11px] text-[#8a97ad]">+{dayEvents.length - 2} mais</p> : null}
+                    {dayEvents.length > 2 ? <p className="cal-more pl-3 text-[11px] text-[#8a97ad]">+{dayEvents.length - 2} mais</p> : null}
                   </div>
+                  {dayEvents.length > 0 ? <span className="cal-dots absolute bottom-1 left-0 right-0 justify-center gap-[3px]">{dayEvents.slice(0, 3).map((event) => <i key={event.id} className={cn('h-[5px] w-[5px] rounded-full', event.type === 'birthday' ? 'bg-[#f59aa8]' : 'bg-[#4cd1d4]')} />)}</span> : null}
                 </div>
               );
             })}
           </div>
         </div>
+        {selectedDay ? (
+          <div className="cal-mobile mt-5 rounded-[32px] bg-white p-5 shadow-[12px_12px_28px_#d6deeb,-10px_-10px_24px_#fff] dark:bg-[#202a3d]">
+            <p className="font-fraunces text-[22px] text-[#12274a] dark:text-[#e6edf9]">{selectedDay} de {currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
+            <p className="mb-3.5 text-[13px] text-[#8a97ad]">{weekNames[new Date(year, month, selectedDay).getDay()]}</p>
+            {eventsOn(selectedDay).length === 0 ? <p className="text-sm text-[#8a97ad]">Nada marcado para este dia.</p> : eventsOn(selectedDay).map((event) => (
+              <div key={event.id} className="mb-2.5 flex items-center gap-3.5 rounded-[20px] px-4 py-3 shadow-[inset_3px_3px_8px_#d6deeb,inset_-3px_-3px_8px_#fff] last:mb-0">
+                <span className={cn('w-1 self-stretch rounded', event.type === 'birthday' ? 'bg-[#f59aa8]' : 'bg-[#4cd1d4]')} />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-medium">{event.type === 'birthday' ? event.personName : event.title}</span>
+                  <span className="block text-[12.5px] text-[#8a97ad]">{event.type === 'birthday' ? 'Aniversário' : event.place}</span>
+                </span>
+                {event.time ? <time className="text-[13px] font-bold">{event.time}</time> : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
         {hoverDay && eventsOn(hoverDay.day).length > 0 ? (
-          <div className="pointer-events-none fixed z-20 w-[272px] rounded-[26px] bg-white p-[18px] shadow-[14px_14px_30px_#d6deeb,-8px_-8px_22px_#fff]" style={{ top: hoverDay.top, left: hoverDay.left }}>
-            <p className="font-serif text-[19px] text-[#12274a]">{hoverDay.day} de {currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
-            <p className="mb-3 text-xs text-[#8a97ad]">{eventsOn(hoverDay.day).length} {eventsOn(hoverDay.day).length > 1 ? 'eventos' : 'evento'}</p>
+          <div className="cal-pop pointer-events-none fixed z-20 w-[272px] rounded-[26px] bg-white p-[18px] shadow-[14px_14px_30px_#d6deeb,-8px_-8px_22px_#fff]" style={{ top: hoverDay.top, left: hoverDay.left }}>
+            <p className="font-fraunces text-[19px] text-[#12274a]">{hoverDay.day} de {currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
+            <p className="mb-3 text-xs text-[#8a97ad]">{weekNames[new Date(year, month, hoverDay.day).getDay()]} · {eventsOn(hoverDay.day).length} {eventsOn(hoverDay.day).length > 1 ? 'eventos' : 'evento'}</p>
             {eventsOn(hoverDay.day).map((event) => (
               <div key={event.id} className="mb-2 flex items-center gap-3 rounded-[20px] px-3 py-2.5 shadow-[inset_3px_3px_8px_#d6deeb,inset_-3px_-3px_8px_#fff] last:mb-0">
                 <span className={cn('w-1 self-stretch rounded', event.type === 'birthday' ? 'bg-[#f59aa8]' : 'bg-[#4cd1d4]')} />
