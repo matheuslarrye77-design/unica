@@ -348,7 +348,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
       setParams(next);
     };
     return (
-      <div id="calendario" className="-mx-4 -my-5 min-w-0 bg-[#f0f3f9] px-4 py-5 sm:-mx-6 sm:-my-6 sm:px-6 sm:py-6 lg:-mx-8 lg:px-8 dark:bg-[#1b2333]">
+      <div id="calendario" className="min-w-0">
         <PageHero
           align="start"
           title={<button type="button" onClick={openCalendar} className="text-left">Calendário</button>}
@@ -365,9 +365,8 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           }
         />
         {birthdaysFocus ? <BirthdayTicket /> : <>
-        <div className="relative mt-5 overflow-hidden rounded-[32px] bg-white p-6 shadow-[12px_12px_28px_#d6deeb,-10px_-10px_24px_#fff] sm:p-7 dark:bg-[#202a3d] dark:shadow-none">
-          <div className="pointer-events-none absolute -top-8 left-1/2 h-32 w-36 -translate-x-1/2 rotate-[25deg] rounded-[34px] bg-gradient-to-br from-[#5be7b3] to-[#4cd1d4] opacity-75 blur-[22px]" />
-          <div className="relative flex items-center justify-between">
+        <div className="mt-5 rounded-[32px] bg-white p-6 shadow-[12px_12px_28px_#d6deeb,-10px_-10px_24px_#fff] sm:p-7 dark:bg-[#202a3d] dark:shadow-none">
+          <div className="flex items-center justify-between">
             <button type="button" aria-label="Mês anterior" onClick={() => { setHoverDay(null); shiftMonth(-1); }} className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#12274a] shadow-[5px_5px_11px_#d6deeb,-5px_-5px_11px_#fff] active:shadow-[inset_3px_3px_7px_#d6deeb,inset_-3px_-3px_7px_#fff]"><ChevronLeft className="h-4 w-4" /></button>
             <div className="text-center">
               <p className="font-fraunces text-[38px] leading-none font-normal text-[#12274a] lowercase dark:text-[#e6edf9]">{currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
