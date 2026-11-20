@@ -15,6 +15,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Emoji } from '@/components/Emoji';
 import { ChevronLeft, ChevronRight, Gift, Target } from 'lucide-react';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { Link } from 'react-router-dom';
@@ -55,7 +56,7 @@ const Face: FC<{ person: Person; self?: boolean; mood?: string; gift?: string; o
     <span className="relative block aspect-square w-full">
       <img src={person.avatar} alt="" className="h-full w-full rounded-full bg-[#EDE7FE] object-cover" style={{ boxShadow: gift ? '0 0 0 3px #fff, 0 0 0 5px #6B33F6' : '0 0 0 3px #fff' }} />
       {mood ? (
-        <span className="absolute bottom-0 left-0 grid h-8 w-8 place-items-center rounded-full bg-white text-[18px] leading-none ring-2 ring-white" aria-hidden="true">{mood}</span>
+        <span className="absolute bottom-0 left-0 grid h-8 w-8 place-items-center rounded-full bg-white leading-none ring-2 ring-white" aria-hidden="true"><Emoji emoji={mood} className="h-5 w-5" /></span>
       ) : null}
       {self ? (
         <span className="absolute right-0 bottom-0 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-[#6B33F6] text-lg font-bold leading-none text-white ring-2 ring-white">+</span>
@@ -255,7 +256,7 @@ export const MuralTop: FC = () => {
           <div className="absolute top-16 left-0 z-30 w-44 rounded-2xl border border-gray-100 bg-white p-1 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
             {MOODS.map((mood) => (
               <button key={mood.id} type="button" className="flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left text-[13px] hover:bg-[#F6F4FC]" onClick={() => { void saveMood(mood.emoji).finally(() => setMoodOpen(false)); }}>
-                <span className="text-[18px] leading-none" aria-hidden="true">{mood.emoji}</span>
+                <Emoji emoji={mood.emoji} className="h-5 w-5" />
                 {mood.label}
               </button>
             ))}

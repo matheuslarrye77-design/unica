@@ -48,7 +48,7 @@ export const ComposerExtras: FC<{
     }
     setUploading(true);
     try {
-      const ready = await fitPhoto(file);
+      const ready = await fitPhoto(file).catch(() => file);
       const sticker = await saveSticker(ready);
       setSavedStickers((current) => [sticker, ...current.filter((item) => item.id !== sticker.id)]);
       onSticker?.(sticker.url);
@@ -63,16 +63,21 @@ export const ComposerExtras: FC<{
     }
   }
 
+  function placeBox() {
+    const rect = barRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setBox({ top: rect.top, left: Math.max(8, Math.min(rect.left, window.innerWidth - 368)), width: Math.min(360, window.innerWidth - 16) });
+  }
+
   function toggle(next: Panel) {
+    placeBox();
     setPanel((current) => (current === next ? null : next));
   }
 
   useEffect(() => {
     if (embedded || !panel) return;
     function place() {
-      const rect = barRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      setBox({ top: rect.top, left: Math.max(8, Math.min(rect.left, window.innerWidth - 368)), width: Math.min(360, window.innerWidth - 16) });
+      placeBox();
     }
     function outside(event: MouseEvent) {
       const target = event.target;
@@ -81,7 +86,11 @@ export const ComposerExtras: FC<{
       if (target instanceof Element && target.closest('[data-composer-menu]')) return;
       setPanel(null);
     }
-    function close() { setPanel(null); }
+    function close(event: Event) {
+      const target = event.target;
+      if (target instanceof Element && target.closest('[data-composer-menu]')) return;
+      setPanel(null);
+    }
     place();
     document.addEventListener('mousedown', outside);
     window.addEventListener('resize', place);

@@ -22,7 +22,8 @@ export const Comments: FC<{
   onGifFile?: (file: File) => void;
   onPasteFile?: (file: File) => void;
   onAudioFile?: (file: File) => void;
-}> = ({ inputId, comments, draft, onDraft, onSubmit, onLike, canDelete, onDelete, pendingMedia = [], onMedia, onPasteFile, onAudioFile, onFile }) => {
+  onAddMedia?: (media: CommentMedia) => void;
+}> = ({ inputId, comments, draft, onDraft, onSubmit, onLike, canDelete, onDelete, pendingMedia = [], onMedia, onPasteFile, onAudioFile, onFile, onAddMedia }) => {
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
@@ -88,7 +89,8 @@ export const Comments: FC<{
     }
   }
   function addPiece(media: CommentMedia) {
-    onMedia?.([...pendingMedia, media].slice(0, 8));
+    if (onAddMedia) onAddMedia(media);
+    else onMedia?.([...pendingMedia, media].slice(0, 8));
   }
 
   return (
@@ -96,12 +98,12 @@ export const Comments: FC<{
       {comments.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum comentário ainda.</p> : null}
       <ul className="space-y-3">
         {comments.map((comment) => (
-          <li key={comment.id} className="flex gap-2.5">
-            <img src={comment.avatar} alt="" className="h-8 w-8 rounded-full bg-muted" />
-            <div className="min-w-0 flex-1">
-              <div onClick={() => expand?.setId(expand.id === `comentario-${comment.id}` ? null : `comentario-${comment.id}`)}>
-                <p className="text-sm font-semibold leading-5">{comment.author}</p>
-                {comment.body ? <ReadMore id={`comentario-${comment.id}`} text={comment.body} className="text-sm leading-5" /> : null}
+          <li key={comment.id} className="flex items-start gap-2.5">
+            <img src={comment.avatar} alt="" className="h-8 w-8 shrink-0 rounded-full bg-muted" />
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div className="flex w-full flex-col" onClick={() => expand?.setId(expand.id === `comentario-${comment.id}` ? null : `comentario-${comment.id}`)}>
+                <p className="block text-sm font-semibold leading-5">{comment.author}</p>
+                {comment.body ? <ReadMore id={`comentario-${comment.id}`} text={comment.body} className="mt-0.5 block w-full text-sm leading-5" /> : null}
               </div>
               {commentMediaList(comment.media).length ? (
                 <div className="mt-1 flex flex-wrap gap-2">
@@ -151,7 +153,7 @@ export const Comments: FC<{
         ) : null}
         <div className="flex items-end gap-2">
           <label className="sr-only" htmlFor={inputId}>Comentário</label>
-          <input type="file" className="hidden" id={`${inputId}-arquivo`} accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) onFile?.(file); }} />
+          <input type="file" multiple className="hidden" id={`${inputId}-arquivo`} accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt" onChange={(event) => { const files = [...(event.target.files ?? [])]; event.target.value = ''; files.slice(0, 8).forEach((file) => onFile?.(file)); }} />
           <button type="button" aria-label="Anexar arquivo" onClick={() => document.getElementById(`${inputId}-arquivo`)?.click()} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_4px_14px_rgba(60,40,140,0.12)]"><Paperclip className="h-4 w-4" /></button>
           <textarea
             ref={fieldRef}

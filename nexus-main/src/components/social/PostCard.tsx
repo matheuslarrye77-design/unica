@@ -70,10 +70,11 @@ export const PostCard: FC<{
   onPasteFile?: (file: File) => void;
   onGifFile?: (file: File) => void;
   onAudioFile?: (file: File) => void;
+  onAddMedia?: (media: CommentMedia) => void;
   repost?: { name: string; avatar: string; note: string };
   anchorId?: string;
   preview?: boolean;
-}> = ({ post, commentDraft, onCommentDraft, onLike, onReact, onToggleSave, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, onSaveEdit, republished, canDeleteComment, onDeleteComment, pendingMedia, onMedia, onFile, onGifFile, onPasteFile, onAudioFile, repost, anchorId }) => {
+}> = ({ post, commentDraft, onCommentDraft, onLike, onReact, onToggleSave, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, onSaveEdit, republished, canDeleteComment, onDeleteComment, pendingMedia, onMedia, onFile, onGifFile, onPasteFile, onAudioFile, onAddMedia, repost, anchorId }) => {
   const plain = post.kind === 'text' || post.kind === 'image' || post.kind === 'leadership';
   const domId = anchorId ?? post.id;
   const composed = post.kind === 'recognition' || post.kind === 'announcement';
@@ -248,6 +249,7 @@ export const PostCard: FC<{
           onGifFile={onGifFile}
           onPasteFile={onPasteFile}
           onAudioFile={onAudioFile}
+          onAddMedia={onAddMedia}
           canDelete={canDeleteComment}
           onDelete={onDeleteComment}
         />

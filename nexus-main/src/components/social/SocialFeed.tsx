@@ -30,7 +30,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   const [openCard, setOpenCard] = useState<string | null>(null);
   const [shareId, setShareId] = useState<string | null>(null);
   const [repostId, setRepostId] = useState<string | null>(null);
-  const [commentCrop, setCommentCrop] = useState<{ postId: string; file: File } | null>(null);
+  const [commentCrops, setCommentCrops] = useState<{ postId: string; file: File }[]>([]);
   const [note, setNote] = useState('');
   const feedTicket = useRef(0);
   const feedWarned = useRef(false);
@@ -42,7 +42,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
 
   function stageCommentFile(postId: string, file: File, forced?: CommentMedia['kind']) {
     if (!forced && file.type.startsWith('image/') && file.type !== 'image/gif') {
-      setCommentCrop({ postId, file });
+      setCommentCrops((current) => [...current, { postId, file }].slice(0, 8));
       return;
     }
     const kind: CommentMedia['kind'] = forced ?? (file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : file.type.startsWith('image/') ? (file.type === 'image/gif' ? 'gif' : 'image') : 'document');
@@ -294,6 +294,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
           onGifFile={(file) => stageCommentFile(post.id, file, 'gif')}
           onAudioFile={(file) => stageCommentFile(post.id, file, 'audio')}
           onPasteFile={(file) => stageCommentFile(post.id, file)}
+          onAddMedia={(media) => setCommentMedia((current) => ({ ...current, [post.id]: [...(current[post.id] ?? []), media].slice(0, 8) }))}
           onLikeComment={(commentId) => void likeFeedComment(post.id, commentId).then((result) => replace({ ...result.post, commentsOpen: true })).catch(() => toast.error('Não foi possível curtir o comentário.'))}
           onVote={(optionId) => void voteFeedPost(post.id, optionId).then((result) => replace(result.post)).catch(() => toast.error('Não foi possível registrar o voto.'))}
           onRepublish={() => {
@@ -383,14 +384,14 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
       })}
 
       {visiblePosts.map((post) => renderFeedPost(post))}
-      {commentCrop ? (
+      {commentCrops[0] ? (
         <ImageCrop
-          file={commentCrop.file}
-          onCancel={() => setCommentCrop(null)}
+          file={commentCrops[0].file}
+          onCancel={() => setCommentCrops((current) => current.slice(1))}
           onConfirm={(ready) => {
-            const postId = commentCrop.postId;
-            setCommentCrop(null);
-            stageCommentFile(postId, ready, 'image');
+            const postId = commentCrops[0]?.postId;
+            setCommentCrops((current) => current.slice(1));
+            if (postId) stageCommentFile(postId, ready, 'image');
           }}
         />
       ) : null}

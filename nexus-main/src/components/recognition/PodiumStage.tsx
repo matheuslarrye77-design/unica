@@ -159,10 +159,10 @@ const PersonCard: FC<{ person: Ranking; mode: string; channel?: string }> = ({ p
       <div className="relative mb-2" aria-hidden="true">
         <img src={face(person.name)} alt="" className={cn('rounded-full bg-white object-cover', tone.avatar)} style={{ boxShadow: `0 0 0 3px #fff, 0 0 0 5px ${tone.strong}` }} />
         <div
-          className={cn('absolute flex h-6 w-6 items-center justify-center rounded-full bg-white', place === 1 ? '-top-3 left-1/2 -translate-x-1/2' : '-right-1 -bottom-1')}
+          className={cn('absolute flex items-center justify-center rounded-full bg-white', place === 1 ? '-top-3.5 left-1/2 h-7 w-7 -translate-x-1/2' : '-right-1 -bottom-1 h-6 w-6')}
           style={{ boxShadow: `0 0 0 2px ${tone.strong}` }}
         >
-          <Crown className="h-3.5 w-3.5" style={{ color: tone.strong }} />
+          <Crown className={place === 1 ? 'h-4 w-4' : 'h-3.5 w-3.5'} style={{ color: tone.strong }} />
         </div>
       </div>
       <p className="max-w-[5.5rem] truncate text-[13px] font-medium text-[#241B33]" title={person.name}>{person.name}</p>
@@ -280,7 +280,7 @@ export const PodiumStage: FC<{
         </div>
       ) : null}
       <div className="mx-auto mt-5 max-w-xl overflow-visible">
-        <div className="grid grid-cols-3 items-end gap-4 overflow-visible">
+        <div className="grid grid-cols-3 items-end gap-4 overflow-visible pt-4">
           {([standing.find((row) => row.place === 2), standing.find((row) => row.place === 1), standing.find((row) => row.place === 3)]).map((person, index) => (
             person ? <PersonCard key={`${person.place}-${person.userId}`} person={person} mode={podiumMode(active)} channel={channel} /> : <div key={`vazio-${index}`} className="min-h-[120px]" />
           ))}

@@ -75,6 +75,7 @@ function sniff(buf: Buffer, mime: string) {
   if (mime === 'audio/wav' || mime === 'audio/wave' || mime === 'audio/x-wav') return buf.toString('ascii', 0, 4) === 'RIFF';
   if (mime === 'audio/ogg') return buf.toString('ascii', 0, 4) === 'OggS';
   if (mime === 'text/plain') return !buf.includes(0);
+  if (mime === 'application/msword' || mime === 'application/vnd.ms-excel' || mime === 'application/vnd.ms-powerpoint') return buf[0] === 0xd0 && buf[1] === 0xcf;
   return buf[0] === 0x50 && buf[1] === 0x4b;
 }
 

@@ -8,16 +8,28 @@ export function emojiCode(value: string) {
   return [...stripped].map((char) => (char.codePointAt(0) ?? 0).toString(16)).join('-');
 }
 
+function emojiSources(emoji: string) {
+  const raw = [...emoji].map((char) => (char.codePointAt(0) ?? 0).toString(16)).join('-');
+  const plain = emojiCode(emoji);
+  const codes = [...new Set([plain, raw, plain.replace(/-fe0f/g, '')])];
+  const hosts = [
+    (code: string) => `https://cdn.jsdelivr.net/gh/jdecked/twemoji@15.1.0/assets/svg/${code}.svg`,
+    (code: string) => `https://unpkg.com/twemoji@14.0.2/assets/svg/${code}.svg`,
+  ];
+  return hosts.flatMap((host) => codes.map(host));
+}
+
 export const Emoji: FC<{ emoji: string; className?: string }> = ({ emoji, className }) => {
-  const [failed, setFailed] = useState(false);
-  if (failed) return <span className={className}>{emoji}</span>;
+  const sources = emojiSources(emoji);
+  const [index, setIndex] = useState(0);
+  if (index >= sources.length) return <span className={className}>{emoji}</span>;
   return (
     <img
-      src={`https://cdn.jsdelivr.net/gh/jdecked/twemoji@15.1.0/assets/svg/${emojiCode(emoji)}.svg`}
+      src={sources[index]}
       alt={emoji}
       draggable={false}
-      className={cn('inline-block h-[1.15em] w-[1.15em] align-[-0.15em]', className)}
-      onError={() => setFailed(true)}
+      className={cn('inline-block h-[1.15em] w-[1.15em] align-[-0.15em] object-contain', className)}
+      onError={() => setIndex((current) => current + 1)}
     />
   );
 };

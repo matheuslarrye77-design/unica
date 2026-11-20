@@ -56,7 +56,7 @@ export const ReadMore: FC<{ id: string; text: string; className?: string; prefix
   }
 
   return (
-    <div>
+    <div className="block w-full">
       <p ref={ref} className={`whitespace-pre-line ${open ? '' : 'line-clamp-4'} ${className ?? ''}`}>
         {prefix}<EmojiText text={text} />
       </p>
