@@ -245,13 +245,10 @@ export async function loadDocuments(): Promise<CompanyDocument[]> {
     refresh = false;
   }
   if (refresh) {
-    const clear = db.transaction(STORE, 'readwrite');
-    clear.objectStore(STORE).clear();
-    await txDone(clear);
     try {
       localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
     } catch {
-      /* the next visit tries the photo seed again */
+      /* keep the documents that are already saved */
     }
   }
   const tx = db.transaction(STORE, 'readonly');

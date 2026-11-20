@@ -797,11 +797,11 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
             <button type="button" onClick={() => setPreview(false)} className="mt-4 h-10 rounded-full px-4 text-sm font-semibold text-[#3600C2] hover:bg-[#EDE7FE]">Voltar à edição</button>
           </div>
         ) : (
-          <div className="grid content-start gap-4 overflow-hidden">
+          <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto pr-1">
             <label className="grid gap-1">
               <span className="flex items-center gap-2 text-sm font-semibold text-gray-800"><Type className="h-4 w-4 text-gray-400" /> Título</span>
               <span className="relative">
-                <input value={title} maxLength={TITLE_LIMIT} onChange={(event) => setTitle(event.target.value.slice(0, TITLE_LIMIT))} placeholder="Digite o título da publicação..." className="h-11 w-full rounded-2xl border border-gray-100 bg-white px-4 pr-16 text-base text-gray-800 outline-none placeholder:text-gray-400 focus:border-blue-600" />
+                <input value={title} maxLength={TITLE_LIMIT} onChange={(event) => setTitle(event.target.value.slice(0, TITLE_LIMIT))} placeholder="Digite o título da publicação..." className="h-11 w-full rounded-2xl border border-[#DDD4F5] bg-[#FBF9FD] px-4 pr-16 text-base text-gray-800 outline-none placeholder:text-[#B0A8BA] focus:border-[#E0D6FC] focus:ring-2 focus:ring-[#EDE7FE]" />
                 <span className="absolute top-1/2 right-4 -translate-y-1/2 text-[12px] text-[#B0A8BA]">{title.length}/{TITLE_LIMIT}</span>
               </span>
             </label>
@@ -842,8 +842,8 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
               </label>
             </div>
             <div className="grid gap-1.5">
-              <span className="flex items-center gap-2 text-sm font-semibold text-gray-800"><ImageIcon className="h-4 w-4 text-gray-400" /> Imagem de capa</span>
-              <button type="button" onClick={() => setLibrary((current) => !current)} onDragOver={(event) => event.preventDefault()} onDrop={onDrop} className="overflow-hidden rounded-2xl border border-dashed border-[#D9C6E8] bg-[#FBF9FD] text-left">
+              <span className="flex items-center justify-between gap-2 text-sm font-semibold text-gray-800"><span className="flex items-center gap-2"><ImageIcon className="h-4 w-4 text-gray-400" /> Imagem de capa</span><button type="button" onClick={() => setLibrary((current) => !current)} className="text-xs font-semibold text-[#6D32F5]">Biblioteca</button></span>
+              <button type="button" onClick={() => coverInput.current?.click()} onDragOver={(event) => event.preventDefault()} onDrop={onDrop} className="overflow-hidden rounded-2xl border border-dashed border-[#D9C6E8] bg-[#FBF9FD] text-left">
                 {coverUrl ? (
                   <span className="relative block">
                     <img src={coverUrl} alt="Pré-visualização da capa" className="aspect-[1400/320] w-full object-cover" />

@@ -6,7 +6,12 @@ export type Attachment = {
   duration?: number;
 };
 
-export type CommentMedia = { kind: 'gif' | 'sticker' | 'image' | 'video' | 'audio'; url: string };
+export type CommentMedia = { kind: 'gif' | 'sticker' | 'image' | 'video' | 'audio' | 'document'; url: string; name?: string };
+
+export function commentMediaList(media?: CommentMedia | CommentMedia[]): CommentMedia[] {
+  if (!media) return [];
+  return Array.isArray(media) ? media : [media];
+}
 
 export type PostBlock = { type: 'text'; text: string } | { type: 'image'; url: string; display?: 'sticker' | 'gif'; frame?: 'sm' | 'md' | 'lg' };
 
@@ -19,7 +24,7 @@ export type SocialComment = {
   time: string;
   likes: number;
   liked: boolean;
-  media?: CommentMedia;
+  media?: CommentMedia | CommentMedia[];
 };
 
 export type PollOption = {

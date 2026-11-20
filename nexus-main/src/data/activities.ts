@@ -271,8 +271,6 @@ export function loadActivityStore(): ActivityStore {
   try {
     if (localStorage.getItem(VERSION_KEY) !== STORAGE_VERSION) {
       localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
-      localStorage.removeItem(STORAGE_KEY);
-      return { activities: seedActivities, categories: DEFAULT_CATEGORIES };
     }
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { activities: seedActivities, categories: DEFAULT_CATEGORIES };

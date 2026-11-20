@@ -157,13 +157,13 @@ const PersonCard: FC<{ person: Ranking; mode: string; channel?: string }> = ({ p
   return (
     <div className="relative z-10 flex min-w-0 flex-col items-center overflow-visible text-center">
       <div className="relative mb-2" aria-hidden="true">
-        {place === 1 ? <Crown className="absolute -top-4 left-1/2 h-5 w-5 -translate-x-1/2 text-[#4600F3]" /> : null}
         <img src={face(person.name)} alt="" className={cn('rounded-full bg-white object-cover', tone.avatar)} style={{ boxShadow: `0 0 0 3px #fff, 0 0 0 5px ${tone.strong}` }} />
-        {place === 1 ? null : (
-          <div className="absolute -right-1 -bottom-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-sm">
-            <Crown className="h-4 w-4" style={{ color: tone.strong }} />
-          </div>
-        )}
+        <div
+          className={cn('absolute flex h-6 w-6 items-center justify-center rounded-full bg-white', place === 1 ? '-top-3 left-1/2 -translate-x-1/2' : '-right-1 -bottom-1')}
+          style={{ boxShadow: `0 0 0 2px ${tone.strong}` }}
+        >
+          <Crown className="h-3.5 w-3.5" style={{ color: tone.strong }} />
+        </div>
       </div>
       <p className="max-w-[5.5rem] truncate text-[13px] font-medium text-[#241B33]" title={person.name}>{person.name}</p>
       {role ? <p className="max-w-[5.5rem] truncate text-[11px] text-[#8A7C98]">{role}</p> : null}
@@ -241,7 +241,7 @@ export const PodiumStage: FC<{
             <p className="text-[12.5px] text-[#8A7C98]">{subtitle}</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex w-fit flex-col items-stretch gap-2">
           {periods.length > 0 ? (
             <div className="inline-flex h-11 items-center gap-1 rounded-2xl bg-white px-1.5 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
               <button type="button" aria-label="Período anterior" disabled={periodIndex <= 0} onClick={() => onPeriod(periods[periodIndex - 1].key)} className="grid h-8 w-8 place-items-center rounded-xl disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
@@ -253,7 +253,7 @@ export const PodiumStage: FC<{
               <Calendar className="h-4 w-4 text-blue-600" /> {monthTitle()}
             </p>
           )}
-          <div className="inline-flex items-center gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {CATEGORIES.filter((item) => podiums.some((entry) => entry.periodKey === periodKey && entry.channel === item.id && entry.ranking?.length)).map((item) => (
               <button
                 key={item.id}
@@ -262,7 +262,7 @@ export const PodiumStage: FC<{
                 aria-label={item.id}
                 aria-pressed={channel === item.id}
                 onClick={() => setChannel(item.id)}
-                className={cn('grid h-11 w-11 place-items-center rounded-2xl transition', channel === item.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600')}
+                className={cn('grid h-11 place-items-center rounded-2xl transition', channel === item.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600')}
               >
                 <item.Icon className="h-4 w-4" aria-hidden="true" strokeWidth={2} />
               </button>

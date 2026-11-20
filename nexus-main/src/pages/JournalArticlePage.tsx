@@ -9,6 +9,7 @@ import {
   addJournalComment,
   archiveJournalArticle,
   deleteJournalComment,
+  toggleJournalCommentLike,
   articleCover,
   canManageJournal,
   purgeJournalArticle,
@@ -22,7 +23,7 @@ import {
 import { JournalShareDialog } from '@/components/journal/JournalShareDialog';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { ArrowLeft, Bookmark, FileText, Heart, Megaphone, MessageCircle, Pencil, Pin, RotateCcw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Bookmark, FileText, Heart, Megaphone, MessageCircle, Pencil, Pin, RotateCcw, Send, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -58,7 +59,9 @@ export const JournalArticlePage: FC = () => {
   const savedIds = useJournalSaved();
   const article = articles.find((item) => item.id === id);
   const [comment, setComment] = useState('');
+  const [replyDraft, setReplyDraft] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [openReplies, setOpenReplies] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const canManage = canManageJournal(currentUser);
@@ -74,11 +77,16 @@ export const JournalArticlePage: FC = () => {
 
   const reacted = article.reactedBy.includes(currentUser.name);
 
-  function sendComment() {
-    if (!article) return;
-    addJournalComment(article.id, currentUser.name, comment, replyTo ?? undefined);
-    setComment('');
-    setReplyTo(null);
+  function sendComment(text: string, parentId?: string) {
+    if (!article || !text.trim()) return;
+    addJournalComment(article.id, currentUser.name, text, parentId);
+    if (parentId) {
+      setReplyDraft('');
+      setReplyTo(null);
+      setOpenReplies((current) => ({ ...current, [parentId]: true }));
+    } else {
+      setComment('');
+    }
   }
 
   function pin() {
@@ -100,7 +108,7 @@ export const JournalArticlePage: FC = () => {
             <ArrowLeft className="h-4 w-4" />
             Jornal
           </Link>
-          <div className="max-w-[980px] rounded-3xl bg-white px-[18px] py-[22px] shadow-[0_2px_10px_rgba(60,40,140,0.06)] sm:px-[34px] sm:py-8">
+          <div className="mx-auto w-full max-w-[980px] rounded-3xl bg-white px-6 py-[22px] shadow-[0_2px_10px_rgba(60,40,140,0.06)] sm:px-[34px] sm:py-8">
             <div className="relative overflow-hidden rounded-[20px] bg-white p-6 shadow-[0_3px_16px_rgba(60,40,140,0.10)] before:absolute before:top-0 before:bottom-0 before:left-0 before:w-[5px] before:bg-[#6D32F5] sm:p-[34px]">
               <JournalBadge category={article.category} className="w-fit" />
               <h1 className="mt-[22px] text-[clamp(26px,4vw,38px)] font-semibold leading-[1.15] tracking-[-0.02em] text-gray-800">{article.title}</h1>
@@ -173,26 +181,63 @@ export const JournalArticlePage: FC = () => {
 
             <section id="comentarios-noticia" className="mt-[30px] border-t border-[#E6E9F2] px-6 pt-6 sm:px-[34px]">
               <h2 className="mb-3.5 text-lg font-semibold">Comentários</h2>
-              {article.comments.map((item) => {
-                const parent = item.replyTo ? article.comments.find((entry) => entry.id === item.replyTo) : undefined;
+              {article.comments.filter((item) => !item.replyTo).map((item) => {
+                const replies = article.comments.filter((entry) => entry.replyTo === item.id);
+                const open = openReplies[item.id];
+                const liked = (item.likedBy ?? []).includes(currentUser.name);
                 return (
-                  <div key={item.id} className="flex items-start justify-between gap-3 py-3">
-                    <div>
-                      <p className="mb-1 text-[15px] font-medium">{item.author}</p>
-                      {parent ? <p className="mb-1 text-xs text-gray-500">Em resposta a {parent.author}</p> : null}
-                      <p className="text-[15px] leading-6">{item.text}</p>
-                      <button type="button" className="mt-1 text-xs text-gray-500 hover:text-[#6D32F5]" onClick={() => { setReplyTo(item.id); document.getElementById('comentario-noticia')?.focus(); }}>Responder</button>
+                  <div key={item.id} className="py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="mb-1 text-[15px] font-medium">{item.author}</p>
+                        <p className="text-[15px] leading-6 whitespace-pre-wrap">{item.text}</p>
+                        <button type="button" className="mt-1 text-xs font-semibold text-gray-500 hover:text-[#6D32F5]" onClick={() => { setReplyTo(item.id); setReplyDraft(''); }}>Responder</button>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button type="button" aria-label={liked ? 'Descurtir comentário' : 'Curtir comentário'} aria-pressed={liked} onClick={() => toggleJournalCommentLike(article.id, item.id, currentUser.name)} className={cn('grid h-8 w-8 place-items-center rounded-full text-gray-500 hover:bg-[#F6F3FF]', liked && 'text-[#6D32F5]')}>
+                          <Heart className="h-4 w-4" fill={liked ? 'currentColor' : 'none'} />
+                        </button>
+                        {item.author === currentUser.name || canManage ? (
+                          <button type="button" aria-label="Excluir comentário" className="grid h-8 w-8 place-items-center rounded-full text-gray-500 hover:bg-[#F6F3FF] hover:text-[#D6334B]" onClick={() => { if (!window.confirm('Excluir este comentário?')) return; deleteJournalComment(article.id, item.id); }}><Trash2 className="h-4 w-4" /></button>
+                        ) : null}
+                      </div>
                     </div>
-                    {item.author === currentUser.name || canManage ? (
-                      <button type="button" className="text-xs text-gray-500 hover:text-[#D6334B]" onClick={() => { if (!window.confirm('Excluir este comentário?')) return; deleteJournalComment(article.id, item.id); }}>Excluir</button>
+                    {replies.length ? (
+                      <button type="button" className="mt-2 text-xs font-semibold text-[#6D32F5]" onClick={() => setOpenReplies((current) => ({ ...current, [item.id]: !current[item.id] }))}>
+                        {open ? 'Ocultar respostas' : `Ver todas as respostas (${replies.length})`}
+                      </button>
+                    ) : null}
+                    {open ? replies.map((reply) => {
+                      const replyLiked = (reply.likedBy ?? []).includes(currentUser.name);
+                      return (
+                        <div key={reply.id} className="mt-2 ml-8 flex items-start justify-between gap-3">
+                          <div>
+                            <p className="mb-1 text-[14px] font-medium">{reply.author}</p>
+                            <p className="text-[14px] leading-6 whitespace-pre-wrap">{reply.text}</p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <button type="button" aria-label={replyLiked ? 'Descurtir resposta' : 'Curtir resposta'} aria-pressed={replyLiked} onClick={() => toggleJournalCommentLike(article.id, reply.id, currentUser.name)} className={cn('grid h-8 w-8 place-items-center rounded-full text-gray-500 hover:bg-[#F6F3FF]', replyLiked && 'text-[#6D32F5]')}>
+                              <Heart className="h-4 w-4" fill={replyLiked ? 'currentColor' : 'none'} />
+                            </button>
+                            {reply.author === currentUser.name || canManage ? (
+                              <button type="button" aria-label="Excluir resposta" className="grid h-8 w-8 place-items-center rounded-full text-gray-500 hover:text-[#D6334B]" onClick={() => { if (!window.confirm('Excluir este comentário?')) return; deleteJournalComment(article.id, reply.id); }}><Trash2 className="h-4 w-4" /></button>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    }) : null}
+                    {replyTo === item.id ? (
+                      <div className="mt-2 ml-8 flex items-end gap-2">
+                        <Textarea value={replyDraft} onChange={(event) => setReplyDraft(event.target.value)} placeholder={`Responder ${item.author}...`} className="min-h-10" />
+                        <button type="button" aria-label="Enviar resposta" disabled={!replyDraft.trim()} onClick={() => sendComment(replyDraft, item.id)} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 disabled:opacity-40"><Send className="h-4 w-4" /></button>
+                      </div>
                     ) : null}
                   </div>
                 );
               })}
-              <div className="mt-4 grid gap-2">
-                {replyTo ? <p className="text-xs text-gray-500">Respondendo {article.comments.find((item) => item.id === replyTo)?.author}. <button type="button" className="underline" onClick={() => setReplyTo(null)}>Cancelar</button></p> : null}
+              <div className="mt-4 flex items-end gap-2">
                 <Textarea id="comentario-noticia" value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Escreva um comentário..." />
-                <Button className="w-fit outline-none focus-visible:ring-0" disabled={!comment.trim()} onClick={sendComment}>Comentar</Button>
+                <button type="button" aria-label="Enviar comentário" disabled={!comment.trim()} onClick={() => sendComment(comment)} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 disabled:opacity-40"><Send className="h-4 w-4" /></button>
               </div>
             </section>
           </div>

@@ -3,11 +3,11 @@ import { JournalCover } from '@/components/journal/JournalVisual';
 import { journalBorder } from '@/components/social/JournalNewsCard';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles, useJournalSaved } from '@/components/journal/useJournal';
-import { archiveJournalArticle, articleSummary, canManageJournal, deleteJournalArticle, journalPlainText, purgeJournalArticle, readingMinutes, restoreJournalArticle, toggleJournalSave, type JournalArticle } from '@/data/journal';
+import { archiveJournalArticle, articleSummary, canManageJournal, deleteJournalArticle, journalPlainText, purgeJournalArticle, readingMinutes, restoreJournalArticle, toggleJournalPin, toggleJournalSave, type JournalArticle } from '@/data/journal';
 import { currentUser } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { PageHero } from '@/components/social/LilacWash';
-import { Bookmark, Calendar, ChevronRight, Clock, Filter, Newspaper, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { Bookmark, Calendar, ChevronRight, Clock, Filter, Newspaper, Pin, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState, type FC } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -39,6 +39,15 @@ const FeaturedCard: FC<{ article: JournalArticle; saved: boolean; onRemove?: () 
           className={cn('grid h-7 w-7 place-items-center rounded-full', saved ? 'text-[#3600C2]' : 'text-[#C9BED6] hover:text-[#4600F3]')}
         >
           <Bookmark className="h-4 w-4" fill={saved ? 'currentColor' : 'none'} />
+        </button>
+        <button
+          type="button"
+          aria-label={article.pinned ? 'Desafixar' : 'Fixar'}
+          aria-pressed={article.pinned}
+          onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleJournalPin(article.id); }}
+          className={cn('grid h-7 w-7 place-items-center rounded-full', article.pinned ? 'text-[#3600C2]' : 'text-[#C9BED6] hover:text-[#4600F3]')}
+        >
+          <Pin className="h-4 w-4" fill={article.pinned ? 'currentColor' : 'none'} />
         </button>
         {onRemove ? (
           <button

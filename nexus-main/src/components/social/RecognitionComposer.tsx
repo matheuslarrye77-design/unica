@@ -105,23 +105,15 @@ export const RecognitionComposer: FC<{
           <p className="text-xs text-muted-foreground">Reconheça alguém da equipe</p>
         </div>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <label className="grid gap-1 text-sm">
-          Pessoa reconhecida
-          <select className="h-9 rounded-md border bg-background px-3 text-sm" value={personId} onChange={(event) => setPersonId(event.target.value)} required>
-            <option value="">Selecione</option>
-            {others.map((person) => (
-              <option key={person.id} value={person.id}>{person.name}</option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm">
-          Etiqueta
-          <select className="h-9 rounded-md border bg-background px-3 text-sm" value={tag} onChange={(event) => setTag(event.target.value)}>
-            {tags.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
-        </label>
-      </div>
+      <label className="grid gap-1 text-sm">
+        Pessoa reconhecida
+        <select className="h-9 rounded-md border bg-background px-3 text-sm" value={personId} onChange={(event) => setPersonId(event.target.value)} required>
+          <option value="">Selecione</option>
+          {others.map((person) => (
+            <option key={person.id} value={person.id}>{person.name}</option>
+          ))}
+        </select>
+      </label>
       {headline ? <p className="rounded-xl bg-[#F5F1FF] px-3 py-2 text-[13px] font-medium text-[#3600C2]">{headline}</p> : null}
       <label className="grid gap-1 text-sm">
         Mensagem principal

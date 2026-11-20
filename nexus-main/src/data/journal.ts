@@ -22,6 +22,8 @@ export type JournalComment = {
   text: string;
   date: string;
   replyTo?: string;
+  likes?: number;
+  likedBy?: string[];
 };
 
 export type JournalArticle = {
@@ -741,13 +743,29 @@ export function toggleJournalReaction(id: string, name: string) {
 }
 
 export function addJournalComment(id: string, author: string, text: string, replyTo?: string) {
-  const comment: JournalComment = { id: generateId(), author, text: text.trim(), date: new Date().toISOString(), replyTo };
+  const comment: JournalComment = { id: generateId(), author, text: text.trim(), date: new Date().toISOString(), replyTo, likes: 0, likedBy: [] };
   if (!comment.text) return;
   commit(articles.map((article) => (article.id === id ? { ...article, comments: [...article.comments, comment] } : article)));
 }
 
 export function deleteJournalComment(articleId: string, commentId: string) {
-  commit(articles.map((article) => (article.id === articleId ? { ...article, comments: article.comments.filter((comment) => comment.id !== commentId) } : article)));
+  commit(articles.map((article) => (article.id === articleId ? { ...article, comments: article.comments.filter((comment) => comment.id !== commentId && comment.replyTo !== commentId) } : article)));
+}
+
+export function toggleJournalCommentLike(articleId: string, commentId: string, name: string) {
+  commit(articles.map((article) => {
+    if (article.id !== articleId) return article;
+    return {
+      ...article,
+      comments: article.comments.map((comment) => {
+        if (comment.id !== commentId) return comment;
+        const likedBy = comment.likedBy ?? [];
+        const liked = likedBy.includes(name);
+        const next = liked ? likedBy.filter((person) => person !== name) : [...likedBy, name];
+        return { ...comment, likedBy: next, likes: next.length };
+      }),
+    };
+  }));
 }
 
 let remoteReady = false;

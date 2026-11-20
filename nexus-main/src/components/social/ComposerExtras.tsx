@@ -1,5 +1,7 @@
+import { Emoji } from '@/components/Emoji';
 import { ArrowUp, ImagePlay, Plus, Smile, Sticker, X } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
+import { createPortal } from 'react-dom';
 import { MURAL_FIGURINES } from '@/data/muralStickers';
 import { fitPhoto } from '@/lib/cutout';
 import { forgetSticker, listStickers, prioritizeSticker, saveSticker, subscribeStickerLibrary, useSticker, type SavedSticker } from '@/lib/stickers';
@@ -22,6 +24,8 @@ export const ComposerExtras: FC<{
   const [uploadError, setUploadError] = useState('');
   const [editing, setEditing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState<{ top: number; left: number; width: number } | null>(null);
 
   useEffect(() => subscribeStickerLibrary(setSavedStickers), []);
 
@@ -63,12 +67,38 @@ export const ComposerExtras: FC<{
     setPanel((current) => (current === next ? null : next));
   }
 
+  useEffect(() => {
+    if (embedded || !panel) return;
+    function place() {
+      const rect = barRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setBox({ top: rect.top, left: Math.max(8, Math.min(rect.left, window.innerWidth - 368)), width: Math.min(360, window.innerWidth - 16) });
+    }
+    function outside(event: MouseEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (barRef.current?.contains(target)) return;
+      if (target instanceof Element && target.closest('[data-composer-menu]')) return;
+      setPanel(null);
+    }
+    function close() { setPanel(null); }
+    place();
+    document.addEventListener('mousedown', outside);
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', close, true);
+    return () => {
+      document.removeEventListener('mousedown', outside);
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', close, true);
+    };
+  }, [embedded, panel]);
+
   const body = (
     <>
       {active === 'emoji' ? (
         <div className="grid max-h-52 grid-cols-8 gap-0.5 overflow-y-auto">
           {emojis.map((emoji) => (
-            <button key={emoji} type="button" className="grid h-8 place-items-center rounded-lg text-lg hover:bg-[#F5F1FF]" onClick={() => onEmoji(emoji)}>{emoji}</button>
+            <button key={emoji} type="button" className="grid h-8 place-items-center rounded-lg hover:bg-[#F5F1FF]" onClick={() => onEmoji(emoji)}><Emoji emoji={emoji} className="h-5 w-5" /></button>
           ))}
         </div>
       ) : null}
@@ -118,16 +148,17 @@ export const ComposerExtras: FC<{
   if (embedded) return <div className="min-w-0">{body}</div>;
 
   return (
-    <div className="min-w-0">
+    <div className="min-w-0" ref={barRef}>
       <div className="flex items-center gap-1">
         <button type="button" aria-label="Emojis" aria-expanded={panel === 'emoji'} className="grid h-9 w-9 place-items-center rounded-full text-[#3600C2] hover:bg-[#F5F1FF]" onClick={() => toggle('emoji')}><Smile className="h-4 w-4" /></button>
         {onSticker ? <button type="button" aria-label="Figurinhas" aria-expanded={panel === 'sticker'} className="grid h-9 w-9 place-items-center rounded-full text-[#3600C2] hover:bg-[#F5F1FF]" onClick={() => toggle('sticker')}><Sticker className="h-4 w-4" /></button> : null}
         {onGif ? <button type="button" aria-label="GIFs" aria-expanded={panel === 'gif'} className="grid h-9 w-9 place-items-center rounded-full text-[#3600C2] hover:bg-[#F5F1FF]" onClick={() => toggle('gif')}><ImagePlay className="h-4 w-4" /></button> : null}
       </div>
-      {panel ? (
-        <div className="mt-2 w-full max-w-sm rounded-2xl border border-[#EFE6F4] bg-white p-2 shadow-lg">
+      {panel && box ? createPortal(
+        <div data-composer-menu className="fixed z-[80] max-h-72 overflow-y-auto rounded-2xl border border-[#EFE6F4] bg-white p-2 shadow-lg" style={{ top: Math.max(8, box.top - 8), left: box.left, width: box.width, transform: 'translateY(-100%)' }}>
           {body}
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   );

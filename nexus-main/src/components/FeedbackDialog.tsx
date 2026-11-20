@@ -87,7 +87,7 @@ export const FeedbackDialog: FC<{ open: boolean; onOpenChange: (open: boolean) =
             </div>
             <div>
               <Label htmlFor="feedback-mensagem" className="mb-1.5 text-[11px] font-semibold tracking-[0.08em] text-[#8a85a0] uppercase">Mensagem</Label>
-              <Textarea id="feedback-mensagem" value={message} maxLength={1000} onChange={(event) => setMessage(event.target.value)} placeholder="Escreva sua mensagem" className="grow-note rounded-[11px] border-[1.5px] border-transparent bg-[#f6f5fa] focus:border-[#9b82ff] focus:bg-white" />
+              <Textarea id="feedback-mensagem" value={message} maxLength={10000} onChange={(event) => setMessage(event.target.value)} placeholder="Escreva sua mensagem" className="max-h-64 min-h-24 overflow-y-auto rounded-[11px] border-[1.5px] border-transparent bg-[#f6f5fa] focus:border-[#9b82ff] focus:bg-white" />
               <p className="mt-1 text-right text-[11.5px] text-[#8a85a0]">{message.length}/1000</p>
             </div>
             <label className="flex w-fit items-center gap-2 text-[13px] text-[#4a4560]">

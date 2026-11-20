@@ -1,11 +1,11 @@
-import { Heart, Mic, Send, Star, Trash2, X } from 'lucide-react';
+import { FileText, Heart, Mic, Paperclip, Send, Star, Trash2, X } from 'lucide-react';
 import { useEffect, useState, useRef, type ClipboardEvent, type FC, type FormEvent, type KeyboardEvent } from 'react';
 import { actor } from '@/lib/session';
 import { forgetSticker, keepSticker, stickerIsSaved } from '@/lib/stickers';
 import { ZoomImage } from './PhotoGallery';
 import { ComposerExtras } from './ComposerExtras';
 import { ReadMore, useExpand } from './ReadMore';
-import type { CommentMedia, SocialComment } from './types';
+import { commentMediaList, type CommentMedia, type SocialComment } from './types';
 
 export const Comments: FC<{
   inputId: string;
@@ -16,12 +16,13 @@ export const Comments: FC<{
   onLike: (commentId: string) => void;
   canDelete?: (commentId: string) => boolean;
   onDelete?: (commentId: string) => void;
-  pendingMedia?: CommentMedia | null;
-  onMedia?: (media: CommentMedia | null) => void;
+  pendingMedia?: CommentMedia[];
+  onMedia?: (media: CommentMedia[]) => void;
+  onFile?: (file: File) => void;
   onGifFile?: (file: File) => void;
   onPasteFile?: (file: File) => void;
   onAudioFile?: (file: File) => void;
-}> = ({ inputId, comments, draft, onDraft, onSubmit, onLike, canDelete, onDelete, pendingMedia, onMedia, onPasteFile, onAudioFile }) => {
+}> = ({ inputId, comments, draft, onDraft, onSubmit, onLike, canDelete, onDelete, pendingMedia = [], onMedia, onPasteFile, onAudioFile, onFile }) => {
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
@@ -81,10 +82,13 @@ export const Comments: FC<{
     }
     const atStart = event.currentTarget.selectionStart === 0 && event.currentTarget.selectionEnd === 0;
     const empty = event.currentTarget.value === '';
-    if (pendingMedia && atStart && (event.key === 'Backspace' || (event.key === 'Delete' && empty))) {
+    if (pendingMedia.length && atStart && (event.key === 'Backspace' || (event.key === 'Delete' && empty))) {
       event.preventDefault();
-      onMedia?.(null);
+      onMedia?.(pendingMedia.slice(0, -1));
     }
+  }
+  function addPiece(media: CommentMedia) {
+    onMedia?.([...pendingMedia, media].slice(0, 8));
   }
 
   return (
@@ -96,20 +100,25 @@ export const Comments: FC<{
             <img src={comment.avatar} alt="" className="h-8 w-8 rounded-full bg-muted" />
             <div className="min-w-0 flex-1">
               <div onClick={() => expand?.setId(expand.id === `comentario-${comment.id}` ? null : `comentario-${comment.id}`)}>
-                {comment.body ? (
-                  <ReadMore id={`comentario-${comment.id}`} text={comment.body} prefix={<span className="font-semibold">{comment.author} </span>} className="text-sm leading-5" />
-                ) : <p className="text-sm font-semibold leading-5">{comment.author}</p>}
+                <p className="text-sm font-semibold leading-5">{comment.author}</p>
+                {comment.body ? <ReadMore id={`comentario-${comment.id}`} text={comment.body} className="text-sm leading-5" /> : null}
               </div>
-              {comment.media ? (
-                <div className="relative mt-1 inline-block">
-                  {comment.media.kind === 'video' ? (
-                    <video src={comment.media.url} controls className="max-h-48 max-w-full rounded-xl bg-black" />
-                  ) : comment.media.kind === 'audio' ? (
-                    <audio src={comment.media.url} controls className="h-10 max-w-full" />
-                  ) : (
-                    <ZoomImage src={comment.media.url} alt={comment.media.kind === 'gif' ? 'GIF' : comment.media.kind === 'sticker' ? 'Figurinha' : 'Foto'} className={`${comment.media.kind === 'image' ? 'max-h-60 max-w-full' : 'h-28 w-28'} rounded-xl bg-[#F5F1FF] object-contain`} />
-                  )}
-                  {comment.media.kind === 'sticker' && comment.authorId !== actor().id && /^\/api\/stickers\/stk-[a-f0-9]{16}$/.test(comment.media.url) ? <SaveSticker url={comment.media.url} /> : null}
+              {commentMediaList(comment.media).length ? (
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {commentMediaList(comment.media).map((media) => (
+                    <div key={media.url} className="relative inline-block">
+                      {media.kind === 'video' ? (
+                        <video src={media.url} controls className="max-h-48 max-w-full rounded-xl bg-black" />
+                      ) : media.kind === 'audio' ? (
+                        <audio src={media.url} controls className="h-10 max-w-full" />
+                      ) : media.kind === 'document' ? (
+                        <a href={media.url} download={media.name} className="inline-flex items-center gap-2 rounded-xl bg-[#F5F7FC] px-3 py-2 text-sm text-gray-800"><FileText className="h-4 w-4 text-[#6D32F5]" />{media.name || 'Arquivo'}</a>
+                      ) : (
+                        <ZoomImage src={media.url} alt={media.kind === 'gif' ? 'GIF' : media.kind === 'sticker' ? 'Figurinha' : 'Foto'} className={`${media.kind === 'image' ? 'max-h-60 max-w-full' : 'h-28 w-28'} rounded-xl bg-[#F5F1FF] object-contain`} />
+                      )}
+                      {media.kind === 'sticker' && comment.authorId !== actor().id ? <SaveSticker url={media.url} /> : null}
+                    </div>
+                  ))}
                 </div>
               ) : null}
               <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
@@ -130,14 +139,20 @@ export const Comments: FC<{
         ))}
       </ul>
       <form onSubmit={submit} className="space-y-2">
-        {pendingMedia ? (
-          <div className="relative inline-block">
-            {pendingMedia.kind === 'video' ? <video src={pendingMedia.url} className="h-16 rounded-xl" /> : pendingMedia.kind === 'audio' ? <audio src={pendingMedia.url} controls className="h-10" /> : <img src={pendingMedia.url} alt="" className="h-16 w-16 rounded-xl object-cover" />}
-            <button type="button" aria-label="Remover anexo" className="absolute -right-1 -top-1 rounded-full bg-card p-0.5" onClick={() => onMedia?.(null)}><X className="h-3 w-3" /></button>
+        {pendingMedia.length ? (
+          <div className="flex flex-wrap gap-2">
+            {pendingMedia.map((media) => (
+              <div key={media.url} className="relative inline-block">
+                {media.kind === 'video' ? <video src={media.url} className="h-16 rounded-xl" /> : media.kind === 'audio' ? <audio src={media.url} controls className="h-10" /> : media.kind === 'document' ? <span className="inline-flex items-center gap-1 rounded-xl bg-[#F5F7FC] px-2 py-1 text-xs"><FileText className="h-3.5 w-3.5" />{media.name || 'Arquivo'}</span> : <img src={media.url} alt="" className="h-16 w-16 rounded-xl object-cover" />}
+                <button type="button" aria-label="Remover anexo" className="absolute -right-1 -top-1 rounded-full bg-card p-0.5" onClick={() => onMedia?.(pendingMedia.filter((item) => item.url !== media.url))}><X className="h-3 w-3" /></button>
+              </div>
+            ))}
           </div>
         ) : null}
         <div className="flex items-end gap-2">
           <label className="sr-only" htmlFor={inputId}>Comentário</label>
+          <input type="file" className="hidden" id={`${inputId}-arquivo`} accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) onFile?.(file); }} />
+          <button type="button" aria-label="Anexar arquivo" onClick={() => document.getElementById(`${inputId}-arquivo`)?.click()} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_4px_14px_rgba(60,40,140,0.12)]"><Paperclip className="h-4 w-4" /></button>
           <textarea
             ref={fieldRef}
             id={inputId}
@@ -152,11 +167,11 @@ export const Comments: FC<{
           <button type="button" aria-label={recording ? 'Parar gravação' : 'Gravar áudio'} aria-pressed={recording} onClick={() => void toggleRecord()} className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl outline-none ${recording ? 'bg-[#DB2777] text-white' : 'bg-white text-gray-600 shadow-[0_4px_14px_rgba(60,40,140,0.12)]'}`}>
             <Mic className="h-4 w-4" />
           </button>
-          <button type="submit" aria-label={pendingMedia?.url.startsWith('blob:') ? 'Enviando' : 'Publicar'} disabled={(!draft.trim() && !pendingMedia) || Boolean(pendingMedia?.url.startsWith('blob:'))} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 outline-none hover:bg-blue-500 focus-visible:ring-0 disabled:opacity-40">
+          <button type="submit" aria-label={pendingMedia.some((item) => item.url.startsWith('blob:')) ? 'Enviando' : 'Publicar'} disabled={(!draft.trim() && pendingMedia.length === 0) || pendingMedia.some((item) => item.url.startsWith('blob:'))} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 outline-none hover:bg-blue-500 focus-visible:ring-0 disabled:opacity-40">
             <Send className="h-4 w-4" />
           </button>
         </div>
-        <ComposerExtras onEmoji={insertEmoji} onSticker={(url) => onMedia?.({ kind: 'sticker', url })} onGif={(url) => onMedia?.({ kind: 'gif', url })} />
+        <ComposerExtras onEmoji={insertEmoji} onSticker={(url) => addPiece({ kind: 'sticker', url })} onGif={(url) => addPiece({ kind: 'gif', url })} />
       </form>
     </div>
   );

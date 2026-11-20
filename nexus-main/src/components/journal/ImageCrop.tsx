@@ -86,6 +86,7 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
   const [format, setFormat] = useState<FormatId | null>(null);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [shapesOpen, setShapesOpen] = useState(false);
+  const [opacityOpen, setOpacityOpen] = useState(false);
   const [crop, setCrop] = useState<Box>({ x: 40, y: 40, w: 200, h: 120 });
   const [opacity, setOpacity] = useState(1);
   const ratio = format ? FORMATS.find((item) => item.id === format)?.ratio ?? null : null;
@@ -307,33 +308,44 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
             </>
           ) : null}
         </div>
-        <div className="relative mt-3 flex items-center gap-2">
-          {banner ? <span className="text-xs text-muted-foreground">Zoom</span> : (
-          <button type="button" aria-expanded={zoomOpen} aria-label="Zoom" onClick={() => { setZoomOpen((current) => !current); setShapesOpen(false); }} className={`grid h-8 w-8 place-items-center rounded-full ${zoomOpen ? 'bg-[#4600F3] text-white' : 'bg-[#EDE7FE] text-[#3600C2]'}`}>
-            <Search className="h-3.5 w-3.5" />
+        <div className="relative mt-4 flex items-start justify-center gap-5">
+          <button type="button" aria-expanded={zoomOpen || Boolean(banner)} aria-label="Zoom" onClick={() => { setZoomOpen((current) => !current); setShapesOpen(false); setOpacityOpen(false); }} className="flex flex-col items-center gap-1.5 text-[11px] font-semibold text-[#8a85a0]">
+            <span className={`grid h-12 w-12 place-items-center rounded-full ${zoomOpen || banner ? 'bg-[#6644e0] text-white shadow-[0_6px_14px_-6px_rgba(102,68,224,0.7)]' : 'bg-white text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]'}`}><Search className="h-5 w-5" /></span>
+            Zoom
           </button>
+          {banner ? null : (
+            <button type="button" aria-expanded={shapesOpen} aria-label="Cortar" onClick={() => { setShapesOpen((current) => !current); setZoomOpen(false); setOpacityOpen(false); }} className="flex flex-col items-center gap-1.5 text-[11px] font-semibold text-[#8a85a0]">
+              <span className={`grid h-12 w-12 place-items-center rounded-full ${shapesOpen || format ? 'bg-[#6644e0] text-white shadow-[0_6px_14px_-6px_rgba(102,68,224,0.7)]' : 'bg-white text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]'}`}><Scissors className="h-5 w-5" /></span>
+              Cortar
+            </button>
           )}
-          <button type="button" aria-expanded={shapesOpen} aria-label="Recortar" onClick={() => { setShapesOpen((current) => !current); setZoomOpen(false); }} className={`grid h-8 w-8 place-items-center rounded-full ${shapesOpen || format ? 'bg-[#4600F3] text-white' : 'bg-[#EDE7FE] text-[#3600C2]'}`}>
-            <Scissors className="h-3.5 w-3.5" />
-          </button>
-          {banner || zoomOpen ? (
-            <input aria-label="Zoom" type="range" min={1} max={3} step={0.01} value={zoom} onChange={(event) => changeZoom(Number(event.target.value))} className="h-1.5 min-w-0 flex-1 accent-[#4600F3]" />
+          {darken ? (
+            <button type="button" aria-expanded={opacityOpen} aria-label="Opacidade" onClick={() => { setOpacityOpen((current) => !current); setZoomOpen(false); setShapesOpen(false); }} className="flex flex-col items-center gap-1.5 text-[11px] font-semibold text-[#8a85a0]">
+              <span className={`grid h-12 w-12 place-items-center rounded-full text-sm font-bold ${opacityOpen ? 'bg-[#6644e0] text-white shadow-[0_6px_14px_-6px_rgba(102,68,224,0.7)]' : 'bg-white text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]'}`}>{Math.round(opacity * 100)}</span>
+              Opacidade
+            </button>
           ) : null}
-          {shapesOpen ? (
-            <div className="absolute bottom-10 left-0 z-20 w-44 rounded-2xl border border-[#DDD4F5] bg-white p-1.5 shadow-[0_12px_32px_rgba(70,0,243,0.14)]">
-              <button type="button" className="block w-full rounded-xl px-3 py-1.5 text-left text-[13px] text-[#3600C2] hover:bg-[#F8F4FB]" onClick={() => chooseFormat(null)}>Sem corte</button>
+          {shapesOpen && !banner ? (
+            <div className="absolute bottom-16 left-1/2 z-20 w-44 -translate-x-1/2 rounded-2xl bg-white p-1.5 shadow-[14px_14px_30px_#d8d2ee,-8px_-8px_22px_#fff,0_0_0_1px_#e8e4f4]">
+              <button type="button" className="block w-full rounded-xl px-3 py-1.5 text-left text-[13px] text-[#4f33b8] hover:bg-[#f6f3ff]" onClick={() => chooseFormat(null)}>Sem corte</button>
               {formats.map((item) => (
-                <button key={item.id} type="button" aria-pressed={format === item.id} className={`block w-full rounded-xl px-3 py-1.5 text-left text-[13px] ${format === item.id ? 'bg-[#EDE7FE] font-semibold text-[#3600C2]' : 'text-[#3C3952] hover:bg-[#F8F4FB]'}`} onClick={() => chooseFormat(item.id)}>
+                <button key={item.id} type="button" aria-pressed={format === item.id} className={`block w-full rounded-xl px-3 py-1.5 text-left text-[13px] ${format === item.id ? 'bg-[#ece6ff] font-semibold text-[#4f33b8]' : 'text-[#1f1b2e] hover:bg-[#f6f3ff]'}`} onClick={() => chooseFormat(item.id)}>
                   {item.label}
                 </button>
               ))}
             </div>
           ) : null}
         </div>
-        {darken ? (
-          <label className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-            Opacidade
-            <input aria-label="Opacidade" type="range" min={0.2} max={1} step={0.01} value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} className="h-1.5 flex-1 accent-[#4600F3]" />
+        {banner || zoomOpen ? (
+          <label className="mt-3 flex items-center gap-3 text-xs font-semibold text-[#4a4560]">
+            {Math.round(zoom * 100)}%
+            <input aria-label="Zoom" type="range" min={1} max={3} step={0.01} value={zoom} onChange={(event) => changeZoom(Number(event.target.value))} className="h-2 min-w-0 flex-1 accent-[#6644e0]" />
+          </label>
+        ) : null}
+        {darken && opacityOpen ? (
+          <label className="mt-3 flex items-center gap-3 text-xs font-semibold text-[#4a4560]">
+            {Math.round(opacity * 100)}%
+            <input aria-label="Opacidade" type="range" min={0.2} max={1} step={0.01} value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} className="h-2 flex-1 accent-[#6644e0]" />
           </label>
         ) : null}
         <div className="mt-4 flex justify-end gap-2">

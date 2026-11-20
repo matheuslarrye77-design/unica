@@ -1,5 +1,8 @@
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
+import { uploadMedia } from '@/lib/feed';
 import { authHeaders, getDemoId } from '@/lib/session';
+
+const SHELF_KEY = 'unica-sticker-shelf';
 
 export type SavedSticker = {
   id: string;
@@ -44,44 +47,43 @@ export async function listLibrary() {
 }
 
 export async function listStickers() {
-  const ticket = libraryVersion;
-  const library = await listLibrary();
-  if (ticket !== libraryVersion) {
-    const again = libraryVersion;
-    const fresh = await listLibrary();
-    if (again !== libraryVersion) return libraryItems ?? fresh.stickers;
-    publishLibrary(fresh.stickers);
-    return fresh.stickers;
-  }
-  publishLibrary(library.stickers);
-  return library.stickers;
+  const items = readShelf();
+  publishLibrary(items);
+  return items;
 }
 
-function fileBase64(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const value = String(reader.result ?? '');
-      const marker = value.indexOf(',');
-      resolve(marker >= 0 ? value.slice(marker + 1) : value);
-    };
-    reader.onerror = () => reject(new Error('file'));
-    reader.readAsDataURL(file);
-  });
+function readShelf(): SavedSticker[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SHELF_KEY) ?? '[]') as SavedSticker[];
+    return Array.isArray(parsed) ? parsed.filter((item) => item && typeof item.url === 'string' && typeof item.id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeShelf(items: SavedSticker[]) {
+  const next = orderedStickers(items).slice(0, 40);
+  localStorage.setItem(SHELF_KEY, JSON.stringify(next));
+  libraryVersion += 1;
+  publishLibrary(next);
+  return next;
 }
 
 export async function saveSticker(file: File) {
-  const data = await fileBase64(file);
-  const response = await fetch('/api/stickers', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { ...authHeaders(), ...demoHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data }),
-  });
-  const body = await readJson(response);
-  if (!response.ok || !body.sticker) throw new Error(body.error || 'unavailable');
-  changeLibrary((items) => orderedStickers([body.sticker!, ...items.filter((item) => item.url !== body.sticker?.url)]));
-  return body.sticker;
+  const uploaded = await uploadMedia(file);
+  if (!uploaded.url) throw new Error('file');
+  const sticker: SavedSticker = {
+    id: `local-${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`,
+    url: uploaded.url,
+    createdAt: new Date().toISOString(),
+    uses: 0,
+    priority: Date.now(),
+    usedAt: new Date().toISOString(),
+  };
+  const current = readShelf();
+  if (current.length >= 40 && !current.some((item) => item.url === sticker.url)) throw new Error('limit');
+  writeShelf([sticker, ...current.filter((item) => item.url !== sticker.url)]);
+  return sticker;
 }
 
 let libraryItems: SavedSticker[] | null = null;
@@ -144,32 +146,31 @@ export function stickerIsSaved(url: string) {
 }
 
 export async function keepSticker(url: string) {
-  const source = /^\/api\/stickers\/(stk-[a-f0-9]{16})$/.exec(url)?.[1] ?? '';
-  const response = await fetch('/api/stickers', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { ...authHeaders(), ...demoHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ source }),
-  });
-  const body = await readJson(response);
-  if (!response.ok || !body.sticker) throw new Error(body.error || 'unavailable');
-  rememberSticker(body.sticker.url, true);
-  changeLibrary((items) => orderedStickers([body.sticker!, ...items.filter((item) => item.url !== body.sticker?.url)]));
-  return body.sticker;
+  if (!url) throw new Error('file');
+  const current = readShelf();
+  if (current.length >= 40 && !current.some((item) => item.url === url)) throw new Error('limit');
+  const sticker: SavedSticker = current.find((item) => item.url === url) ?? {
+    id: `local-${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`,
+    url,
+    createdAt: new Date().toISOString(),
+  };
+  writeShelf([sticker, ...current.filter((item) => item.url !== url)]);
+  rememberSticker(url, true);
+  return sticker;
 }
 
 async function touchSticker(field: 'use' | 'priority', url: string) {
-  const source = /^\/api\/stickers\/(stk-[a-f0-9]{16})$/.exec(url)?.[1] ?? '';
-  const response = await fetch('/api/stickers', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { ...authHeaders(), ...demoHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ [field]: source }),
-  });
-  const body = await readJson(response);
-  if (!response.ok || !body.sticker) throw new Error(body.error || 'unavailable');
-  changeLibrary((items) => orderedStickers(items.map((item) => (item.id === body.sticker?.id ? body.sticker! : item))));
-  return body.sticker;
+  const current = readShelf();
+  const found = current.find((item) => item.url === url);
+  if (!found) throw new Error('missing');
+  const sticker: SavedSticker = {
+    ...found,
+    uses: field === 'use' ? (found.uses ?? 0) + 1 : found.uses,
+    priority: field === 'priority' ? Date.now() : found.priority,
+    usedAt: new Date().toISOString(),
+  };
+  writeShelf(current.map((item) => (item.url === url ? sticker : item)));
+  return sticker;
 }
 
 export function useSticker(url: string) {
@@ -181,17 +182,8 @@ export function prioritizeSticker(url: string) {
 }
 
 export async function forgetSticker(url: string) {
-  const source = /^\/api\/stickers\/(stk-[a-f0-9]{16})$/.exec(url)?.[1] ?? '';
-  const response = await fetch('/api/stickers', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { ...authHeaders(), ...demoHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ forget: source }),
-  });
-  const body = await readJson(response);
-  if (!response.ok) throw new Error(body.error || 'unavailable');
+  writeShelf(readShelf().filter((item) => item.url !== url));
   rememberSticker(url, false);
-  changeLibrary((items) => items.filter((item) => item.url !== url));
 }
 
 export async function saveGif(url: string, title: string) {

@@ -13,7 +13,7 @@ export const Emoji: FC<{ emoji: string; className?: string }> = ({ emoji, classN
   if (failed) return <span className={className}>{emoji}</span>;
   return (
     <img
-      src={`/emoji/${emojiCode(emoji)}.svg`}
+      src={`https://cdn.jsdelivr.net/gh/jdecked/twemoji@15.1.0/assets/svg/${emojiCode(emoji)}.svg`}
       alt={emoji}
       draggable={false}
       className={cn('inline-block h-[1.15em] w-[1.15em] align-[-0.15em]', className)}

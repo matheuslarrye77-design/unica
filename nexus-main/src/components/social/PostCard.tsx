@@ -64,15 +64,16 @@ export const PostCard: FC<{
   republished?: boolean;
   canDeleteComment?: (commentId: string) => boolean;
   onDeleteComment?: (commentId: string) => void;
-  pendingMedia?: CommentMedia | null;
-  onMedia?: (media: CommentMedia | null) => void;
+  pendingMedia?: CommentMedia[];
+  onMedia?: (media: CommentMedia[]) => void;
+  onFile?: (file: File) => void;
   onPasteFile?: (file: File) => void;
   onGifFile?: (file: File) => void;
   onAudioFile?: (file: File) => void;
   repost?: { name: string; avatar: string; note: string };
   anchorId?: string;
   preview?: boolean;
-}> = ({ post, commentDraft, onCommentDraft, onLike, onReact, onToggleSave, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, onSaveEdit, republished, canDeleteComment, onDeleteComment, pendingMedia, onMedia, onGifFile, onPasteFile, onAudioFile, repost, anchorId }) => {
+}> = ({ post, commentDraft, onCommentDraft, onLike, onReact, onToggleSave, onShare, onToggleComments, onAddComment, onLikeComment, onVote, onRepublish, onDelete, onSaveEdit, republished, canDeleteComment, onDeleteComment, pendingMedia, onMedia, onFile, onGifFile, onPasteFile, onAudioFile, repost, anchorId }) => {
   const plain = post.kind === 'text' || post.kind === 'image' || post.kind === 'leadership';
   const domId = anchorId ?? post.id;
   const composed = post.kind === 'recognition' || post.kind === 'announcement';
@@ -191,7 +192,7 @@ export const PostCard: FC<{
           {post.kind !== 'announcement' && post.kind !== 'recognition' && post.images && post.images.length > 0 ? <PhotoGallery images={post.images} /> : post.kind === 'image' && post.image ? <ZoomImage src={post.image} className="mt-3 max-h-80 w-full rounded-[12px] object-contain bg-[#F6F4FC]" /> : null}
         </>
       )}
-      {decorations.length > 0 && !recognition ? (
+      {decorations.length > 0 && !composed ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {decorations.map((block, index) => (
             block.type === 'image' ? <ZoomImage key={`${post.id}-extra-${index}`} src={block.url} alt={block.display === 'gif' ? 'GIF' : 'Figurinha'} className="h-24 w-24 rounded-xl bg-[#F5F1FF] object-contain" /> : null
@@ -199,7 +200,7 @@ export const PostCard: FC<{
         </div>
       ) : null}
       {post.kind === 'leadership' && post.image ? <ZoomImage src={post.image} className="mt-3 max-h-80 w-full rounded-[12px] object-cover" /> : null}
-      {(post.attachments?.length ? post.attachments : post.attachment ? [post.attachment] : []).map((item, index) => (
+      {!composed ? (post.attachments?.length ? post.attachments : post.attachment ? [post.attachment] : []).map((item, index) => (
         <div key={`${item.url ?? item.name}-${index}`}>
           {item.type === 'video' && item.url ? <video src={item.url} controls preload="metadata" className="mt-3 max-h-[420px] w-full rounded-xl bg-black" /> : null}
           {item.type === 'audio' && item.url ? (
@@ -221,12 +222,12 @@ export const PostCard: FC<{
             )
           ) : null}
         </div>
-      ))}
+      )) : null}
 
-      {post.kind === 'announcement' ? <AnnouncementPost post={post} expandId={`${domId}-noticia`} /> : null}
+      {post.kind === 'announcement' ? <AnnouncementPost post={post} expandId={`${domId}-noticia`} onVote={onVote} /> : null}
       {post.kind === 'recognition' ? <RecognitionPost post={post} expandId={`${domId}-reconhecimento`} onVote={onVote} /> : null}
       {post.kind === 'poll' ? <PollPost post={post} onVote={onVote} expandId={`${domId}-enquete`} /> : null}
-      {post.kind !== 'poll' && post.kind !== 'recognition' && post.poll && post.poll.length > 0 ? <PollPost post={post} onVote={onVote} optionsOnly expandId={`${domId}-enquete`} /> : null}
+      {post.kind !== 'poll' && !composed && post.poll && post.poll.length > 0 ? <PollPost post={post} onVote={onVote} optionsOnly expandId={`${domId}-enquete`} /> : null}
       {post.kind === 'event' ? <EventPost post={post} expandId={`${domId}-evento`} /> : null}
 
       {repost ? (
@@ -243,6 +244,7 @@ export const PostCard: FC<{
           onLike={onLikeComment}
           pendingMedia={pendingMedia}
           onMedia={onMedia}
+          onFile={onFile}
           onGifFile={onGifFile}
           onPasteFile={onPasteFile}
           onAudioFile={onAudioFile}

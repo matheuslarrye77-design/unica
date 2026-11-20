@@ -39,7 +39,7 @@ type Comment = {
   time: string;
   likes: number;
   likedBy: string[];
-  media?: { kind: 'gif' | 'sticker' | 'image' | 'video' | 'audio'; url: string };
+  media?: { kind: 'gif' | 'sticker' | 'image' | 'video' | 'audio' | 'document'; url: string; name?: string } | { kind: 'gif' | 'sticker' | 'image' | 'video' | 'audio' | 'document'; url: string; name?: string }[];
   createdAt?: string;
 };
 
@@ -220,9 +220,9 @@ function cleanBlocks(value: unknown): FeedPost['blocks'] {
   return blocks;
 }
 
-function cleanMedia(value: unknown): Comment['media'] | undefined {
-  if (!value || typeof value !== 'object') return undefined;
-  const item = value as { kind?: string; url?: string };
+function cleanMedia(value: unknown): { kind: 'gif' | 'sticker' | 'image' | 'video' | 'audio' | 'document'; url: string; name?: string } | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const item = value as { kind?: string; url?: string; name?: string };
   const url = String(item.url ?? '');
   const allowed = url.startsWith('/api/uploads/up-')
     || /^\/figurinhas\/[a-z0-9-]+\.(svg|png|jpe?g|webp)$/.test(url)
@@ -232,9 +232,15 @@ function cleanMedia(value: unknown): Comment['media'] | undefined {
     || Boolean(gifMediaUrl(url))
     || Boolean(stickerMediaUrl(url));
   if (!allowed) return undefined;
-  if (item.kind !== 'gif' && item.kind !== 'sticker' && item.kind !== 'image' && item.kind !== 'video' && item.kind !== 'audio') return undefined;
-  if ((item.kind === 'image' || item.kind === 'video' || item.kind === 'audio') && !url.startsWith('/api/uploads/up-')) return undefined;
-  return { kind: item.kind, url };
+  if (item.kind !== 'gif' && item.kind !== 'sticker' && item.kind !== 'image' && item.kind !== 'video' && item.kind !== 'audio' && item.kind !== 'document') return undefined;
+  if ((item.kind === 'image' || item.kind === 'video' || item.kind === 'audio' || item.kind === 'document') && !url.startsWith('/api/uploads/up-')) return undefined;
+  const name = String(item.name ?? '').trim().slice(0, 120);
+  return { kind: item.kind, url, ...(name ? { name } : {}) };
+}
+
+function cleanMediaList(value: unknown) {
+  const list = Array.isArray(value) ? value : value ? [value] : [];
+  return list.map((item) => cleanMedia(item)).filter((item): item is NonNullable<ReturnType<typeof cleanMedia>> => Boolean(item)).slice(0, 8);
 }
 
 function reactionsOf(post: FeedPost): Reaction[] {
@@ -897,8 +903,8 @@ export function extraApi(): Connect.NextHandleFunction {
       if (req.method === 'POST' && commentMatch) {
         const body = JSON.parse((await readBody(req)).toString('utf8')) as { body?: string; media?: unknown };
         const text = String(body.body ?? '').trim();
-        const media = cleanMedia(body.media);
-        if (!text && !media) return send(res, 400, { error: 'body' });
+        const media = cleanMediaList(body.media);
+        if (!text && media.length === 0) return send(res, 400, { error: 'body' });
         if (text.length > 2000) return send(res, 400, { error: 'body' });
         const result = await applyFeed(res, (feed) => {
           const post = openPost(feed, commentMatch[1], user);

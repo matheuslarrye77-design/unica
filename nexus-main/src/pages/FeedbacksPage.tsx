@@ -169,7 +169,7 @@ export const FeedbacksPage: FC = () => {
           title="Sugestões"
           subtitle="Sua opinião também constrói o nosso futuro. Deixe aqui suas ideias, comentários e sugestões."
           aside={
-            <button type="button" onClick={() => setComposer(true)} className="inline-flex h-11 items-center gap-2 rounded-full bg-[#6644e0] px-5 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)] outline-none hover:bg-[#4f33b8]">
+            <button type="button" onClick={() => setComposer(true)} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 outline-none hover:bg-blue-500">
               <Plus className="h-4 w-4" /> Nova sugestão
             </button>
           }
@@ -238,7 +238,7 @@ export const FeedbacksPage: FC = () => {
                   <div className="min-w-0 flex-1">
                     <button type="button" className="block w-full text-left" onClick={() => { setOpenId(open ? null : item.id); setStatusMenu(null); }}>
                       <span className="block truncate text-[14px] font-semibold text-[#241B33]">{item.title || item.message}</span>
-                      <span className="mt-0.5 block truncate text-[12.5px] text-[#8A7C98]">{item.message}</span>
+                      <span className="mt-0.5 block max-h-40 overflow-y-auto whitespace-pre-wrap text-[12.5px] leading-5 text-[#8A7C98]">{item.message}</span>
                     </button>
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
                       <span className="text-[12px] text-[#8A7C98]">{name}</span>

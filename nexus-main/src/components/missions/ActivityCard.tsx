@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { CalendarDays, CheckCircle, ChevronDown, ChevronUp, Flag, MoreHorizontal } from 'lucide-react';
-import { type FC } from 'react';
+import { CalendarDays, CheckCircle, ChevronDown, ChevronUp, Flag, Maximize2, Minimize2, MoreHorizontal } from 'lucide-react';
+import { type FC, useState } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,17 +58,18 @@ export const ActivityCardView: FC<{
   const progress = visualProgress(activity);
   const detail = activity.description.trim() || activity.source;
   const leadership = activity.origin === 'leadership';
+  const [reading, setReading] = useState(false);
 
   return (
     <article className={cn(
       'group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] select-none transition-shadow duration-300 hover:shadow-[0_10px_28px_rgba(15,23,42,0.09)]',
-      !collapsed && 'h-[312px]',
+      !collapsed && !reading && 'h-[312px]',
       leadership && 'border-l-4 border-l-[#6B33F6]',
       dragging && 'z-50 shadow-[0_16px_36px_rgba(15,23,42,0.12)]',
     )}>
       <div className="flex min-h-0 flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-3">
-          <h3 title={activity.title} className="line-clamp-2 h-12 text-lg font-bold leading-6 text-gray-800">{activity.title}</h3>
+          <h3 title={activity.title} className={cn('text-lg font-bold leading-6 text-gray-800', reading ? '' : 'line-clamp-2 h-12')}>{activity.title}</h3>
           <span className="flex shrink-0 items-center">
             {onToggle ? (
               <button
@@ -81,6 +82,16 @@ export const ActivityCardView: FC<{
                 {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
               </button>
             ) : null}
+            <button
+              type="button"
+              aria-label={reading ? 'Reduzir atividade' : 'Ampliar atividade'}
+              aria-pressed={reading}
+              className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={() => setReading((open) => !open)}
+            >
+              {reading ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </button>
             {onEdit && onDelete ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -116,7 +127,7 @@ export const ActivityCardView: FC<{
 
         {collapsed ? null : (
           <>
-            <p className="mt-3 line-clamp-2 h-12 text-sm leading-6 text-gray-500">{detail || ' '}</p>
+            <p className={cn('mt-3 text-sm leading-6 text-gray-500', reading ? 'whitespace-pre-wrap' : 'line-clamp-2 h-12')}>{detail || ' '}</p>
 
             <div className="mt-5 flex flex-wrap gap-2">
               {leadership && missionChannel(activity) ? <span className="rounded-full bg-[#EDE7FE] px-3 py-1 text-xs font-semibold text-[#4600F3]">{CHANNEL_LABEL[missionChannel(activity)!]}</span> : null}

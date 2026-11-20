@@ -65,6 +65,8 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   const [rightOpen, setRightOpen] = useState(true);
   const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
   const [hoverDay, setHoverDay] = useState<{ day: number; top: number; left: number } | null>(null);
+  const [pinnedDay, setPinnedDay] = useState<number | null>(null);
+  const [openDetail, setOpenDetail] = useState<string | null>(null);
   const [active, setActive] = useState<{ event: CalendarEvent; top: number; left: number } | null>(null);
   const [pile, setPile] = useState<{ events: CalendarEvent[]; top: number; left: number } | null>(null);
   const [hint, setHint] = useState<{ text: string; top: number; left: number; below: boolean } | null>(null);
@@ -82,11 +84,24 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
   }, [birthdaysFocus]);
 
   useEffect(() => {
+    if (pinnedDay == null) return;
+    const clear = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('.cal-pop') || target?.closest('.cal-day')) return;
+      setPinnedDay(null);
+      setHoverDay(null);
+      setOpenDetail(null);
+    };
+    document.addEventListener('mousedown', clear);
+    return () => document.removeEventListener('mousedown', clear);
+  }, [pinnedDay]);
+
+  useEffect(() => {
     if (!page) return;
-    const hide = () => setHoverDay(null);
+    const hide = () => { if (pinnedDay == null) setHoverDay(null); };
     window.addEventListener('scroll', hide, true);
     return () => window.removeEventListener('scroll', hide, true);
-  }, [page]);
+  }, [page, pinnedDay]);
 
   useEffect(() => {
     localStorage.setItem(DISPLAY_KEY, display);
@@ -355,8 +370,8 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           subtitle={birthdaysFocus ? undefined : 'Acompanhe seus compromissos, eventos e aniversários da equipe.'}
           aside={
             <div className="flex shrink-0 items-center gap-2">
-              <button type="button" aria-label="Aniversários" aria-pressed={birthdaysFocus} onClick={openBirthdays} className={cn('grid h-11 w-11 place-items-center rounded-2xl', birthdaysFocus ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]')}>
-                <Cake className="h-5 w-5" strokeWidth={1.75} />
+              <button type="button" aria-label={birthdaysFocus ? 'Voltar ao calendário' : 'Aniversários'} aria-pressed={birthdaysFocus} onClick={birthdaysFocus ? openCalendar : openBirthdays} className={cn('grid h-11 w-11 place-items-center rounded-2xl', birthdaysFocus ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-white text-gray-700 shadow-[0_8px_24px_rgba(15,23,42,0.06)]')}>
+                {birthdaysFocus ? <Calendar className="h-5 w-5" strokeWidth={1.75} /> : <Cake className="h-5 w-5" strokeWidth={1.75} />}
               </button>
               <Button className="h-11 rounded-2xl px-4" onClick={() => { setEditingEvent(null); setCreateType('reuniao'); setEditorOpen(true); }}>
                 <Plus className="h-4 w-4" /> Adicionar evento
@@ -369,19 +384,15 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           <div className="flex items-center justify-between">
             <button type="button" aria-label="Mês anterior" onClick={() => { setHoverDay(null); shiftMonth(-1); }} className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#12274a] shadow-[5px_5px_11px_#d6deeb,-5px_-5px_11px_#fff] active:shadow-[inset_3px_3px_7px_#d6deeb,inset_-3px_-3px_7px_#fff]"><ChevronLeft className="h-4 w-4" /></button>
             <div className="text-center">
-              <p className="font-fraunces text-[38px] leading-none font-normal text-[#12274a] lowercase">{currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
+              <p className="text-[38px] leading-none font-semibold text-[#12274a] lowercase">{currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
               <p className="mt-1 text-[13px] tracking-[0.35em] text-[#12274a]">{year}</p>
             </div>
             <button type="button" aria-label="Próximo mês" onClick={() => { setHoverDay(null); shiftMonth(1); }} className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#12274a] shadow-[5px_5px_11px_#d6deeb,-5px_-5px_11px_#fff] active:shadow-[inset_3px_3px_7px_#d6deeb,inset_-3px_-3px_7px_#fff]"><ChevronRight className="h-4 w-4" /></button>
           </div>
-          <div className="relative mt-5 flex items-center gap-4 px-1 text-xs text-[#8a97ad]">
-            <span className="inline-flex items-center gap-1.5"><i className="h-1.5 w-1.5 rounded-full bg-[#4cd1d4]" />Compromisso</span>
-            <span className="inline-flex items-center gap-1.5"><i className="h-1.5 w-1.5 rounded-full bg-[#f59aa8]" />Aniversário</span>
-          </div>
           <div className="relative mt-6 grid grid-cols-7 border-b border-[#eceff5] pb-3 text-center text-[13px] font-bold text-[#12274a]">
             {weekdayLetters.map((day, index) => <div key={`${day}-${index}`} className={index % 6 === 0 ? 'text-[#f0647a]' : undefined}>{day}</div>)}
           </div>
-          <div className="cal-grid relative mt-4 grid grid-cols-7 gap-2" onMouseLeave={() => setHoverDay(null)}>
+          <div className="cal-grid relative mt-4 grid grid-cols-7 gap-2" onMouseLeave={() => { if (pinnedDay == null) setHoverDay(null); }}>
             {cells.map((cell, index) => {
               const dayEvents = cell.outside ? [] : eventsOn(cell.day);
               const date = new Date(year, month, cell.day);
@@ -394,14 +405,14 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
                   role="gridcell"
                   tabIndex={cell.outside ? -1 : 0}
                   onMouseEnter={(event) => {
-                    if (cell.outside || dayEvents.length === 0) { setHoverDay(null); return; }
+                    if (pinnedDay != null || cell.outside || dayEvents.length === 0) { if (pinnedDay == null) setHoverDay(null); return; }
                     const rect = event.currentTarget.getBoundingClientRect();
                     const width = 272;
                     let left = rect.right + 10;
                     if (left + width > window.innerWidth - 12) left = rect.left - width - 10;
                     setHoverDay({ day: cell.day, top: Math.min(Math.max(12, rect.top), window.innerHeight - 220), left });
                   }}
-                  onClick={() => { if (!cell.outside) setSelectedDay(cell.day); }}
+                  onClick={(click) => { if (cell.outside) return; setSelectedDay(cell.day); setPinnedDay(cell.day); setOpenDetail(null); if (!dayEvents.length) return; const box = click.currentTarget.getBoundingClientRect(); const width = 272; let left = box.right + 10; if (left + width > window.innerWidth - 12) left = box.left - width - 10; setHoverDay({ day: cell.day, top: Math.min(Math.max(12, box.top), window.innerHeight - 220), left }); }}
                   className={cn('cal-day flex min-h-[132px] flex-col gap-1.5 rounded-[26px] p-2', cell.outside ? 'bg-transparent' : 'bg-white hover:shadow-[5px_5px_12px_#d6deeb,-5px_-5px_12px_#fff]')}
                 >
                   <p className={cn('grid h-8 w-8 place-items-center rounded-full text-sm', cell.outside ? 'font-normal text-[#8a97ad]' : weekend ? 'text-[#f0647a]' : 'text-[#12274a]', isCurrent && 'shadow-[inset_0_0_0_1.5px_#4cd1d4]', picked && 'bg-white font-bold shadow-[4px_4px_9px_#d6deeb,-4px_-4px_9px_#fff]')}>{cell.day}</p>
@@ -410,7 +421,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
                       const birthday = event.type === 'birthday';
                       const first = event.personName?.split(' ')[0];
                       return (
-                        <button key={event.id} type="button" onClick={(click) => { click.stopPropagation(); openEvent(event, click.currentTarget); }} className="cal-pill flex min-w-0 items-center gap-2 rounded-[18px] bg-white px-2.5 py-1.5 text-left shadow-[3px_3px_7px_#d6deeb,-3px_-3px_7px_#fff]">
+                        <button key={event.id} type="button" onClick={(click) => { click.stopPropagation(); setPinnedDay(cell.day); setOpenDetail(event.id); const rect = click.currentTarget.closest('.cal-day')?.getBoundingClientRect(); if (rect) { const width = 272; let left = rect.right + 10; if (left + width > window.innerWidth - 12) left = rect.left - width - 10; setHoverDay({ day: cell.day, top: Math.min(Math.max(12, rect.top), window.innerHeight - 220), left }); } }} className="cal-pill flex min-w-0 items-center gap-2 rounded-[18px] bg-white px-2.5 py-1.5 text-left shadow-[3px_3px_7px_#d6deeb,-3px_-3px_7px_#fff]">
                           {birthday && event.avatar ? <img src={event.avatar} alt="" className="h-4 w-4 shrink-0 rounded-full" /> : <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', birthday ? 'bg-[#f59aa8]' : 'bg-[#4cd1d4]')} />}
                           <span className="min-w-0">
                             <span className="block truncate text-[12px] font-medium text-[#12274a]">{birthday ? first : event.title}</span>
@@ -444,22 +455,22 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
           </div>
         ) : null}
         {hoverDay && eventsOn(hoverDay.day).length > 0 ? (
-          <div className="cal-pop pointer-events-none fixed z-20 w-[272px] rounded-[26px] bg-white p-[18px] shadow-[14px_14px_30px_#d6deeb,-8px_-8px_22px_#fff]" style={{ top: hoverDay.top, left: hoverDay.left }}>
-            <p className="font-fraunces text-[19px] text-[#12274a]">{hoverDay.day} de {currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
+          <div className={cn('cal-pop fixed z-20 w-[272px] rounded-[26px] bg-white p-[18px] shadow-[14px_14px_30px_#d6deeb,-8px_-8px_22px_#fff]', pinnedDay == null && 'pointer-events-none')} style={{ top: hoverDay.top, left: hoverDay.left }} onMouseDown={(event) => event.stopPropagation()}>
+            <p className="text-[19px] font-semibold text-[#12274a]">{hoverDay.day} de {currentDate.toLocaleDateString('pt-BR', { month: 'long' })}</p>
             <p className="mb-3 text-xs text-[#8a97ad]">{weekNames[new Date(year, month, hoverDay.day).getDay()]} · {eventsOn(hoverDay.day).length} {eventsOn(hoverDay.day).length > 1 ? 'eventos' : 'evento'}</p>
             {eventsOn(hoverDay.day).map((event) => (
-              <div key={event.id} className="mb-2 flex items-center gap-3 rounded-[20px] px-3 py-2.5 shadow-[inset_3px_3px_8px_#d6deeb,inset_-3px_-3px_8px_#fff] last:mb-0">
+              <button key={event.id} type="button" className="mb-2 flex w-full items-center gap-3 rounded-[20px] px-3 py-2.5 text-left shadow-[inset_3px_3px_8px_#d6deeb,inset_-3px_-3px_8px_#fff] last:mb-0" onClick={() => setOpenDetail((current) => current === event.id ? null : event.id)}>
                 <span className={cn('w-1 self-stretch rounded', event.type === 'birthday' ? 'bg-[#f59aa8]' : 'bg-[#4cd1d4]')} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{event.type === 'birthday' ? event.personName : event.title}</span>
-                  <span className="block truncate text-xs text-[#8a97ad]">{event.type === 'birthday' ? 'Aniversário' : event.place}</span>
+                  <span className="block text-xs text-[#8a97ad]">{openDetail === event.id ? (event.description || event.place || 'Aniversário') : (event.type === 'birthday' ? 'Aniversário' : event.place)}</span>
                 </span>
                 {event.time ? <span className="text-[13px] font-bold">{event.time}</span> : null}
-              </div>
+              </button>
             ))}
           </div>
         ) : null}
-        {active ? (
+        {active && pinnedDay == null ? (
           <div ref={dialogRef} role="dialog" aria-label={active.event.title} className="fixed z-50 w-72 rounded-xl border bg-card p-4 text-sm shadow-lg" style={{ top: active.top, left: active.left }} onClick={(event) => event.stopPropagation()}>
             <button type="button" aria-label="Fechar" className="absolute top-2 right-2 rounded-md p-1 text-muted-foreground hover:bg-muted" onClick={() => setActive(null)}><X className="h-4 w-4" /></button>
             <p className="pr-6 text-xs font-medium text-primary">{active.event.category ?? 'Evento'}</p>

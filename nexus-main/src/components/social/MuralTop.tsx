@@ -53,7 +53,7 @@ function readOrder() {
 const Face: FC<{ person: Person; self?: boolean; mood?: string; gift?: string; onMood?: () => void }> = ({ person, self, mood, gift, onMood }) => {
   const portrait = (
     <span className="relative block aspect-square w-full">
-      <img src={person.avatar} alt="" className="h-full w-full rounded-full bg-[#EDE7FE] object-cover" style={{ boxShadow: '0 0 0 3px #fff' }} />
+      <img src={person.avatar} alt="" className="h-full w-full rounded-full bg-[#EDE7FE] object-cover" style={{ boxShadow: gift ? '0 0 0 3px #fff, 0 0 0 5px #6B33F6' : '0 0 0 3px #fff' }} />
       {mood ? (
         <span className="absolute bottom-0 left-0 grid h-8 w-8 place-items-center rounded-full bg-white text-[18px] leading-none ring-2 ring-white" aria-hidden="true">{mood}</span>
       ) : null}
@@ -61,8 +61,10 @@ const Face: FC<{ person: Person; self?: boolean; mood?: string; gift?: string; o
         <span className="absolute right-0 bottom-0 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-[#6B33F6] text-lg font-bold leading-none text-white ring-2 ring-white">+</span>
       ) : null}
       {gift ? (
-        <span className="group/gift absolute -top-4 left-1/2 z-10 -translate-x-1/2 text-[#3C3952]">
-          <Gift className="h-5 w-5" strokeWidth={1.6} />
+        <span className="group/gift absolute -top-3 left-1/2 z-10 -translate-x-1/2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-[#6B33F6]" style={{ boxShadow: '0 0 0 2px #6B33F6' }}>
+            <Gift className="h-3.5 w-3.5" strokeWidth={1.6} />
+          </span>
           <span className="pointer-events-none absolute top-6 left-1/2 z-20 hidden w-max -translate-x-1/2 rounded-lg bg-[#1F2937] px-2.5 py-1.5 text-left text-[11px] font-medium text-white group-hover/gift:block group-focus-within/gift:block">
             {gift}
           </span>

@@ -393,12 +393,12 @@ export const MuralPublishDialog: FC<Props> = (props) => {
       <DialogContent
         showCloseButton={false}
         overlayClassName="bg-slate-900/25 backdrop-blur-md"
-        className={`gap-0 overflow-visible border-0 bg-white p-0 ${isRecognition ? 'rounded-[22px] shadow-[0_30px_80px_-20px_rgba(79,51,184,0.35),0_2px_6px_rgba(31,27,46,0.06)] sm:max-w-[600px]' : 'rounded-2xl border border-gray-100 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:max-w-[640px]'}`}
+        className={`flex max-h-[min(760px,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden border-0 bg-white p-0 ${isRecognition ? 'rounded-[22px] shadow-[0_30px_80px_-20px_rgba(79,51,184,0.35),0_2px_6px_rgba(31,27,46,0.06)] sm:max-w-[600px]' : 'rounded-2xl border border-gray-100 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:max-w-[640px]'}`}
         onPointerDownOutside={(event) => { if (audioFile || recording) event.preventDefault(); }}
         onInteractOutside={(event) => { if (audioFile || recording) event.preventDefault(); }}
       >
         <DialogDescription className="sr-only">{dialogText}</DialogDescription>
-        <div className="flex max-h-[min(760px,calc(100dvh-2rem))] flex-col">
+        <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex items-start gap-3 px-5 pt-5 pb-3">
             <div className="min-w-0 flex-1">
               <DialogTitle className={isRecognition ? 'text-lg font-bold tracking-tight' : 'text-xl font-bold tracking-tight text-gray-800'}>{dialogTitle}</DialogTitle>
@@ -411,7 +411,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3">
             {props.source === 'recognition-new' ? (
-              <div className="mb-3 grid gap-3 sm:grid-cols-2">
+              <div className="mb-3 grid gap-3">
                 <div className="relative">
                   <span className="mb-1.5 block text-[11px] font-semibold tracking-[0.08em] text-[#8a85a0] uppercase">Pessoa reconhecida</span>
                   <button type="button" aria-haspopup="listbox" aria-expanded={pick === 'person'} onClick={() => setPick((value) => value === 'person' ? null : 'person')} className="flex h-[42px] w-full items-center gap-2.5 rounded-[11px] border-[1.5px] border-transparent bg-[#f6f5fa] px-2 text-left text-sm">
@@ -424,24 +424,6 @@ export const MuralPublishDialog: FC<Props> = (props) => {
                         <button key={item.id} type="button" role="option" onClick={() => { setPersonId(item.id); setPick(null); }} className={`flex w-full items-center gap-2.5 rounded-[14px] px-2.5 py-2 text-left text-[13.5px] ${item.id === personId ? 'font-semibold text-[#4f33b8]' : ''}`}>
                           <span className="grid h-[26px] w-[26px] place-items-center rounded-full bg-[#ece6ff] text-[10px] font-bold text-[#4f33b8]">{item.name.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span>
                           {item.name}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="relative">
-                  <span className="mb-1.5 block text-[11px] font-semibold tracking-[0.08em] text-[#8a85a0] uppercase">Etiqueta</span>
-                  <button type="button" aria-haspopup="listbox" aria-expanded={pick === 'tag'} onClick={() => setPick((value) => value === 'tag' ? null : 'tag')} className="flex h-[42px] w-full items-center gap-2.5 rounded-[11px] border-[1.5px] border-transparent bg-[#f6f5fa] px-3 text-left text-sm">
-                    <span className="h-2 w-2 rounded-full" style={{ background: tag === 'Colaboração' ? '#7c5cf5' : tag === 'Atendimento' ? '#4cb782' : tag === 'Entrega' ? '#3b82f6' : '#e5484d' }} />
-                    <span className="min-w-0 flex-1 truncate">{tag}</span>
-                    <ChevronDown className={`h-4 w-4 text-[#8a85a0] ${pick === 'tag' ? 'rotate-180' : ''}`} />
-                  </button>
-                  {pick === 'tag' ? (
-                    <div role="listbox" className="absolute right-0 left-0 z-20 mt-1 rounded-[22px] bg-white p-1.5 shadow-[14px_14px_30px_#d8d2ee,-8px_-8px_22px_#fff,0_0_0_1px_#e8e4f4]">
-                      {tags.map((item) => (
-                        <button key={item} type="button" role="option" onClick={() => { setTag(item); setPick(null); }} className={`flex w-full items-center gap-2.5 rounded-[14px] px-2.5 py-2 text-left text-[13.5px] ${item === tag ? 'font-semibold text-[#4f33b8]' : ''}`}>
-                          <span className="h-2 w-2 rounded-full" style={{ background: item === 'Colaboração' ? '#7c5cf5' : item === 'Atendimento' ? '#4cb782' : item === 'Entrega' ? '#3b82f6' : '#e5484d' }} />
-                          {item}
                         </button>
                       ))}
                     </div>

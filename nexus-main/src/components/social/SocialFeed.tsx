@@ -22,7 +22,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [reposts, setReposts] = useState<Repost[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [commentMedia, setCommentMedia] = useState<Record<string, CommentMedia | null>>({});
+  const [commentMedia, setCommentMedia] = useState<Record<string, CommentMedia[]>>({});
   const [savedOnly, setSavedOnly] = useState(false);
   const query = usePageSearch().query;
   const [feedError, setFeedError] = useState(false);
@@ -37,6 +37,24 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   const journalShare = news
     ? { id: news.id, title: news.title, summary: articleSummary(news.content), href: `/announcements/${news.id}`, cover: articleCover(news) || undefined }
     : null;
+
+  function stageCommentFile(postId: string, file: File, forced?: CommentMedia['kind']) {
+    const kind: CommentMedia['kind'] = forced ?? (file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : file.type.startsWith('image/') ? (file.type === 'image/gif' ? 'gif' : 'image') : 'document');
+    const local = URL.createObjectURL(file);
+    const placeholder: CommentMedia = { kind, url: local, name: file.name };
+    setCommentMedia((current) => ({ ...current, [postId]: [...(current[postId] ?? []), placeholder].slice(0, 8) }));
+    void uploadMedia(file).then((uploaded) => {
+      URL.revokeObjectURL(local);
+      setCommentMedia((current) => ({
+        ...current,
+        [postId]: (current[postId] ?? []).map((item) => (item.url === local ? { ...item, url: uploaded.url } : item)),
+      }));
+    }).catch(() => {
+      URL.revokeObjectURL(local);
+      setCommentMedia((current) => ({ ...current, [postId]: (current[postId] ?? []).filter((item) => item.url !== local) }));
+      toast.error('Não foi possível enviar o arquivo.');
+    });
+  }
 
   useEffect(() => {
     if (!newsId) return;
@@ -251,45 +269,25 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
           }}
           onAddComment={() => {
             const text = (drafts[post.id] ?? '').trim();
-            const media = commentMedia[post.id];
-            if (media?.url.startsWith('blob:')) {
+            const media = commentMedia[post.id] ?? [];
+            if (media.some((item) => item.url.startsWith('blob:'))) {
               toast.error('Espere o arquivo terminar de enviar.');
               return;
             }
-            if (!text && !media) return;
-            void commentFeedPost(post.id, text, media ?? undefined).then((result) => {
+            if (!text && media.length === 0) return;
+            void commentFeedPost(post.id, text, media).then((result) => {
               holdFeed();
               replace({ ...result.post, commentsOpen: true });
               setDrafts((current) => ({ ...current, [post.id]: '' }));
-              setCommentMedia((current) => ({ ...current, [post.id]: null }));
+              setCommentMedia((current) => ({ ...current, [post.id]: [] }));
             }).catch(() => toast.error('Não foi possível comentar.'));
           }}
-          pendingMedia={commentMedia[post.id]}
+          pendingMedia={commentMedia[post.id] ?? []}
           onMedia={(media) => setCommentMedia((current) => ({ ...current, [post.id]: media }))}
-          onGifFile={(file) => {
-            void uploadMedia(file).then((uploaded) => setCommentMedia((current) => ({ ...current, [post.id]: { kind: 'gif', url: uploaded.url } }))).catch(() => toast.error('Não foi possível enviar o GIF.'));
-          }}
-          onAudioFile={(file) => {
-            const local = URL.createObjectURL(file);
-            setCommentMedia((current) => ({ ...current, [post.id]: { kind: 'audio', url: local } }));
-            void uploadMedia(file).then((uploaded) => {
-              URL.revokeObjectURL(local);
-              setCommentMedia((current) => ({ ...current, [post.id]: { kind: 'audio', url: uploaded.url } }));
-            }).catch(() => toast.error('Não foi possível enviar o áudio.'));
-          }}
-          onPasteFile={(file) => {
-            const kind = file.type.startsWith('video/') ? 'video' : 'image';
-            const local = URL.createObjectURL(file);
-            setCommentMedia((current) => ({ ...current, [post.id]: { kind, url: local } }));
-            void uploadMedia(file).then((uploaded) => {
-              URL.revokeObjectURL(local);
-              setCommentMedia((current) => ({ ...current, [post.id]: { kind, url: uploaded.url } }));
-            }).catch(() => {
-              URL.revokeObjectURL(local);
-              setCommentMedia((current) => ({ ...current, [post.id]: null }));
-              toast.error('Não foi possível colar o arquivo.');
-            });
-          }}
+          onFile={(file) => stageCommentFile(post.id, file)}
+          onGifFile={(file) => stageCommentFile(post.id, file, 'gif')}
+          onAudioFile={(file) => stageCommentFile(post.id, file, 'audio')}
+          onPasteFile={(file) => stageCommentFile(post.id, file)}
           onLikeComment={(commentId) => void likeFeedComment(post.id, commentId).then((result) => replace({ ...result.post, commentsOpen: true })).catch(() => toast.error('Não foi possível curtir o comentário.'))}
           onVote={(optionId) => void voteFeedPost(post.id, optionId).then((result) => replace(result.post)).catch(() => toast.error('Não foi possível registrar o voto.'))}
           onRepublish={() => {

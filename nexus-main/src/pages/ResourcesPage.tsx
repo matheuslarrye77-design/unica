@@ -28,7 +28,7 @@ import {
 import { currentUser } from '@/data/mockData';
 import { assertPermission, useInstitution } from '@/lib/institution';
 import { cn } from '@/lib/utils';
-import { Bookmark, CalendarDays, Download, FileText, Filter, MoreHorizontal, Plus, Search } from 'lucide-react';
+import { Bookmark, CalendarDays, Download, FileText, Filter, MoreHorizontal, Pencil, Plus, Search } from 'lucide-react';
 import { authHeaders } from '@/lib/session';
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { toast } from 'sonner';
@@ -149,12 +149,12 @@ export const ResourcesPage: FC = () => {
               icon={<FileText className="h-5 w-5" strokeWidth={1.75} />}
               title="Documentos"
               subtitle="Encontre procedimentos, requerimentos, orientações e documentos internos."
-              aside={canSend ? (
+              aside={(
                 <button type="button" onClick={() => openEditor()} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500">
                   <Plus className="h-4 w-4" />
                   Enviar documento
                 </button>
-              ) : null}
+              )}
             />
           </div>
 
@@ -229,6 +229,7 @@ export const ResourcesPage: FC = () => {
                         <button type="button" aria-label={saved ? 'Remover dos salvos' : 'Salvar'} aria-pressed={saved} onClick={() => void favorite(document)} className={cn('grid h-11 w-11 place-items-center rounded-2xl bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)]', saved ? 'text-blue-600' : 'text-gray-400 hover:text-blue-600')}>
                           <Bookmark className="h-4 w-4" fill={saved ? 'currentColor' : 'none'} />
                         </button>
+                        {canSend ? <button type="button" aria-label="Editar documento" onClick={() => openEditor(document)} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600"><Pencil className="h-4 w-4" /></button> : null}
                         <button type="button" aria-label="Baixar" onClick={() => void download(document)} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
                           <Download className="h-4 w-4" />
                         </button>
@@ -255,31 +256,32 @@ export const ResourcesPage: FC = () => {
     </PageFrame>
 
       <Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null); }}>
-        <DialogContent overlayClassName="bg-slate-900/25 backdrop-blur-md" className="max-h-[85vh] overflow-y-auto rounded-2xl border border-gray-100 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:max-w-2xl">
+        <DialogContent overlayClassName="bg-[rgba(31,27,46,0.38)]" className="max-h-[85vh] overflow-y-auto rounded-[22px] border-0 bg-white p-6 shadow-[0_30px_80px_-20px_rgba(79,51,184,0.35)] sm:max-w-[520px]">
           {selected ? (
             <>
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold tracking-tight text-gray-800">{selected.title}</DialogTitle>
-                <DialogDescription className="text-base text-gray-500">{selected.subtitle}</DialogDescription>
+              <DialogHeader className="items-center text-center">
+                <DialogTitle className="text-lg font-bold tracking-tight text-[#1f1b2e]">{selected.title}</DialogTitle>
+                <DialogDescription className="sr-only">{selected.subtitle}</DialogDescription>
               </DialogHeader>
-              <p className="inline-flex items-center gap-2 text-sm text-muted-foreground"><FileText className="h-4 w-4" />{selected.fileName}</p>
-              <p className="text-sm leading-6">{selected.description}</p>
-              <dl className="grid gap-1 text-sm text-muted-foreground">
-                <div>Categoria: <span className="text-foreground">{categoryLabel(selected.category)}</span></div>
-                <div>Sistema: <span className="text-foreground">{systemLabel(selected.system)}</span></div>
-                <div>Autor: <span className="text-foreground">{selected.author}</span></div>
-                <div>Publicação: <span className="text-foreground">{formatDate(selected.publishedAt)}</span></div>
-                <div>Atualização: <span className="text-foreground">{formatDate(selected.updatedAt)}</span></div>
-                <div>Arquivo: <span className="text-foreground">{selected.fileName}</span></div>
-              </dl>
-              {previewText ? <pre className="max-h-48 overflow-auto rounded-xl bg-muted p-3 text-sm whitespace-pre-wrap">{previewText}</pre> : null}
+              <div className="flex flex-wrap justify-center gap-2">
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#4f33b8] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]">{systemLabel(selected.system)}</span>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#4f33b8] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]">{selected.author}</span>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#4f33b8] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]">{formatDate(selected.publishedAt)}</span>
+              </div>
+              <div className="max-h-[150px] overflow-y-auto rounded-[22px] bg-white p-4 text-[13.5px] leading-6 text-[#4a4560] shadow-[10px_10px_24px_#d8d2ee,-6px_-6px_18px_#fff,0_0_0_1px_#e8e4f4]">
+                <p className="whitespace-pre-wrap">{previewText || selected.description}</p>
+              </div>
               {previewUrl && selected.file.type.startsWith('image/') ? <img src={previewUrl} alt="" className="rounded-xl" /> : null}
-              {previewUrl && selected.file.type === 'application/pdf' ? <iframe title={selected.title} src={previewUrl} className="h-72 w-full rounded-xl border" /> : null}
-              <DialogFooter>
-                {previewUrl ? <Button variant="outline" className="h-11 rounded-2xl px-4 text-base" onClick={() => window.open(previewUrl, '_blank')}>Abrir</Button> : null}
-                <Button variant="outline" className="h-11 rounded-2xl px-4 text-base" onClick={() => void download(selected)}>Baixar</Button>
-                <Button className="h-11 rounded-2xl px-4 text-base" onClick={() => void favorite(selected)}>{isSaved(selected) ? 'Salvo' : 'Salvar'}</Button>
-              </DialogFooter>
+              {previewUrl && selected.file.type === 'application/pdf' ? <iframe title={selected.title} src={previewUrl} className="h-40 w-full rounded-xl border-0" /> : null}
+              <div className="flex items-center justify-between gap-2 border-t border-[#e8e4f4] pt-3">
+                <span className="inline-flex min-w-0 items-center gap-2 text-xs text-[#8a85a0]"><FileText className="h-4 w-4 shrink-0 text-[#9b82ff]" /><span className="truncate">{selected.fileName}</span></span>
+                <div className="flex shrink-0 gap-2">
+                  {previewUrl ? <button type="button" className="rounded-[11px] bg-white px-4 py-2 text-sm font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]" onClick={() => window.open(previewUrl, '_blank')}>Abrir</button> : null}
+                  <button type="button" className="rounded-[11px] bg-white px-4 py-2 text-sm font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]" onClick={() => void favorite(selected)}>{isSaved(selected) ? 'Salvo' : 'Salvar'}</button>
+                  {canSend ? <button type="button" aria-label="Editar" className="grid h-10 w-10 place-items-center rounded-[11px] bg-white text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]" onClick={() => { setSelected(null); openEditor(selected); }}><Pencil className="h-4 w-4" /></button> : null}
+                  <button type="button" className="rounded-[11px] bg-[#6644e0] px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)]" onClick={() => void download(selected)}>Baixar</button>
+                </div>
+              </div>
             </>
           ) : null}
         </DialogContent>
