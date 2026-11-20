@@ -16,6 +16,12 @@ export type JournalMedia = {
   duration?: number;
 };
 
+export type JournalCommentMedia = {
+  kind: 'gif' | 'sticker' | 'image' | 'video' | 'audio' | 'document';
+  url: string;
+  name?: string;
+};
+
 export type JournalComment = {
   id: string;
   author: string;
@@ -24,6 +30,7 @@ export type JournalComment = {
   replyTo?: string;
   likes?: number;
   likedBy?: string[];
+  media?: JournalCommentMedia[];
 };
 
 export type JournalArticle = {
@@ -742,9 +749,10 @@ export function toggleJournalReaction(id: string, name: string) {
   }));
 }
 
-export function addJournalComment(id: string, author: string, text: string, replyTo?: string) {
-  const comment: JournalComment = { id: generateId(), author, text: text.trim(), date: new Date().toISOString(), replyTo, likes: 0, likedBy: [] };
-  if (!comment.text) return;
+export function addJournalComment(id: string, author: string, text: string, replyTo?: string, media?: JournalCommentMedia[]) {
+  const pieces = (media ?? []).filter((item) => item.url && !item.url.startsWith('blob:')).slice(0, 8);
+  const comment: JournalComment = { id: generateId(), author, text: text.trim(), date: new Date().toISOString(), replyTo, likes: 0, likedBy: [], media: pieces };
+  if (!comment.text && pieces.length === 0) return;
   commit(articles.map((article) => (article.id === id ? { ...article, comments: [...article.comments, comment] } : article)));
 }
 

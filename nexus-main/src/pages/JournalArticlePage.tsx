@@ -1,11 +1,13 @@
 import { JournalEditor } from '@/components/journal/JournalEditor';
 import { JournalBadge, JournalRichText } from '@/components/journal/JournalVisual';
+import { ComposerExtras } from '@/components/social/ComposerExtras';
 import { ZoomImage } from '@/components/social/PhotoGallery';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles, useJournalSaved } from '@/components/journal/useJournal';
 import { Textarea } from '@/components/ui/textarea';
 import {
   addJournalComment,
+  type JournalCommentMedia,
   archiveJournalArticle,
   deleteJournalComment,
   toggleJournalCommentLike,
@@ -21,8 +23,9 @@ import {
 } from '@/data/journal';
 import { JournalShareDialog } from '@/components/journal/JournalShareDialog';
 import { currentUser } from '@/data/mockData';
+import { uploadMedia } from '@/lib/feed';
 import { cn } from '@/lib/utils';
-import { ArrowLeft, Bookmark, FileText, Heart, Megaphone, MessageCircle, Pencil, Pin, RotateCcw, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, Bookmark, FileText, Heart, Megaphone, MessageCircle, Mic, Paperclip, Pencil, Pin, RotateCcw, Send, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState, type FC } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -51,6 +54,119 @@ const JournalAudio: FC<{ url: string; start?: number; duration?: number }> = ({ 
   return <audio ref={ref} controls src={url} preload="metadata" className="w-full" />;
 };
 
+function CommentPieces({ media }: { media?: JournalCommentMedia[] }) {
+  if (!media?.length) return null;
+  return (
+    <div className="mt-2 flex flex-col gap-2">
+      {media.map((item, index) => {
+        if (item.kind === 'image' || item.kind === 'gif' || item.kind === 'sticker') {
+          return <img key={`${item.url}-${index}`} src={item.url} alt="" className={item.kind === 'sticker' ? 'h-24 w-24 object-contain' : 'max-h-52 w-fit rounded-xl object-cover'} />;
+        }
+        if (item.kind === 'video') return <video key={`${item.url}-${index}`} src={item.url} controls className="max-h-52 w-full rounded-xl" />;
+        if (item.kind === 'audio') return <audio key={`${item.url}-${index}`} src={item.url} controls className="w-full" />;
+        return (
+          <a key={`${item.url}-${index}`} href={item.url} download={item.name} className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#F6F3FF] px-3 py-2 text-sm font-medium text-[#4f33b8]">
+            <FileText className="h-4 w-4" />
+            {item.name || 'Arquivo'}
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
+const CommentComposer: FC<{
+  value: string;
+  placeholder: string;
+  label: string;
+  onChange: (value: string) => void;
+  onSend: (text: string, media: JournalCommentMedia[]) => void;
+}> = ({ value, placeholder, label, onChange, onSend }) => {
+  const [media, setMedia] = useState<JournalCommentMedia[]>([]);
+  const [recording, setRecording] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const recorder = useRef<MediaRecorder | null>(null);
+  const chunks = useRef<Blob[]>([]);
+  const busy = media.some((item) => item.url.startsWith('blob:'));
+
+  async function addFile(file: File) {
+    if (media.length >= 8) {
+      toast.error('Dá para enviar até 8 arquivos.');
+      return;
+    }
+    const kind: JournalCommentMedia['kind'] = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'document';
+    const local = URL.createObjectURL(file);
+    setMedia((current) => [...current, { kind, url: local, name: file.name }]);
+    try {
+      const uploaded = await uploadMedia(file);
+      setMedia((current) => current.map((item) => (item.url === local ? { ...item, url: uploaded.url, name: uploaded.name || item.name } : item)));
+    } catch {
+      setMedia((current) => current.filter((item) => item.url !== local));
+      toast.error('Não foi possível enviar o arquivo.');
+    }
+  }
+
+  async function toggleRecord() {
+    if (recorder.current && recorder.current.state === 'recording') {
+      recorder.current.stop();
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      chunks.current = [];
+      rec.ondataavailable = (event) => { if (event.data.size > 0) chunks.current.push(event.data); };
+      rec.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        setRecording(false);
+        recorder.current = null;
+        const blob = new Blob(chunks.current, { type: rec.mimeType || 'audio/webm' });
+        if (blob.size < 1) return;
+        void addFile(new File([blob], 'gravacao.webm', { type: blob.type || 'audio/webm' }));
+      };
+      recorder.current = rec;
+      rec.start();
+      setRecording(true);
+    } catch {
+      setRecording(false);
+      toast.error('Não foi possível gravar o áudio.');
+    }
+  }
+
+  function pushPiece(kind: 'sticker' | 'gif', url: string, name: string) {
+    setMedia((current) => (current.length >= 8 ? current : [...current, { kind, url, name }]));
+  }
+
+  return (
+    <div className="mt-2">
+      {media.length ? (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {media.map((item) => (
+            <span key={item.url} className="inline-flex items-center gap-1 rounded-full bg-[#F6F3FF] px-2 py-1 text-xs font-medium text-[#4f33b8]">
+              {item.name || item.kind}
+              <button type="button" aria-label="Remover arquivo" onClick={() => setMedia((current) => current.filter((piece) => piece.url !== item.url))}><X className="h-3 w-3" /></button>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className="flex items-end gap-1">
+        <Textarea value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="min-h-10 flex-1" />
+        <input ref={fileRef} type="file" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" className="hidden" onChange={(event) => { [...(event.target.files ?? [])].forEach((file) => void addFile(file)); event.target.value = ''; }} />
+        <button type="button" aria-label="Anexar arquivo" onClick={() => fileRef.current?.click()} className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[#3600C2] hover:bg-[#F5F1FF]"><Paperclip className="h-4 w-4" /></button>
+        <button type="button" aria-label={recording ? 'Parar gravação' : 'Gravar áudio'} aria-pressed={recording} onClick={() => void toggleRecord()} className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-[#F5F1FF]', recording ? 'text-[#D6334B]' : 'text-[#3600C2]')}><Mic className="h-4 w-4" /></button>
+        <ComposerExtras
+          onEmoji={(emoji) => onChange(`${value}${emoji}`)}
+          onSticker={(url) => pushPiece('sticker', url, 'Figurinha')}
+          onGif={(url) => pushPiece('gif', url, 'GIF')}
+        />
+        <button type="button" aria-label={label} disabled={busy || (!value.trim() && media.length === 0)} onClick={() => { onSend(value, media); setMedia([]); }} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 disabled:opacity-40"><Send className="h-4 w-4" /></button>
+      </div>
+    </div>
+  );
+};
+
 export const JournalArticlePage: FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -76,9 +192,9 @@ export const JournalArticlePage: FC = () => {
 
   const reacted = article.reactedBy.includes(currentUser.name);
 
-  function sendComment(text: string, parentId?: string) {
-    if (!article || !text.trim()) return;
-    addJournalComment(article.id, currentUser.name, text, parentId);
+  function sendComment(text: string, parentId?: string, media?: JournalCommentMedia[]) {
+    if (!article || (!text.trim() && !(media && media.length))) return;
+    addJournalComment(article.id, currentUser.name, text, parentId, media);
     if (parentId) {
       setReplyDraft('');
       setReplyTo(null);
@@ -189,7 +305,8 @@ export const JournalArticlePage: FC = () => {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="mb-1 text-[15px] font-medium">{item.author}</p>
-                        <p className="text-[15px] leading-6 whitespace-pre-wrap">{item.text}</p>
+                        {item.text ? <p className="text-[15px] leading-6 whitespace-pre-wrap">{item.text}</p> : null}
+                        <CommentPieces media={item.media} />
                         <button type="button" className="mt-1 text-xs font-semibold text-gray-500 hover:text-[#6D32F5]" onClick={() => { setReplyTo(item.id); setReplyDraft(''); }}>Responder</button>
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
@@ -212,7 +329,8 @@ export const JournalArticlePage: FC = () => {
                         <div key={reply.id} className="mt-2 ml-8 flex items-start justify-between gap-3">
                           <div>
                             <p className="mb-1 text-[14px] font-medium">{reply.author}</p>
-                            <p className="text-[14px] leading-6 whitespace-pre-wrap">{reply.text}</p>
+                            {reply.text ? <p className="text-[14px] leading-6 whitespace-pre-wrap">{reply.text}</p> : null}
+                            <CommentPieces media={reply.media} />
                           </div>
                           <div className="flex shrink-0 items-center gap-1">
                             <button type="button" aria-label={replyLiked ? 'Descurtir resposta' : 'Curtir resposta'} aria-pressed={replyLiked} onClick={() => toggleJournalCommentLike(article.id, reply.id, currentUser.name)} className={cn('grid h-8 w-8 place-items-center rounded-full text-gray-500 hover:bg-[#F6F3FF]', replyLiked && 'text-[#6D32F5]')}>
@@ -226,18 +344,14 @@ export const JournalArticlePage: FC = () => {
                       );
                     }) : null}
                     {replyTo === item.id ? (
-                      <div className="mt-2 ml-8 flex items-end gap-2">
-                        <Textarea value={replyDraft} onChange={(event) => setReplyDraft(event.target.value)} placeholder={`Responder ${item.author}...`} className="min-h-10" />
-                        <button type="button" aria-label="Enviar resposta" disabled={!replyDraft.trim()} onClick={() => sendComment(replyDraft, item.id)} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 disabled:opacity-40"><Send className="h-4 w-4" /></button>
+                      <div className="ml-8">
+                        <CommentComposer value={replyDraft} placeholder={`Responder ${item.author}...`} label="Enviar resposta" onChange={setReplyDraft} onSend={(text, media) => sendComment(text, item.id, media)} />
                       </div>
                     ) : null}
                   </div>
                 );
               })}
-              <div className="mt-4 flex items-end gap-2">
-                <Textarea id="comentario-noticia" value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Escreva um comentário..." />
-                <button type="button" aria-label="Enviar comentário" disabled={!comment.trim()} onClick={() => sendComment(comment)} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 disabled:opacity-40"><Send className="h-4 w-4" /></button>
-              </div>
+              <CommentComposer value={comment} placeholder="Escreva um comentário..." label="Enviar comentário" onChange={setComment} onSend={(text, media) => sendComment(text, undefined, media)} />
             </section>
           </div>
         </article>

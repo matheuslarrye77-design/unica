@@ -471,6 +471,7 @@ export const BirthdayTicket: FC = () => {
   const [letter, setLetter] = useState('');
   const [look, setLook] = useState<TextStyle>(EMPTY_LOOK);
   const [fontOpen, setFontOpen] = useState(false);
+  const [textTune, setTextTune] = useState<'sp' | 'op' | null>(null);
   const [colorsOpen, setColorsOpen] = useState(false);
   const [swatches, setSwatches] = useState<string[]>(readSwatches);
   const [canUndo, setCanUndo] = useState(false);
@@ -1708,14 +1709,14 @@ export const BirthdayTicket: FC = () => {
                       {canAdd ? (
                         <div className="mb-3 flex gap-2">
                           <div className={cn('relative h-9 flex-1', uploading && 'pointer-events-none opacity-50')}>
-                            <button type="button" aria-label="Enviar figurinha" disabled={Boolean(uploading)} onClick={() => openPhoto(false)} className="flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-[#F4F1FB] text-xs font-medium text-gray-700 hover:bg-[#E7E0F8] disabled:opacity-50">
+                            <button type="button" aria-label="Enviar figurinha" disabled={Boolean(uploading)} onClick={() => openPhoto(false)} className="flex h-9 w-full items-center justify-center gap-1.5 rounded-[11px] bg-white text-xs font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4] hover:bg-[#f6f3ff] hover:text-[#4f33b8] disabled:opacity-50">
                               <ImagePlus className="pointer-events-none h-3.5 w-3.5" />
                               Enviar imagem
                             </button>
                             <input ref={photoRef} type="file" accept={IMAGE_ACCEPT} tabIndex={-1} aria-hidden="true" className="absolute inset-0 z-10 cursor-pointer opacity-0" onClick={(event) => { if (!draftMessage.trim()) { event.preventDefault(); toast.error('Escreva o recado antes de escolher o adesivo.'); } }} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; void uploadFigurine(file, false); }} />
                           </div>
                           <div className={cn('relative h-9 flex-1', uploading && 'pointer-events-none opacity-50')}>
-                            <button type="button" aria-label="Criar figurinha sem fundo" disabled={Boolean(uploading)} onClick={() => openPhoto(true)} className="flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-[#F4F1FB] text-xs font-medium text-gray-700 hover:bg-[#E7E0F8] disabled:opacity-50">
+                            <button type="button" aria-label="Criar figurinha sem fundo" disabled={Boolean(uploading)} onClick={() => openPhoto(true)} className="flex h-9 w-full items-center justify-center gap-1.5 rounded-[11px] bg-white text-xs font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4] hover:bg-[#f6f3ff] hover:text-[#4f33b8] disabled:opacity-50">
                               <Eraser className="pointer-events-none h-3.5 w-3.5" />
                               Apagar fundo
                             </button>
@@ -1732,7 +1733,7 @@ export const BirthdayTicket: FC = () => {
                       <div className="mt-3">
                       <ActionBar canUndo={canUndo} canRedo={canRedo} onUndo={() => void undo()} onRedo={() => void redo()}>
                         {canAdd || editingId ? (
-                          <button type="button" disabled={saving || !draftMessage.trim() || (!editingId && !draftArt)} onClick={() => void finish()} className="h-11 w-full rounded-2xl bg-[#6B33F6] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
+                          <button type="button" disabled={saving || !draftMessage.trim() || (!editingId && !draftArt)} onClick={() => void finish()} className="h-11 w-full rounded-[11px] bg-[#6644e0] text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)] hover:bg-[#4f33b8] disabled:cursor-not-allowed disabled:bg-[#d9ccff] disabled:shadow-none disabled:opacity-100">
                             {saving ? 'Salvando...' : editingId ? 'Atualizar recado' : 'Finalizar'}
                           </button>
                         ) : <span />}
@@ -1742,7 +1743,7 @@ export const BirthdayTicket: FC = () => {
                     </>
                   ) : null}
                   {tool === 'text' ? (
-                    <div className="space-y-3">
+                    <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1 [scrollbar-color:#d9ccff_transparent] [scrollbar-width:thin]">
                       <textarea value={letter} maxLength={80} onFocus={() => { setTextLive(true); setSelectedMark(null); setEditingId(null); setDraftLive(false); }} onChange={(event) => { pushPast(); setLetter(event.target.value); setTextLive(true); setDraftLive(false); }} className="min-h-16 w-full rounded-2xl bg-[#F6F4FB] px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Um texto solto no cartão." />
                       <div className="relative">
                         <button type="button" aria-label="Fonte" aria-expanded={fontOpen} onClick={() => setFontOpen((open) => !open)} className="flex h-10 w-full items-center justify-between rounded-xl bg-[#F6F4FB] px-3 text-sm text-gray-800">
@@ -1793,16 +1794,24 @@ export const BirthdayTicket: FC = () => {
                           ))}
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="block text-[11px] font-medium text-gray-500">
-                          Espaçamento entre letras
-                          <input type="range" min={-2} max={24} value={look.tracking} aria-label="Espaçamento entre letras" onPointerDown={pushPast} onChange={(event) => setLook((current) => ({ ...current, tracking: Number(event.target.value) }))} className="mt-1 w-full accent-[#6B33F6]" />
-                        </label>
-                        <label className="block text-[11px] font-medium text-gray-500">
-                          Opacidade
-                          <input type="range" min={15} max={100} value={Math.round(look.opacity * 100)} aria-label="Opacidade" onPointerDown={pushPast} onChange={(event) => setLook((current) => ({ ...current, opacity: Number(event.target.value) / 100 }))} className="mt-1 w-full accent-[#6B33F6]" />
-                        </label>
+                      <div className="flex gap-2">
+                        <button type="button" aria-pressed={textTune === 'sp'} onClick={() => setTextTune((current) => current === 'sp' ? null : 'sp')} className={cn('flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-white text-xs font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]', textTune === 'sp' && 'bg-[#f6f3ff] text-[#4f33b8] shadow-[0_0_0_1.5px_#7c5cf5]')}>Espaçamento</button>
+                        <button type="button" aria-pressed={textTune === 'op'} onClick={() => setTextTune((current) => current === 'op' ? null : 'op')} className={cn('flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-white text-xs font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]', textTune === 'op' && 'bg-[#f6f3ff] text-[#4f33b8] shadow-[0_0_0_1.5px_#7c5cf5]')}>Opacidade</button>
                       </div>
+                      {textTune === 'sp' ? (
+                        <label className="flex items-center gap-3 text-xs font-medium text-[#4a4560]">
+                          Entre letras
+                          <input type="range" min={-2} max={24} value={look.tracking} aria-label="Espaçamento entre letras" onPointerDown={pushPast} onChange={(event) => setLook((current) => ({ ...current, tracking: Number(event.target.value) }))} className="h-2 min-w-0 flex-1 accent-[#6644e0]" />
+                          <b className="w-8 text-right text-[#6644e0]">{look.tracking}px</b>
+                        </label>
+                      ) : null}
+                      {textTune === 'op' ? (
+                        <label className="flex items-center gap-3 text-xs font-medium text-[#4a4560]">
+                          Opacidade
+                          <input type="range" min={15} max={100} value={Math.round(look.opacity * 100)} aria-label="Opacidade" onPointerDown={pushPast} onChange={(event) => setLook((current) => ({ ...current, opacity: Number(event.target.value) / 100 }))} className="h-2 min-w-0 flex-1 accent-[#6644e0]" />
+                          <b className="w-10 text-right text-[#6644e0]">{Math.round(look.opacity * 100)}%</b>
+                        </label>
+                      ) : null}
                       {(() => {
                         const ink = marks.find((item) => item.id === selectedMark)?.color ?? look.color;
                         return (
@@ -1817,7 +1826,7 @@ export const BirthdayTicket: FC = () => {
                         );
                       })()}
                       <ActionBar canUndo={canUndo} canRedo={canRedo} onUndo={() => void undo()} onRedo={() => void redo()}>
-                        <button type="button" disabled={saving || !letter.trim()} onClick={() => void placeLetter()} className="h-11 w-full rounded-2xl bg-[#6B33F6] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
+                        <button type="button" disabled={saving || !letter.trim()} onClick={() => void placeLetter()} className="h-11 w-full rounded-[11px] bg-[#6644e0] text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)] hover:bg-[#4f33b8] disabled:cursor-not-allowed disabled:bg-[#d9ccff] disabled:shadow-none disabled:opacity-100">
                           {saving ? 'Salvando...' : editingText ? 'Atualizar texto' : 'Finalizar'}
                         </button>
                       </ActionBar>

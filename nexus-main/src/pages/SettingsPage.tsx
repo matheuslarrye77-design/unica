@@ -1,6 +1,6 @@
+import { ImageCrop } from '@/components/journal/ImageCrop';
 import { PageHero } from '@/components/social/LilacWash';
 import { PageFrame } from '@/components/shell/PageFrame';
-import { fitPhoto } from '@/lib/cutout';
 import { profilePhoto, setPlatformColor, setProfilePhoto, storedColor } from '@/lib/appearance';
 import { actor, getDemoId } from '@/lib/session';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
@@ -20,6 +20,7 @@ export const SettingsPage: FC = () => {
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
   const [savingPhoto, setSavingPhoto] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const [savingPassword, setSavingPassword] = useState(false);
 
   function paint(value: string) {
@@ -35,12 +36,11 @@ export const SettingsPage: FC = () => {
     }
     setSavingPhoto(true);
     try {
-      const ready = await fitPhoto(file);
       const data = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result ?? ''));
         reader.onerror = () => reject(new Error('file'));
-        reader.readAsDataURL(ready);
+        reader.readAsDataURL(file);
       });
       setProfilePhoto(data);
       setPhoto(data);
@@ -127,7 +127,7 @@ export const SettingsPage: FC = () => {
           <img src={photo} alt="" className="h-16 w-16 rounded-full bg-[#F8FAFC] object-cover" />
           <label className="relative inline-flex h-11 cursor-pointer items-center rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25">
             {savingPhoto ? 'Enviando...' : 'Escolher foto'}
-            <input type="file" accept="image/*" aria-label="Escolher foto de perfil" disabled={savingPhoto} className="absolute inset-0 cursor-pointer opacity-0" onChange={(event) => { void onPhoto(event.target.files?.[0]); event.target.value = ''; }} />
+            <input type="file" accept="image/*" aria-label="Escolher foto de perfil" disabled={savingPhoto} className="absolute inset-0 cursor-pointer opacity-0" onChange={(event) => { const next = event.target.files?.[0]; event.target.value = ''; if (next) setCropFile(next); }} />
           </label>
         </div>
       </section>
@@ -153,6 +153,14 @@ export const SettingsPage: FC = () => {
         </form>
       </section>
       {isLeader(user) ? <div className="mt-4"><ManagementSettingsPage embedded /></div> : null}
+      {cropFile ? (
+        <ImageCrop
+          file={cropFile}
+          lock="circular"
+          onCancel={() => setCropFile(null)}
+          onConfirm={(ready) => { setCropFile(null); void onPhoto(ready); }}
+        />
+      ) : null}
     </PageFrame>
   );
 };

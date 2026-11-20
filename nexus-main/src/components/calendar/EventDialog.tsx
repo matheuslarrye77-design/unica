@@ -92,21 +92,23 @@ export const EventDialog: FC<{
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[85vh] overflow-y-auto rounded-[28px] border-0 bg-white shadow-[12px_12px_28px_#d6deeb,-10px_-10px_24px_#fff] sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{event ? 'Editar evento' : 'Novo evento'}</DialogTitle>
+          <DialogTitle className="text-[22px] font-semibold text-[#12274a]">{event ? 'Editar evento' : 'Novo evento'}</DialogTitle>
         </DialogHeader>
         <form id="evento" className="grid gap-3" onSubmit={(submitEvent) => void submit(submitEvent)}>
-          <div className="grid gap-1">
+          <div className="grid gap-2">
             <Label htmlFor="evento-tipo">Tipo</Label>
-            <select id="evento-tipo" className="h-9 rounded-md border bg-background px-3 text-sm" value={form.type} onChange={(change) => setForm({ ...form, type: change.target.value as AgendaType })}>
-              {types.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-            </select>
+            <div id="evento-tipo" className="flex gap-1.5">
+              {types.map((item) => (
+                <button key={item.id} type="button" aria-pressed={form.type === item.id} onClick={() => setForm({ ...form, type: item.id })} className={`h-10 min-w-0 flex-1 rounded-full bg-white text-[13px] font-medium text-[#8a97ad] shadow-[3px_3px_7px_#d6deeb,-3px_-3px_7px_#fff] ${form.type === item.id ? 'font-bold text-[#12274a] shadow-[0_0_0_1.5px_#4cd1d4]' : ''}`}>{item.label}</button>
+              ))}
+            </div>
           </div>
           {birthday ? (
             <div className="grid gap-1">
               <Label htmlFor="evento-pessoa">Colaborador</Label>
-              <select id="evento-pessoa" className="h-9 rounded-md border bg-background px-3 text-sm" value={form.personId} onChange={(change) => choosePerson(change.target.value)} required>
+              <select id="evento-pessoa" className="h-11 rounded-2xl border-0 bg-[#f0f3f9] px-4 text-sm" value={form.personId} onChange={(change) => choosePerson(change.target.value)} required>
                 <option value="">Selecione</option>
                 {directoryPeople.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
               </select>
@@ -114,37 +116,37 @@ export const EventDialog: FC<{
           ) : (
             <div className="grid gap-1">
               <Label htmlFor="evento-titulo">Título</Label>
-              <Input id="evento-titulo" value={form.title} onChange={(change) => setForm({ ...form, title: change.target.value })} required />
+              <Input id="evento-titulo" value={form.title} onChange={(change) => setForm({ ...form, title: change.target.value })} required className="h-11 rounded-2xl border-0 bg-[#f0f3f9] px-4" />
             </div>
           )}
           <div className="grid gap-1">
             <Label htmlFor="evento-data">{birthday ? 'Data de nascimento' : 'Data'}</Label>
-            <Input id="evento-data" type="date" value={form.date} onChange={(change) => setForm({ ...form, date: change.target.value })} required />
+            <Input id="evento-data" type="date" value={form.date} onChange={(change) => setForm({ ...form, date: change.target.value })} required className="h-11 rounded-2xl border-0 bg-[#f0f3f9] px-4" />
           </div>
           {birthday ? null : (
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1">
                 <Label htmlFor="evento-inicio">Início</Label>
-                <Input id="evento-inicio" type="time" value={form.startTime} onChange={(change) => setForm({ ...form, startTime: change.target.value })} />
+                <Input id="evento-inicio" type="time" value={form.startTime} onChange={(change) => setForm({ ...form, startTime: change.target.value })} className="h-11 rounded-2xl border-0 bg-[#f0f3f9] px-4" />
               </div>
               <div className="grid gap-1">
                 <Label htmlFor="evento-fim">Término</Label>
-                <Input id="evento-fim" type="time" value={form.endTime} onChange={(change) => setForm({ ...form, endTime: change.target.value })} />
+                <Input id="evento-fim" type="time" value={form.endTime} onChange={(change) => setForm({ ...form, endTime: change.target.value })} className="h-11 rounded-2xl border-0 bg-[#f0f3f9] px-4" />
               </div>
             </div>
           )}
           {birthday ? null : (
             <div className="grid gap-1">
               <Label htmlFor="evento-local">Local</Label>
-              <Input id="evento-local" value={form.place} onChange={(change) => setForm({ ...form, place: change.target.value })} />
+              <Input id="evento-local" value={form.place} onChange={(change) => setForm({ ...form, place: change.target.value })} className="h-11 rounded-2xl border-0 bg-[#f0f3f9] px-4" />
             </div>
           )}
           <div className="grid gap-1">
             <Label htmlFor="evento-desc">Descrição</Label>
-            <Textarea id="evento-desc" value={form.description} onChange={(change) => setForm({ ...form, description: change.target.value })} />
+            <Textarea id="evento-desc" value={form.description} onChange={(change) => setForm({ ...form, description: change.target.value })} className="min-h-16 rounded-2xl border-0 bg-[#f0f3f9] px-4 py-3" />
           </div>
           {birthday ? null : (
-            <fieldset className="grid max-h-40 gap-1 overflow-y-auto rounded-lg border p-2">
+            <fieldset className="grid max-h-40 gap-1 overflow-y-auto rounded-2xl bg-[#f0f3f9] p-3">
               <legend className="px-1 text-sm font-medium">Participantes</legend>
               <label className="flex items-center gap-2 text-sm font-medium">
                 <input

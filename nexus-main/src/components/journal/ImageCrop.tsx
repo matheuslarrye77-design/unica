@@ -75,7 +75,7 @@ function clampCrop(crop: Box, stage: { w: number; h: number }, ratio: number | n
   };
 }
 
-export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file: File) => void; banner?: boolean; darken?: boolean }> = ({ file, onCancel, onConfirm, banner, darken }) => {
+export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file: File) => void; banner?: boolean; darken?: boolean; lock?: FormatId }> = ({ file, onCancel, onConfirm, banner, darken, lock }) => {
   const stageRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const drag = useRef<{ kind: 'move' | 'pan' | Corner; x: number; y: number; crop: Box; pan: { x: number; y: number } } | null>(null);
@@ -102,14 +102,15 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
       setStage(nextStage);
       setZoom(1);
       setPan({ x: 0, y: 0 });
-      setFormat(null);
+      const forced = lock ?? null;
+      setFormat(forced);
       setZoomOpen(false);
       setShapesOpen(false);
-      setCrop(fitCrop(nextStage, null));
+      setCrop(fitCrop(nextStage, forced ? FORMATS.find((item) => item.id === forced)?.ratio ?? null : null));
     };
     image.src = url;
     return () => URL.revokeObjectURL(url);
-  }, [file, banner]);
+  }, [file, banner, lock]);
 
   function chooseFormat(next: FormatId | null) {
     setFormat(next);
@@ -258,8 +259,8 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
   return (
     <div data-journal-overlay className="pointer-events-auto fixed inset-0 z-[80] grid place-items-center bg-black/60 p-4" style={{ pointerEvents: 'auto' }}>
       <div className="pointer-events-auto w-full max-w-xl rounded-3xl bg-card p-4 shadow-xl" style={{ pointerEvents: 'auto' }} role="dialog" aria-label={banner ? 'Ajustar capa' : 'Ajustar foto'}>
-        <p className="text-sm font-medium text-foreground">{banner ? 'Ajustar capa' : 'Ajustar foto'}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{banner ? 'Arraste a foto e use o zoom para escolher o enquadramento.' : 'A imagem entra inteira. A tesoura só recorta se você escolher um formato.'}</p>
+        <p className="text-sm font-medium text-foreground">{lock === 'circular' ? 'Ajustar foto de perfil' : banner ? 'Ajustar capa' : 'Ajustar foto'}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{lock ? 'Esse recorte já tem o formato certo. Arraste a foto e use o zoom.' : banner ? 'Arraste a foto e use o zoom para escolher o enquadramento.' : 'A imagem entra inteira. A tesoura só recorta se você escolher um formato.'}</p>
         <div
           ref={stageRef}
           onPointerDown={banner && !format ? (event) => onPointerDown(event, 'pan') : undefined}
@@ -313,7 +314,7 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
             <span className={`grid h-12 w-12 place-items-center rounded-full ${zoomOpen || banner ? 'bg-[#6644e0] text-white shadow-[0_6px_14px_-6px_rgba(102,68,224,0.7)]' : 'bg-white text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]'}`}><Search className="h-5 w-5" /></span>
             Zoom
           </button>
-          {banner ? null : (
+          {banner || lock ? null : (
             <button type="button" aria-expanded={shapesOpen} aria-label="Cortar" onClick={() => { setShapesOpen((current) => !current); setZoomOpen(false); setOpacityOpen(false); }} className="flex flex-col items-center gap-1.5 text-[11px] font-semibold text-[#8a85a0]">
               <span className={`grid h-12 w-12 place-items-center rounded-full ${shapesOpen || format ? 'bg-[#6644e0] text-white shadow-[0_6px_14px_-6px_rgba(102,68,224,0.7)]' : 'bg-white text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]'}`}><Scissors className="h-5 w-5" /></span>
               Cortar
@@ -325,7 +326,7 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
               Opacidade
             </button>
           ) : null}
-          {shapesOpen && !banner ? (
+          {shapesOpen && !banner && !lock ? (
             <div className="absolute bottom-16 left-1/2 z-20 w-44 -translate-x-1/2 rounded-2xl bg-white p-1.5 shadow-[14px_14px_30px_#d8d2ee,-8px_-8px_22px_#fff,0_0_0_1px_#e8e4f4]">
               <button type="button" className="block w-full rounded-xl px-3 py-1.5 text-left text-[13px] text-[#4f33b8] hover:bg-[#f6f3ff]" onClick={() => chooseFormat(null)}>Sem corte</button>
               {formats.map((item) => (
@@ -336,7 +337,7 @@ export const ImageCrop: FC<{ file: File; onCancel: () => void; onConfirm: (file:
             </div>
           ) : null}
         </div>
-        {banner || zoomOpen ? (
+        {banner || lock || zoomOpen ? (
           <label className="mt-3 flex items-center gap-3 text-xs font-semibold text-[#4a4560]">
             {Math.round(zoom * 100)}%
             <input aria-label="Zoom" type="range" min={1} max={3} step={0.01} value={zoom} onChange={(event) => changeZoom(Number(event.target.value))} className="h-2 min-w-0 flex-1 accent-[#6644e0]" />

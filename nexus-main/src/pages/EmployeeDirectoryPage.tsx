@@ -191,7 +191,7 @@ export const EmployeeDirectoryPage: FC = () => {
         ) : (
           <div className={cn('mt-5', layout === 'grid' ? 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4' : 'grid gap-3')}>
             {filtered.map((person) => (
-              <article key={person.id} className="relative rounded-[22px] border border-[#EDE7FE] bg-white p-4 shadow-[0_8px_22px_rgba(70,0,243,0.04)]">
+              <article key={person.id} className="relative rounded-[22px] bg-white p-4 shadow-[10px_10px_24px_#d8d2ee,-6px_-6px_18px_#fff,0_0_0_1px_#e8e4f4] transition-transform hover:-translate-y-0.5">
                 <div className="flex items-start gap-3">
                   <img src={person.avatar} alt="" className="h-12 w-12 shrink-0 rounded-full bg-[#EDE7FE]" />
                   <div className="min-w-0 flex-1">
