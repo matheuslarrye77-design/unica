@@ -458,7 +458,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
                     maxLength={textMax}
                     onChange={(event) => setText(event.target.value.slice(0, textMax))}
                     placeholder={isRecognition ? 'Adicione uma legenda (opcional)...' : 'Digite o conteúdo da sua publicação…'}
-                    className={`w-full resize-none bg-transparent text-base leading-7 text-gray-800 outline-none placeholder:text-gray-400 ${isRecognition || journal ? 'min-h-[52px]' : 'min-h-[190px]'}`}
+                    className={`w-full bg-transparent text-base leading-7 text-gray-800 outline-none placeholder:text-gray-400 ${isRecognition ? 'grow-note caption' : journal ? 'grow-note' : 'min-h-[190px] resize-none'}`}
                   />
                   {journal ? (
                     <div className="mt-3">

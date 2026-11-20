@@ -511,7 +511,7 @@ const DescriptionBalloon = forwardRef<DescriptionHandle, {
         data-placeholder="Escreva uma descrição sobre a publicação..."
         data-empty={empty ? 'true' : 'false'}
         suppressContentEditableWarning
-        className={cn('relative whitespace-pre-wrap break-words text-[13.5px] leading-5 text-[#241B33] outline-none data-[empty=true]:before:pointer-events-none data-[empty=true]:before:float-left data-[empty=true]:before:h-0 data-[empty=true]:before:text-[#B0A8BA] data-[empty=true]:before:content-[attr(data-placeholder)]', expanded ? 'min-h-[52vh]' : 'min-h-28')}
+        className={cn('relative whitespace-pre-wrap break-words text-[13.5px] leading-5 text-[#241B33] outline-none data-[empty=true]:before:pointer-events-none data-[empty=true]:before:float-left data-[empty=true]:before:h-0 data-[empty=true]:before:text-[#B0A8BA] data-[empty=true]:before:content-[attr(data-placeholder)]', expanded ? 'min-h-[52vh]' : 'grow-desc')}
         onKeyDown={onKeyDown}
         onKeyUp={rememberCaret}
         onMouseUp={rememberCaret}

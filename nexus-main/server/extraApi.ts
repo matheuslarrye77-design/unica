@@ -435,6 +435,7 @@ export function extraApi(): Connect.NextHandleFunction {
     missing?: boolean;
     forbidden?: boolean;
     badOption?: boolean;
+    closed?: boolean;
     badBody?: boolean;
     saved?: string[];
     repost?: Repost;
