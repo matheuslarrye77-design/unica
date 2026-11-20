@@ -100,8 +100,8 @@ export const JournalArticlePage: FC = () => {
             <ArrowLeft className="h-4 w-4" />
             Jornal
           </Link>
-          <div className="max-w-[980px] rounded-3xl bg-white px-[18px] py-[22px] shadow-[0_2px_10px_rgba(60,40,140,0.06)] dark:bg-[#1C1F2B] sm:px-[34px] sm:py-8">
-            <div className="relative overflow-hidden rounded-[20px] bg-white p-6 shadow-[0_3px_16px_rgba(60,40,140,0.10)] before:absolute before:top-0 before:bottom-0 before:left-0 before:w-[5px] before:bg-[#6D32F5] dark:bg-[#242837] sm:p-[34px]">
+          <div className="max-w-[980px] rounded-3xl bg-white px-[18px] py-[22px] shadow-[0_2px_10px_rgba(60,40,140,0.06)] sm:px-[34px] sm:py-8">
+            <div className="relative overflow-hidden rounded-[20px] bg-white p-6 shadow-[0_3px_16px_rgba(60,40,140,0.10)] before:absolute before:top-0 before:bottom-0 before:left-0 before:w-[5px] before:bg-[#6D32F5] sm:p-[34px]">
               <JournalBadge category={article.category} className="w-fit" />
               <h1 className="mt-[22px] text-[clamp(26px,4vw,38px)] font-semibold leading-[1.15] tracking-[-0.02em] text-gray-800">{article.title}</h1>
               <p className="mt-3 mb-[30px] text-[15px] text-gray-500">
@@ -125,7 +125,7 @@ export const JournalArticlePage: FC = () => {
                   {article.media.filter((item) => item.kind === 'document').map((item) => {
                     const ext = item.name.split('.').pop()?.toUpperCase() || 'ARQ';
                     return (
-                      <a key={item.id} href={resolveJournalAsset(item.url)} download={item.name} className="flex items-center gap-3 rounded-2xl bg-[#F5F7FC] px-4 py-3 text-gray-800 dark:bg-[#1C1F2B]">
+                      <a key={item.id} href={resolveJournalAsset(item.url)} download={item.name} className="flex items-center gap-3 rounded-2xl bg-[#F5F7FC] px-4 py-3 text-gray-800">
                         <span className="grid h-11 w-11 place-items-center rounded-xl bg-white text-[#6D32F5] shadow-[0_4px_14px_rgba(60,40,140,0.12)]"><FileText className="h-5 w-5" /></span>
                         <span className="min-w-0">
                           <span className="block truncate text-sm font-semibold">{item.name}</span>
@@ -171,7 +171,7 @@ export const JournalArticlePage: FC = () => {
               ) : null}
             </div>
 
-            <section id="comentarios-noticia" className="mt-[30px] border-t border-[#E6E9F2] px-6 pt-6 dark:border-[#2B2F3F] sm:px-[34px]">
+            <section id="comentarios-noticia" className="mt-[30px] border-t border-[#E6E9F2] px-6 pt-6 sm:px-[34px]">
               <h2 className="mb-3.5 text-lg font-semibold">Comentários</h2>
               {article.comments.map((item) => {
                 const parent = item.replyTo ? article.comments.find((entry) => entry.id === item.replyTo) : undefined;
