@@ -277,9 +277,9 @@ export const ResourcesPage: FC = () => {
                 <span className="inline-flex min-w-0 items-center gap-2 text-xs text-[#8a85a0]"><FileText className="h-4 w-4 shrink-0 text-[#9b82ff]" /><span className="truncate">{selected.fileName}</span></span>
                 <div className="flex shrink-0 gap-2">
                   {previewUrl ? <button type="button" className="rounded-[11px] bg-white px-4 py-2 text-sm font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]" onClick={() => window.open(previewUrl, '_blank')}>Abrir</button> : null}
-                  <button type="button" className="rounded-[11px] bg-white px-4 py-2 text-sm font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]" onClick={() => void favorite(selected)}>{isSaved(selected) ? 'Salvo' : 'Salvar'}</button>
+                  <button type="button" className="rounded-[11px] bg-white px-4 py-2 text-sm font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]" onClick={() => void download(selected)}>Baixar</button>
                   {canSend ? <button type="button" aria-label="Editar" className="grid h-10 w-10 place-items-center rounded-[11px] bg-white text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]" onClick={() => { setSelected(null); openEditor(selected); }}><Pencil className="h-4 w-4" /></button> : null}
-                  <button type="button" className="rounded-[11px] bg-[#6644e0] px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)]" onClick={() => void download(selected)}>Baixar</button>
+                  <button type="button" className="inline-flex items-center gap-1.5 rounded-[11px] bg-[#6644e0] px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)]" onClick={() => void favorite(selected)}><Bookmark className="h-3.5 w-3.5" fill={isSaved(selected) ? 'currentColor' : 'none'} />{isSaved(selected) ? 'Salvo' : 'Salvar'}</button>
                 </div>
               </div>
             </>

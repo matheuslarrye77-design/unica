@@ -148,9 +148,9 @@ export const EmployeeDirectoryPage: FC = () => {
                 <Users className="h-4 w-4" /> Ver equipe
               </Button>
               {leader ? (
-                <Button variant="outline" className="h-10 rounded-full border-[#DDD4F5] bg-white px-4" onClick={() => setOpen(true)}>
-                  <Plus className="h-4 w-4" /> Adicionar colaborador
-                </Button>
+                <button type="button" className="inline-flex h-11 items-center gap-2 rounded-[11px] bg-[#6644e0] px-4 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)]" onClick={() => setOpen(true)}>
+                  <Plus className="h-4 w-4" /> Adicionar
+                </button>
               ) : null}
             </div>
           }
@@ -159,8 +159,9 @@ export const EmployeeDirectoryPage: FC = () => {
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" className="h-11 rounded-xl border-[#DDD4F5] bg-white px-4 text-[#5C5168] shadow-none">
-                <Filter className="h-4 w-4" /> Filtrar
+              <Button type="button" variant="outline" className="h-[42px] rounded-full border-0 bg-white px-4 text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]">
+                <Filter className="h-4 w-4" /> Filtros
+                <span className="rounded-full bg-[#f6f3ff] px-3 py-1 text-[12.5px] font-semibold text-[#4f33b8]">{roles.length === TEAM_FUNCOES.length ? 'Todos' : `${roles.length}`}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
@@ -173,7 +174,7 @@ export const EmployeeDirectoryPage: FC = () => {
             </DropdownMenuContent>
           </DropdownMenu>
           <p className="ml-auto text-[13px] text-[#8A7C98]">Total: {roster.length} colaboradores</p>
-          <div className="flex rounded-xl bg-white p-1 shadow-[0_4px_14px_rgba(70,0,243,0.05)]">
+          <div className="flex gap-1 rounded-full bg-white p-1 shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]">
             <button type="button" aria-label="Grade" onClick={() => setLayout('grid')} className={cn('grid h-8 w-8 place-items-center rounded-lg', layout === 'grid' ? 'bg-[#EDE7FE] text-[#4600F3]' : 'text-[#8A7C98]')}>
               <LayoutGrid className="h-4 w-4" />
             </button>

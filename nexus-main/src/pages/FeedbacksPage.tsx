@@ -177,11 +177,12 @@ export const FeedbacksPage: FC = () => {
 
         <div className="mt-5 flex items-center gap-2">
           <div className="relative ml-auto">
-            <Button type="button" variant="outline" className="h-11 rounded-xl border-[#EFE6F4] bg-white" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen}>
+            <button type="button" className="inline-flex h-[42px] items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen}>
               <Filter className="h-4 w-4" /> Filtros
-            </Button>
+              <span className="rounded-full bg-[#f6f3ff] px-3 py-1 text-[12.5px] font-semibold text-[#4f33b8]">{statusFilter === 'todos' ? 'Todos' : STATUS[statusFilter].label}</span>
+            </button>
             {filtersOpen ? (
-              <div className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-[#EFE6F4] bg-white p-3 shadow-lg">
+              <div className="absolute right-0 z-20 mt-2 w-64 rounded-[22px] bg-white p-3 shadow-[14px_14px_30px_#d8d2ee,-8px_-8px_22px_#fff,0_0_0_1px_#e8e4f4]">
                 <label className="block text-[12px] font-medium text-[#6B5A7A]">
                   Status
                   <select className="mt-1 h-9 w-full rounded-lg border border-[#EFE6F4] bg-white px-2 text-[13px]" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as SuggestionStatus | 'todos')}>
@@ -232,7 +233,7 @@ export const FeedbacksPage: FC = () => {
             const count = item.replies?.length ?? 0;
             const draft = drafts[item.id] ?? '';
             return (
-              <article key={item.id} className="rounded-2xl border border-[#EFE6F4] bg-white">
+              <article key={item.id} className="rounded-[22px] bg-white shadow-[10px_10px_24px_#d8d2ee,-6px_-6px_18px_#fff,0_0_0_1px_#e8e4f4] transition-transform hover:-translate-y-0.5">
                 <div className="flex items-start gap-3 px-4 py-3">
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F3E8FF] text-[12px] font-semibold text-[#4600F3]">{initials(name)}</span>
                   <div className="min-w-0 flex-1">

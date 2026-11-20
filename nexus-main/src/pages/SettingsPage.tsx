@@ -6,7 +6,7 @@ import { actor, getDemoId } from '@/lib/session';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { isLeader } from '@/lib/institution';
 import { ManagementSettingsPage } from '@/pages/ManagementSettingsPage';
-import { Settings } from 'lucide-react';
+import { Camera, Settings } from 'lucide-react';
 import { useState, type FC, type FormEvent } from 'react';
 import { toast } from 'sonner';
 
@@ -90,66 +90,67 @@ export const SettingsPage: FC = () => {
     }
   }
 
+  const card = 'rounded-[22px] bg-white p-6 shadow-[10px_10px_24px_#d8d2ee,-6px_-6px_18px_#fff,0_0_0_1px_#e8e4f4]';
+  const row = 'grid grid-cols-[108px_1fr] items-center gap-3 border-t border-[#e8e4f4] first:border-t-0';
+  const field = 'h-[54px] w-full border-0 bg-transparent px-0 text-sm font-medium text-[#1f1b2e] outline-none focus:shadow-[inset_0_-2px_0_#7c5cf5]';
+
   return (
     <PageFrame>
       <PageHero
         icon={<Settings className="h-5 w-5" strokeWidth={1.75} />}
         title="Configurações"
-        subtitle="Preferências da conta na Única Conecta."
+        subtitle="Gerencie seu perfil, a cor da plataforma e a senha da conta."
       />
-      <section className="mt-6 rounded-[28px] border border-gray-100 bg-white px-6 py-6 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-        <h2 className="text-lg font-bold text-gray-800">Conta</h2>
-        <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl bg-[#F8FAFC] px-4 py-3.5"><dt className="text-sm text-gray-500">Nome</dt><dd className="mt-1 font-semibold text-gray-800">{user.name}</dd></div>
-          <div className="rounded-2xl bg-[#F8FAFC] px-4 py-3.5"><dt className="text-sm text-gray-500">E-mail</dt><dd className="mt-1 font-semibold text-gray-800">{user.email}</dd></div>
-          <div className="rounded-2xl bg-[#F8FAFC] px-4 py-3.5"><dt className="text-sm text-gray-500">Cargo</dt><dd className="mt-1 font-semibold text-gray-800">{user.role}</dd></div>
-          <div className="rounded-2xl bg-[#F8FAFC] px-4 py-3.5"><dt className="text-sm text-gray-500">Área</dt><dd className="mt-1 font-semibold text-gray-800">{user.department}</dd></div>
-        </dl>
+      <section className={`mt-6 flex flex-col items-center px-6 py-8 text-center ${card}`}>
+        <div className="relative mb-4 h-[150px] w-[150px]">
+          <img src={photo} alt="" className="h-[150px] w-[150px] rounded-full bg-[#ece6ff] object-cover shadow-[10px_10px_24px_#d8d2ee,-6px_-6px_18px_#fff,0_0_0_4px_#fff,0_0_0_5px_#d9ccff]" />
+          <label className="absolute right-1 bottom-1 grid h-10 w-10 cursor-pointer place-items-center rounded-full border-[3px] border-white bg-[#6644e0] text-white shadow-[0_8px_16px_-6px_rgba(102,68,224,0.8)]">
+            <Camera className="h-[18px] w-[18px]" />
+            <input type="file" accept="image/*" aria-label="Alterar foto de perfil" disabled={savingPhoto} className="absolute inset-0 cursor-pointer opacity-0" onChange={(event) => { const nextFile = event.target.files?.[0]; event.target.value = ''; if (nextFile) setCropFile(nextFile); }} />
+          </label>
+        </div>
+        <div className="text-xl font-bold tracking-tight text-[#1f1b2e]">{user.name}</div>
+        <div className="mt-0.5 text-[13px] text-[#8a85a0]">{user.role} · {user.department}</div>
+        <p className="mt-2 text-sm font-semibold text-[#6644e0]">{savingPhoto ? 'Enviando foto...' : 'Toque na foto para ajustar'}</p>
       </section>
 
-      <section className="mt-4 rounded-[28px] border border-gray-100 bg-white px-6 py-6 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-        <h2 className="text-lg font-bold text-gray-800">Cor da plataforma</h2>
-        <p className="mt-1 text-sm text-gray-500">A cor escolhida passa a valer nos botões e na barra lateral.</p>
+      <section className={`mt-4 ${card}`}>
+        <h2 className="text-base font-bold text-[#1f1b2e]">Dados pessoais</h2>
+        <p className="mt-1 text-[13px] text-[#5f5a78]">Nome, e-mail, cargo e área vêm da empresa e não mudam por aqui.</p>
+        <div className="mt-4">
+          <div className={row}><span className="text-[13.5px] font-semibold">Nome</span><input className={field} value={user.name} readOnly /></div>
+          <div className={row}><span className="text-[13.5px] font-semibold">E-mail</span><input className={field} value={user.email} readOnly /></div>
+          <div className={row}><span className="text-[13.5px] font-semibold">Cargo</span><input className={field} value={user.role} readOnly /></div>
+          <div className={row}><span className="text-[13.5px] font-semibold">Área</span><input className={field} value={user.department} readOnly /></div>
+        </div>
+      </section>
+
+      <section className={`mt-4 ${card}`}>
+        <h2 className="text-base font-bold text-[#1f1b2e]">Cor da plataforma</h2>
+        <p className="mt-1 text-[13px] text-[#5f5a78]">A cor escolhida passa a valer nos botões e na barra lateral.</p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {COLORS.map((item) => (
-            <button key={item} type="button" aria-label={`Usar a cor ${item}`} aria-pressed={color.toLowerCase() === item.toLowerCase()} onClick={() => paint(item)} className="h-11 w-11 rounded-2xl shadow-[0_8px_24px_rgba(15,23,42,0.06)]" style={{ background: item, boxShadow: color.toLowerCase() === item.toLowerCase() ? `0 0 0 3px #fff, 0 0 0 5px ${item}` : undefined }} />
+            <button key={item} type="button" aria-label={`Usar a cor ${item}`} aria-pressed={color.toLowerCase() === item.toLowerCase()} onClick={() => paint(item)} className="h-11 w-11 rounded-full" style={{ background: item, boxShadow: color.toLowerCase() === item.toLowerCase() ? `0 0 0 2px #fff, 0 0 0 4px ${item}` : '0 0 0 1px rgba(0,0,0,.07)' }} />
           ))}
-          <label className="relative inline-flex h-11 items-center rounded-2xl bg-white px-4 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+          <label className="relative inline-flex h-11 items-center rounded-[11px] bg-white px-4 text-sm font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]">
             Outra cor
             <input type="color" aria-label="Escolher outra cor" value={HEX(color)} onChange={(event) => paint(event.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
           </label>
         </div>
       </section>
 
-      <section className="mt-4 rounded-[28px] border border-gray-100 bg-white px-6 py-6 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-        <h2 className="text-lg font-bold text-gray-800">Foto de perfil</h2>
-        <div className="mt-4 flex items-center gap-4">
-          <img src={photo} alt="" className="h-16 w-16 rounded-full bg-[#F8FAFC] object-cover" />
-          <label className="relative inline-flex h-11 cursor-pointer items-center rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25">
-            {savingPhoto ? 'Enviando...' : 'Escolher foto'}
-            <input type="file" accept="image/*" aria-label="Escolher foto de perfil" disabled={savingPhoto} className="absolute inset-0 cursor-pointer opacity-0" onChange={(event) => { const next = event.target.files?.[0]; event.target.value = ''; if (next) setCropFile(next); }} />
-          </label>
-        </div>
-      </section>
-
-      <section className="mt-4 rounded-[28px] border border-gray-100 bg-white px-6 py-6 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-        <h2 className="text-lg font-bold text-gray-800">Redefinir senha</h2>
-        <form className="mt-4 grid max-w-md gap-3" onSubmit={(event) => void onPassword(event)}>
-          <label className="grid gap-1 text-sm font-semibold text-gray-600">
-            Senha atual
-            <input type="password" autoComplete="current-password" value={current} onChange={(event) => setCurrent(event.target.value)} className="h-11 rounded-2xl border border-gray-100 bg-[#F8FAFC] px-3 text-base font-medium text-gray-800 outline-none" />
-          </label>
-          <label className="grid gap-1 text-sm font-semibold text-gray-600">
-            Nova senha
-            <input type="password" autoComplete="new-password" value={next} onChange={(event) => setNext(event.target.value)} className="h-11 rounded-2xl border border-gray-100 bg-[#F8FAFC] px-3 text-base font-medium text-gray-800 outline-none" />
-          </label>
-          <label className="grid gap-1 text-sm font-semibold text-gray-600">
-            Confirmar nova senha
-            <input type="password" autoComplete="new-password" value={confirm} onChange={(event) => setConfirm(event.target.value)} className="h-11 rounded-2xl border border-gray-100 bg-[#F8FAFC] px-3 text-base font-medium text-gray-800 outline-none" />
-          </label>
-          <button type="submit" disabled={savingPassword} className="mt-1 inline-flex h-11 w-fit items-center rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 disabled:opacity-40">
-            {savingPassword ? 'Salvando...' : 'Redefinir senha'}
-          </button>
+      <section className={`mt-4 ${card}`}>
+        <h2 className="text-base font-bold text-[#1f1b2e]">Trocar senha</h2>
+        <p className="mt-1 text-[13px] text-[#5f5a78]">Use pelo menos 8 caracteres.</p>
+        <form className="mt-2" onSubmit={(event) => void onPassword(event)}>
+          <label className={row}><span className="text-[13.5px] font-semibold">Senha atual</span><input type="password" autoComplete="current-password" placeholder="Senha atual" value={current} onChange={(event) => setCurrent(event.target.value)} className={field} /></label>
+          <label className={row}><span className="text-[13.5px] font-semibold">Nova senha</span><input type="password" autoComplete="new-password" placeholder="Nova senha" value={next} onChange={(event) => setNext(event.target.value)} className={field} /></label>
+          <label className={row}><span className="text-[13.5px] font-semibold">Confirmar</span><input type="password" autoComplete="new-password" placeholder="Repita a nova senha" value={confirm} onChange={(event) => setConfirm(event.target.value)} className={field} /></label>
+          <div className="mt-4 flex justify-end">
+            <button type="submit" disabled={savingPassword} className="inline-flex h-11 items-center rounded-[11px] bg-[#6644e0] px-5 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)] disabled:opacity-40">
+              {savingPassword ? 'Salvando...' : 'Alterar senha'}
+            </button>
+          </div>
         </form>
       </section>
       {isLeader(user) ? <div className="mt-4"><ManagementSettingsPage embedded /></div> : null}

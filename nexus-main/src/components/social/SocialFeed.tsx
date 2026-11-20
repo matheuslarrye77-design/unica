@@ -5,6 +5,7 @@ import { cancelRepost, commentFeedPost, createFeedPost, deleteFeedComment, delet
 import { actor, useDemoProfile } from '@/lib/session';
 import { isLeader, refreshMoods, useInstitution } from '@/lib/institution';
 import { usePageSearch } from '@/lib/pageSearch';
+import { ImageCrop } from '@/components/journal/ImageCrop';
 import { CreatePost, type NewPostDraft } from './CreatePost';
 import { articleCover, articleSummary, getJournalArticles } from '@/data/journal';
 import { useSearchParams } from 'react-router-dom';
@@ -29,6 +30,7 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
   const [openCard, setOpenCard] = useState<string | null>(null);
   const [shareId, setShareId] = useState<string | null>(null);
   const [repostId, setRepostId] = useState<string | null>(null);
+  const [commentCrop, setCommentCrop] = useState<{ postId: string; file: File } | null>(null);
   const [note, setNote] = useState('');
   const feedTicket = useRef(0);
   const feedWarned = useRef(false);
@@ -39,6 +41,10 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
     : null;
 
   function stageCommentFile(postId: string, file: File, forced?: CommentMedia['kind']) {
+    if (!forced && file.type.startsWith('image/') && file.type !== 'image/gif') {
+      setCommentCrop({ postId, file });
+      return;
+    }
     const kind: CommentMedia['kind'] = forced ?? (file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : file.type.startsWith('image/') ? (file.type === 'image/gif' ? 'gif' : 'image') : 'document');
     const local = URL.createObjectURL(file);
     const placeholder: CommentMedia = { kind, url: local, name: file.name };
@@ -377,6 +383,17 @@ export const SocialFeed: FC<{ mode?: 'mural' | 'recognition'; preview?: boolean 
       })}
 
       {visiblePosts.map((post) => renderFeedPost(post))}
+      {commentCrop ? (
+        <ImageCrop
+          file={commentCrop.file}
+          onCancel={() => setCommentCrop(null)}
+          onConfirm={(ready) => {
+            const postId = commentCrop.postId;
+            setCommentCrop(null);
+            stageCommentFile(postId, ready, 'image');
+          }}
+        />
+      ) : null}
     </div>
     </ExpandProvider>
   );

@@ -561,6 +561,7 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [inlineFile, setInlineFile] = useState<File | null>(null);
+  const [attachFile, setAttachFile] = useState<File | null>(null);
   const [sending, setSending] = useState('');
   const dateLocked = categoryLocksDate(category);
   const coverUrl = resolveJournalAsset(cover);
@@ -674,8 +675,17 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
     }
   }
 
-  async function addImageAttachment(file?: File) {
+  function addImageAttachment(file?: File) {
     if (!file) return;
+    if (!imageFile(file)) {
+      toast.error('Use uma imagem JPG, PNG ou WEBP.');
+      return;
+    }
+    setAttachFile(file);
+  }
+
+  async function confirmAttach(file: File) {
+    setAttachFile(null);
     const stored = await storedImage(file, saveJournalInline);
     if (!stored) return;
     const item: JournalMedia = { id: generateId(), name: file.name, kind: 'image', url: stored };
@@ -957,6 +967,10 @@ export const JournalEditor: FC<Props> = ({ open, article, author, onOpenChange }
         ) : null}
         {inlineFile ? createPortal(
           <ImageCrop file={inlineFile} onCancel={() => setInlineFile(null)} onConfirm={(file) => void confirmInline(file)} />,
+          document.body,
+        ) : null}
+        {attachFile ? createPortal(
+          <ImageCrop file={attachFile} onCancel={() => setAttachFile(null)} onConfirm={(file) => void confirmAttach(file)} />,
           document.body,
         ) : null}
         {writing ? createPortal(

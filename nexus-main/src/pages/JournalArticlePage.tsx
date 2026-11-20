@@ -1,3 +1,4 @@
+import { ImageCrop } from '@/components/journal/ImageCrop';
 import { JournalEditor } from '@/components/journal/JournalEditor';
 import { JournalBadge, JournalRichText } from '@/components/journal/JournalVisual';
 import { ComposerExtras } from '@/components/social/ComposerExtras';
@@ -84,6 +85,7 @@ const CommentComposer: FC<{
 }> = ({ value, placeholder, label, onChange, onSend }) => {
   const [media, setMedia] = useState<JournalCommentMedia[]>([]);
   const [recording, setRecording] = useState(false);
+  const [crops, setCrops] = useState<File[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
@@ -153,7 +155,13 @@ const CommentComposer: FC<{
       ) : null}
       <div className="flex items-end gap-1">
         <Textarea value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="min-h-10 flex-1" />
-        <input ref={fileRef} type="file" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" className="hidden" onChange={(event) => { [...(event.target.files ?? [])].forEach((file) => void addFile(file)); event.target.value = ''; }} />
+        <input ref={fileRef} type="file" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" className="hidden" onChange={(event) => {
+          const files = [...(event.target.files ?? [])];
+          event.target.value = '';
+          const photos = files.filter((file) => file.type.startsWith('image/') && file.type !== 'image/gif');
+          files.filter((file) => !photos.includes(file)).forEach((file) => void addFile(file));
+          if (photos.length) setCrops((current) => [...current, ...photos]);
+        }} />
         <button type="button" aria-label="Anexar arquivo" onClick={() => fileRef.current?.click()} className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[#3600C2] hover:bg-[#F5F1FF]"><Paperclip className="h-4 w-4" /></button>
         <button type="button" aria-label={recording ? 'Parar gravação' : 'Gravar áudio'} aria-pressed={recording} onClick={() => void toggleRecord()} className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-[#F5F1FF]', recording ? 'text-[#D6334B]' : 'text-[#3600C2]')}><Mic className="h-4 w-4" /></button>
         <ComposerExtras
@@ -163,6 +171,13 @@ const CommentComposer: FC<{
         />
         <button type="button" aria-label={label} disabled={busy || (!value.trim() && media.length === 0)} onClick={() => { onSend(value, media); setMedia([]); }} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 disabled:opacity-40"><Send className="h-4 w-4" /></button>
       </div>
+      {crops[0] ? (
+        <ImageCrop
+          file={crops[0]}
+          onCancel={() => setCrops((current) => current.slice(1))}
+          onConfirm={(file) => { void addFile(file); setCrops((current) => current.slice(1)); }}
+        />
+      ) : null}
     </div>
   );
 };
@@ -224,7 +239,7 @@ export const JournalArticlePage: FC = () => {
             Jornal
           </Link>
           <div className="mx-auto w-full max-w-[980px] rounded-3xl bg-white px-6 py-[22px] shadow-[0_2px_10px_rgba(60,40,140,0.06)] sm:px-[34px] sm:py-8">
-            <div className="relative overflow-hidden rounded-[20px] bg-white p-6 shadow-[0_3px_16px_rgba(60,40,140,0.10)] before:absolute before:top-0 before:bottom-0 before:left-0 before:w-[5px] before:bg-[#6D32F5] sm:p-[34px]">
+            <div className="relative overflow-hidden rounded-[20px] bg-white px-6 py-6 shadow-[0_3px_16px_rgba(60,40,140,0.10)] before:absolute before:top-0 before:bottom-0 before:left-0 before:w-[5px] before:bg-[#6D32F5] sm:px-[34px] sm:py-8">
               <JournalBadge category={article.category} className="w-fit" />
               <h1 className="mt-[22px] text-[clamp(26px,4vw,38px)] font-semibold leading-[1.15] tracking-[-0.02em] text-gray-800">{article.title}</h1>
               <p className="mt-3 mb-[30px] text-[15px] text-gray-500">
