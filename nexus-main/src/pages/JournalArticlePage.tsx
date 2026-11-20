@@ -3,7 +3,6 @@ import { JournalBadge, JournalRichText } from '@/components/journal/JournalVisua
 import { ZoomImage } from '@/components/social/PhotoGallery';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { useJournalArticles, useJournalSaved } from '@/components/journal/useJournal';
-import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
   addJournalComment,

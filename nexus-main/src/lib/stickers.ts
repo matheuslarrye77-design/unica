@@ -95,12 +95,6 @@ function publishLibrary(items: SavedSticker[]) {
   libraryListeners.forEach((listener) => listener(items));
 }
 
-function changeLibrary(update: (items: SavedSticker[]) => SavedSticker[]) {
-  libraryVersion += 1;
-  if (!libraryItems) return;
-  publishLibrary(update(libraryItems));
-}
-
 export function subscribeStickerLibrary(listener: (items: SavedSticker[]) => void) {
   libraryListeners.add(listener);
   if (libraryItems) listener(libraryItems);
