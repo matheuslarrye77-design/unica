@@ -130,7 +130,7 @@ const helena: Account = {
 
 const FUNCOES = ['Líder', 'Supervisor', 'Chat', 'E-mail', 'Ligação'];
 const UNIQUE_FUNCOES = ['Líder', 'Supervisor'];
-const EVENT_TYPES = ['reuniao', 'evento', 'aniversario', 'outro'] as const;
+const EVENT_TYPES = ['reuniao', 'evento', 'aniversario', 'ferias', 'folga', 'outro'] as const;
 
 type AgendaEvent = {
   id: string;

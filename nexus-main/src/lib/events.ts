@@ -1,7 +1,7 @@
 import { authHeaders } from '@/lib/session';
 import { useEffect, useState } from 'react';
 
-export type AgendaType = 'reuniao' | 'evento' | 'aniversario' | 'outro';
+export type AgendaType = 'reuniao' | 'evento' | 'aniversario' | 'ferias' | 'folga' | 'outro';
 
 export type AgendaEvent = {
   id: string;

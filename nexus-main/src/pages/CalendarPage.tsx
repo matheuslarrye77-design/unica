@@ -168,7 +168,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
         time: [event.startTime, event.endTime].filter(Boolean).join(' – '),
         place: event.place,
         description: event.description,
-        category: event.type === 'reuniao' ? 'Reunião' : event.type === 'outro' ? 'Outro' : 'Evento',
+        category: event.type === 'reuniao' ? 'Reunião' : event.type === 'ferias' ? 'Férias' : event.type === 'folga' ? 'Folga' : event.type === 'outro' ? 'Outro' : 'Evento',
         participants: event.everyone
           ? ['Todos os colaboradores']
           : (event.participantIds ?? []).map((id) => directoryPeople.find((person) => person.id === id)?.name).filter((name): name is string => Boolean(name)),
@@ -390,9 +390,9 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
               <button type="button" aria-label={birthdaysFocus ? 'Voltar ao calendário' : 'Aniversários'} aria-pressed={birthdaysFocus} onClick={birthdaysFocus ? openCalendar : openBirthdays} className="grid h-11 w-11 place-items-center rounded-[11px] bg-[#6644e0] text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)] hover:bg-[#4f33b8]">
                 {birthdaysFocus ? <Calendar className="h-5 w-5" strokeWidth={1.75} /> : <Cake className="h-5 w-5" strokeWidth={1.75} />}
               </button>
-              <Button className="h-11 rounded-2xl px-4" onClick={() => { setEditingEvent(null); setCreateType('reuniao'); setEditorOpen(true); }}>
+              <button type="button" onClick={() => { setEditingEvent(null); setCreateType('reuniao'); setEditorOpen(true); }} className="inline-flex h-11 items-center gap-2 rounded-full bg-gradient-to-b from-[#7a2cff] to-[#6417f0] px-5 text-sm font-medium text-white shadow-[0_8px_18px_rgba(100,23,240,0.3)] hover:brightness-110">
                 <Plus className="h-4 w-4" /> Adicionar evento
-              </Button>
+              </button>
             </div>
           }
         />
