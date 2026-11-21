@@ -109,6 +109,7 @@ type AuthStore = {
   sessions: Record<string, string>;
   favorites: Record<string, string[]>;
   colleagues: Colleague[];
+  passwords?: Record<string, { salt: string; hash: string; mustChange?: boolean }>;
 };
 
 type FeedStore = {
@@ -450,6 +451,7 @@ export function extraApi(): Connect.NextHandleFunction {
         sessions: {},
         favorites: {},
         colleagues: [],
+        passwords: {},
       };
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(authFile, JSON.stringify(store, null, 2));
@@ -618,7 +620,7 @@ export function extraApi(): Connect.NextHandleFunction {
     const goalsRoute = url === '/api/goals' || url.startsWith('/api/goals/');
     const journalRoute = url === '/api/journal' || url === '/api/journal/saved';
     const birthdayRoute = url === '/api/birthday-card' || url.startsWith('/api/birthday-card/');
-    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && url !== '/api/account' && !feedRoute && !uploadRoute && !celebrationRoute && !gifRoute && !stickerRoute && !goalsRoute && !journalRoute && !birthdayRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/events')) {
+    if (!url.startsWith('/api/login') && !url.startsWith('/api/session') && !url.startsWith('/api/logout') && url !== '/api/account' && !feedRoute && !uploadRoute && !celebrationRoute && !gifRoute && !stickerRoute && !goalsRoute && !journalRoute && !birthdayRoute && !url.startsWith('/api/reposts') && !url.startsWith('/api/document-favorites') && !url.startsWith('/api/colleagues') && !url.startsWith('/api/password-resets') && !url.startsWith('/api/events')) {
       return next();
     }
     try {
@@ -1164,6 +1166,29 @@ export function extraApi(): Connect.NextHandleFunction {
         auth.colleagues.unshift(colleague);
         saveAuth(auth);
         send(res, 201, { colleague });
+        return;
+      }
+
+      if (req.method === 'POST' && url === '/api/password-resets') {
+        if (!isLeader(user)) return send(res, 403, { error: 'forbidden' });
+        const body = JSON.parse((await readBody(req)).toString('utf8')) as { email?: string; method?: string; forceChange?: boolean };
+        const email = String(body.email ?? '').trim().toLowerCase();
+        const method = body.method === 'temp' ? 'temp' : 'link';
+        const known = accounts.some((item) => item.email.toLowerCase() === email)
+          || teamRoster.some((item) => item.email.toLowerCase() === email)
+          || loadAuth().colleagues.some((item) => item.email.toLowerCase() === email);
+        if (!email.includes('@') || !known) return send(res, 404, { error: 'missing' });
+        if (method === 'link') {
+          send(res, 200, { ok: true, method: 'link' });
+          return;
+        }
+        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+        const password = [...randomBytes(10)].map((value) => alphabet[value % alphabet.length]).join('');
+        const auth = loadAuth();
+        const salt = randomBytes(16).toString('hex');
+        auth.passwords = { ...(auth.passwords ?? {}), [email]: { salt, hash: hashPassword(password, salt), mustChange: body.forceChange !== false } };
+        saveAuth(auth);
+        send(res, 200, { ok: true, method: 'temp', password });
         return;
       }
 

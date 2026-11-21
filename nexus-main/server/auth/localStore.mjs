@@ -5,7 +5,7 @@ import { readCookie, SESSION_COOKIE } from './cookies.mjs';
 import { hashPassword, passwordMatches, tokenHash } from './credentials.mjs';
 
 function emptyStore() {
-  return { salt: '', passwordHash: '', sessions: {}, sessionExpiry: {}, favorites: {}, colleagues: [] };
+  return { salt: '', passwordHash: '', sessions: {}, sessionExpiry: {}, favorites: {}, colleagues: [], passwords: {} };
 }
 
 function readAuth(file) {
@@ -18,6 +18,7 @@ function readAuth(file) {
       sessionExpiry: parsed.sessionExpiry ?? {},
       favorites: parsed.favorites ?? {},
       colleagues: Array.isArray(parsed.colleagues) ? parsed.colleagues : [],
+      passwords: parsed.passwords && typeof parsed.passwords === 'object' ? parsed.passwords : {},
     };
   } catch {
     return emptyStore();
@@ -51,7 +52,12 @@ export function createLocalStore(file, accounts) {
     async findCredential(loginId) {
       const auth = readAuth(file);
       const account = findAccount(auth, accounts, loginId);
-      if (!account || !auth.salt || !auth.passwordHash) return null;
+      if (!account) return null;
+      const personal = auth.passwords?.[String(account.email ?? '').toLowerCase()];
+      if (personal?.salt && personal?.hash) {
+        return { user: publicUser(account), passwordSalt: personal.salt, passwordHash: personal.hash };
+      }
+      if (!auth.salt || !auth.passwordHash) return null;
       return { user: publicUser(account), passwordSalt: auth.salt, passwordHash: auth.passwordHash };
     },
     async createSession({ tokenHash: hash, userId, expiresAt }) {
@@ -79,8 +85,16 @@ export function createLocalStore(file, accounts) {
     },
     async updatePassword(currentPassword, nextPassword) {
       const auth = readAuth(file);
-      if (!auth.salt || !auth.passwordHash || !passwordMatches(currentPassword, auth.salt, auth.passwordHash)) return false;
+      const passwords = auth.passwords ?? {};
+      const personalKey = Object.keys(passwords).find((email) => passwordMatches(currentPassword, passwords[email]?.salt, passwords[email]?.hash));
       const salt = randomBytes(16).toString('hex');
+      if (personalKey) {
+        passwords[personalKey] = { salt, hash: hashPassword(nextPassword, salt), mustChange: false };
+        auth.passwords = passwords;
+        writeAuth(file, auth);
+        return true;
+      }
+      if (!auth.salt || !auth.passwordHash || !passwordMatches(currentPassword, auth.salt, auth.passwordHash)) return false;
       auth.salt = salt;
       auth.passwordHash = hashPassword(nextPassword, salt);
       writeAuth(file, auth);

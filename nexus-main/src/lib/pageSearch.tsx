@@ -6,7 +6,7 @@ function placeholderFor(pathname: string) {
   if (pathname.startsWith('/announcements')) return 'Buscar por título ou conteúdo...';
   if (pathname.startsWith('/kudos')) return 'Buscar reconhecimentos...';
   if (pathname.startsWith('/resources')) return 'Pesquisar documentos...';
-  if (pathname.startsWith('/employees')) return 'Buscar por nome, ramal ou e-mail...';
+  if (pathname.startsWith('/employees')) return 'Buscar por nome, e-mail ou ramal';
   if (pathname.startsWith('/sugestoes')) return 'Buscar sugestão...';
   if (pathname.startsWith('/projects')) return 'Buscar atividades...';
   if (pathname.startsWith('/calendar')) return 'Buscar eventos...';
