@@ -234,27 +234,27 @@ export const PodiumStage: FC<{
   return (
     <section className="overflow-visible rounded-[22px] border border-[#EDE7FE] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(70,0,243,0.04)]">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-2.5">
+        <div className="flex min-w-0 items-start gap-2.5">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#EDE7FE] text-[#4600F3]"><Trophy className="h-4 w-4" /></span>
           <div>
             <h2 className="text-[16px] font-medium text-[#241B33]">Pódio do mês</h2>
             <p className="text-[12.5px] text-[#8A7C98]">{subtitle}</p>
           </div>
         </div>
-        <div className="flex w-fit flex-col items-stretch gap-2">
+        <div className="ml-auto grid w-max max-w-full shrink-0 grid-cols-1 gap-2">
           {periods.length > 0 ? (
-            <div className="inline-flex h-11 items-center gap-1 rounded-2xl bg-white px-1.5 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+            <div className="flex h-11 w-full items-center justify-between gap-1 rounded-2xl bg-white px-1.5 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
               <button type="button" aria-label="Período anterior" disabled={periodIndex <= 0} onClick={() => onPeriod(periods[periodIndex - 1].key)} className="grid h-8 w-8 place-items-center rounded-xl disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
-              <span className="inline-flex items-center gap-1.5 px-1"><Calendar className="h-4 w-4 text-blue-600" /> {active?.periodLabel || monthTitle()}</span>
+              <span className="inline-flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1"><Calendar className="h-4 w-4 shrink-0 text-blue-600" /><span className="truncate">{active?.periodLabel || monthTitle()}</span></span>
               <button type="button" aria-label="Período seguinte" disabled={periodIndex < 0 || periodIndex >= periods.length - 1} onClick={() => onPeriod(periods[periodIndex + 1].key)} className="grid h-8 w-8 place-items-center rounded-xl disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
             </div>
           ) : (
-            <p className="inline-flex h-11 items-center gap-1.5 rounded-2xl bg-white px-4 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+            <p className="flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl bg-white px-4 text-base font-semibold text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
               <Calendar className="h-4 w-4 text-blue-600" /> {monthTitle()}
             </p>
           )}
-          <div className="grid grid-cols-3 gap-2">
-            {CATEGORIES.filter((item) => podiums.some((entry) => entry.periodKey === periodKey && entry.channel === item.id && entry.ranking?.length)).map((item) => (
+          <div className="grid w-full grid-cols-3 gap-2">
+            {CATEGORIES.map((item) => (
               <button
                 key={item.id}
                 type="button"

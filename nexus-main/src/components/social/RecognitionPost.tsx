@@ -14,6 +14,7 @@ export const RecognitionPost: FC<{ post: SocialPost; expandId?: string; onVote?:
   const rawCaption = [post.caption, post.comment].filter(Boolean).join('\n').trim()
     || (post.body && post.body !== post.bannerTitle && !post.body.includes('reconheceu o excelente trabalho') ? post.body.trim() : '');
   const caption = rawCaption.replace(/legenda da publicação \(opcional\)/gi, '').trim();
+  const sameAsTitle = caption === line || caption === `${firstNameOf(from)} reconheceu o excelente trabalho de ${firstNameOf(name)}!`;
   const decorative = new Set((post.blocks ?? []).flatMap((block) => (block.type === 'image' && block.display ? [block.url] : [])));
   const listed = post.images?.length ? post.images : post.image ? [post.image] : [];
   const photos = listed.filter((url) => !decorative.has(url));
@@ -28,9 +29,9 @@ export const RecognitionPost: FC<{ post: SocialPost; expandId?: string; onVote?:
           {firstNameOf(from)} reconheceu <span className="text-[#3C3952]">{name}</span>
         </p>
       ) : null}
-      {caption ? (
+      {caption && !sameAsTitle ? (
         <div className="mt-2">
-          <ReadMore id={expandId ?? `${post.id}-reconhecimento`} text={caption} className="text-[15px] leading-6 text-[#514663] dark:text-foreground/90" />
+          <ReadMore id={expandId ?? `${post.id}-reconhecimento`} text={caption} className="text-[15px] leading-6 text-[#514663]" />
         </div>
       ) : null}
       {audios.map((item, index) => item.url ? <audio key={`audio-${index}`} src={item.url} controls className="mt-3 h-10 w-full" /> : null)}

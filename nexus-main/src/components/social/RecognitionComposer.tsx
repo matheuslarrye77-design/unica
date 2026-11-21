@@ -8,8 +8,6 @@ import { Loader2 } from 'lucide-react';
 import { type FC, type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 
-const tags = ['Colaboração', 'Atendimento', 'Entrega', 'Cultura'];
-
 export type RecognitionDraft = {
   name: string;
   fromName: string;
@@ -28,7 +26,6 @@ export const RecognitionComposer: FC<{
 }> = ({ onCreated, publishToFeed = true, onCancel }) => {
   const user = actor();
   const [personId, setPersonId] = useState('');
-  const [tag, setTag] = useState(tags[0]);
   const [message, setMessage] = useState('');
   const [caption, setCaption] = useState('');
   const [comment, setComment] = useState('');
@@ -48,7 +45,6 @@ export const RecognitionComposer: FC<{
     setCaption('');
     setComment('');
     setPhotos([]);
-    setTag(tags[0]);
   }
 
   async function submit(event: FormEvent) {
@@ -68,7 +64,6 @@ export const RecognitionComposer: FC<{
           recognizedName,
           recognizedBy: fromName,
           receivedRecognition: false,
-          tag,
           caption: caption.trim() || undefined,
           comment: comment.trim() || undefined,
           images: photos,
@@ -80,7 +75,7 @@ export const RecognitionComposer: FC<{
         name: recognizedName,
         fromName,
         message: text,
-        tag,
+        tag: '',
         caption: caption.trim(),
         comment: comment.trim(),
         photos,

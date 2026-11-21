@@ -191,7 +191,7 @@ export const KudosFeedPage: FC = () => {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-base font-semibold leading-6 text-gray-800">{recognitionHeadline(item.from, item.to, Boolean(item.received))}</p>
+                            <p className="text-base font-semibold leading-6 text-gray-800">{item.received ? recognitionHeadline(item.from, item.to, true) : `${item.from.split(/\s+/)[0]} reconheceu ${item.to.split(/\s+/)[0]}`}</p>
                             <p className="mt-0.5 text-sm text-gray-500">{item.when}</p>
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
@@ -209,8 +209,7 @@ export const KudosFeedPage: FC = () => {
                             </button>
                           </div>
                         </div>
-                        <p className="mt-2 text-base leading-7 text-gray-800">“{item.quote}”</p>
-                        {item.caption && item.caption.trim() !== item.quote.trim() ? <p className="mt-2 text-[13.5px] text-[#5C5168]">{item.caption}</p> : null}
+                        {item.quote.trim() && item.quote.trim() !== `${item.from.split(/\s+/)[0]} reconheceu ${item.to.split(/\s+/)[0]}` ? <p className="mt-2 text-base leading-7 text-gray-800">{item.quote}</p> : null}
                         {item.photos?.length ? (
                           <div className={`mt-3 grid gap-2 ${item.photos.length > 1 ? 'grid-cols-2' : ''}`}>
                             {item.photos.map((url) => <ZoomImage key={url} src={url} className="max-h-48 w-full rounded-xl object-cover" />)}

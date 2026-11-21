@@ -70,12 +70,12 @@ export const ActivityCardView: FC<{
       <div className="flex min-h-0 flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 title={activity.title} className={cn('text-lg font-bold leading-6 text-gray-800', reading ? '' : 'line-clamp-2 h-12')}>{activity.title}</h3>
-          <span className="flex shrink-0 items-center">
+          <span className="flex shrink-0 items-center gap-1">
             {onToggle ? (
               <button
                 type="button"
                 aria-label={collapsed ? `Expandir ${activity.title}` : `Minimizar ${activity.title}`}
-                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                className="grid h-8 w-8 place-items-center rounded-[14px] bg-white text-gray-500 shadow-[0_4px_14px_rgba(60,40,140,0.12)] hover:text-gray-800"
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={onToggle}
               >
@@ -86,7 +86,7 @@ export const ActivityCardView: FC<{
               type="button"
               aria-label={reading ? 'Reduzir atividade' : 'Ampliar atividade'}
               aria-pressed={reading}
-              className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              className={cn('grid h-8 w-8 place-items-center rounded-[14px] bg-white shadow-[0_4px_14px_rgba(60,40,140,0.12)]', reading ? 'bg-[#6D32F5] text-white' : 'text-gray-500 hover:text-gray-800')}
               onPointerDown={(event) => event.stopPropagation()}
               onClick={() => setReading((open) => !open)}
             >
@@ -98,7 +98,7 @@ export const ActivityCardView: FC<{
                   <button
                     type="button"
                     aria-label={`Ações de ${activity.title}`}
-                    className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                    className="grid h-8 w-8 place-items-center rounded-[14px] bg-white text-gray-500 shadow-[0_4px_14px_rgba(60,40,140,0.12)] hover:text-gray-800"
                     onPointerDown={(event) => event.stopPropagation()}
                   >
                     <MoreHorizontal className="h-4 w-4" />

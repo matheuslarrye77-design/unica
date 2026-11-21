@@ -21,8 +21,6 @@ const CAPTION_MAX = 300;
 const AUDIO_MAX = 80 * 1024 * 1024;
 const DOC_MAX = 40 * 1024 * 1024;
 const VIDEO_MAX = 200 * 1024 * 1024;
-const tags = ['Colaboração', 'Atendimento', 'Entrega', 'Cultura'];
-
 type Piece = { id: string; url: string; display?: 'sticker' | 'gif' };
 
 type ExistingRecognition = {
@@ -62,7 +60,6 @@ export const MuralPublishDialog: FC<Props> = (props) => {
   const chunks = useRef<Blob[]>([]);
   const [text, setText] = useState('');
   const [personId, setPersonId] = useState('');
-  const [tag, setTag] = useState(tags[0]);
   const [photos, setPhotos] = useState<Piece[]>([]);
   const [stickers, setStickers] = useState<Piece[]>([]);
   const [gifs, setGifs] = useState<Piece[]>([]);
@@ -73,7 +70,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
   const [options, setOptions] = useState(['', '']);
   const [panel, setPanel] = useState<'emoji' | 'sticker' | 'gif' | null>(null);
   const [menu, setMenu] = useState(false);
-  const [pick, setPick] = useState<'person' | 'tag' | null>(null);
+  const [pick, setPick] = useState<'person' | null>(null);
   const [preview, setPreview] = useState(false);
   const [recording, setRecording] = useState(false);
   const [sending, setSending] = useState(false);
@@ -99,14 +96,12 @@ export const MuralPublishDialog: FC<Props> = (props) => {
     if (props.source === 'recognition-existing') {
       setText((props.item.caption || props.item.quote || '').slice(0, CAPTION_MAX));
       setPhotos((props.item.photos ?? []).map((url) => ({ id: url, url })));
-      setTag(props.item.tag && tags.includes(props.item.tag) ? props.item.tag : tags[0]);
       setPersonId('');
       return;
     }
     setText('');
     setPhotos([]);
     setPersonId('');
-    setTag(tags[0]);
   }
 
   useEffect(() => {
@@ -290,7 +285,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
       recognizedName: journal ? undefined : recognizedName,
       recognizedBy: journal ? undefined : fromName,
       receivedRecognition: journal ? undefined : received,
-      tag: journal ? undefined : (existing?.tag || tag),
+      tag: undefined,
       caption: journal ? (text.trim() || undefined) : (text.trim() || undefined),
       comment: existing?.comment || undefined,
     };
@@ -336,14 +331,12 @@ export const MuralPublishDialog: FC<Props> = (props) => {
         props.onShared?.();
         return;
       }
-      const publishedTag = existing?.tag || tag;
       await createFeedPost({
         body: message,
         kind: 'recognition',
         recognizedName,
         recognizedBy: fromName,
         receivedRecognition: received,
-        tag: publishedTag,
         caption: message || undefined,
         comment: existing?.comment,
         images: built ? undefined : photoUrls,
@@ -360,7 +353,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
           name: recognizedName,
           fromName,
           message,
-          tag: publishedTag,
+          tag: '',
           caption: message,
           comment: existing?.comment || '',
           photos: photos.map((item) => item.url),
@@ -393,7 +386,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
       <DialogContent
         showCloseButton={false}
         overlayClassName="bg-slate-900/25 backdrop-blur-md"
-        className={`flex max-h-[min(760px,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden border-0 bg-white p-0 ${isRecognition ? 'rounded-[22px] shadow-[0_30px_80px_-20px_rgba(79,51,184,0.35),0_2px_6px_rgba(31,27,46,0.06)] sm:max-w-[600px]' : 'rounded-2xl border border-gray-100 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:max-w-[640px]'}`}
+        className={`!flex !max-h-[min(760px,calc(100dvh-2rem))] w-[min(640px,calc(100%-2rem))] !max-w-none !flex-col !gap-0 !overflow-hidden !p-0 border-0 bg-white ${isRecognition ? 'rounded-[22px] shadow-[0_30px_80px_-20px_rgba(79,51,184,0.35),0_2px_6px_rgba(31,27,46,0.06)] sm:!max-w-[600px]' : 'rounded-2xl border border-gray-100 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:!max-w-[640px]'}`}
         onPointerDownOutside={(event) => { if (audioFile || recording) event.preventDefault(); }}
         onInteractOutside={(event) => { if (audioFile || recording) event.preventDefault(); }}
       >
@@ -409,7 +402,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-3 [scrollbar-color:#d9ccff_transparent] [scrollbar-width:thin]">
             {props.source === 'recognition-new' ? (
               <div className="mb-3 grid gap-3">
                 <div className="relative">
@@ -482,20 +475,16 @@ export const MuralPublishDialog: FC<Props> = (props) => {
                   ) : null}
                   <span className="pointer-events-none absolute bottom-3 right-4 text-[12.5px] text-[#B7A8C4]">{text.length}/{textMax}</span>
                 </div>
-                {isRecognition && recognizedName ? (
-                  <div className="mt-3">
-                    <RecognitionArtCard name={recognizedName} avatar={recognizedAvatar} />
-                  </div>
-                ) : null}
 
-                {photos.length || stickers.length || gifs.length ? (
+                {attachments.map((item, index) => item.type === 'audio' && item.url ? (
+                  <div key={`audio-${item.url}-${index}`} className="relative mt-3 rounded-xl border border-border px-3 py-2">
+                    <audio src={item.url} controls preload="metadata" className="w-full" />
+                    <button type="button" aria-label="Remover áudio" onClick={() => setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="absolute right-2 top-2 rounded-full bg-background/90 p-1"><X className="h-4 w-4" /></button>
+                  </div>
+                ) : null)}
+
+                {stickers.length || gifs.length ? (
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {photos.map((item) => (
-                      <div key={item.id} className="relative">
-                        <img src={item.url} alt="" className="h-20 w-20 rounded-xl object-cover" />
-                        <button type="button" aria-label="Remover imagem" onClick={() => setPhotos((current) => current.filter((piece) => piece.id !== item.id))} className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-white/90 text-[#3600C2]"><X className="h-3 w-3" /></button>
-                      </div>
-                    ))}
                     {[...stickers, ...gifs].map((item) => (
                       <div key={item.id} className="relative">
                         <img src={item.url} alt={item.display === 'gif' ? 'GIF' : 'Figurinha'} className="h-20 w-20 rounded-xl bg-[#F5F1FF] object-contain" />
@@ -508,6 +497,17 @@ export const MuralPublishDialog: FC<Props> = (props) => {
                   </div>
                 ) : null}
 
+                {photos.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {photos.map((item) => (
+                      <div key={item.id} className="relative">
+                        <img src={item.url} alt="" className="h-20 w-20 rounded-xl object-cover" />
+                        <button type="button" aria-label="Remover imagem" onClick={() => setPhotos((current) => current.filter((piece) => piece.id !== item.id))} className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-white/90 text-[#3600C2]"><X className="h-3 w-3" /></button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
                 {progress !== null ? (
                   <div className="mt-3">
                     <p className="mb-1 text-xs text-[#8A7C98]">Enviando {Math.round(progress * 100)}%</p>
@@ -515,14 +515,8 @@ export const MuralPublishDialog: FC<Props> = (props) => {
                   </div>
                 ) : null}
 
-                {attachments.map((item, index) => (
+                {attachments.map((item, index) => item.type === 'audio' ? null : (
                   <div key={`${item.url}-${index}`} className="mt-3">
-                    {item.type === 'audio' && item.url ? (
-                      <div className="relative rounded-xl border border-border px-3 py-2">
-                        <audio src={item.url} controls preload="metadata" className="w-full" />
-                        <button type="button" aria-label="Remover áudio" onClick={() => setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="absolute right-2 top-2 rounded-full bg-background/90 p-1"><X className="h-4 w-4" /></button>
-                      </div>
-                    ) : null}
                     {item.type === 'video' && item.url ? (
                       <div className="relative overflow-hidden rounded-xl bg-black">
                         <video src={item.url} controls preload="metadata" playsInline className="max-h-64 w-full" />
@@ -564,6 +558,12 @@ export const MuralPublishDialog: FC<Props> = (props) => {
                       ) : null}
                       <button type="button" onClick={() => { setPollOpen(false); setPollQuestion(''); setOptions(['', '']); }} className="text-[12.5px] text-[#8A7C98]">Remover enquete</button>
                     </div>
+                  </div>
+                ) : null}
+
+                {isRecognition && recognizedName ? (
+                  <div className="mt-3">
+                    <RecognitionArtCard name={recognizedName} avatar={recognizedAvatar} />
                   </div>
                 ) : null}
 
