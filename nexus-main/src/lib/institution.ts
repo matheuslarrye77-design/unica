@@ -97,6 +97,7 @@ const API_ERRORS: Record<string, string> = {
   unknown: 'Não foi possível identificar o seu perfil.',
   title: 'Informe um título para a sugestão.',
   status: 'Esse status não pode ser usado.',
+  ramal: 'O ramal precisa ter de 3 a 6 números.',
   '401': 'Entre novamente para continuar.',
   '403': 'Você não tem permissão para esta ação.',
   '404': 'Não encontramos este item.',

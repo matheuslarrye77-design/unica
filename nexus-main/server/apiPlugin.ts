@@ -480,7 +480,7 @@ export function institutionMiddleware(): Connect.NextHandleFunction {
         const next = { ...store.people[targetId] };
         if (body.ramal !== undefined) {
           const ramal = String(body.ramal).trim();
-          if (ramal && !/^\d{3}$/.test(ramal)) return send(res, 400, { error: 'ramal' });
+          if (ramal && !/^\d{3,6}$/.test(ramal)) return send(res, 400, { error: 'ramal' });
           next.ramal = ramal;
         }
         if (body.birthDate !== undefined) {
