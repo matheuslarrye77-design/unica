@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/Header';
 import { calendarEvents, type CalendarEvent } from '@/data/mockData';
+import { teamRoster } from '@/data/team';
 import { cn } from '@/lib/utils';
 import { directoryPeople, isLeader, useInstitution, wallpaperUrl, type CalendarTheme } from '@/lib/institution';
 import { Calendar, Cake, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
@@ -171,7 +172,7 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
         category: event.type === 'reuniao' ? 'Reunião' : event.type === 'ferias' ? 'Férias' : event.type === 'folga' ? 'Folga' : event.type === 'outro' ? 'Outro' : 'Evento',
         participants: event.everyone
           ? ['Todos os colaboradores']
-          : (event.participantIds ?? []).map((id) => directoryPeople.find((person) => person.id === id)?.name).filter((name): name is string => Boolean(name)),
+          : (event.participantIds ?? []).map((id) => directoryPeople.find((person) => person.id === id)?.name ?? teamRoster.find((person) => person.id === id)?.name).filter((name): name is string => Boolean(name)),
       });
     }
     const knownBirthdays = new Set([...base, ...extra].filter((event) => event.type === 'birthday').map((event) => event.personName));
@@ -390,8 +391,8 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
               <button type="button" aria-label={birthdaysFocus ? 'Voltar ao calendário' : 'Aniversários'} aria-pressed={birthdaysFocus} onClick={birthdaysFocus ? openCalendar : openBirthdays} className="grid h-11 w-11 place-items-center rounded-[11px] bg-[#6644e0] text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)] hover:bg-[#4f33b8]">
                 {birthdaysFocus ? <Calendar className="h-5 w-5" strokeWidth={1.75} /> : <Cake className="h-5 w-5" strokeWidth={1.75} />}
               </button>
-              <button type="button" onClick={() => { setEditingEvent(null); setCreateType('reuniao'); setEditorOpen(true); }} className="inline-flex h-11 items-center gap-2 rounded-full bg-gradient-to-b from-[#7a2cff] to-[#6417f0] px-5 text-sm font-medium text-white shadow-[0_8px_18px_rgba(100,23,240,0.3)] hover:brightness-110">
-                <Plus className="h-4 w-4" /> Adicionar evento
+              <button type="button" onClick={() => { setEditingEvent(null); setCreateType('reuniao'); setEditorOpen(true); }} className="inline-flex h-11 items-center gap-2 rounded-[11px] bg-[#6644e0] px-5 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)] hover:bg-[#4f33b8]">
+                <Plus className="h-4 w-4" /> Novo evento
               </button>
             </div>
           }
@@ -569,10 +570,10 @@ export const CalendarPage: FC<{ embedded?: boolean; compact?: boolean; page?: bo
             <h2 className={cn('font-semibold', compact ? 'text-sm' : 'text-xl')}>{monthLabel}</h2>
             <div className="flex items-center gap-2">
               {compact || !leader ? null : (
-                <Button variant="outline" size="sm" className="gap-1" onClick={() => { setEditingEvent(null); setEditorOpen(true); }}>
+                <button type="button" onClick={() => { setEditingEvent(null); setEditorOpen(true); }} className="inline-flex h-9 items-center gap-1 rounded-[11px] bg-[#6644e0] px-3 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)] hover:bg-[#4f33b8]">
                   <Plus className="h-4 w-4" />
                   Novo evento
-                </Button>
+                </button>
               )}
               <Button variant="outline" size="sm" onClick={() => shiftMonth(-1)} aria-label="Mês anterior"><ChevronLeft className="h-4 w-4" /></Button>
               <Button variant="outline" size="sm" onClick={() => { setCurrentDate(new Date()); setSelectedDay(new Date().getDate()); }}>Hoje</Button>
