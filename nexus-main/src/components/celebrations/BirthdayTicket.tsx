@@ -314,7 +314,7 @@ function stretch(event: ReactPointerEvent<HTMLButtonElement>, origin: number, mi
 }
 
 function ActionBar({ canUndo, canRedo, onUndo, onRedo, children }: { canUndo: boolean; canRedo: boolean; onUndo: () => void; onRedo: () => void; children: ReactNode }) {
-  const arrow = 'grid h-11 w-11 place-items-center rounded-full text-gray-500 hover:bg-[#F4F1FB] hover:text-gray-800 disabled:opacity-30';
+  const arrow = 'grid h-8 w-8 place-items-center rounded-full text-[#6b6682] hover:bg-[#f6f3ff] hover:text-[#6644e0] disabled:opacity-30';
   return (
     <div className="grid w-full grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
       <button type="button" title="Voltar" aria-label="Voltar" disabled={!canUndo} onClick={onUndo} className={arrow}><Undo2 className="h-4 w-4" strokeWidth={1.5} /></button>
@@ -345,7 +345,7 @@ function StickerShelf({ items, selected, onPick }: { items: ShelfArt[]; selected
       <button type="button" aria-label="Adesivos anteriores" disabled={current === 0} onClick={() => setPage(current - 1)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-lg text-gray-500 hover:bg-[#F4F1FB] disabled:opacity-30">‹</button>
       <div className="grid flex-1 grid-cols-4 gap-2" data-sticker-count={items.length} data-sticker-shown={visible.length}>
         {cells.map((item, index) => item ? (
-          <button key={item.id} type="button" aria-pressed={selected === item.id} aria-label={item.label} onClick={() => onPick(item.id)} className={cn('grid aspect-square place-items-center rounded-xl bg-[#F6F4FB] p-1.5', selected === item.id && 'ring-2 ring-[#6B33F6]')}>
+          <button key={item.id} type="button" aria-pressed={selected === item.id} aria-label={item.label} onClick={() => onPick(item.id)} className={cn('grid aspect-square place-items-center rounded-2xl bg-white p-1.5 shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff] transition hover:scale-105', selected === item.id && 'shadow-[0_0_0_2px_#fff,0_0_0_4px_#7c5cf5]')}>
             <img src={item.src} alt="" decoding="async" draggable={false} className="sticker-cut max-h-full max-w-full object-contain" />
           </button>
         ) : <span key={`empty-${index}`} className="aspect-square rounded-xl bg-[#F6F4FB]" />)}
@@ -1549,7 +1549,7 @@ export const BirthdayTicket: FC = () => {
           </div>
         </div>
         {composing ? (
-          <button type="button" aria-pressed={asGuest} onClick={() => setAsGuest((value) => !value)} className="h-11 shrink-0 rounded-2xl border border-gray-100 bg-white px-4 text-sm font-semibold text-gray-800 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+          <button type="button" aria-pressed={asGuest} onClick={() => setAsGuest((value) => !value)} className="h-11 shrink-0 rounded-[11px] bg-white px-4 text-sm font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4] hover:bg-[#f6f3ff] hover:text-[#4f33b8]">
             {asGuest ? 'Voltar a montar' : 'Ver como aniversariante'}
           </button>
         ) : null}
@@ -1558,8 +1558,8 @@ export const BirthdayTicket: FC = () => {
         {people.map((item) => {
           const active = person?.id === item.id;
           return (
-            <button key={item.id} type="button" onClick={() => choosePerson(item.id)} aria-label={`${item.name}, ${item.day} de ${months[item.month]}`} aria-pressed={active} className="grid w-16 shrink-0 justify-items-center gap-2">
-              <img src={item.avatar} alt="" className={cn('h-14 w-14 rounded-full object-cover', active && 'ring-2 ring-[#6B33F6] ring-offset-2')} />
+            <button key={item.id} type="button" onClick={() => choosePerson(item.id)} aria-label={`${item.name}, ${item.day} de ${months[item.month]}`} aria-pressed={active} className={cn('grid w-16 shrink-0 justify-items-center gap-2 rounded-[18px] px-2 py-2 transition', active && 'bg-white shadow-[6px_6px_14px_#d8d2ee,-4px_-4px_12px_#fff,0_0_0_1px_#e8e4f4]')}>
+              <img src={item.avatar} alt="" className={cn('h-14 w-14 rounded-full object-cover transition hover:scale-105', active && 'scale-110 shadow-[0_0_0_3px_#fff,0_0_0_5px_#7c5cf5]')} />
               <span className={cn('text-xs', active ? 'font-semibold text-[#6B33F6]' : 'text-gray-500')}>{stamp(item.day, item.month)}</span>
               <span className={cn('h-0.5 w-10 rounded-full', active ? 'bg-[#6B33F6]' : 'bg-transparent')} />
             </button>
@@ -1567,7 +1567,7 @@ export const BirthdayTicket: FC = () => {
         })}
       </div>
       {person ? (
-        <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-stretch">
           <div ref={boardRef} onPointerDown={(event) => { if (event.target === event.currentTarget) releaseSelection(); }} onClick={(event) => { if (lift && event.target === event.currentTarget) closeLift(); }} className={cn('relative aspect-[967/577] w-full flex-1 overflow-visible rounded-[28px]', lift && 'z-50')} style={{ backgroundColor: cardColor }}>
             <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
               <rect x="3.6%" y="6%" width="92.8%" height="88%" rx="18" fill="none" stroke="rgba(255,248,240,0.9)" strokeWidth="1.75" strokeDasharray="2 7" strokeLinecap="round" />
@@ -1661,20 +1661,21 @@ export const BirthdayTicket: FC = () => {
             })}
           </div>
           {composing && !asGuest ? (
-            <div className="w-full shrink-0 lg:w-[340px]">
-              <aside className="max-h-[70vh] w-full overflow-y-auto rounded-[28px] border border-gray-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-                <div className="mb-4 grid grid-cols-3 rounded-2xl bg-[#F4F1FB] p-1" role="tablist" aria-label="Ferramentas do cartão">
+            <div className="flex w-full shrink-0 lg:w-[340px]">
+              <aside className="flex h-full max-h-[70vh] min-h-0 w-full flex-col overflow-hidden rounded-[22px] bg-white p-4 shadow-[10px_10px_24px_#d8d2ee,-6px_-6px_18px_#fff,0_0_0_1px_#e8e4f4]">
+                <div className="mb-4 flex shrink-0 gap-2.5" role="tablist" aria-label="Ferramentas do cartão">
                   {([
                     ['color', 'Fundo', Paintbrush],
                     ['stickers', 'Adesivos', Sticker],
                     ['text', 'Texto', Type],
                   ] as const).map(([id, label, Icon]) => (
-                    <button key={id} type="button" role="tab" aria-selected={tool === id} onClick={() => { setTool(id); setFontOpen(false); }} className={cn('flex h-9 items-center justify-center gap-1.5 rounded-xl text-xs font-medium', tool === id ? 'bg-[#6B33F6] text-white' : 'text-gray-500 hover:text-gray-800')}>
-                      <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
+                    <button key={id} type="button" role="tab" aria-selected={tool === id} onClick={() => { setTool(id); setFontOpen(false); }} className={cn('flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[11px] border px-1 text-[12.5px] transition-[flex-grow,height,background,color,box-shadow] duration-300', tool === id ? 'h-[42px] flex-[1.7] border-[#6644e0] bg-[#6644e0] text-[13px] font-semibold text-white shadow-[0_6px_14px_-6px_rgba(102,68,224,0.7)]' : 'h-[38px] border-[#e8e4f4] bg-white font-medium text-[#4a4560] hover:flex-[1.35] hover:border-[#d9ccff] hover:bg-[#f6f3ff]')}>
+                      <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
                       {label}
                     </button>
                   ))}
                 </div>
+                <div className={cn('min-h-0 flex-1', tool === 'text' ? 'overflow-y-scroll pr-1 [scrollbar-color:#d9ccff_transparent] [scrollbar-width:thin]' : 'overflow-y-auto')}>
                 {tool === 'color' ? (
                   <div className="space-y-3">
                     <div onPointerDownCapture={pushPast}>
@@ -1743,7 +1744,7 @@ export const BirthdayTicket: FC = () => {
                     </>
                   ) : null}
                   {tool === 'text' ? (
-                    <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1 [scrollbar-color:#d9ccff_transparent] [scrollbar-width:thin]">
+                    <div className="space-y-3">
                       <textarea value={letter} maxLength={80} onFocus={() => { setTextLive(true); setSelectedMark(null); setEditingId(null); setDraftLive(false); }} onChange={(event) => { pushPast(); setLetter(event.target.value); setTextLive(true); setDraftLive(false); }} className="min-h-16 w-full rounded-2xl bg-[#F6F4FB] px-3 py-2 text-sm text-gray-800 outline-none" placeholder="Um texto solto no cartão." />
                       <div className="relative">
                         <button type="button" aria-label="Fonte" aria-expanded={fontOpen} onClick={() => setFontOpen((open) => !open)} className="flex h-10 w-full items-center justify-between rounded-xl bg-[#F6F4FB] px-3 text-sm text-gray-800">
@@ -1764,11 +1765,11 @@ export const BirthdayTicket: FC = () => {
                           ['italic', 'Itálico', <span key="i" className="italic">A</span>],
                           ['underline', 'Sublinhado', <span key="u" className="underline">A</span>],
                         ] as const).map(([key, title, mark]) => (
-                          <button key={key} type="button" title={title} aria-label={title} aria-pressed={look[key]} onClick={() => { pushPast(); setLook((current) => ({ ...current, [key]: !current[key], effect: 'plain' })); }} className={cn('grid h-8 w-8 place-items-center rounded-full text-[13px]', look[key] ? 'bg-[#6B33F6] text-white' : 'text-gray-500 hover:bg-[#F4F1FB]')}>{mark}</button>
+                          <button key={key} type="button" title={title} aria-label={title} aria-pressed={look[key]} onClick={() => { pushPast(); setLook((current) => ({ ...current, [key]: !current[key], effect: 'plain' })); }} className={cn('grid h-[34px] w-[34px] place-items-center rounded-[10px] text-[15px] text-[#4a4560] hover:bg-[#f6f3ff] hover:text-[#6644e0]', look[key] && 'bg-white text-[#6644e0] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#d9ccff]')}>{mark}</button>
                         ))}
-                        <button type="button" title="Maiúsculas" aria-label="Maiúsculas" aria-pressed={look.upper} onClick={() => { pushPast(); setLook((current) => ({ ...current, upper: !current.upper })); }} className={cn('grid h-8 w-8 place-items-center rounded-full text-[11px] font-semibold', look.upper ? 'bg-[#6B33F6] text-white' : 'text-gray-500 hover:bg-[#F4F1FB]')}>AA</button>
-                        <button type="button" title="Sombra no texto" aria-label="Sombra no texto" aria-pressed={look.shadow} onClick={() => { pushPast(); setLook((current) => ({ ...current, shadow: !current.shadow, effect: 'plain' })); }} className={cn('grid h-8 w-8 place-items-center rounded-full text-[13px]', look.shadow ? 'bg-[#6B33F6] text-white' : 'text-gray-500 hover:bg-[#F4F1FB]')} style={{ textShadow: '1px 1px 0 currentColor' }}>A</button>
-                        <button type="button" title="Contorno do texto" aria-label="Contorno do texto" aria-pressed={look.outline} onClick={() => { pushPast(); setLook((current) => ({ ...current, outline: !current.outline, effect: 'plain' })); }} className={cn('grid h-8 w-8 place-items-center rounded-full text-[13px]', look.outline ? 'bg-[#6B33F6] text-white' : 'text-gray-500 hover:bg-[#F4F1FB]')} style={{ WebkitTextStroke: '1px currentColor', color: 'transparent', WebkitTextFillColor: look.outline ? '#fff' : '#6b7280' }}>A</button>
+                        <button type="button" title="Maiúsculas" aria-label="Maiúsculas" aria-pressed={look.upper} onClick={() => { pushPast(); setLook((current) => ({ ...current, upper: !current.upper })); }} className={cn('grid h-[34px] w-[34px] place-items-center rounded-[10px] text-[11px] font-semibold text-[#4a4560] hover:bg-[#f6f3ff] hover:text-[#6644e0]', look.upper && 'bg-white text-[#6644e0] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#d9ccff]')}>AA</button>
+                        <button type="button" title="Sombra no texto" aria-label="Sombra no texto" aria-pressed={look.shadow} onClick={() => { pushPast(); setLook((current) => ({ ...current, shadow: !current.shadow, effect: 'plain' })); }} className={cn('grid h-[34px] w-[34px] place-items-center rounded-[10px] text-[15px] text-[#4a4560] hover:bg-[#f6f3ff] hover:text-[#6644e0]', look.shadow && 'bg-white text-[#6644e0] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#d9ccff]')} style={{ textShadow: '1px 1px 0 currentColor' }}>A</button>
+                        <button type="button" title="Contorno do texto" aria-label="Contorno do texto" aria-pressed={look.outline} onClick={() => { pushPast(); setLook((current) => ({ ...current, outline: !current.outline, effect: 'plain' })); }} className={cn('grid h-[34px] w-[34px] place-items-center rounded-[10px] text-[15px] text-[#4a4560] hover:bg-[#f6f3ff] hover:text-[#6644e0]', look.outline && 'bg-white text-[#6644e0] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#d9ccff]')} style={{ WebkitTextStroke: '1px currentColor', color: 'transparent', WebkitTextFillColor: look.outline ? '#fff' : '#6b7280' }}>A</button>
                       </div>
                       <div className="flex w-full items-center justify-between">
                         <div className="flex items-center gap-1">
@@ -1777,7 +1778,7 @@ export const BirthdayTicket: FC = () => {
                             ['center', 'Alinhamento centralizado', AlignCenter],
                             ['right', 'Alinhamento à direita', AlignRight],
                           ] as const).map(([id, title, Icon]) => (
-                            <button key={id} type="button" title={title} aria-label={title} aria-pressed={look.align === id} onClick={() => { pushPast(); setLook((current) => ({ ...current, align: id })); }} className={cn('grid h-8 w-8 place-items-center rounded-full', look.align === id ? 'bg-[#6B33F6] text-white' : 'text-gray-500 hover:bg-[#F4F1FB]')}>
+                            <button key={id} type="button" title={title} aria-label={title} aria-pressed={look.align === id} onClick={() => { pushPast(); setLook((current) => ({ ...current, align: id })); }} className={cn('grid h-[34px] w-[34px] place-items-center rounded-full text-[#6b6682] hover:bg-[#f6f3ff] hover:text-[#6644e0]', look.align === id && 'bg-[#6644e0] text-white shadow-[0_6px_12px_-6px_rgba(102,68,224,0.8)]')}>
                               <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
                             </button>
                           ))}
@@ -1788,7 +1789,7 @@ export const BirthdayTicket: FC = () => {
                             ['star', 'Estrela'],
                             ['spark', 'Raios'],
                           ] as const).map(([id, title]) => (
-                            <button key={id} type="button" title={title} aria-label={title} aria-pressed={marks.some((item) => item.id === selectedMark && item.kind === id)} disabled={saving} onClick={() => void dropMark(id)} className={cn('grid h-9 w-9 place-items-center rounded-full text-gray-900', marks.some((item) => item.id === selectedMark && item.kind === id) ? 'bg-[#6B33F6] text-white' : 'hover:bg-[#F4F1FB]')}>
+                            <button key={id} type="button" title={title} aria-label={title} aria-pressed={marks.some((item) => item.id === selectedMark && item.kind === id)} disabled={saving} onClick={() => void dropMark(id)} className={cn('grid h-[38px] w-[38px] place-items-center rounded-xl bg-white text-[#1f1b2e] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff] transition hover:scale-105 hover:text-[#6644e0]', marks.some((item) => item.id === selectedMark && item.kind === id) && 'text-[#6644e0]')}>
                               <Doodle kind={id} className="h-7 w-7" />
                             </button>
                           ))}
@@ -1832,6 +1833,7 @@ export const BirthdayTicket: FC = () => {
                       </ActionBar>
                     </div>
                   ) : null}
+                </div>
                 </aside>
             </div>
           ) : null}
