@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { SystemMark } from '@/components/documents/SystemMark';
-import { PageHero } from '@/components/social/LilacWash';
 import { PageFrame } from '@/components/shell/PageFrame';
 import {
   DOCUMENT_CATEGORIES,
@@ -56,6 +55,7 @@ export const ResourcesPage: FC = () => {
   const [editing, setEditing] = useState<CompanyDocument | null>(null);
   const { canUploadDocuments: canSend } = useInstitution();
   const canManage = canManageDocuments(currentUser);
+  const canEdit = canSend || canManage;
 
   useEffect(() => {
     loadDocuments().then(setDocuments).catch(() => toast.error('Não foi possível abrir a central de documentos.'));
@@ -144,18 +144,16 @@ export const ResourcesPage: FC = () => {
     <>
     <PageFrame>
           <div className="mb-6">
-            <PageHero
-              align="start"
-              icon={<FileText className="h-5 w-5" strokeWidth={1.75} />}
-              title="Documentos"
-              subtitle="Encontre procedimentos, requerimentos, orientações e documentos internos."
-              aside={(
-                <button type="button" onClick={() => openEditor()} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500">
+            <div className="flex items-center justify-between gap-4">
+              <h1 className="text-4xl font-bold tracking-tight text-gray-800">Documentos</h1>
+              {canEdit ? (
+                <button type="button" onClick={() => openEditor()} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500">
                   <Plus className="h-4 w-4" />
-                  Enviar documento
+                  Adicionar documento
                 </button>
-              )}
-            />
+              ) : null}
+            </div>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-gray-500">Encontre procedimentos, requerimentos, orientações e documentos internos.</p>
           </div>
 
           <div className="relative mb-5 flex items-center gap-2">
@@ -229,11 +227,11 @@ export const ResourcesPage: FC = () => {
                         <button type="button" aria-label={saved ? 'Remover dos salvos' : 'Salvar'} aria-pressed={saved} onClick={() => void favorite(document)} className={cn('grid h-11 w-11 place-items-center rounded-2xl bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)]', saved ? 'text-blue-600' : 'text-gray-400 hover:text-blue-600')}>
                           <Bookmark className="h-4 w-4" fill={saved ? 'currentColor' : 'none'} />
                         </button>
-                        {canSend ? <button type="button" aria-label="Editar documento" onClick={() => openEditor(document)} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600"><Pencil className="h-4 w-4" /></button> : null}
+                        {canEdit ? <button type="button" aria-label="Editar documento" onClick={() => openEditor(document)} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600"><Pencil className="h-4 w-4" /></button> : null}
                         <button type="button" aria-label="Baixar" onClick={() => void download(document)} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600">
                           <Download className="h-4 w-4" />
                         </button>
-                        {canSend ? (
+                        {canEdit ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button type="button" aria-label="Mais ações" className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-gray-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:text-blue-600"><MoreHorizontal className="h-4 w-4" /></button>
@@ -256,38 +254,51 @@ export const ResourcesPage: FC = () => {
     </PageFrame>
 
       <Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null); }}>
-        <DialogContent overlayClassName="bg-[rgba(31,27,46,0.38)]" className="max-h-[85vh] overflow-y-auto rounded-[22px] border-0 bg-white p-6 shadow-[0_30px_80px_-20px_rgba(79,51,184,0.35)] sm:max-w-[520px]">
+        <DialogContent showCloseButton={false} overlayClassName="bg-[rgba(31,27,46,0.38)]" className="!flex w-[min(520px,calc(100%-2rem))] !max-w-none !flex-col !gap-0 !overflow-hidden !rounded-[22px] !border-0 !bg-white !p-0 text-[#1f1b2e] shadow-[0_30px_80px_-20px_rgba(79,51,184,0.35),0_2px_6px_rgba(31,27,46,0.06)]">
           {selected ? (
-            <>
-              <DialogHeader className="items-center text-center">
-                <DialogTitle className="text-lg font-bold tracking-tight text-[#1f1b2e]">{selected.title}</DialogTitle>
+            <div className="px-6 pt-5 pb-[18px]">
+              <div className="relative mb-3 flex items-center justify-center px-[34px]">
+                <DialogTitle className="text-center text-[18px] font-bold tracking-[-0.01em] text-[#1f1b2e]">{selected.title}</DialogTitle>
                 <DialogDescription className="sr-only">{selected.subtitle}</DialogDescription>
-              </DialogHeader>
-              <div className="flex flex-wrap justify-center gap-2">
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#4f33b8] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]">{systemLabel(selected.system)}</span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white py-1 pr-3 pl-1.5 text-xs font-semibold text-[#4f33b8] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]"><span className="grid h-[22px] w-[22px] place-items-center rounded-full bg-[#ece6ff] text-[9px] font-bold">{selected.author.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}</span>{selected.author}</span>
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#4f33b8] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]">{formatDate(selected.publishedAt)}</span>
+                <button type="button" aria-label="Fechar" onClick={() => setSelected(null)} className="absolute top-1/2 right-0 grid h-[30px] w-[30px] -translate-y-1/2 place-items-center rounded-full text-lg leading-none text-[#8a85a0] hover:bg-[#f6f3ff] hover:text-[#6644e0]">×</button>
               </div>
-              <div className="max-h-[150px] overflow-y-auto rounded-[22px] bg-white p-4 text-[13.5px] leading-6 text-[#4a4560] shadow-[10px_10px_24px_#d8d2ee,-6px_-6px_18px_#fff,0_0_0_1px_#e8e4f4]">
-                <p className="whitespace-pre-wrap">{previewText || selected.description}</p>
+              <div className="mb-2.5 flex flex-wrap justify-center gap-2 p-[3px]">
+                <span className="inline-flex items-center rounded-full bg-white px-3 py-[5px] text-[12.5px] font-semibold text-[#4f33b8] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]">{systemLabel(selected.system)}</span>
+                <span className="inline-flex items-center gap-[7px] rounded-full bg-white py-[5px] pr-3 pl-1.5 text-[12.5px] font-semibold text-[#4f33b8] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]">
+                  <span className="grid h-[22px] w-[22px] place-items-center rounded-full bg-[#ece6ff] text-[9px] font-bold">{selected.author.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}</span>
+                  {selected.author}
+                </span>
+                <span className="inline-flex items-center gap-[7px] rounded-full bg-white py-[5px] pr-3 pl-1.5 text-[12.5px] font-semibold text-[#4f33b8] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]">
+                  <CalendarDays className="h-3.5 w-3.5 text-[#7c5cf5]" />
+                  {formatDate(selected.publishedAt)}
+                </span>
               </div>
-              {previewUrl && selected.file.type.startsWith('image/') ? <img src={previewUrl} alt="" className="rounded-xl" /> : null}
-              {previewUrl && selected.file.type === 'application/pdf' ? <iframe title={selected.title} src={previewUrl} className="h-40 w-full rounded-xl border-0" /> : null}
-              <div className="flex items-center justify-between gap-2 border-t border-[#e8e4f4] pt-3">
-                <span className="inline-flex min-w-0 items-center gap-2 text-xs text-[#8a85a0]"><FileText className="h-4 w-4 shrink-0 text-[#9b82ff]" /><span className="truncate">{selected.fileName}</span></span>
-                <div className="flex shrink-0 gap-2">
-                  {previewUrl ? <button type="button" className="rounded-[11px] bg-white px-4 py-2 text-sm font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]" onClick={() => window.open(previewUrl, '_blank')}>Abrir</button> : null}
-                  <button type="button" className="rounded-[11px] bg-white px-4 py-2 text-sm font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]" onClick={() => void download(selected)}>Baixar</button>
-                  {canSend ? <button type="button" aria-label="Editar" className="grid h-10 w-10 place-items-center rounded-[11px] bg-white text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]" onClick={() => { setSelected(null); openEditor(selected); }}><Pencil className="h-4 w-4" /></button> : null}
-                  <button type="button" className="inline-flex items-center gap-1.5 rounded-[11px] bg-[#6644e0] px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)]" onClick={() => void favorite(selected)}><Bookmark className="h-3.5 w-3.5" fill={isSaved(selected) ? 'currentColor' : 'none'} />{isSaved(selected) ? 'Salvo' : 'Salvar'}</button>
+              <div className="m-[3px] max-h-[150px] overflow-y-auto rounded-[22px] bg-white px-[18px] py-3.5 shadow-[10px_10px_24px_#d8d2ee,-6px_-6px_18px_#fff,0_0_0_1px_#e8e4f4] [scrollbar-color:#d9ccff_transparent] [scrollbar-width:thin]">
+                {(previewText || selected.description).split(/\n+/).map((part) => part.trim()).filter(Boolean).map((part, index) => (
+                  <p key={`${index}-${part.slice(0, 24)}`} className={cn('text-[13.5px] leading-[1.55] text-[#4a4560]', index > 0 && 'mt-2')}>{part}</p>
+                ))}
+              </div>
+              <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2.5 border-t border-[#e8e4f4] pt-3.5">
+                <span className="inline-flex min-w-0 items-center gap-[7px] text-[12.5px] font-medium text-[#8a85a0]">
+                  <FileText className="h-[15px] w-[15px] shrink-0 text-[#9b82ff]" />
+                  <span className="truncate">{selected.fileName}</span>
+                </span>
+                <div className="ml-auto flex gap-2 p-[3px]">
+                  {previewUrl ? <button type="button" className="rounded-[11px] bg-white px-[18px] py-2.5 text-sm font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4] hover:bg-[#f6f3ff] hover:text-[#4f33b8]" onClick={() => window.open(previewUrl, '_blank')}>Abrir</button> : null}
+                  <button type="button" className="rounded-[11px] bg-white px-[18px] py-2.5 text-sm font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4] hover:bg-[#f6f3ff] hover:text-[#4f33b8]" onClick={() => void download(selected)}>Baixar</button>
+                  {canEdit ? <button type="button" aria-label="Editar" className="grid h-[42px] w-[42px] place-items-center rounded-[11px] bg-white text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4] hover:bg-[#f6f3ff] hover:text-[#4f33b8]" onClick={() => { const current = selected; setSelected(null); openEditor(current); }}><Pencil className="h-4 w-4" /></button> : null}
+                  <button type="button" aria-pressed={isSaved(selected)} className={cn('inline-flex items-center gap-[7px] rounded-[11px] px-[18px] py-2.5 text-sm font-semibold', isSaved(selected) ? 'bg-[#6644e0] text-white shadow-[0_8px_18px_-8px_rgba(102,68,224,0.8)] hover:bg-[#4f33b8]' : 'bg-white text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4] hover:bg-[#f6f3ff] hover:text-[#4f33b8]')} onClick={() => void favorite(selected)}>
+                    <Bookmark className="h-3.5 w-3.5" fill={isSaved(selected) ? 'currentColor' : 'none'} />
+                    {isSaved(selected) ? 'Salvo' : 'Salvar'}
+                  </button>
                 </div>
               </div>
-            </>
+            </div>
           ) : null}
         </DialogContent>
       </Dialog>
 
-      {canSend ? (
+      {canEdit ? (
         <DocumentEditor
           open={editorOpen}
           document={editing}
