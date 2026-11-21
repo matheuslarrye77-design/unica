@@ -1,3 +1,4 @@
+import { ImageCrop } from '@/components/journal/ImageCrop';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -324,6 +325,7 @@ const DocumentEditor: FC<{
   const [author, setAuthor] = useState(currentUser.name);
   const [date, setDate] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const [featured, setFeatured] = useState(false);
 
   useEffect(() => {
@@ -384,8 +386,8 @@ const DocumentEditor: FC<{
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent overlayClassName="bg-slate-900/25 backdrop-blur-md" className="max-h-[85vh] overflow-y-auto rounded-2xl border border-gray-100 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:max-w-2xl">
+    <Dialog open={open} onOpenChange={(next) => { if (!next && cropFile) return; onOpenChange(next); }}>
+      <DialogContent overlayClassName="bg-slate-900/25 backdrop-blur-md" className="max-h-[85vh] overflow-y-auto rounded-2xl border border-gray-100 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:max-w-2xl" onEscapeKeyDown={(event) => { if (cropFile) event.preventDefault(); }} onPointerDownOutside={(event) => { if ((event.target as HTMLElement | null)?.closest('[data-journal-overlay]')) event.preventDefault(); }} onInteractOutside={(event) => { if ((event.target as HTMLElement | null)?.closest('[data-journal-overlay]')) event.preventDefault(); }}>
         <DialogHeader>
           <DialogTitle className="text-xl font-bold tracking-tight text-gray-800">{document ? 'Editar documento' : 'Enviar documento'}</DialogTitle>
           <DialogDescription className="text-base text-gray-500">Categoria, sistema e arquivo ficam disponíveis para a equipe.</DialogDescription>
@@ -417,10 +419,20 @@ const DocumentEditor: FC<{
           </div>
           <div className="grid gap-2">
             <Label htmlFor="doc-arquivo">Arquivo</Label>
-            <Input id="doc-arquivo" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,image/*,.txt" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+            <Input id="doc-arquivo" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,image/*,.txt" onChange={(event) => {
+              const next = event.target.files?.[0] ?? null;
+              event.target.value = '';
+              if (next && next.type.startsWith('image/') && next.type !== 'image/gif') {
+                setCropFile(next);
+                return;
+              }
+              setFile(next);
+            }} />
+            {file ? <p className="text-sm text-gray-500">{file.name}</p> : null}
           </div>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featured} onChange={(event) => setFeatured(event.target.checked)} />Fixar na central</label>
         </div>
+        {cropFile ? <ImageCrop file={cropFile} onCancel={() => setCropFile(null)} onConfirm={(ready) => { setCropFile(null); setFile(ready); }} /> : null}
         <DialogFooter>
           <Button variant="outline" className="h-11 rounded-2xl px-4 text-base" onClick={() => void submit(false)}>Salvar sem publicar</Button>
           <Button className="h-11 rounded-2xl px-4 text-base" onClick={() => void submit(true)}>Publicar</Button>

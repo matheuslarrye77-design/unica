@@ -1,3 +1,4 @@
+import { ImageCrop } from '@/components/journal/ImageCrop';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,7 @@ const modes: { id: PolicyMode; label: string }[] = [
 export const ManagementSettingsPage: FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const institution = useInstitution();
   const [saving, setSaving] = useState(false);
+  const [wallFile, setWallFile] = useState<File | null>(null);
   const allowed = isLeader(currentUser);
 
   if (!allowed) {
@@ -128,16 +130,26 @@ export const ManagementSettingsPage: FC<{ embedded?: boolean }> = ({ embedded = 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <label className="text-sm">
               <span className="mb-1 block text-muted-foreground">Papel de parede</span>
-              <input type="file" accept="image/png,image/jpeg,image/webp" className="text-sm" onChange={(event) => void onWallpaper(event.target.files?.[0] ?? null)} />
+              <input type="file" accept="image/png,image/jpeg,image/webp" className="text-sm" onChange={(event) => {
+                const next = event.target.files?.[0] ?? null;
+                event.target.value = '';
+                if (!next) return;
+                if (!next.type.startsWith('image/') || next.size > 1_500_000) {
+                  toast.error('Use uma imagem de até 1,5 MB.');
+                  return;
+                }
+                setWallFile(next);
+              }} />
             </label>
             <Button variant="outline" size="sm" onClick={() => void clearWallpaper().then(() => toast.success('Padrão restaurado.')).catch(() => toast.error('Não foi possível restaurar.'))}>Remover papel de parede</Button>
           </div>
         </section>
       </div>
   );
+  const wallEditor = wallFile ? <ImageCrop file={wallFile} onCancel={() => setWallFile(null)} onConfirm={(ready) => { setWallFile(null); void onWallpaper(ready); }} /> : null;
 
-  if (embedded) return content;
-  return <PageFrame>{content}</PageFrame>;
+  if (embedded) return <>{content}{wallEditor}</>;
+  return <PageFrame>{content}{wallEditor}</PageFrame>;
 };
 
 const PolicyCard: FC<{

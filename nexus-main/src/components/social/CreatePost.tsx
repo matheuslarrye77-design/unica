@@ -232,7 +232,11 @@ export const CreatePost: FC<{ onPublish: (draft: NewPostDraft) => void | Promise
   function readFile(event: ChangeEvent<HTMLInputElement>) {
     const files = [...(event.target.files ?? [])];
     event.target.value = '';
-    files.forEach((file) => { void uploadAttachment(file, 'document'); });
+    const images = files.filter((file) => file.type.startsWith('image/') && file.type !== 'image/gif');
+    const gifs = files.filter((file) => file.type === 'image/gif');
+    if (images.length) addImages(images);
+    gifs.forEach((file) => { void uploadImage(file); });
+    files.filter((file) => !file.type.startsWith('image/')).forEach((file) => { void uploadAttachment(file, 'document'); });
   }
 
   async function toggleRecord() {

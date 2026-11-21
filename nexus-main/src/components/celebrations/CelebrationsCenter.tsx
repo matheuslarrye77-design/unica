@@ -1,4 +1,5 @@
 import { OrnamentArt, ORNAMENTS } from '@/components/celebrations/OrnamentArt';
+import { ImageCrop } from '@/components/journal/ImageCrop';
 import { CelebrationScene } from '@/components/celebrations/Scenes';
 import { calendarEvents } from '@/data/mockData';
 import { uploadMedia } from '@/lib/feed';
@@ -52,6 +53,7 @@ export const CelebrationsCenter: FC = () => {
   const [openId, setOpenId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
 
   const people = useMemo(() => calendarEvents.filter((event) => event.type === 'birthday' && event.personName).map((event) => ({
@@ -234,8 +236,13 @@ export const CelebrationsCenter: FC = () => {
             Foto ou GIF
             <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={(event) => {
               const file = event.target.files?.[0];
+              event.target.value = '';
               if (!file) return;
-              void uploadMedia(file).then((uploaded) => setMedia({ kind: file.type === 'image/gif' ? 'gif' : 'photo', url: uploaded.url })).catch(() => toast.error('Não foi possível enviar o anexo.'));
+              if (file.type === 'image/gif') {
+                void uploadMedia(file).then((uploaded) => setMedia({ kind: 'gif', url: uploaded.url })).catch(() => toast.error('Não foi possível enviar o anexo.'));
+                return;
+              }
+              setPhotoFile(file);
             }} />
           </label>
           {['coracao', 'estrela', 'festa'].map((sticker) => (
@@ -279,6 +286,16 @@ export const CelebrationsCenter: FC = () => {
         </div>
       ) : null}
       <p className="sr-only">{actor().name}</p>
+      {photoFile ? (
+        <ImageCrop
+          file={photoFile}
+          onCancel={() => setPhotoFile(null)}
+          onConfirm={(ready) => {
+            setPhotoFile(null);
+            void uploadMedia(ready).then((uploaded) => setMedia({ kind: 'photo', url: uploaded.url })).catch(() => toast.error('Não foi possível enviar o anexo.'));
+          }}
+        />
+      ) : null}
     </section>
   );
 };

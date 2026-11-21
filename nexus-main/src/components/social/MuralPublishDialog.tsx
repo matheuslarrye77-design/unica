@@ -1,3 +1,4 @@
+import { ImageCrop } from '@/components/journal/ImageCrop';
 import { ComposerExtras } from '@/components/social/ComposerExtras';
 import { AudioTrim } from '@/components/social/AudioTrim';
 import { JournalNewsCard } from '@/components/social/JournalNewsCard';
@@ -75,6 +76,7 @@ export const MuralPublishDialog: FC<Props> = (props) => {
   const [recording, setRecording] = useState(false);
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
+  const [imageQueue, setImageQueue] = useState<File[]>([]);
 
   const others = teamRoster.filter((person) => person.id !== user.id);
   const journal = props.source === 'journal' ? props.article : null;
@@ -105,7 +107,10 @@ export const MuralPublishDialog: FC<Props> = (props) => {
   }
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setImageQueue([]);
+      return;
+    }
     resetFromProps();
     return () => {
       const active = recorder.current;
@@ -161,20 +166,25 @@ export const MuralPublishDialog: FC<Props> = (props) => {
     }
   }
 
+  async function uploadImage(file: File) {
+    try {
+      setProgress(0);
+      const uploaded = await uploadMedia(file, setProgress);
+      if (file.type === 'image/gif') addPiece(setGifs, uploaded.url, 'gif');
+      else addPiece(setPhotos, uploaded.url);
+    } catch {
+      toast.error('Não foi possível enviar a imagem.');
+    } finally {
+      setProgress(null);
+    }
+  }
+
   async function takeFiles(list: File[]) {
     for (const file of list) {
       const kind = kindOf(file);
       if (kind === 'image') {
-        try {
-          setProgress(0);
-          const uploaded = await uploadMedia(file, setProgress);
-          if (file.type === 'image/gif') addPiece(setGifs, uploaded.url, 'gif');
-          else addPiece(setPhotos, uploaded.url);
-        } catch {
-          toast.error('Não foi possível enviar a imagem.');
-        } finally {
-          setProgress(null);
-        }
+        if (file.type === 'image/gif') void uploadImage(file);
+        else setImageQueue((current) => [...current, file]);
         continue;
       }
       if (kind === 'audio') {
@@ -382,13 +392,14 @@ export const MuralPublishDialog: FC<Props> = (props) => {
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(next) => { if (!next && (audioFile || recording)) return; if (!next) close(); }}>
+    <Dialog open={open} onOpenChange={(next) => { if (!next && (audioFile || recording || imageQueue.length > 0)) return; if (!next) close(); }}>
       <DialogContent
         showCloseButton={false}
         overlayClassName="bg-slate-900/25 backdrop-blur-md"
         className={`!flex !max-h-[min(760px,calc(100dvh-2rem))] w-[min(640px,calc(100%-2rem))] !max-w-none !flex-col !gap-0 !overflow-hidden !p-0 border-0 bg-white ${isRecognition ? 'rounded-[22px] shadow-[0_30px_80px_-20px_rgba(79,51,184,0.35),0_2px_6px_rgba(31,27,46,0.06)] sm:!max-w-[600px]' : 'rounded-2xl border border-gray-100 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:!max-w-[640px]'}`}
-        onPointerDownOutside={(event) => { if (audioFile || recording) event.preventDefault(); }}
-        onInteractOutside={(event) => { if (audioFile || recording) event.preventDefault(); }}
+        onEscapeKeyDown={(event) => { if (imageQueue.length > 0 || audioFile) event.preventDefault(); }}
+        onPointerDownOutside={(event) => { const target = event.target as HTMLElement | null; if (audioFile || recording || target?.closest('[data-journal-overlay]')) event.preventDefault(); }}
+        onInteractOutside={(event) => { const target = event.target as HTMLElement | null; if (audioFile || recording || target?.closest('[data-journal-overlay]')) event.preventDefault(); }}
       >
         <DialogDescription className="sr-only">{dialogText}</DialogDescription>
         <div className="flex min-h-0 flex-1 flex-col">
@@ -618,6 +629,13 @@ export const MuralPublishDialog: FC<Props> = (props) => {
       </DialogContent>
     </Dialog>
     {audioFile ? <AudioTrim file={audioFile} onCancel={() => setAudioFile(null)} onConfirm={(clipFile, clip) => { setAudioFile(null); void uploadAttachment(clipFile, 'audio', clip); }} /> : null}
+    {imageQueue[0] ? (
+      <ImageCrop
+        file={imageQueue[0]}
+        onCancel={() => setImageQueue((current) => current.slice(1))}
+        onConfirm={(ready) => { setImageQueue((current) => current.slice(1)); void uploadImage(ready); }}
+      />
+    ) : null}
     </>
   );
 };
