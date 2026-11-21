@@ -3,12 +3,11 @@ import { ComposerExtras } from '@/components/social/ComposerExtras';
 import { PageHero } from '@/components/social/LilacWash';
 import { PageFrame } from '@/components/shell/PageFrame';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { isLeader, loadFeedback, replyToFeedback, updateFeedbackStatus, type FeedbackItem, type SuggestionStatus } from '@/lib/institution';
 import { LOGIN_REQUIRED } from '@/lib/loginGate';
 import { actor, useDemoProfile } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import { ChevronRight, Filter, MessageSquare, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Filter, MessageSquare, Plus } from 'lucide-react';
 import { usePageSearch } from '@/lib/pageSearch';
 import { useEffect, useMemo, useRef, useState, type FC, type KeyboardEvent } from 'react';
 import { toast } from 'sonner';
@@ -67,6 +66,7 @@ export const FeedbacksPage: FC = () => {
   const [sending, setSending] = useState<string | null>(null);
   const [composer, setComposer] = useState(false);
   const listTicket = useRef(0);
+  const filterRef = useRef<HTMLDivElement>(null);
 
   function holdList() {
     listTicket.current += 1;
@@ -103,6 +103,15 @@ export const FeedbacksPage: FC = () => {
       window.removeEventListener('focus', refresh);
     };
   }, [demo, gestao]);
+
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const close = (event: MouseEvent) => {
+      if (!filterRef.current?.contains(event.target as Node)) setFiltersOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [filtersOpen]);
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -175,26 +184,28 @@ export const FeedbacksPage: FC = () => {
           title="Sugestões"
           subtitle="Sua opinião também constrói o nosso futuro. Deixe aqui suas ideias, comentários e sugestões."
           aside={
-            <button type="button" onClick={() => setComposer(true)} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 outline-none hover:bg-blue-500">
+            <button type="button" onClick={() => setComposer(true)} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl bg-blue-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500">
               <Plus className="h-4 w-4" /> Nova sugestão
             </button>
           }
         />
 
-        <div className="mt-5 flex items-center gap-2">
-          <div className="relative ml-auto">
-            <button type="button" className="inline-flex h-[42px] items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4]" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen}>
-              <Filter className="h-4 w-4" /> Filtros
-              <span className="rounded-full bg-[#f6f3ff] px-3 py-1 text-[12.5px] font-semibold text-[#4f33b8]">{statusFilter === 'todos' ? 'Todos' : STATUS[statusFilter].label}</span>
+        <div className="mt-5 flex justify-end px-[3px]">
+          <div className="relative" ref={filterRef}>
+            <button type="button" className={cn('inline-flex h-[42px] items-center gap-2.5 rounded-full bg-white pr-2 pl-4 text-sm font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff,0_0_0_1px_#e8e4f4] hover:bg-[#f6f3ff] hover:text-[#4f33b8]', filtersOpen && 'text-[#4f33b8]')} onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-haspopup="true">
+              <Filter className="h-4 w-4" />
+              Filtros
+              <span className="inline-flex items-center rounded-full bg-[#f6f3ff] px-3 py-1 text-[12.5px] font-semibold text-[#4f33b8]">{statusFilter === 'todos' ? 'Todos' : STATUS[statusFilter].label}</span>
+              <ChevronDown className={cn('h-4 w-4 text-[#8a85a0] transition-transform', filtersOpen && 'rotate-180')} />
             </button>
             {filtersOpen ? (
-              <div className="absolute right-0 z-20 mt-2 flex w-[236px] flex-col gap-2 rounded-[22px] bg-white p-2.5 shadow-[14px_14px_30px_#d8d2ee,-8px_-8px_22px_#fff,0_0_0_1px_#e8e4f4]">
+              <div className="absolute right-0 z-20 mt-2.5 flex w-[236px] flex-col gap-2 rounded-[22px] bg-white p-2.5 shadow-[14px_14px_30px_#d8d2ee,-8px_-8px_22px_#fff,0_0_0_1px_#e8e4f4]">
                 {STATUS_FILTERS.map((item) => {
                   const count = item.id === 'todos' ? items.length : items.filter((entry) => entry.status === item.id).length;
                   const on = statusFilter === item.id;
                   return (
-                    <button key={item.id} type="button" className={cn('flex h-10 items-center gap-2.5 rounded-full bg-white px-4 text-[13.5px] font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]', on && 'bg-[#f6f3ff] text-[#4f33b8] shadow-[0_0_0_1.5px_#7c5cf5]')} onClick={() => { setStatusFilter(item.id); setFiltersOpen(false); }}>
-                      <i className="h-2 w-2 rounded-full" style={{ background: item.dot }} />
+                    <button key={item.id} type="button" className={cn('flex h-10 items-center gap-2.5 rounded-full bg-white pr-2 pl-4 text-[13.5px] font-semibold text-[#4a4560] shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff] hover:bg-[#f6f3ff] hover:text-[#4f33b8]', on && 'bg-[#f6f3ff] text-[#4f33b8] shadow-[0_0_0_1.5px_#7c5cf5]')} onClick={() => { setStatusFilter(item.id); setFiltersOpen(false); }}>
+                      <i className="h-2 w-2 shrink-0 rounded-full" style={{ background: item.dot }} />
                       {item.label}
                       <em className={cn('ml-auto grid h-6 min-w-6 place-items-center rounded-xl bg-[#f6f5fa] px-1.5 text-[11.5px] not-italic text-[#8a85a0]', on && 'bg-[#6644e0] text-white')}>{count}</em>
                     </button>
@@ -202,9 +213,9 @@ export const FeedbacksPage: FC = () => {
                 })}
                 {gestao ? (
                   <>
-                    <label className="mt-3 block text-[12px] font-medium text-[#6B5A7A]">
+                    <label className="mt-1 block text-[12px] font-medium text-[#6B5A7A]">
                       Colaborador
-                      <input className="mt-1 h-9 w-full rounded-lg border border-[#EFE6F4] px-2 text-[13px]" value={authorFilter} onChange={(event) => setAuthorFilter(event.target.value)} placeholder="Nome do autor" />
+                      <input className="mt-1 h-9 w-full rounded-lg border border-[#EFE6F4] bg-white px-2 text-[13px]" value={authorFilter} onChange={(event) => setAuthorFilter(event.target.value)} placeholder="Nome do autor" />
                     </label>
                     <label className="mt-3 block text-[12px] font-medium text-[#6B5A7A]">
                       Período
@@ -216,13 +227,13 @@ export const FeedbacksPage: FC = () => {
                     </label>
                   </>
                 ) : null}
-                <button type="button" className="mt-3 text-[12px] font-medium text-[#4600F3]" onClick={clearFilters}>Limpar filtros</button>
+                <button type="button" className="mt-1 text-[12px] font-medium text-[#6644e0]" onClick={clearFilters}>Limpar filtros</button>
               </div>
             ) : null}
           </div>
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 flex flex-col gap-[18px] px-[3px]">
           {loading ? <p className="rounded-2xl border border-[#EFE6F4] bg-white px-4 py-8 text-center text-sm text-[#8A7C98]">Carregando sugestões...</p> : null}
           {failed ? <p className="rounded-2xl border border-[#F8D0E3] bg-white px-4 py-8 text-center text-sm text-[#9D174D]">Não foi possível carregar as sugestões.</p> : null}
           {!loading && !failed && filtered.length === 0 ? (
@@ -241,83 +252,87 @@ export const FeedbacksPage: FC = () => {
             const count = item.replies?.length ?? 0;
             const draft = drafts[item.id] ?? '';
             return (
-              <article key={item.id} className="rounded-[22px] bg-white shadow-[10px_10px_24px_#d8d2ee,-6px_-6px_18px_#fff,0_0_0_1px_#e8e4f4] transition-transform hover:-translate-y-0.5">
-                <div className="flex items-start gap-3 px-4 py-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F3E8FF] text-[12px] font-semibold text-[#4600F3]">{initials(name)}</span>
+              <article key={item.id} className="rounded-[22px] bg-white px-5 py-4 shadow-[10px_10px_24px_#d8d2ee,-6px_-6px_18px_#fff,0_0_0_1px_#e8e4f4] transition-transform hover:-translate-y-0.5">
+                <div className="flex items-start gap-3.5">
+                  <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full bg-[#ece6ff] text-xs font-bold text-[#4f33b8]">{initials(name)}</span>
                   <div className="min-w-0 flex-1">
-                    <button type="button" className="block w-full text-left" onClick={() => { setOpenId(open ? null : item.id); setStatusMenu(null); }}>
-                      <span className="block truncate text-[14px] font-semibold text-[#241B33]">{item.title || item.message}</span>
-                      <span className="mt-0.5 block max-h-40 overflow-y-auto whitespace-pre-wrap text-[12.5px] leading-5 text-[#8A7C98]">{item.message}</span>
-                    </button>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-                      <span className="text-[12px] text-[#8A7C98]">{name}</span>
-                      <span className="text-[12px] text-[#8A7C98]">{whenLabel(item.createdAt)}</span>
-                      <span className="ml-auto flex items-center gap-3">
-                    <div className="relative">
-                      {gestao ? (
-                        <button
-                          type="button"
-                          className={cn('inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-bold shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]', savingStatus === item.id && 'opacity-60')}
-                          style={{ color: STATUS[item.status].dot }}
-                          onClick={() => setStatusMenu(statusMenu === item.id ? null : item.id)}
-                          disabled={savingStatus === item.id}
-                          aria-label={`Alterar status de ${item.title || 'sugestão'}`}
-                        >
-                          <i className="h-1.5 w-1.5 rounded-full" style={{ background: STATUS[item.status].dot }} />
-                          {STATUS[item.status].label}
-                        </button>
-                      ) : (
-                        <button type="button" className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-bold shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]" style={{ color: STATUS[item.status].dot }} onClick={() => toast.error('Somente a gestão pode alterar o status.')}><i className="h-1.5 w-1.5 rounded-full" style={{ background: STATUS[item.status].dot }} />{STATUS[item.status].label}</button>
-                      )}
-                      {statusMenu === item.id ? (
-                        <div className="absolute right-0 z-10 mt-1 w-36 rounded-xl border border-[#EFE6F4] bg-white p-1 shadow-lg">
-                          {(Object.keys(STATUS) as SuggestionStatus[]).map((status) => (
-                            <button key={status} type="button" className={cn('block w-full rounded-lg px-2 py-1.5 text-left text-[12px]', status === item.status ? 'bg-[#F5F1FF] font-medium' : 'hover:bg-[#FBF7FD]')} onClick={() => void changeStatus(item, status)}>
-                              {STATUS[status].label}
+                    <h3 className="text-[15px] font-semibold break-words text-[#1f1b2e]">{item.title || item.message}</h3>
+                    <p className="mt-1 text-[13px] leading-[1.45] break-words whitespace-pre-wrap text-[#5f5a78]">{item.message}</p>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-3.5 gap-y-2">
+                      <span className="text-[12.5px] text-[#8a85a0]"><b className="mr-2 font-semibold text-[#4a4560]">{name}</b>{whenLabel(item.createdAt)}</span>
+                      <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+                        <div className="relative">
+                          {gestao ? (
+                            <button
+                              type="button"
+                              className={cn('inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-bold shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]', savingStatus === item.id && 'opacity-60')}
+                              style={{ color: STATUS[item.status].dot }}
+                              onClick={() => setStatusMenu(statusMenu === item.id ? null : item.id)}
+                              disabled={savingStatus === item.id}
+                              aria-label={`Alterar status de ${item.title || 'sugestão'}`}
+                            >
+                              <i className="h-1.5 w-1.5 rounded-full" style={{ background: STATUS[item.status].dot }} />
+                              {STATUS[item.status].label}
                             </button>
-                          ))}
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-bold shadow-[3px_3px_7px_#d8d2ee,-3px_-3px_7px_#fff]" style={{ color: STATUS[item.status].dot }}>
+                              <i className="h-1.5 w-1.5 rounded-full" style={{ background: STATUS[item.status].dot }} />
+                              {STATUS[item.status].label}
+                            </span>
+                          )}
+                          {statusMenu === item.id ? (
+                            <div className="absolute right-0 z-10 mt-1 w-36 rounded-xl border border-[#e8e4f4] bg-white p-1 shadow-lg">
+                              {(Object.keys(STATUS) as SuggestionStatus[]).map((status) => (
+                                <button key={status} type="button" className={cn('block w-full rounded-lg px-2 py-1.5 text-left text-[12px]', status === item.status ? 'bg-[#f6f3ff] font-medium text-[#4f33b8]' : 'hover:bg-[#f6f3ff]')} onClick={() => void changeStatus(item, status)}>
+                                  {STATUS[status].label}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
-                      ) : null}
-                    </div>
-                    <button type="button" className="inline-flex items-center gap-1 text-[12px] font-medium text-[#3600C2]" onClick={() => openReply(item.id)}>Responder</button>
-                    <button type="button" className="inline-flex items-center gap-1 text-[12px] text-[#8A7C98]" onClick={() => setOpenId(open ? null : item.id)} aria-label={replyLabel(count)}>
-                      <MessageSquare className="h-3.5 w-3.5" /> {replyLabel(count)}
-                    </button>
-                    <ChevronRight className={cn('h-4 w-4 text-[#C4B6D4] transition-transform', open && 'rotate-90')} />
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                {open ? (
-                  <div className="border-t border-[#F3EEF6] px-4 py-3">
-                    <div className="space-y-3">
-                      {(item.replies ?? []).length === 0 ? <p className="text-[13px] text-[#8A7C98]">Ainda não há respostas.</p> : null}
-                      {(item.replies ?? []).map((reply) => (
-                        <div key={reply.id} className="rounded-xl bg-[#FBF7FD] px-3 py-2">
-                          <p className="text-[12px] font-medium text-[#6B5A7A]">{reply.authorName || 'Anônimo'} <span className="font-normal text-[#B7A8C4]">{whenLabel(reply.createdAt)}</span></p>
-                          <p className="mt-1 whitespace-pre-wrap text-[13px] leading-5 text-[#2C2433]">{reply.text}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3">
-                      <Textarea
-                        id={`resposta-${item.id}`}
-                        value={draft}
-                        onChange={(event) => setDrafts((current) => ({ ...current, [item.id]: event.target.value }))}
-                        onKeyDown={(event) => onReplyKey(event, item)}
-                        placeholder="Escreva uma resposta"
-                        className="min-h-20 rounded-xl border-[#EFE6F4]"
-                        aria-label={`Resposta para ${item.title || 'sugestão'}`}
-                      />
-                      <ComposerExtras onEmoji={(emoji) => setDrafts((current) => ({ ...current, [item.id]: `${current[item.id] ?? ''}${emoji}` }))} />
-                      <div className="mt-2 flex justify-end">
-                        <Button type="button" className="rounded-full" disabled={!draft.trim() || sending === item.id} onClick={() => void sendReply(item)}>
-                          {sending === item.id ? 'Enviando...' : 'Enviar resposta'}
-                        </Button>
+                        <button type="button" className="rounded-[9px] px-2.5 py-1.5 text-[13px] font-semibold text-[#6644e0] hover:bg-[#f6f3ff]" onClick={() => openReply(item.id)}>Responder</button>
+                        <span className="inline-flex items-center gap-1.5 text-[12.5px] text-[#8a85a0]">
+                          <MessageSquare className="h-3.5 w-3.5" /> {replyLabel(count)}
+                        </span>
+                        <button type="button" aria-label={open ? 'Fechar' : 'Abrir'} onClick={() => { setOpenId(open ? null : item.id); setStatusMenu(null); }} className="grid h-[30px] w-[30px] place-items-center rounded-full text-[#8a85a0] hover:bg-[#f6f3ff] hover:text-[#6644e0]">
+                          <ChevronRight className={cn('h-4 w-4 transition-transform', open && 'rotate-90')} />
+                        </button>
                       </div>
                     </div>
+                    {open ? (
+                      <div className="mt-3.5 border-t border-[#e8e4f4] pt-3.5">
+                        {(item.replies ?? []).map((reply) => {
+                          const replyName = reply.authorName || 'Anônimo';
+                          return (
+                            <div key={reply.id} className="mb-2.5 flex gap-2.5 text-[13px] leading-[1.45] break-words whitespace-pre-wrap text-[#4a4560]">
+                              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#ece6ff] text-[10px] font-bold text-[#4f33b8]">{initials(replyName)}</span>
+                              <div className="min-w-0">
+                                <b className="block text-xs font-semibold text-[#8a85a0]">{replyName} <span className="font-normal">{whenLabel(reply.createdAt)}</span></b>
+                                {reply.text}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <textarea
+                          id={`resposta-${item.id}`}
+                          value={draft}
+                          maxLength={10000}
+                          onChange={(event) => setDrafts((current) => ({ ...current, [item.id]: event.target.value.slice(0, 10000) }))}
+                          onKeyDown={(event) => onReplyKey(event, item)}
+                          placeholder="Escreva sua resposta…"
+                          aria-label={`Resposta para ${item.title || 'sugestão'}`}
+                          className="grow-note short w-full overflow-y-auto rounded-[14px] border-[1.5px] border-transparent bg-[#f6f5fa] px-3 py-[11px] text-sm text-[#1f1b2e] outline-none focus:border-[#9b82ff] focus:bg-white"
+                        />
+                        <ComposerExtras onEmoji={(emoji) => setDrafts((current) => ({ ...current, [item.id]: `${current[item.id] ?? ''}${emoji}` }))} />
+                        <div className="mt-3 flex justify-end">
+                          <Button type="button" disabled={!draft.trim() || sending === item.id} onClick={() => void sendReply(item)}>
+                            {sending === item.id ? 'Enviando...' : 'Enviar resposta'}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
+                </div>
               </article>
             );
           }) : null}

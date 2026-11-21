@@ -363,7 +363,7 @@ export function institutionMiddleware(): Connect.NextHandleFunction {
         const message = String(body.message ?? '').trim();
         const title = String(body.title ?? '').trim();
         if (!title || title.length > 140) return send(res, 400, { error: 'title' });
-        if (!message || message.length > 4000) return send(res, 400, { error: 'message' });
+        if (!message || message.length > 10000) return send(res, 400, { error: 'message' });
         if (body.destination !== 'lideranca' && body.destination !== 'plataforma') return send(res, 400, { error: 'destination' });
         if (body.type !== 'feedback' && body.type !== 'sugestao') return send(res, 400, { error: 'type' });
         const anonymous = Boolean(body.anonymous);
@@ -393,7 +393,7 @@ export function institutionMiddleware(): Connect.NextHandleFunction {
         if (!user) return send(res, 401, { error: 'unknown' });
         const body = JSON.parse((await readBody(req)).toString('utf8')) as { text?: string };
         const text = String(body.text ?? '').trim();
-        if (!text || text.length > 4000) return send(res, 400, { error: 'message' });
+        if (!text || text.length > 10000) return send(res, 400, { error: 'message' });
         const store = load();
         const item = store.feedback.find((entry) => entry.id === replyMatch[1]);
         if (!item) return send(res, 404, { error: 'missing' });
